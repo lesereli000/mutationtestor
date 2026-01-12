@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SimpleMutator C#" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="SimpleMutator" />
+    <module name="mutationtestor" />
+    <option name="PROGRAM_PARAMETERS" value="samples/Demo.cs output/Demo.cs" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

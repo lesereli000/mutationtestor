@@ -17,3 +17,4 @@ out/
 # OS files
 .DS_Store
 
+output/
