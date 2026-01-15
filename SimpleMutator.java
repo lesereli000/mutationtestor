@@ -29,78 +29,116 @@ public class SimpleMutator {
             char c = code.charAt(i);
             char next = (i + 1 < code.length()) ? code.charAt(i + 1) : '\0';
 
-        switch (state) {
-            case CODE -> {
-                // comments
-                if (c == '/' && next == '/') {
-                    out.append(c).append(next);
-                    i++;
-                    state = State.LINE_COMMENT;
-                    continue;
-                }
-                if (c == '/' && next == '*') {
-                    out.append(c).append(next);
-                    i++;
-                    state = State.BLOCK_COMMENT;
-                    continue;
+            switch (state) {
+                case CODE -> {
+                    // comments
+                    if (c == '/' && next == '/') {
+                        out.append(c).append(next);
+                        i++;
+                        state = State.LINE_COMMENT;
+                        continue;
+                    }
+                    if (c == '/' && next == '*') {
+                        out.append(c).append(next);
+                        i++;
+                        state = State.BLOCK_COMMENT;
+                        continue;
+                    }
+
+                    // strings
+                    if (c == '"') {
+                        out.append(c);
+                        state = State.STRING_DOUBLE;
+                        continue;
+                    }
+                    if (c == '\'') {
+                        out.append(c);
+                        state = State.STRING_SINGLE;
+                        continue;
+                    }
+
+                    // mutate only code
+                    if (c == '+') {
+                        out.append(shouldMutatePlus(code, i) ? '-' : '+');
+                    } else {
+                        out.append(c);
+                    }
                 }
 
-                // strings
-                if (c == '"') {
+                case LINE_COMMENT -> {
                     out.append(c);
-                    state = State.STRING_DOUBLE;
-                    continue;
+                    if (c == '\n') state = State.CODE;
                 }
-                if (c == '\'') {
+
+                case BLOCK_COMMENT -> {
                     out.append(c);
-                    state = State.STRING_SINGLE;
-                    continue;
+                    if (c == '*' && next == '/') {
+                        out.append(next);
+                        i++;
+                        state = State.CODE;
+                    }
                 }
 
-                // mutate only code
-                out.append(c == '+' ? '-' : c);
-            }
+                case STRING_DOUBLE -> {
+                    out.append(c);
+                    // preserve escapes inside string
+                    if (c == '\\' && next != '\0') {
+                        out.append(next);
+                        i++;
+                        continue;
+                    }
+                    if (c == '"') state = State.CODE;
+                }
 
-            case LINE_COMMENT -> {
-                out.append(c);
-                if (c == '\n') state = State.CODE;
-            }
-
-            case BLOCK_COMMENT -> {
-                out.append(c);
-                if (c == '*' && next == '/') {
-                    out.append(next);
-                    i++;
-                    state = State.CODE;
+                case STRING_SINGLE -> {
+                    out.append(c);
+                    // preserve escapes inside string or char
+                    if (c == '\\' && next != '\0') {
+                        out.append(next);
+                        i++;
+                        continue;
+                    }
+                    if (c == '\'') state = State.CODE;
                 }
             }
+        }
 
-            case STRING_DOUBLE -> {
-                out.append(c);
-                // preserve escapes inside string
-                if (c == '\\' && next != '\0') {
-                    out.append(next);
-                    i++;
-                    continue;
-                }
-                if (c == '"') state = State.CODE;
-            }
-
-            case STRING_SINGLE -> {
-                out.append(c);
-                // preserve escapes inside string or char
-                if (c == '\\' && next != '\0') {
-                    out.append(next);
-                    i++;
-                    continue;
-                }
-                if (c == '\'') state = State.CODE;
-            }
-        } 
+        return out.toString();
     }
 
-    return out.toString();
-}
+    private static boolean shouldMutatePlus(String code, int plusIndex) {
+        char next = (plusIndex + 1 < code.length()) ? code.charAt(plusIndex + 1) : '\0';
+        if (next == '+' || next == '=') return false;
+
+        int left = plusIndex - 1;
+        while (left >= 0 && Character.isWhitespace(code.charAt(left))) left--;
+        if (left < 0) return false;
+
+        if (code.charAt(left) == '+') return false;
+
+        int right = plusIndex + 1;
+        while (right < code.length() && Character.isWhitespace(code.charAt(right))) right++;
+        if (right >= code.length()) return false;
+
+        char l = code.charAt(left);
+        char r = code.charAt(right);
+
+        if (l == '"' || r == '"') return false;
+        if (l == '\'' || r == '\'') return false;
+
+        if (!isLikelyArithmeticLeftOperand(l)) return false;
+        if (!isLikelyArithmeticRightOperand(r)) return false;
+
+        return true;
+    }
+
+    private static boolean isLikelyArithmeticLeftOperand(char c) {
+        return Character.isJavaIdentifierPart(c) || Character.isDigit(c) || c == ']' || c == '.';
+    }
+
+    private static boolean isLikelyArithmeticRightOperand(char c) {
+        return Character.isJavaIdentifierPart(c) || Character.isDigit(c) || c == '(' || c == '.';
+    }
 
     private static void runCommand(List<String> command, String processName){
         // Prepare and start the process
