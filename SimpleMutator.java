@@ -12,9 +12,95 @@ public class SimpleMutator {
 
     public static String mutatePlusToMinus(Path inputPath) throws IOException {
         String code = Files.readString(inputPath);
-        String mutatedCode = code.replace("+", "-");
-        return mutatedCode;
+        return replacePlusWithMinusOutsideStringsAndComments(code);
     }
+    private enum State {
+        CODE,
+        LINE_COMMENT,
+        BLOCK_COMMENT,
+        STRING_DOUBLE,
+        STRING_SINGLE
+    }
+    private static String replacePlusWithMinusOutsideStringsAndComments(String code) {
+        StringBuilder out = new StringBuilder(code.length());
+        State state = State.CODE;
+
+        for (int i = 0; i < code.length(); i++) {
+            char c = code.charAt(i);
+            char next = (i + 1 < code.length()) ? code.charAt(i + 1) : '\0';
+
+        switch (state) {
+            case CODE -> {
+                // comments
+                if (c == '/' && next == '/') {
+                    out.append(c).append(next);
+                    i++;
+                    state = State.LINE_COMMENT;
+                    continue;
+                }
+                if (c == '/' && next == '*') {
+                    out.append(c).append(next);
+                    i++;
+                    state = State.BLOCK_COMMENT;
+                    continue;
+                }
+
+                // strings
+                if (c == '"') {
+                    out.append(c);
+                    state = State.STRING_DOUBLE;
+                    continue;
+                }
+                if (c == '\'') {
+                    out.append(c);
+                    state = State.STRING_SINGLE;
+                    continue;
+                }
+
+                // mutate only code
+                out.append(c == '+' ? '-' : c);
+            }
+
+            case LINE_COMMENT -> {
+                out.append(c);
+                if (c == '\n') state = State.CODE;
+            }
+
+            case BLOCK_COMMENT -> {
+                out.append(c);
+                if (c == '*' && next == '/') {
+                    out.append(next);
+                    i++;
+                    state = State.CODE;
+                }
+            }
+
+            case STRING_DOUBLE -> {
+                out.append(c);
+                // preserve escapes inside string
+                if (c == '\\' && next != '\0') {
+                    out.append(next);
+                    i++;
+                    continue;
+                }
+                if (c == '"') state = State.CODE;
+            }
+
+            case STRING_SINGLE -> {
+                out.append(c);
+                // preserve escapes inside string or char
+                if (c == '\\' && next != '\0') {
+                    out.append(next);
+                    i++;
+                    continue;
+                }
+                if (c == '\'') state = State.CODE;
+            }
+        } 
+    }
+
+    return out.toString();
+}
 
     private static void runCommand(List<String> command, String processName){
         // Prepare and start the process
