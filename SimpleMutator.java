@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 public class SimpleMutator {
 
     private static final long MAX_CMD_TIME = 30000;
+    private static final String WOKRING_DIR = "output/";
 
     public static String mutatePlusToMinus(Path inputPath) throws IOException {
         String code = Files.readString(inputPath);
@@ -146,10 +147,9 @@ public class SimpleMutator {
         try {
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.inheritIO();
-            builder.directory(null);
             process = builder.start();
         } catch (IOException e) {
-            System.out.println("Error compiling code: " + e.getMessage());
+            System.out.println("Error running command " + processName + ": " + e.getMessage());
             e.printStackTrace();
             return;
         }
@@ -160,13 +160,13 @@ public class SimpleMutator {
 
             if (timeout) {
                 process.destroyForcibly();
-                System.out.println("Process timed out.");
+                System.out.println("Process " + processName + " timed out.");
             } else {
                 process.destroy();
-                System.out.println("Process " + processName + " ran successfully");
+                System.out.println("Process " + processName + " finished");
             }
         } catch (InterruptedException e) {
-            System.out.println("Interrupted while waiting for process to finish");
+            System.out.println("Interrupted while waiting for process " + processName + " to finish");
             e.printStackTrace();
         }
     }
@@ -179,9 +179,9 @@ public class SimpleMutator {
             return;
         }
         Path sourcePath = Path.of(args[0]);
-        Path mutantPath = Path.of("output/".concat(sourcePath.getFileName().toString()));
-//        System.out.println(mutantPath.toAbsolutePath());
-//        System.out.println(sourcePath.toAbsolutePath());
+        Path mutantPath = Path.of(WOKRING_DIR.concat(sourcePath.getFileName().toString()));
+        // System.out.println(mutantPath.toAbsolutePath());
+        // System.out.println(sourcePath.toAbsolutePath());
 
         // Mutate the code and write it to output file
         try {
@@ -195,17 +195,28 @@ public class SimpleMutator {
         }
 
         // Prepare the command to compile mutated code
-        ArrayList<String> compile_command = new ArrayList<>(Arrays.asList(args[1].split(" ")));
-        int pathIndex = compile_command.indexOf(sourcePath.toString());
-        compile_command.remove(pathIndex);
-        compile_command.add(pathIndex, mutantPath.toAbsolutePath().toString());
-//        System.out.println(compile_command);
-        runCommand(compile_command, "compile");
+        if(!args[1].isEmpty()) {
+            ArrayList<String> compile_command = new ArrayList<>(Arrays.asList(args[1].split(" ")));
+            int pathIndex = compile_command.indexOf(sourcePath.toString());
+            if (pathIndex != -1) {
+                compile_command.remove(pathIndex);
+                compile_command.add(pathIndex, mutantPath.toAbsolutePath().toString());
+            }
+            System.out.println(compile_command);
+            runCommand(compile_command, "compile");
+        }
 
         // Prepare the command to run mutated code
-        List<String> run_command = Arrays.asList(args[2].split(" "));
-//        System.out.println(run_command);
-        runCommand(run_command, "run");
+        if(!args[2].isEmpty()) {
+            ArrayList<String> run_command = new ArrayList<>(Arrays.asList(args[2].split(" ")));
+            int pathIndex = run_command.indexOf(sourcePath.toString());
+            if (pathIndex != -1) {
+                run_command.remove(pathIndex);
+                run_command.add(pathIndex, mutantPath.toAbsolutePath().toString());
+            }
+            System.out.println(run_command);
+            runCommand(run_command, "run");
+        }
 
         // Done
         System.out.println("Quitting");
