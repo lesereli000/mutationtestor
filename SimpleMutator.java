@@ -11,6 +11,30 @@ public class SimpleMutator {
     private static final long MAX_CMD_TIME = 30000;
     private static final String WOKRING_DIR = "output/";
 
+    //Mutation Types 
+    private enum MutatorType {
+        AOR_PLUS_TO_MINUS,
+        // AOR_MINUS_TO_PLUS,
+        // ROR_LT_TO_LE,
+        // ROR_LE_TO_LT,
+        // ROR_GT_TO_GE,
+        // ROR_GE_TO_GT,
+        // EQ_NEGATE,          // switch between == and !=
+        // LOGICAL_AND_TO_OR,  // from && to ||
+        // LOGICAL_OR_TO_AND,  // from || to &&
+        // INC_TO_DEC,         // from ++ to --
+        // DEC_TO_INC          // from -- to ++
+    }
+
+    private enum State {
+        CODE,
+        LINE_COMMENT,
+        BLOCK_COMMENT,
+        STRING_DOUBLE,
+        STRING_SINGLE
+    }
+
+
     public static String mutatePlusToMinus(Path inputPath) throws IOException {
         String code = Files.readString(inputPath);
         String name = inputPath.getFileName().toString().toLowerCase();
