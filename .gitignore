@@ -9,6 +9,7 @@
 # IntelliJ IDEA
 .idea/
 *.iml
+.run
 
 # Compiled output
 out/
