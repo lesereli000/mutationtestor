@@ -13,8 +13,14 @@ public class SimpleMutator {
 
     public static String mutatePlusToMinus(Path inputPath) throws IOException {
         String code = Files.readString(inputPath);
+        String name = inputPath.getFileName().toString().toLowerCase();
+
+        if (name.endsWith(".rkt")) {
+            return RacketMutator.mutatePlusToMinus(code);
+        }
         return replacePlusWithMinusOutsideStringsAndComments(code);
     }
+
     private enum State {
         CODE,
         LINE_COMMENT,
