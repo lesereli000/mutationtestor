@@ -45,13 +45,6 @@ public class SimpleMutator {
         return replacePlusWithMinusOutsideStringsAndComments(code);
     }
 
-    private enum State {
-        CODE,
-        LINE_COMMENT,
-        BLOCK_COMMENT,
-        STRING_DOUBLE,
-        STRING_SINGLE
-    }
     private static String replacePlusWithMinusOutsideStringsAndComments(String code) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
@@ -209,7 +202,11 @@ public class SimpleMutator {
             return;
         }
         Path sourcePath = Path.of(args[0]);
-        Path mutantPath = Path.of(WOKRING_DIR.concat(sourcePath.getFileName().toString()));
+
+        // Determine output filename based on source file extension
+        String sourceFileName = sourcePath.getFileName().toString();
+        Path mutantPath = Path.of(WOKRING_DIR).resolve(sourceFileName);
+        
         // System.out.println(mutantPath.toAbsolutePath());
         // System.out.println(sourcePath.toAbsolutePath());
 
