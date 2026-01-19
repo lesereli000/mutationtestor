@@ -203,9 +203,7 @@ public class SimpleMutator {
         }
         Path sourcePath = Path.of(args[0]);
 
-        // Determine output filename based on source file extension
-        String sourceFileName = sourcePath.getFileName().toString();
-        Path mutantPath = Path.of(WOKRING_DIR).resolve(sourceFileName);
+        Path mutantPath = Path.of(WOKRING_DIR.concat(sourcePath.getFileName().toString()));
         
         // System.out.println(mutantPath.toAbsolutePath());
         // System.out.println(sourcePath.toAbsolutePath());
