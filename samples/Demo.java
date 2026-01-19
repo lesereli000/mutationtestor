@@ -28,6 +28,27 @@ public class Demo {
         return x;
     }
 
+    static void GreaterToGE() {
+        int x = 6;
+        int equal = x;
+
+        if(x > equal){
+            System.out.println("GreaterToGE: x > equal passes");
+        } else {
+            System.out.println("GreaterToGE: x > equal fails");
+        }
+    }
+
+    static void GEToGreater() {
+        int x = 6;
+        int greater = ++x;
+
+        if(x >= greater){
+            System.out.println("GEToGreater: x >= greater passes");
+        } else {
+            System.out.println("GEToGreater: x >= greater fails");
+        }
+
     public static void main(String[] args) {
         System.out.println("string literal has +: 2+3"); // mutant: same (inside string)
         System.out.println("concat with int: " + add(2, 3)); // mutant: same '+' (string concat), but add(2,3) changes 5 -> -1
@@ -47,5 +68,8 @@ public class Demo {
 
         System.out.println(1 + 2 + 3); // mutant: 1 - 2 - 3  (left-associative) output: 6 -> -4
         System.out.println((1 + 2) + 3); // mutant: (1 - 2) + 3 (outer + NOT mutated for now because left is ')') output: 6 -> 2
+
+        GreaterToGE();
+        GEToGreater();
     }
 }
