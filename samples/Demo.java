@@ -33,21 +33,22 @@ public class Demo {
         int equal = x;
 
         if(x > equal){
-            System.out.println("GreaterToGE: x > equal passes");
+            System.out.println("GreaterToGE: passes");
         } else {
-            System.out.println("GreaterToGE: x > equal fails");
+            System.out.println("GreaterToGE: fails");
         }
     }
 
     static void GEToGreater() {
         int x = 6;
-        int greater = ++x;
+        int equal = x;
 
-        if(x >= greater){
-            System.out.println("GEToGreater: x >= greater passes");
+        if (x >= equal) {
+            System.out.println("GEToGreater: fails");
         } else {
-            System.out.println("GEToGreater: x >= greater fails");
+            System.out.println("GEToGreater: passes");
         }
+    }
 
     public static void main(String[] args) {
         System.out.println("string literal has +: 2+3"); // mutant: same (inside string)

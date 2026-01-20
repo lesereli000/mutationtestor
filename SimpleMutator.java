@@ -37,15 +37,15 @@ public class SimpleMutator {
 
     public static String mutatePlusToMinus(Path inputPath) throws IOException {
         String code = Files.readString(inputPath);
-        String name = inputPath.getFileName().toString().toLowerCase();
+        Language language = new Language(inputPath.getFileName().toString());
 
-        if (name.endsWith(".rkt")) {
-            return RacketMutator.mutatePlusToMinus(code);
-        }
-        return replacePlusWithMinusOutsideStringsAndComments(code);
+//        if (name.endsWith(".rkt")) {
+//            return RacketMutator.mutatePlusToMinus(code);
+//        }
+        return replacePlusWithMinusOutsideStringsAndComments(code, language);
     }
 
-    private static String replacePlusWithMinusOutsideStringsAndComments(String code) {
+    private static String replacePlusWithMinusOutsideStringsAndComments(String code, Language language) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
 
@@ -56,13 +56,15 @@ public class SimpleMutator {
             switch (state) {
                 case CODE -> {
                     // comments
-                    if (c == '/' && next == '/') {
+                    char[] lineComment = language.getSyntax(Language.LINE_COMMENT);
+                    if (c == lineComment[0] && next == lineComment[1]) {
                         out.append(c).append(next);
                         i++;
                         state = State.LINE_COMMENT;
                         continue;
                     }
-                    if (c == '/' && next == '*') {
+                    char[] blockCommentOpen = language.getSyntax(Language.BLOCK_COMMENT_OPEN);
+                    if (c == blockCommentOpen[0] && next == blockCommentOpen[1]) {
                         out.append(c).append(next);
                         i++;
                         state = State.BLOCK_COMMENT;
@@ -70,12 +72,14 @@ public class SimpleMutator {
                     }
 
                     // strings
-                    if (c == '"') {
+                    char[] doubleString = language.getSyntax(Language.DOUBLE_STRING);
+                    if (c == doubleString[0]) {
                         out.append(c);
                         state = State.STRING_DOUBLE;
                         continue;
                     }
-                    if (c == '\'') {
+                    char[] singleString = language.getSyntax(Language.SINGLE_STRING);
+                    if (c == singleString[0]) {
                         out.append(c);
                         state = State.STRING_SINGLE;
                         continue;
@@ -83,7 +87,7 @@ public class SimpleMutator {
 
                     // mutate only code
                     if (c == '+') {
-                        out.append(shouldMutatePlus(code, i) ? '-' : '+');
+                        out.append(shouldMutatePlus(code, i, language) ? '-' : '+');
                     } else {
                         out.append(c);
                     }
@@ -96,7 +100,8 @@ public class SimpleMutator {
 
                 case BLOCK_COMMENT -> {
                     out.append(c);
-                    if (c == '*' && next == '/') {
+                    char[] blockCommentClose = language.getSyntax(Language.BLOCK_COMMENT_CLOSE);
+                    if (c == blockCommentClose[0] && next == blockCommentClose[1]) {
                         out.append(next);
                         i++;
                         state = State.CODE;
@@ -106,23 +111,27 @@ public class SimpleMutator {
                 case STRING_DOUBLE -> {
                     out.append(c);
                     // preserve escapes inside string
-                    if (c == '\\' && next != '\0') {
+                    char[] escape = language.getSyntax(Language.ESCAPE_CHARACTER);
+                    if (c == escape[0] && next != '\0') {
                         out.append(next);
                         i++;
                         continue;
                     }
-                    if (c == '"') state = State.CODE;
+                    char[] doubleString = language.getSyntax(Language.DOUBLE_STRING);
+                    if (c == doubleString[0]) state = State.CODE;
                 }
 
                 case STRING_SINGLE -> {
                     out.append(c);
                     // preserve escapes inside string or char
-                    if (c == '\\' && next != '\0') {
+                    char[] escape = language.getSyntax(Language.ESCAPE_CHARACTER);
+                    if (c == escape[0] && next != '\0') {
                         out.append(next);
                         i++;
                         continue;
                     }
-                    if (c == '\'') state = State.CODE;
+                    char[] singleString = language.getSyntax(Language.SINGLE_STRING);
+                    if (c == singleString[0]) state = State.CODE;
                 }
             }
         }
@@ -130,7 +139,7 @@ public class SimpleMutator {
         return out.toString();
     }
 
-    private static boolean shouldMutatePlus(String code, int plusIndex) {
+    private static boolean shouldMutatePlus(String code, int plusIndex, Language language) {
         char next = (plusIndex + 1 < code.length()) ? code.charAt(plusIndex + 1) : '\0';
         if (next == '+' || next == '=') return false;
 
@@ -147,8 +156,10 @@ public class SimpleMutator {
         char l = code.charAt(left);
         char r = code.charAt(right);
 
-        if (l == '"' || r == '"') return false;
-        if (l == '\'' || r == '\'') return false;
+        char[] doubleString = language.getSyntax(Language.SINGLE_STRING);
+        char[] singleString = language.getSyntax(Language.SINGLE_STRING);
+        if (l == doubleString[0] || r == doubleString[0]) return false;
+        if (l == singleString[0] || r == singleString[0]) return false;
 
         if (!isLikelyArithmeticLeftOperand(l)) return false;
         if (!isLikelyArithmeticRightOperand(r)) return false;
