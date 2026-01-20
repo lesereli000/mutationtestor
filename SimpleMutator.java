@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 public class SimpleMutator {
 
     private static final long MAX_CMD_TIME = 30000;
-    private static final String WOKRING_DIR = "output/";
+    private static final String WORKING_DIR = "output/";
 
     //Mutation Types 
     private enum MutatorType {
@@ -203,7 +203,7 @@ public class SimpleMutator {
         }
         Path sourcePath = Path.of(args[0]);
 
-        Path mutantPath = Path.of(WOKRING_DIR.concat(sourcePath.getFileName().toString()));
+        Path mutantPath = Path.of(WORKING_DIR.concat(sourcePath.getFileName().toString()));
         
         // System.out.println(mutantPath.toAbsolutePath());
         // System.out.println(sourcePath.toAbsolutePath());
@@ -227,7 +227,7 @@ public class SimpleMutator {
                 compile_command.remove(pathIndex);
                 compile_command.add(pathIndex, mutantPath.toAbsolutePath().toString());
             }
-            System.out.println(compile_command);
+            //System.out.println(compile_command);
             runCommand(compile_command, "compile");
         }
 
@@ -239,7 +239,7 @@ public class SimpleMutator {
                 run_command.remove(pathIndex);
                 run_command.add(pathIndex, mutantPath.toAbsolutePath().toString());
             }
-            System.out.println(run_command);
+            //System.out.println(run_command);
             runCommand(run_command, "run");
         }
 
