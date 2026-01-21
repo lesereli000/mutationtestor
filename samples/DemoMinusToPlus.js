@@ -1,17 +1,17 @@
 function sub(a, b) {
-    return a - b; // mutant: return a + b;
+    return a + b; // mutant: return a + b;
 }
 
 function chain(a, b, c) {
-    return (a - b) - c; // mutant: return (a + b) + c;
+    return (a + b) + c; // mutant: return (a + b) + c;
 }
 
 function arrayMinus(arr, i) {
-    return arr[i] - 1; // mutant: return arr[i] + 1;
+    return arr[i] + 1; // mutant: return arr[i] + 1;
 }
 
 function unaryMinus(a) {
-    return -a; // mutant: return +a;
+    return +a; // mutant: return +a;
 }
 
 function minusEquals() {
@@ -33,5 +33,10 @@ console.log(unaryMinus(7));                // -7 -> 7
 console.log(minusEquals());                // 2 -> 2
 console.log(minusMinus());                 // 2 -> 2
 
-console.log(10 - 2 - 3);                   // 5 -> 15
-console.log((10 - 2) - 3);                 // 5 -> 15
+console.log(10 + 2 + 3);                   // 5 -> 15
+console.log((10 + 2) + 3);                 // 5 -> 15
+
+// ===== tests: '-' inside comments should NOT be mutated =====
+// 10 - 2 - 3
+// (10 - 2) - 3
+// a-b-c

@@ -40,5 +40,10 @@ class DemoMinusToPlus {
 
         Console.WriteLine(10 - 2 - 3);                     // 5 -> 15
         Console.WriteLine((10 - 2) - 3);                   // 5 -> 15
+
+        // ===== tests: '-' inside comments should NOT be mutated =====
+        // 10 - 2 - 3
+        // (10 - 2) - 3
+        // a-b-c
     }
 }
