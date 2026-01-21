@@ -29,18 +29,25 @@ public class Mutator {
 
     public static String mutate(Path inputPath, MutatorType type) throws IOException {
         String code = Files.readString(inputPath);
-        String name = inputPath.getFileName().toString().toLowerCase();
+        Language language = new Language(inputPath.getFileName().toString());
 
-        if (name.endsWith(".rkt")) {
-            return RacketMutator.mutatePlusToMinus(code); // racket specific later
-        }
-        return mutateOutsideStringsAndComments(code, type, 1);
+        // return mutateOutsideStringsAndComments(code, type, 1, language);
+        boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
+
+        return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
-    private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits) {
+    private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
         int edits = 0;
+
+        char[] lineComment = language.getSyntax(Language.LINE_COMMENT);
+        char[] blockOpen = language.getSyntax(Language.BLOCK_COMMENT_OPEN);
+        char[] blockClose = language.getSyntax(Language.BLOCK_COMMENT_CLOSE);
+        char[] doubleQuote = language.getSyntax(Language.DOUBLE_STRING);
+        char[] singleQuote = language.getSyntax(Language.SINGLE_STRING);
+        char[] escape = language.getSyntax(Language.ESCAPE_CHARACTER);
 
         for (int i = 0; i < code.length(); i++) {
             char c = code.charAt(i);
@@ -49,13 +56,18 @@ public class Mutator {
             switch (state) {
                 case CODE -> {
                     // comments
-                    if (c == '/' && next == '/') {
+                    if (lineComment.length == 1 && c == lineComment[0]) {
+                        out.append(c);
+                        state = State.LINE_COMMENT;
+                        continue;
+                    }
+                    if (lineComment.length >= 2 && c == lineComment[0] && next == lineComment[1]) {
                         out.append(c).append(next);
                         i++;
                         state = State.LINE_COMMENT;
                         continue;
                     }
-                    if (c == '/' && next == '*') {
+                    if (blockOpen.length >= 2 && c == blockOpen[0] && next == blockOpen[1]) {
                         out.append(c).append(next);
                         i++;
                         state = State.BLOCK_COMMENT;
@@ -63,12 +75,12 @@ public class Mutator {
                     }
 
                     // strings
-                    if (c == '"') {
+                    if (doubleQuote.length >= 1 && c == doubleQuote[0]) {
                         out.append(c);
                         state = State.STRING_DOUBLE;
                         continue;
                     }
-                    if (c == '\'') {
+                    if (singleQuote.length >= 1 && c == singleQuote[0]) {
                         out.append(c);
                         state = State.STRING_SINGLE;
                         continue;
@@ -99,10 +111,18 @@ public class Mutator {
 
                     // 3. + -> -
                     if (type == MutatorType.AOR_PLUS_TO_MINUS && c == '+') {
-                        if (next != '+' && next != '=' && shouldMutateBinaryOp(code, i)) {
-                            out.append('-');
-                            edits++;
-                            continue;
+                        if (isRacket) {
+                            if (shouldMutateRacketPlusToken(code, i)) {
+                                out.append('-');
+                                edits++;
+                                continue;
+                            }
+                        } else {
+                            if (next != '+' && next != '=' && shouldMutateBinaryOp(code, i)) {
+                                out.append('-');
+                                edits++;
+                                continue;
+                            }
                         }
                     }
 
@@ -187,7 +207,7 @@ public class Mutator {
 
                 case BLOCK_COMMENT -> {
                     out.append(c);
-                    if (c == '*' && next == '/') {
+                    if (blockClose.length >= 2 && c == blockClose[0] && next == blockClose[1]) {
                         out.append(next);
                         i++;
                         state = State.CODE;
@@ -196,22 +216,22 @@ public class Mutator {
 
                 case STRING_DOUBLE -> {
                     out.append(c);
-                    if (c == '\\' && next != '\0') {
+                    if (escape.length >= 1 && c == escape[0] && next != '\0') {
                         out.append(next);
                         i++;
                         continue;
                     }
-                    if (c == '"') state = State.CODE;
+                    if (doubleQuote.length >= 1 && c == doubleQuote[0]) state = State.CODE;
                 }
 
                 case STRING_SINGLE -> {
                     out.append(c);
-                    if (c == '\\' && next != '\0') {
+                    if (escape.length >= 1 && c == escape[0] && next != '\0') {
                         out.append(next);
                         i++;
                         continue;
                     }
-                    if (c == '\'') state = State.CODE;
+                    if (singleQuote.length >= 1 && c == singleQuote[0]) state = State.CODE;
                 }
             }
         }
@@ -243,5 +263,20 @@ public class Mutator {
 
     private static boolean isLikelyOperandChar(char c) {
         return Character.isJavaIdentifierPart(c) || Character.isDigit(c) || c == ']' || c == ')' || c == '.';
+    }
+
+    private static boolean shouldMutateRacketPlusToken(String code, int plusIndex) {
+        char prev = (plusIndex - 1 >= 0) ? code.charAt(plusIndex - 1) : '\0';
+        char next = (plusIndex + 1 < code.length()) ? code.charAt(plusIndex + 1) : '\0';
+
+        if (Character.isDigit(next) || next == '.') return false;
+
+        return isRacketDelimiter(prev) && isRacketDelimiter(next);
+    }
+
+    private static boolean isRacketDelimiter(char c) {
+        if (c == '\0') return true;
+        if (Character.isWhitespace(c)) return true;
+        return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}';
     }
 }

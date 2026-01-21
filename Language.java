@@ -32,7 +32,7 @@ public class Language {
     public Language(String fileName) {
         translations = new HashMap<>();
         String fileType = fileName.substring(fileName.lastIndexOf(".") + 1);
-        Path dictPath = Path.of("dictionaries\\" + fileType + ".dict");
+        Path dictPath = Path.of("dictionaries", fileType + ".dict");
         try{
             for(String Line : Files.readString(dictPath).split("\r\n")){
                 Line = Line.replaceFirst("=", " = ");
