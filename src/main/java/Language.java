@@ -8,7 +8,7 @@ public class Language {
     // To add more syntax, put the syntax name at the end of the syntax array, and add an int corresponding to its index
     private static final String[] syntax = {"line_comment", "block_comment_open", "block_comment_close", "single_string",
             "double_string", "escape_character", "plus", "minus", "greater_than", "greater_equals", "equals",
-            "equal_to", "not_equal", "strictly_euqals_to", "strictly_not_equal_to", "logical_and", "logical_or"};
+            "equal_to", "not_equal", "strictly_equals_to", "strictly_not_equal_to", "logical_and", "logical_or"};
     public static final int LINE_COMMENT = 0;
     public static final int BLOCK_COMMENT_OPEN = 1;
     public static final int BLOCK_COMMENT_CLOSE = 2;

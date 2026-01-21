@@ -29,3 +29,8 @@ if __name__ == "__main__":
 
     print(10 - 2 - 3)                   # mutant: 10 + 2 + 3 -> 15
     print((10 - 2) - 3)                 # mutant: (10 + 2) + 3 -> 15
+
+    # ===== tests: '-' inside comments should NOT be mutated =====
+    # 10 - 2 - 3
+    # (10 - 2) - 3
+    # a-b-c
