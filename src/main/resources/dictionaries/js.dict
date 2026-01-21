@@ -1,0 +1,17 @@
+line_comment = //
+block_comment_open = /*
+block_comment_close = */
+double_string = ""
+single_string = ''
+escape_character = \
+plus = +
+minus = -
+greater_than = >
+greater_equals = >=
+equals = =
+equal_to = ==
+not_equal = !=
+strictly_equals_to = ===
+strictly_not_equal_to = !==
+logical_and = &&
+logical_or = ||

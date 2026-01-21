@@ -5,7 +5,7 @@ public class Demo {
     }
 
     static int chain(int a, int b, int c) {
-        return (a + b) + c; // mutant: return (a - b) + c; (outer + NOT mutated for now because left is ')')
+        return (a + b) + c; // mutant: return (a - b) - c;
     }
 
     static int arrayPlus(int[] arr, int i) {
@@ -61,14 +61,14 @@ public class Demo {
         */
 
         System.out.println(add(2, 3)); // output mutant: 5 -> -1
-        System.out.println(chain(1, 2, 3)); // output mutant (with current rules): 6 -> 2
+        System.out.println(chain(1, 2, 3)); // output mutant: 6 -> -4
         System.out.println(arrayPlus(new int[]{10, 20, 30}, 1)); // output mutant: 21 -> 19
         System.out.println(unaryPlus(7)); // output mutant: 7 -> -7
         System.out.println(plusEquals()); // output mutant: 5 -> 5
         System.out.println(plusPlus()); // output mutant: 3 -> 3
 
         System.out.println(1 + 2 + 3); // mutant: 1 - 2 - 3  (left-associative) output: 6 -> -4
-        System.out.println((1 + 2) + 3); // mutant: (1 - 2) + 3 (outer + NOT mutated for now because left is ')') output: 6 -> 2
+        System.out.println((1 + 2) + 3); // mutant: (1 - 2) - 3 output: 6 -> -4
 
         GreaterToGE();
         GEToGreater();
