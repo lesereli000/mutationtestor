@@ -7,7 +7,7 @@ public class Demo {
     }
 
     static int Chain(int a, int b, int c) {
-        return (a + b) + c; // mutant: return (a - b) + c; (outer + NOT mutated for now because left is ')')
+        return (a + b) + c; // mutant: return (a - b) - c;
     }
 
     static int ArrayPlus(int[] arr, int i) {
@@ -63,14 +63,14 @@ public class Demo {
         */
 
         Console.WriteLine(Add(2, 3)); // output mutant: 5 -> -1
-        Console.WriteLine(Chain(1, 2, 3)); // output mutant (with current rules): 6 -> 2
+        Console.WriteLine(Chain(1, 2, 3)); // output mutant: 6 -> -4
         Console.WriteLine(ArrayPlus(new int[]{10, 20, 30}, 1)); // output mutant: 21 -> 19
         Console.WriteLine(UnaryPlus(7)); // output mutant: 7 -> -7
         Console.WriteLine(PlusEquals()); // output mutant: 5 -> 5
         Console.WriteLine(PlusPlus()); // output mutant: 3 -> 3
 
         Console.WriteLine(1 + 2 + 3); // mutant: 1 - 2 - 3  (left-associative) output: 6 -> -4
-        Console.WriteLine((1 + 2) + 3); // mutant: (1 - 2) + 3 (outer + NOT mutated for now because left is ')') output: 6 -> 2
+        Console.WriteLine((1 + 2) + 3); // mutant: (1 - 2) - 3 output: 6 -> -4
 
         GreaterToGE();
         GEToGreater();

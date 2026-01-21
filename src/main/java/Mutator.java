@@ -31,10 +31,11 @@ public class Mutator {
         String code = Files.readString(inputPath);
         Language language = new Language(inputPath.getFileName().toString());
 
-        // return mutateOutsideStringsAndComments(code, type, 1, language);
+
         boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
 
-        return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
+        return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
+        // return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
     private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {

@@ -40,7 +40,7 @@ public class Main {
 
     public static void main(String[] args) {
         if (args.length < 4) {
-            System.out.println("Usage: java Main <input_file> <mutator_type> \"command to compile code\" \"command to run the code\"");
+            System.out.println("Usage: java src.main.java.Main <input_file> <mutator_type> \"command to compile code\" \"command to run the code\"");
             return;
         }
 

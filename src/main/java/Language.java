@@ -1,6 +1,5 @@
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 public class Language {
@@ -23,7 +22,7 @@ public class Language {
     public static final int EQUALS = 10;
     public static final int EQUAL_TO = 11;
     public static final int NOT_EQUAL = 12;
-    public static final int STRICTLY_EUQALS_TO = 13;
+    public static final int STRICTLY_EQUALS_TO = 13;
     public static final int STRICTLY_NOT_EQUAL_TO = 14;
     public static final int LOGICAL_AND = 15;
     public static final int LOGICAL_OR = 16;
@@ -32,16 +31,26 @@ public class Language {
     public Language(String fileName) {
         translations = new HashMap<>();
         String fileType = fileName.substring(fileName.lastIndexOf(".") + 1);
-        Path dictPath = Path.of("dictionaries", fileType + ".dict");
-        try{
-            for(String Line : Files.readString(dictPath).split("\r\n")){
+
+        String resourceName = "dictionaries/" + fileType + ".dict";
+        try (var in = Language.class.getClassLoader().getResourceAsStream(resourceName)) {
+            if (in == null) {
+                System.out.println("Error reading dictionary file " + resourceName);
+                return;
+            }
+            String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+
+            for (String Line : content.split("\\R")) {
+                if (Line.isBlank()) continue;
                 Line = Line.replaceFirst("=", " = ");
-                String key = Line.split("\s+=\s+")[0]; // regex "\s*=\s*" searches for an = with any number of whitespace characters on either side
-                String value = Line.split("\s+=\s+")[1];
+                String[] parts = Line.split("\\s+=\\s+", 2);
+                if (parts.length != 2) continue;
+                String key = parts[0];
+                String value = parts[1];
                 translations.put(key, value);
             }
-        } catch(IOException e){
-            System.out.println("Error reading dictionary file " + dictPath.toString());
+        } catch (IOException e) {
+            System.out.println("Error reading dictionary file " + resourceName);
             e.printStackTrace();
         }
     }
