@@ -11,3 +11,5 @@ greater_equals = >=
 equals = =
 equal_to = ==
 not_equal = !=
+logical_and = &&
+logical_or = ||
