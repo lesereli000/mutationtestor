@@ -1,4 +1,4 @@
-public class Demo {
+public class DemoPlusToMinus {
 
     static int add(int a, int b) {
         return a + b; // mutant: return a - b;
