@@ -4,3 +4,10 @@ block_comment_close     =         */
 double_string = ""
 single_string = ''
 escape_character = \
+plus = +
+minus = -
+greater_than = >
+greater_equals = >=
+equals = =
+equal_to = ==
+not_equal = !=

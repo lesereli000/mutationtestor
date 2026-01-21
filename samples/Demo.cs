@@ -35,20 +35,20 @@ public class Demo {
         int equal = x;
 
         if(x > equal){
-            Console.WriteLine("GreaterToGE: x > equal passes");
+            Console.WriteLine("GreaterToGE: passes");
         } else {
-            Console.WriteLine("GreaterToGE: x > equal fails");
+            Console.WriteLine("GreaterToGE: fails");
         }
     }
 
     static void GEToGreater() {
         int x = 6;
-        int greater = ++x;
+        int equal = x;
 
-        if(x >= greater){
-            Console.WriteLine("GEToGreater: x >= greater passes");
+        if(x >= equal){
+            Console.WriteLine("GEToGreater: fails");
         } else {
-            Console.WriteLine("GEToGreater: x >= greater fails");
+            Console.WriteLine("GEToGreater: passes");
         }
     }
 
