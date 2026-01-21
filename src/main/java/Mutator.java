@@ -6,7 +6,7 @@ public class Mutator {
 
     public enum MutatorType {
         AOR_PLUS_TO_MINUS,
-        // AOR_MINUS_TO_PLUS,
+        AOR_MINUS_TO_PLUS,
         // ROR_LT_TO_LE,
         // ROR_LE_TO_LT,
         // ROR_GT_TO_GE,
@@ -34,8 +34,8 @@ public class Mutator {
 
         boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
 
-        return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
-        // return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
+        //return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
+        return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
     private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
@@ -128,13 +128,21 @@ public class Mutator {
                     }
 
                     // 4. - -> +
-                    // if (type == MutatorType.AOR_MINUS_TO_PLUS && c == '-') {
-                    //     if (next != '-' && next != '=' && next != '>' && shouldMutateBinaryOp(code, i)) {
-                    //         out.append('+');
-                    //         edits++;
-                    //         continue;
-                    //     }
-                    // }
+                     if (type == MutatorType.AOR_MINUS_TO_PLUS && c == '-') {
+                         if (isRacket) {
+                             if (shouldMutateRacketMinusToken(code, i)) {
+                                 out.append('+');
+                                 edits++;
+                                 continue;
+                             }
+                         } else {
+                             if (next != '-' && next != '=' && next != '>' && shouldMutateBinaryOp(code, i)) {
+                                 out.append('+');
+                                 edits++;
+                                 continue;
+                             }
+                         }
+                     }
                     // Relational
                     // 5. < -> <=
                     // if (type == MutatorType.ROR_LT_TO_LE && c == '<' && next != '=' && next != '<') {
@@ -274,6 +282,16 @@ public class Mutator {
 
         return isRacketDelimiter(prev) && isRacketDelimiter(next);
     }
+
+    private static boolean shouldMutateRacketMinusToken(String code, int minusIndex) {
+        char prev = (minusIndex - 1 >= 0) ? code.charAt(minusIndex - 1) : '\0';
+        char next = (minusIndex + 1 < code.length()) ? code.charAt(minusIndex + 1) : '\0';
+
+        if (Character.isDigit(next) || next == '.') return false;
+
+        return isRacketDelimiter(prev) && isRacketDelimiter(next);
+    }
+
 
     private static boolean isRacketDelimiter(char c) {
         if (c == '\0') return true;
