@@ -11,7 +11,7 @@ public class Mutator {
         // ROR_LE_TO_LT,
         // ROR_GT_TO_GE,
         // ROR_GE_TO_GT,
-        // EQ_NEGATE,          // switch between == and !=
+        EQ_NEGATE,          // switch between == and !=
         // LOGICAL_AND_TO_OR,  // && to ||
         // LOGICAL_OR_TO_AND,  // || to &&
         // INC_TO_DEC,         // ++ to --
@@ -91,6 +91,74 @@ public class Mutator {
                         out.append(c);
                         continue;
                     }
+                    
+                    // Equality
+                    //Racket specific mutations
+                    // equal to not-equal
+                    if ((type == MutatorType.EQ_TO_NEQ) && isRacket) {
+                        if (matchesAtPosition(code, i, "equal?")) {
+                            out.append("not-equal?");
+                            i += "equal?".length() - 1;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+                    // not equal to equal
+                    if ((type == MutatorType.NEQ_TO_EQ) && isRacket) {
+                        if (matchesAtPosition(code, i, "not-equal?")) {
+                            out.append("equal?");
+                            i += "not-equal?".length() - 1;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+                    // For JS:
+                    // === to !==
+                    if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 == '=') {
+                        String fileName = ""; 
+                        if (equalTo.length == 3) { 
+                            out.append("!==");
+                            i += 2;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+                    // !== to ===
+                    if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 == '=') {
+                        if (notEqual.length == 3) { 
+                            out.append("===");
+                            i += 2;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+                    // C-style languages:
+                    //  == to !=
+                    if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 != '=') {
+                        if (equalTo.length == 2 && !isRacket) {
+                            out.append("!=");
+                            i += 1;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+                    // != to ==
+                    if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 != '=') {
+                        if (notEqual.length == 2 && !isRacket) {
+                            out.append("==");
+                            i += 1;
+                            edits++;
+                            continue;
+                        }
+                    }
+
+
+
 
                     //  Mutation cases
                     // math:
@@ -173,22 +241,7 @@ public class Mutator {
                     //     edits++;
                     //     continue;
                     // }
-                    // Equality
-                    // 9. == -> !=
-                    // if (type == MutatorType.EQ_NEGATE && c == '=' && next == '=') {
-                    //     out.append("!=");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
-
-                    // 10. Equality: != -> ==
-                    // if (type == MutatorType.EQ_NEGATE && c == '!' && next == '=') {
-                    //     out.append("==");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
+                   
                     // logical
                     // 11. && -> ||
                     // if (type == MutatorType.LOGICAL_AND_TO_OR && c == '&' && next == '&') {
