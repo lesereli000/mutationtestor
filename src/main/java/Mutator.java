@@ -12,8 +12,8 @@ public class Mutator {
         // ROR_GT_TO_GE,
         // ROR_GE_TO_GT,
         EQ_NEGATE,          // switch between == and !=
-        // LOGICAL_AND_TO_OR,  // && to ||
-        // LOGICAL_OR_TO_AND,  // || to &&
+        LOGICAL_AND_TO_OR,  // && to || (or language equivalents)
+        LOGICAL_OR_TO_AND   // || to && (or language equivalents)
         // INC_TO_DEC,         // ++ to --
         // DEC_TO_INC          // -- to ++
     }
@@ -49,6 +49,8 @@ public class Mutator {
         char[] doubleQuote = language.getSyntax(Language.DOUBLE_STRING);
         char[] singleQuote = language.getSyntax(Language.SINGLE_STRING);
         char[] escape = language.getSyntax(Language.ESCAPE_CHARACTER);
+        char[] logicalAnd = language.getSyntax(Language.LOGICAL_AND);
+        char[] logicalOr = language.getSyntax(Language.LOGICAL_OR);
 
         for (int i = 0; i < code.length(); i++) {
             char c = code.charAt(i);
@@ -91,74 +93,13 @@ public class Mutator {
                         out.append(c);
                         continue;
                     }
-                    
-                    // Equality
-                    //Racket specific mutations
-                    // equal to not-equal
-                    if ((type == MutatorType.EQ_TO_NEQ) && isRacket) {
-                        if (matchesAtPosition(code, i, "equal?")) {
-                            out.append("not-equal?");
-                            i += "equal?".length() - 1;
-                            edits++;
-                            continue;
-                        }
+
+                    // Logical && <-> || (or language-specific equivalents)
+                    if (tryMutateLogicalOperators(code, type, i, logicalAnd, logicalOr, out)) {
+                        i += (type == MutatorType.LOGICAL_AND_TO_OR ? logicalAnd.length : logicalOr.length) - 1;
+                        edits++;
+                        continue;
                     }
-
-                    // not equal to equal
-                    if ((type == MutatorType.NEQ_TO_EQ) && isRacket) {
-                        if (matchesAtPosition(code, i, "not-equal?")) {
-                            out.append("equal?");
-                            i += "not-equal?".length() - 1;
-                            edits++;
-                            continue;
-                        }
-                    }
-
-                    // For JS:
-                    // === to !==
-                    if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 == '=') {
-                        String fileName = ""; 
-                        if (equalTo.length == 3) { 
-                            out.append("!==");
-                            i += 2;
-                            edits++;
-                            continue;
-                        }
-                    }
-
-                    // !== to ===
-                    if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 == '=') {
-                        if (notEqual.length == 3) { 
-                            out.append("===");
-                            i += 2;
-                            edits++;
-                            continue;
-                        }
-                    }
-
-                    // C-style languages:
-                    //  == to !=
-                    if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 != '=') {
-                        if (equalTo.length == 2 && !isRacket) {
-                            out.append("!=");
-                            i += 1;
-                            edits++;
-                            continue;
-                        }
-                    }
-
-                    // != to ==
-                    if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 != '=') {
-                        if (notEqual.length == 2 && !isRacket) {
-                            out.append("==");
-                            i += 1;
-                            edits++;
-                            continue;
-                        }
-                    }
-
-
-
 
                     //  Mutation cases
                     // math:
@@ -242,22 +183,12 @@ public class Mutator {
                     //     continue;
                     // }
                    
-                    // logical
-                    // 11. && -> ||
-                    // if (type == MutatorType.LOGICAL_AND_TO_OR && c == '&' && next == '&') {
-                    //     out.append("||");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
-
-                    // 12. || -> &&
-                    // if (type == MutatorType.LOGICAL_OR_TO_AND && c == '|' && next == '|') {
-                    //     out.append("&&");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
+                    // Logical && <-> || (or language-specific equivalents)
+                    if (tryMutateLogicalOperators(code, type, i, logicalAnd, logicalOr, out)) {
+                        i += (type == MutatorType.LOGICAL_AND_TO_OR ? logicalAnd.length : logicalOr.length) - 1;
+                        edits++;
+                        continue;
+                    }
 
                     out.append(c);
                 }
@@ -350,5 +281,58 @@ public class Mutator {
         if (c == '\0') return true;
         if (Character.isWhitespace(c)) return true;
         return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}';
+    }
+
+    private static boolean matchesAt(String code, int index, char[] token) {
+        if (token.length == 0) return false;
+        if (index + token.length > code.length()) return false;
+        for (int j = 0; j < token.length; j++) {
+            if (code.charAt(index + j) != token[j]) return false;
+        }
+        return true;
+    }
+
+    private static void appendToken(StringBuilder out, char[] token) {
+        out.append(token, 0, token.length);
+    }
+
+    private static boolean tryMutateLogicalOperators(String code, MutatorType type, int index, char[] logicalAnd, char[] logicalOr, StringBuilder out) {
+        if (logicalAnd.length == 0 || logicalOr.length == 0) return false;
+
+        if (type == MutatorType.LOGICAL_AND_TO_OR && matchesTokenWithBoundaries(code, index, logicalAnd)) {
+            appendToken(out, logicalOr);
+            return true;
+        }
+
+        if (type == MutatorType.LOGICAL_OR_TO_AND && matchesTokenWithBoundaries(code, index, logicalOr)) {
+            appendToken(out, logicalAnd);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static boolean matchesTokenWithBoundaries(String code, int index, char[] token) {
+        if (!matchesAt(code, index, token)) return false;
+        if (!needsWordBoundaryCheck(token)) return true;
+        int len = token.length;
+        char before = index > 0 ? code.charAt(index - 1) : '\0';
+        char after = (index + len < code.length()) ? code.charAt(index + len) : '\0';
+        boolean beforeOk = before == '\0' || !isIdentifierLike(before);
+        boolean afterOk = after == '\0' || !isIdentifierLike(after);
+        return beforeOk && afterOk;
+    }
+
+    private static boolean needsWordBoundaryCheck(char[] token) {
+        for (char ch : token) {
+            if (Character.isLetterOrDigit(ch) || ch == '_' || ch == '?' || ch == '!') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isIdentifierLike(char ch) {
+        return Character.isLetterOrDigit(ch) || ch == '_' || ch == '?' || ch == '!' || ch == '-' || ch == '.';
     }
 }
