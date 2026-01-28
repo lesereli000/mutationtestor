@@ -9,8 +9,8 @@ public class Mutator {
         AOR_MINUS_TO_PLUS,
         // ROR_LT_TO_LE,
         // ROR_LE_TO_LT,
-        // ROR_GT_TO_GE,
-        // ROR_GE_TO_GT,
+        ROR_GT_TO_GE,
+        ROR_GE_TO_GT,
         EQ_NEGATE,          // switch between == and !=
         LOGICAL_AND_TO_OR,  // && to || (or language equivalents)
         LOGICAL_OR_TO_AND   // || to && (or language equivalents)
@@ -234,19 +234,19 @@ public class Mutator {
                     // }
 
                     // 7. > -> >=
-                    // if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>') {
-                    //     out.append(">=");
-                    //     edits++;
-                    //     continue;
-                    // }
+                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>') {
+                        out.append(">=");
+                        edits++;
+                        continue;
+                    }
 
                     // 8. >= -> >
-                    // if (type == MutatorType.ROR_GE_TO_GT && c == '>' && next == '=') {
-                    //     out.append('>');
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
+                    if (type == MutatorType.ROR_GE_TO_GT && c == '>' && next == '=') {
+                        out.append('>');
+                        i++;
+                        edits++;
+                        continue;
+                    }
                    
                     // Logical && <-> || (or language-specific equivalents)
                     if (tryMutateLogicalOperators(code, type, i, logicalAnd, logicalOr, out)) {

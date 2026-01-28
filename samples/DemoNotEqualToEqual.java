@@ -19,7 +19,7 @@ public class DemoNotEqualToEqual {
     static void testBasicInequality() {
         int x = 5;
         int y = 10;
-        
+
         if (x != y) {
             System.out.println("testBasicInequality: fails (should pass)");
         } else {
@@ -30,7 +30,7 @@ public class DemoNotEqualToEqual {
     static void testEqualityCheck() {
         int x = 5;
         int y = 5;
-        
+
         if (x != y) {
             System.out.println("testEqualityCheck: passes");
         } else {
@@ -42,7 +42,7 @@ public class DemoNotEqualToEqual {
         int a = 5;
         int b = 10;
         int c = 15;
-        
+
         if ((a != b) && (b != c)) {
             System.out.println("testMultipleConditions: fails (all different)");
         } else {
@@ -71,3 +71,4 @@ public class DemoNotEqualToEqual {
         testEqualityCheck();
         testMultipleConditions();
     }
+}
