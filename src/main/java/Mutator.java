@@ -38,7 +38,7 @@ public class Mutator {
         return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
-    private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
+    static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
         int edits = 0;
@@ -55,6 +55,7 @@ public class Mutator {
         for (int i = 0; i < code.length(); i++) {
             char c = code.charAt(i);
             char next = (i + 1 < code.length()) ? code.charAt(i + 1) : '\0';
+            char prev = (i - 1 < 0) ? '\0' : code.charAt(i - 1);
 
             switch (state) {
                 case CODE -> {
@@ -234,7 +235,7 @@ public class Mutator {
                     // }
 
                     // 7. > -> >=
-                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>') {
+                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>' && next != '?' && prev != '>' && prev != '\\' && prev != '=') {
                         out.append(">=");
                         edits++;
                         continue;
