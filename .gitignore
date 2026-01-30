@@ -12,7 +12,6 @@
 .run
 
 # Compiled output
-out/
 *.class
 
 # OS files
