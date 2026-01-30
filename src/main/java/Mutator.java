@@ -9,8 +9,8 @@ public class Mutator {
         AOR_MINUS_TO_PLUS,
         // ROR_LT_TO_LE,
         // ROR_LE_TO_LT,
-        // ROR_GT_TO_GE,
-        // ROR_GE_TO_GT,
+        ROR_GT_TO_GE,
+        ROR_GE_TO_GT,
         EQ_NEGATE,          // switch between == and !=
         LOGICAL_AND_TO_OR,  // && to || (or language equivalents)
         LOGICAL_OR_TO_AND   // || to && (or language equivalents)
@@ -38,7 +38,7 @@ public class Mutator {
         return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
-    private static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
+    static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
         int edits = 0;
@@ -55,6 +55,7 @@ public class Mutator {
         for (int i = 0; i < code.length(); i++) {
             char c = code.charAt(i);
             char next = (i + 1 < code.length()) ? code.charAt(i + 1) : '\0';
+            char prev = (i - 1 < 0) ? '\0' : code.charAt(i - 1);
 
             switch (state) {
                 case CODE -> {
@@ -234,19 +235,19 @@ public class Mutator {
                     // }
 
                     // 7. > -> >=
-                    // if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>') {
-                    //     out.append(">=");
-                    //     edits++;
-                    //     continue;
-                    // }
+                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>' && next != '?' && prev != '>' && prev != '\\' && prev != '=') {
+                        out.append(">=");
+                        edits++;
+                        continue;
+                    }
 
                     // 8. >= -> >
-                    // if (type == MutatorType.ROR_GE_TO_GT && c == '>' && next == '=') {
-                    //     out.append('>');
-                    //     i++;
-                    //     edits++;
-                    //     continue;
-                    // }
+                    if (type == MutatorType.ROR_GE_TO_GT && c == '>' && next == '=') {
+                        out.append('>');
+                        i++;
+                        edits++;
+                        continue;
+                    }
                    
                     // Logical && <-> || (or language-specific equivalents)
                     if (tryMutateLogicalOperators(code, type, i, logicalAnd, logicalOr, out)) {
