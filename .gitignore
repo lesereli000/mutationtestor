@@ -21,3 +21,6 @@ output/
 
 # ===== Maven =====
 /target/
+
+# Sample Projects
+/samples/MavenProject/target/
