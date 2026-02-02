@@ -1,4 +1,4 @@
-\
+
 public class MutationTestResult {
     private final String testName;
     private final String mutationType;
