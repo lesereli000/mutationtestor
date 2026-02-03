@@ -5,14 +5,27 @@
          "../src/add1.rkt"
          "../src/add2.rkt")
 
-(define tests
+(define add1-suite
+  (test-suite "Test add1"
+    (check-equal? 6 (add1 5))
+    (check-equal? 0 (add1 -1))
+    (check-equal? 789 (add1 788))
+    (check-equal? 12 (add1 11))))
 
-  (test-suite
-   "Tests for racket-project"
+(define add2-suite
+  (test-suite "Test add2"
+    (check-equal? 7 (add2 5))
+    (check-equal? 1 (add2 -1))
+    (check-equal? 790 (add2 788))
+    (check-equal? 13 (add2 11))))
 
-   (check-equal? (add1 3) 4)
-   (check-equal? (add2 3) 5)))
+(define all-tests
+  (test-suite "All Tests"
+    add1-suite
+    add2-suite))
 
+
+; run with ' Racket .\samples\RacketProject\project\tests\racket-project.rkt '
 (module+ main
   (void
-   (run-tests tests)))
+   (run-tests all-tests)))
