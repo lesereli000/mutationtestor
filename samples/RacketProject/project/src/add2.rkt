@@ -2,7 +2,5 @@
 
 (provide add2)
 
-(require racket/format)
-
-(define (add2 [name "Worl"])
-  (~a "Hello, " name "!"))
+(define (add2 x)
+  (+ 2 x))
