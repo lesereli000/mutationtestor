@@ -24,3 +24,8 @@ output/
 
 # Sample Projects
 /samples/MavenProject/target/
+
+
+*.bak
+*.zo
+*.dep
