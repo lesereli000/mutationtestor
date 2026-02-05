@@ -1,6 +1,8 @@
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// run with ' cd .\samples\MavenProject\; mvn test '
+
 public class TestAdd {
 
     @Test
