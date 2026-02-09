@@ -45,6 +45,9 @@ public class Main {
         }
 
         Path sourcePath = Path.of(args[0]);
+        if(!sourcePath.toFile().exists()) {
+
+        }
         Path mutantPath = Path.of(WORKING_DIR.concat(sourcePath.getFileName().toString()));
 
         try {
