@@ -11,61 +11,58 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MutantExecutionTests {
 
+    private static boolean hasTestOutput(String testCommand, Path sourcePath, Path testPath) {
+        // run tests
+        String output;
+        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
+        output = Main.runCommand(testCommand, testPath.toString());
+        System.out.println(output);
+
+        return !output.isEmpty();
+    }
+
     @Test
     public void testRunCommandHasMavenOutput() {
-        String directory = "samples/MavenProject";
+        Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        String output = Main.runCommand(testCommand, directory);
-        assertFalse(output.isEmpty());
+        assertTrue(hasTestOutput(testCommand, directory, directory));
     }
 
     @Test
     public void testRunCommandHasPytestOutput() {
-        String directory = "samples/PytestProject";
+        Path directory = Path.of("samples/PytestProject");
         String testCommand = "pytest ./tests/TestAdd.py";
 
-        String output = Main.runCommand(testCommand, directory);
-        assertFalse(output.isEmpty());
+        assertTrue(hasTestOutput(testCommand, directory, directory));
     }
 
     @Test
     public void testRunCommandHasRacketOutput() {
-        String directory = "samples/RacketProject";
+        Path directory = Path.of("samples/RacketProject");
         String testCommand = "Racket ./project/tests/racket-project.rkt";
 
-        String output = Main.runCommand(testCommand, directory);
-        assertFalse(output.isEmpty());
+        assertTrue(hasTestOutput(testCommand, directory, directory));
     }
-/* No sample Projects yet
+/* No Sample Projects Yet
     @Test
-    public void testRunCommandHasJSOutput() {
-        String directory = "samples/MavenProject";
+    public void testRunCommandHasMavenOutput() {
+        Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        String output = Main.runCommand(testCommand, directory);
-        assertFalse(output.isEmpty());
-        System.out.println(output);
+        assertTrue(hasTestOutput(testCommand, directory, directory));
     }
 
     @Test
-    public void testRunCommandHasCSOutput() {
-        String directory = "samples/MavenProject";
+    public void testRunCommandHasMavenOutput() {
+        Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        String output = Main.runCommand(testCommand, directory);
-        assertFalse(output.isEmpty());
-        System.out.println(output);
-    } */
+        assertTrue(hasTestOutput(testCommand, directory, directory));
+    }
+    */
 
-    @Test
-    public void testRunCommandWithMavenMutantsHasOutput() {
-        Path testPath = Path.of("output/TestDir");
-        Path projectPath = Path.of("samples/MavenProject");
-        Path sourcePath = Path.of("src/main/java");
-        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
-        String testCommand = "mvn test";
-
+    private static void mutantSetup(Path projectPath, Path testPath, Path sourcePath, Mutator.MutatorType mutationType) {
         // copy sample code into a sandbox folder
         try {
             FileUtils.copyDirectory(projectPath.toFile(), testPath.toFile());
@@ -84,20 +81,30 @@ public class MutantExecutionTests {
         } catch (Exception e) {
             fail("Mutation Failed");
         }
+    }
 
-        // run tests
-        String output;
-        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
-        output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
-
-        assertFalse(output.isEmpty());
-
+    private static void mutantTearDown(Path testPath) {
+        // delete copied directory
         try {
             FileUtils.deleteDirectory(testPath.toFile());
         } catch (IOException e) {
             fail("Directory Tear Down Failed");
         }
+    }
+
+    @Test
+    public void testRunCommandWithMavenMutantsHasOutput() {
+        Path testPath = Path.of("output/TestDir");
+        Path projectPath = Path.of("samples/MavenProject");
+        Path sourcePath = Path.of("src/main/java");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
+        String testCommand = "mvn test";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+
+        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
+
+        mutantTearDown(testPath);
     }
 
     @Test
@@ -108,38 +115,11 @@ public class MutantExecutionTests {
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
         String testCommand = "pytest ./tests/TestAdd.py";
 
-        // copy sample code into a sandbox folder
-        try {
-            FileUtils.copyDirectory(projectPath.toFile(), testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Setup Failed");
-        }
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        // mutate source code in sandbox folder
-        try {
-            Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, false); it.hasNext(); ) {
-                File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
-            }
-        } catch (Exception e) {
-            fail("Mutation Failed");
-        }
+        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
 
-        // run tests
-        String output;
-        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
-        output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
-
-        assertFalse(output.isEmpty());
-
-        try {
-            FileUtils.deleteDirectory(testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Tear Down Failed");
-        }
+        mutantTearDown(testPath);
     }
 
     @Test
@@ -150,123 +130,42 @@ public class MutantExecutionTests {
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
         String testCommand = "Racket ./project/tests/racket-project.rkt";
 
-        // copy sample code into a sandbox folder
-        try {
-            FileUtils.copyDirectory(projectPath.toFile(), testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Setup Failed");
-        }
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        // mutate source code in sandbox folder
-        try {
-            Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, false); it.hasNext(); ) {
-                File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
-            }
-        } catch (Exception e) {
-            fail("Mutation Failed");
-        }
+        hasTestOutput(testCommand, sourcePath, testPath);
 
-        // run tests
-        String output;
-        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
-        output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
-
-        assertFalse(output.isEmpty());
-
-        try {
-            FileUtils.deleteDirectory(testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Tear Down Failed");
-        }
+        mutantTearDown(testPath);
     }
 
     /* No Sample Projects Yet
     @Test
-    public void testRunCommandWithJSMutantsHasOutput() {
+    public void testRunCommandWithMavenMutantsHasOutput() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/MavenProject");
         Path sourcePath = Path.of("src/main/java");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
         String testCommand = "mvn test";
 
-        // copy sample code into a sandbox folder
-        try {
-            FileUtils.copyDirectory(projectPath.toFile(), testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Setup Failed");
-        }
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        // mutate source code in sandbox folder
-        try {
-            Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, false); it.hasNext(); ) {
-                File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
-            }
-        } catch (Exception e) {
-            fail("Mutation Failed");
-        }
+        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
 
-        // run tests
-        String output;
-        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
-        output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
-
-        assertFalse(output.isEmpty());
-
-        try {
-            FileUtils.deleteDirectory(testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Tear Down Failed");
-        }
+        mutantTearDown(testPath);
     }
 
     @Test
-    public void testRunCommandWithCSMutantsHasOutput() {
+    public void testRunCommandWithMavenMutantsHasOutput() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/MavenProject");
         Path sourcePath = Path.of("src/main/java");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
         String testCommand = "mvn test";
 
-        // copy sample code into a sandbox folder
-        try {
-            FileUtils.copyDirectory(projectPath.toFile(), testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Setup Failed");
-        }
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        // mutate source code in sandbox folder
-        try {
-            Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, false); it.hasNext(); ) {
-                File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
-            }
-        } catch (Exception e) {
-            fail("Mutation Failed");
-        }
+        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
 
-        // run tests
-        String output;
-        testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
-        output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
-
-        assertFalse(output.isEmpty());
-
-        try {
-            FileUtils.deleteDirectory(testPath.toFile());
-        } catch (IOException e) {
-            fail("Directory Tear Down Failed");
-        }
+        mutantTearDown(testPath);
     }
      */
 }
