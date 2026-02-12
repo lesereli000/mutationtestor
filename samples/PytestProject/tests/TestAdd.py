@@ -1,7 +1,7 @@
 from src.Add1 import add1
 from src.Add2 import add2
 
-# run with ' pytest .\samples\PytestProject\tests\TestAdd.py '
+# run with ' pytest ./tests/TestAdd.py '
 
 def test_add1():
     assert add1(5) == 6

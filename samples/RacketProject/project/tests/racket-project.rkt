@@ -25,7 +25,7 @@
     add2-suite))
 
 
-; run with ' Racket .\samples\RacketProject\project\tests\racket-project.rkt '
+; run with ' Racket ./project/tests/racket-project.rkt '
 (module+ main
   (void
    (run-tests all-tests)))
