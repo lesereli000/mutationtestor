@@ -35,7 +35,8 @@ public class MutantExecutionTests {
     @Test
     public void testRunCommandUnmutatedPytestProject() {
         Path directory = Path.of("samples/PytestProject");
-        String testCommand = "pytest ./tests/TestAdd.py";
+        //String testCommand = "pytest ./tests/TestAdd.py";
+        String testCommand = "./.venv/bin/python -m pytest ./tests/TestAdd.py";
 
         testOutput(testCommand, directory, directory, false);
     }
@@ -116,7 +117,8 @@ public class MutantExecutionTests {
         Path projectPath = Path.of("samples/PytestProject");
         Path sourcePath = Path.of("src");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
-        String testCommand = "pytest ./tests/TestAdd.py";
+        //String testCommand = "pytest ./tests/TestAdd.py";
+        String testCommand = "./.venv/bin/python -m pytest ./tests/TestAdd.py";
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
