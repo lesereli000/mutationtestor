@@ -440,7 +440,6 @@ public class Main {
         if (commentStart >= 0 && commentStart < position) {
             return true;
         }
-
         return false;
     }
 }
