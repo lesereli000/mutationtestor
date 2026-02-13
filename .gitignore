@@ -24,9 +24,10 @@ output/
 
 # Sample Projects
 /samples/MavenProject/target/
-
+/samples/PytestProject/venv/
 
 *.bak
 *.zo
 *.dep
 *.pyc
+/samples/PytestProject/tests/__pycache__
