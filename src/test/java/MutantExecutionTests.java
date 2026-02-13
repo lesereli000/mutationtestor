@@ -11,54 +11,57 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MutantExecutionTests {
 
-    private static boolean hasTestOutput(String testCommand, Path sourcePath, Path testPath) {
+    private static void testOutput(String testCommand, Path sourcePath, Path testPath, boolean expectFailure) {
         // run tests
         String output;
         testCommand = testCommand.replace(sourcePath.toString(), testPath.toString());
         output = Main.runCommand(testCommand, testPath.toString());
-        System.out.println(output);
 
-        return !output.isEmpty();
+        // grade output
+        assertFalse(output.isEmpty());
+
+        String[] split = output.split("[1-9]\\d* [Ff]ailure\\(?s?\\)?|[Ff]ailure\\(?s?\\)?: [1-9]\\d*|[1-9]\\d* [Ff]ailed");
+        assertEquals(expectFailure, split.length > 1);
     }
 
     @Test
-    public void testRunCommandHasMavenOutput() {
+    public void testRunCommandUnmutatedMavenProject() {
         Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        assertTrue(hasTestOutput(testCommand, directory, directory));
+        testOutput(testCommand, directory, directory, false);
     }
 
     @Test
-    public void testRunCommandHasPytestOutput() {
+    public void testRunCommandUnmutatedPytestProject() {
         Path directory = Path.of("samples/PytestProject");
         String testCommand = "pytest ./tests/TestAdd.py";
 
-        assertTrue(hasTestOutput(testCommand, directory, directory));
+        testOutput(testCommand, directory, directory, false);
     }
 
     @Test
-    public void testRunCommandHasRacketOutput() {
+    public void testRunCommandUnmutatedRacketProject() {
         Path directory = Path.of("samples/RacketProject");
         String testCommand = "Racket ./project/tests/racket-project.rkt";
 
-        assertTrue(hasTestOutput(testCommand, directory, directory));
+        testOutput(testCommand, directory, directory, false);
     }
 /* No Sample Projects Yet
     @Test
-    public void testRunCommandHasMavenOutput() {
+    public void testRunCommandUnmutatedJSProject() {
         Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        assertTrue(hasTestOutput(testCommand, directory, directory));
+        testOutput(testCommand, directory, directory, 0);
     }
 
     @Test
-    public void testRunCommandHasMavenOutput() {
+    public void testRunCommandUnmutatedCSProject() {
         Path directory = Path.of("samples/MavenProject");
         String testCommand = "mvn test";
 
-        assertTrue(hasTestOutput(testCommand, directory, directory));
+        testOutput(testCommand, directory, directory, 0);
     }
     */
 
@@ -93,7 +96,7 @@ public class MutantExecutionTests {
     }
 
     @Test
-    public void testRunCommandWithMavenMutantsHasOutput() {
+    public void testRunCommandWithMavenMutants() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/MavenProject");
         Path sourcePath = Path.of("src/main/java");
@@ -102,13 +105,13 @@ public class MutantExecutionTests {
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
+        testOutput(testCommand, sourcePath, testPath, true);
 
         mutantTearDown(testPath);
     }
 
     @Test
-    public void testRunCommandWithPytestMutantsHasOutput() {
+    public void testRunCommandWithPytestMutants() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/PytestProject");
         Path sourcePath = Path.of("src");
@@ -117,13 +120,13 @@ public class MutantExecutionTests {
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
+        testOutput(testCommand, sourcePath, testPath, true);
 
         mutantTearDown(testPath);
     }
 
     @Test
-    public void testRunCommandWithRacketMutantsHasOutput() {
+    public void testRunCommandWithRacketMutants() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/RacketProject");
         Path sourcePath = Path.of("project/src");
@@ -132,14 +135,14 @@ public class MutantExecutionTests {
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        hasTestOutput(testCommand, sourcePath, testPath);
+        testOutput(testCommand, sourcePath, testPath, true);
 
         mutantTearDown(testPath);
     }
 
     /* No Sample Projects Yet
     @Test
-    public void testRunCommandWithMavenMutantsHasOutput() {
+    public void testRunCommandWithJSMutants() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/MavenProject");
         Path sourcePath = Path.of("src/main/java");
@@ -148,13 +151,13 @@ public class MutantExecutionTests {
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
+        testOutput(testCommand, sourcePath, testPath, 2);
 
         mutantTearDown(testPath);
     }
 
     @Test
-    public void testRunCommandWithMavenMutantsHasOutput() {
+    public void testRunCommandWithCSMutants() {
         Path testPath = Path.of("output/TestDir");
         Path projectPath = Path.of("samples/MavenProject");
         Path sourcePath = Path.of("src/main/java");
@@ -163,7 +166,7 @@ public class MutantExecutionTests {
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        assertTrue(hasTestOutput(testCommand, sourcePath, testPath));
+        testOutput(testCommand, sourcePath, testPath, 2);
 
         mutantTearDown(testPath);
     }
