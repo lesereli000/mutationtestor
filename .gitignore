@@ -21,3 +21,12 @@ output/
 
 # ===== Maven =====
 /target/
+
+# Sample Projects
+/samples/MavenProject/target/
+
+
+*.bak
+*.zo
+*.dep
+*.pyc
