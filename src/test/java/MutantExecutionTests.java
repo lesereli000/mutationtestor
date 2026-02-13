@@ -35,9 +35,7 @@ public class MutantExecutionTests {
     @Test
     public void testRunCommandUnmutatedPytestProject() {
         Path directory = Path.of("samples/PytestProject");
-        //String testCommand = "pytest ./tests/TestAdd.py";
-        String testCommand = "./.venv/bin/python -m pytest ./tests/TestAdd.py";
-
+        String testCommand = "pytest ./tests/TestAdd.py";
         testOutput(testCommand, directory, directory, false);
     }
 
