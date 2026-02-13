@@ -132,7 +132,7 @@ public class MockCommandLineMutationTester {
         // Generate HTML report
         try {
             generateHTMLReport(mutantsMade, buildFailures, killed, survived, totalLines, mutatedLines, survivedMutants);
-            System.out.println("\n📄 Interactive HTML report generated: mutation-report-demo.html");
+            System.out.println("\n Interactive HTML report generated: mutation-report-demo.html");
             System.out.println("   Open this file in your browser to view mutations with hover tooltips!");
         } catch (IOException e) {
             System.err.println("Error generating HTML report: " + e.getMessage());
@@ -187,7 +187,7 @@ public class MockCommandLineMutationTester {
                 System.out.printf("[%d] %s:%d:%d - %s → %s\n", 
                     i + 1, m.file, m.line, m.column, m.operator, m.replacement);
             }
-            System.out.println("\n⚠️  " + (survived - 20) + " more survived mutants not shown.");
+            System.out.println("\n  " + (survived - 20) + " more survived mutants not shown.");
             System.out.println("   Open mutation-report-demo.html to view all survivors with interactive tooltips!");
         } else {
             System.out.println("Mutants that survived:\n");
@@ -243,7 +243,7 @@ public class MockCommandLineMutationTester {
         
         // Header
         html.append("        <div class=\"header\">\n");
-        html.append("            <h1>🧬 Mutation Testing Report</h1>\n");
+        html.append("            <h1>Mutation Testing Report</h1>\n");
         html.append("            <p>Interactive Demo - Prototype Report</p>\n");
         html.append("        </div>\n");
         
@@ -269,10 +269,10 @@ public class MockCommandLineMutationTester {
         
         // Survivors table
         html.append("        <div class=\"survivors-section\">\n");
-        html.append("            <h2>⚠️ Survived Mutants (Weak Test Coverage)</h2>\n");
+        html.append("            <h2>Survived Mutants (Weak Test Coverage)</h2>\n");
         html.append("            <table class=\"survivor-table\">\n");
         html.append("                <thead>\n");
-        html.append("                    <tr>\n");
+        html.append("                    <tr>\n");  
         html.append("                        <th>#</th>\n");
         html.append("                        <th>File</th>\n");
         html.append("                        <th>Line</th>\n");
