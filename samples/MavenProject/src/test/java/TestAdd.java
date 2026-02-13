@@ -1,4 +1,9 @@
+package samples.MavenProject.src.test.java;
+
 import org.junit.jupiter.api.Test;
+import samples.MavenProject.src.main.java.Add1;
+import samples.MavenProject.src.main.java.Add2;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 // run with ' cd .\samples\MavenProject\; mvn test '
