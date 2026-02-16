@@ -29,7 +29,13 @@ public class Mutator {
 
     public static String mutate(Path inputPath, MutatorType type) throws IOException {
         String code = Files.readString(inputPath);
-        Language language = new Language(inputPath.getFileName().toString());
+        Language language;
+        try {
+            language = new Language(inputPath.getFileName().toString());
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+            return code;
+        }
 
 
         boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
