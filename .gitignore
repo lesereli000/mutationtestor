@@ -25,6 +25,7 @@ output/
 # Sample Projects
 /samples/MavenProject/target/
 /samples/MavenProject/.idea/
+
 *.bak
 *.zo
 *.dep
@@ -35,4 +36,5 @@ output/
 /samples/CSProject/tests/CSProject.Tests/obj/
 /samples/JSProject/node_modules/
 /samples/PytestProject/venv/
-/samples/RacketProject/project/compiled/drracket/errortrace/
+/samples/RacketProject/project/compiled
+/samples/PytestProject/tests/__pycache__
