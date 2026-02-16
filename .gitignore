@@ -24,9 +24,15 @@ output/
 
 # Sample Projects
 /samples/MavenProject/target/
-
-
+/samples/MavenProject/.idea/
 *.bak
 *.zo
 *.dep
 *.pyc
+/samples/CSProject/src/CSProject/bin/
+/samples/CSProject/src/CSProject/obj/
+/samples/CSProject/tests/CSProject.Tests/bin/
+/samples/CSProject/tests/CSProject.Tests/obj/
+/samples/JSProject/node_modules/
+/samples/PytestProject/venv/
+/samples/RacketProject/project/compiled/drracket/errortrace/
