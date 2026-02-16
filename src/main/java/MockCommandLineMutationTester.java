@@ -172,8 +172,29 @@ public class MockCommandLineMutationTester {
             System.err.println("Error generating HTML report: " + e.getMessage());
         }
 
+        // Generate PIT-style source code view with hover tooltips for mutations
+        try {
+            double mutationScore = ((double) killed / (killed + survived)) * 100.0;
+            PitStyleReportGenerator.generatePitStyleReport(
+                "samples/prototypeSample.java",
+                "./output/report/pit-style-report.html",
+                survivedMutants,
+                mutantsMade - buildFailures,
+                killed,
+                survived,
+                mutationScore
+            );
+            System.out.println("\nPIT-style source code report generated: pit-style-report.html");
+            System.out.println("   Open this file to view source code with HOVER TOOLTIPS!");
+        } catch (IOException e) {
+            System.err.println("Error generating PIT-style report: " + e.getMessage());
+        }
+
         System.out.println("\n------------------------------------------\n");
     }
+    
+
+
 
     static String[] files = {"Add1.java", "Add2.java", "Main.java", "Calculator.java", "Utils.java"};
 
