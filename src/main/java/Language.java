@@ -51,7 +51,7 @@ public class Language {
             }
         } catch (IOException e) {
             System.out.println("Error reading dictionary file " + resourceName);
-            e.printStackTrace();
+            throw new RuntimeException("No dictionary for file type ." + fileType);
         }
     }
 

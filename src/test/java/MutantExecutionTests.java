@@ -19,8 +19,7 @@ public class MutantExecutionTests {
 
         // grade output
         assertFalse(output.isEmpty());
-
-        String[] split = output.split("[1-9]\\d* [Ff]ailure\\(?s?\\)?|[Ff]ailure\\(?s?\\)?: [1-9]\\d*|[1-9]\\d* [Ff]ailed");
+        String[] split = output.split("[1-9]\\d*\\s*[Ff]ailure\\(?s?\\)?|[Ff]ailure\\(?s?\\)?:\\s*[1-9]\\d*|[Ff]ailed:\\s*[1-9]\\d*|[1-9]\\d*\\s*[Ff]ailed|[1-9]\\d*\\s*[Ff]ailing");
         assertEquals(expectFailure, split.length > 1);
     }
 
@@ -46,23 +45,22 @@ public class MutantExecutionTests {
 
         testOutput(testCommand, directory, directory, false);
     }
-/* No Sample Projects Yet
+
     @Test
     public void testRunCommandUnmutatedJSProject() {
-        Path directory = Path.of("samples/MavenProject");
-        String testCommand = "mvn test";
+        Path directory = Path.of("samples/JSProject");
+        String testCommand = "npm test";
 
-        testOutput(testCommand, directory, directory, 0);
+        testOutput(testCommand, directory, directory, false);
     }
 
     @Test
     public void testRunCommandUnmutatedCSProject() {
-        Path directory = Path.of("samples/MavenProject");
-        String testCommand = "mvn test";
+        Path directory = Path.of("samples/CSProject");
+        String testCommand = "dotnet test tests/CSProject.Tests.CSProject.Tests.csproj";
 
-        testOutput(testCommand, directory, directory, 0);
+        testOutput(testCommand, directory, directory, false);
     }
-    */
 
     private static void mutantSetup(Path projectPath, Path testPath, Path sourcePath, Mutator.MutatorType mutationType) {
         // copy sample code into a sandbox folder
@@ -115,8 +113,7 @@ public class MutantExecutionTests {
         Path projectPath = Path.of("samples/PytestProject");
         Path sourcePath = Path.of("src");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
-        //String testCommand = "pytest ./tests/TestAdd.py";
-        String testCommand = "./.venv/bin/python -m pytest ./tests/TestAdd.py";
+        String testCommand = "pytest ./tests/TestAdd.py";
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
@@ -140,18 +137,17 @@ public class MutantExecutionTests {
         mutantTearDown(testPath);
     }
 
-    /* No Sample Projects Yet
     @Test
     public void testRunCommandWithJSMutants() {
         Path testPath = Path.of("output/TestDir");
-        Path projectPath = Path.of("samples/MavenProject");
-        Path sourcePath = Path.of("src/main/java");
+        Path projectPath = Path.of("samples/JSProject");
+        Path sourcePath = Path.of("src");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
-        String testCommand = "mvn test";
+        String testCommand = "npm test";
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        testOutput(testCommand, sourcePath, testPath, 2);
+        testOutput(testCommand, sourcePath, testPath, true);
 
         mutantTearDown(testPath);
     }
@@ -159,16 +155,15 @@ public class MutantExecutionTests {
     @Test
     public void testRunCommandWithCSMutants() {
         Path testPath = Path.of("output/TestDir");
-        Path projectPath = Path.of("samples/MavenProject");
-        Path sourcePath = Path.of("src/main/java");
+        Path projectPath = Path.of("samples/CSProject");
+        Path sourcePath = Path.of("src/CSProject");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
-        String testCommand = "mvn test";
+        String testCommand = "dotnet test tests/CSProject.Tests/CSProject.Tests.csproj";
 
         mutantSetup(projectPath, testPath, sourcePath, mutationType);
 
-        testOutput(testCommand, sourcePath, testPath, 2);
+        testOutput(testCommand, sourcePath, testPath, true);
 
         mutantTearDown(testPath);
     }
-     */
 }
