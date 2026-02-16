@@ -1,3 +1,5 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -25,6 +27,8 @@ public class MockCommandLineMutationTester {
             this.replacement = replacement;
         }
     }
+
+    static String fileExt = "";
 
     public static void main(String[] args) {
         if (args.length != 2) {
@@ -61,12 +65,42 @@ public class MockCommandLineMutationTester {
         }
 
         Path projectPath = Path.of(args[0]);
-        if(projectPath.equals(Path.of("./samples/MavenProject")) ||
-        projectPath.equals(Path.of("./samples/PytestProject")) ||
-        projectPath.equals(Path.of("./samples/RacketProject"))) {
-
+        if(projectPath.equals(Path.of("./samples/MavenProject"))) {
             int numLangs = 1;
             String[] langsPresent = {"Java"};
+            fileExt = "java";
+
+            System.out.println("Found Project directory: " + args[0]);
+            System.out.println(numLangs + " Language(s) detected: " + Arrays.toString(langsPresent));
+
+        } else if(projectPath.equals(Path.of("./samples/PytestProject"))){
+            int numLangs = 1;
+            String[] langsPresent = {"Python"};
+            fileExt = "py";
+
+            System.out.println("Found Project directory: " + args[0]);
+            System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
+
+        } else if(projectPath.equals(Path.of("./samples/RacketProject"))) {
+            int numLangs = 1;
+            String[] langsPresent = {"Racket Scheme"};
+            fileExt = ".rkt";
+
+            System.out.println("Found Project directory: " + args[0]);
+            System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
+
+        } else if(projectPath.equals(Path.of("./samples/JSProject"))){
+            int numLangs = 1;
+            String[] langsPresent = {"JavaScript"};
+            fileExt = "js";
+
+            System.out.println("Found Project directory: " + args[0]);
+            System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
+
+        } else if(projectPath.equals(Path.of("./samples/CSProject"))) {
+            int numLangs = 1;
+            String[] langsPresent = {"C#"};
+            fileExt = ".cs";
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
@@ -100,7 +134,7 @@ public class MockCommandLineMutationTester {
                 return;
             }
 
-            int inc = rand.nextInt(5, 20);
+            int inc = rand.nextInt(15, 25);
             if(completion + inc > 100){
                 break;
             }
@@ -118,7 +152,7 @@ public class MockCommandLineMutationTester {
         System.out.printf("Discovered %d mutants.\n", mutantsMade);
         System.out.printf("Only %d mutants could be built and ran successfully.\n", mutantsMade - buildFailures);
 
-        int survived = rand.nextInt(2, 5);
+        int survived = rand.nextInt(200, 500);
         int killed = mutantsMade - survived - buildFailures;
         int totalLines = rand.nextInt(3000, 7000);
         int mutatedLines = totalLines - rand.nextInt(300, 700);
@@ -131,7 +165,7 @@ public class MockCommandLineMutationTester {
 
         // Generate HTML report
         try {
-            generateHTMLReport(mutantsMade, buildFailures, killed, survived, totalLines, mutatedLines, survivedMutants);
+            generateHTMLReport(mutantsMade, buildFailures, killed, survived, totalLines, mutatedLines, survivedMutants, rand);
             System.out.println("\n Interactive HTML report generated: mutation-report-demo.html");
             System.out.println("   Open this file in your browser to view mutations with hover tooltips!");
         } catch (IOException e) {
@@ -140,9 +174,11 @@ public class MockCommandLineMutationTester {
 
         System.out.println("\n------------------------------------------\n");
     }
+
+    static String[] files = {"Add1.java", "Add2.java", "Main.java", "Calculator.java", "Utils.java"};
+
     private static List<MockSurvivedMutant> generateMockSurvivedMutants(int count, Random rand) {
         List<MockSurvivedMutant> mutants = new ArrayList<>();
-        String[] files = {"Add1.java", "Add2.java", "Main.java", "Calculator.java", "Utils.java"};
         String[] operators = {"+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!="};
         String[] replacements = {"-", "+", "/", "*", ">=", "<=", ">", "<", "!=", "=="};
         
@@ -202,8 +238,9 @@ public class MockCommandLineMutationTester {
         }
         System.out.println("=".repeat(80));
     }
- private static void generateHTMLReport(int mutantsMade, int buildFailures, int killed, int survived,
-                                          int totalLines, int mutatedLines, List<MockSurvivedMutant> survivedMutants) 
+
+    private static void generateHTMLReport(int mutantsMade, int buildFailures, int killed, int survived,
+                                          int totalLines, int mutatedLines, List<MockSurvivedMutant> survivedMutants, Random rand)
                                           throws IOException {
         StringBuilder html = new StringBuilder();
         
@@ -269,31 +306,44 @@ public class MockCommandLineMutationTester {
         
         // Survivors table
         html.append("        <div class=\"survivors-section\">\n");
-        html.append("            <h2>Survived Mutants (Weak Test Coverage)</h2>\n");
+        html.append("            <h2>Survived Mutants By File</h2>\n");
         html.append("            <table class=\"survivor-table\">\n");
         html.append("                <thead>\n");
         html.append("                    <tr>\n");  
         html.append("                        <th>#</th>\n");
         html.append("                        <th>File</th>\n");
-        html.append("                        <th>Line</th>\n");
-        html.append("                        <th>Column</th>\n");
-        html.append("                        <th>Mutation</th>\n");
-        html.append("                        <th>Original Code</th>\n");
+        html.append("                        <th>Mutants</th>\n");
+        html.append("                        <th>Killed</th>\n");
+        html.append("                        <th>Survivors</th>\n");
+        html.append("                        <th>Score</th>\n");
         html.append("                    </tr>\n");
         html.append("                </thead>\n");
         html.append("                <tbody>\n");
         
-        for (int i = 0; i < survivedMutants.size(); i++) {
+        for (int i = 0; i < files.length; i++) {
             MockSurvivedMutant m = survivedMutants.get(i);
+            int survivedInFile = rand.nextInt(50, 150);
+            if(survived < survivedInFile){
+                survivedInFile = survived;
+            }
+            survived -= survivedInFile;
+            int killedInFile = rand.nextInt(150, 300);
+            if(killed < killedInFile){
+                killedInFile = killed;
+            }
+            killed -= killedInFile;
+
             html.append("                    <tr>\n");
-            html.append(String.format("                        <td>%d</td>\n", i + 1));
-            html.append(String.format("                        <td><span class=\"file-badge\">%s</span></td>\n", escapeHtml(m.file)));
-            html.append(String.format("                        <td>%d</td>\n", m.line));
-            html.append(String.format("                        <td>%d</td>\n", m.column));
-            html.append(String.format("                        <td><span class=\"mutation-badge\">%s → %s</span></td>\n", 
-                                      escapeHtml(m.operator), escapeHtml(m.replacement)));
-            html.append(String.format("                        <td><code>%s</code></td>\n", escapeHtml(m.original)));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), i + 1));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\"><span class=\"file-badge\">%s</span></a></td>\n", files[i].substring(0, files[i].indexOf(".")), files[i]));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), killedInFile+survivedInFile));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), killedInFile));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), survivedInFile));
+            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%.1f</a></td>\n", files[i].substring(0, files[i].indexOf(".")), ((double) killedInFile / (killedInFile + survivedInFile)) * 100));
             html.append("                    </tr>\n");
+
+
+            generateHTMLReportByFile(killedInFile + survivedInFile, buildFailures, killedInFile, survivedInFile, totalLines, mutatedLines, survivedMutants.stream().filter(mu -> mu.file.equals(files[0])).toList(), rand, files[i]);
         }
         
         html.append("                </tbody>\n");
@@ -305,7 +355,101 @@ public class MockCommandLineMutationTester {
         html.append("</body>\n</html>");
         
         // Write to file
-        try (FileWriter writer = new FileWriter("mutation-report-demo.html")) {
+        try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html")) {
+            writer.write(html.toString());
+        }
+    }
+
+    private static void generateHTMLReportByFile(int mutantsMade, int buildFailures, int killed, int survived,
+                                           int totalLines, int mutatedLines, List<MockSurvivedMutant> survivedMutants, Random rand, String file)
+            throws IOException {
+        StringBuilder html = new StringBuilder();
+
+        double mutationScore = ((double) killed / (killed + survived)) * 100;
+
+        // HTML header and styles
+        html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
+        html.append("    <meta charset=\"UTF-8\">\n");
+        html.append("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
+        html.append("    <title>Mutation Testing Report - Demo</title>\n");
+        html.append("    <style>\n");
+        html.append("        * { margin: 0; padding: 0; box-sizing: border-box; }\n");
+        html.append("        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; padding: 20px; }\n");
+        html.append("        .container { max-width: 1400px; margin: 0 auto; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; }\n");
+        html.append("        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }\n");
+        html.append("        .header h1 { font-size: 32px; margin-bottom: 10px; }\n");
+        html.append("        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 30px; background: #fafafa; }\n");
+        html.append("        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }\n");
+        html.append("        .stat-card .value { font-size: 36px; font-weight: bold; margin: 10px 0; }\n");
+        html.append("        .stat-card .label { color: #666; font-size: 14px; }\n");
+        html.append("        .mutation-score { color: #667eea; }\n");
+        html.append("        .killed { color: #10b981; }\n");
+        html.append("        .survived { color: #ef4444; }\n");
+        html.append("        .survivors-section { padding: 30px; }\n");
+        html.append("        .survivors-section h2 { margin-bottom: 20px; color: #1f2937; }\n");
+        html.append("        .survivor-table { width: 100%; border-collapse: collapse; }\n");
+        html.append("        .survivor-table th { background: #f9fafb; padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }\n");
+        html.append("        .survivor-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }\n");
+        html.append("        .survivor-table td tr:hover { background: #f9fafb; cursor: pointer; }\n");
+        html.append("        .mutation-badge { display: inline-block; padding: 4px 8px; background: #fee2e2; color: #dc2626; border-radius: 4px; font-family: monospace; font-size: 13px; }\n");
+        html.append("        .file-badge { display: inline-block; padding: 4px 8px; background: #e0e7ff; color: #4338ca; border-radius: 4px; font-size: 13px; }\n");
+        html.append("        p { padding: 30px; font-family: monospace; }\n");
+        html.append("        .killed p { background-color: #10b981; opacity: 0.3; }\n");
+        html.append("        .survived p { background-color: #ef4444; opacity: 0.3; }\n");
+        html.append("    </style>\n");
+        html.append("</head>\n<body>\n");
+
+        // Container
+        html.append("    <div class=\"container\">\n");
+
+        // Header
+        html.append("        <div class=\"header\">\n");
+        html.append("            <h1>Mutation Testing Report</h1>\n");
+        html.append("            <p>Interactive Demo - Prototype Report</p>\n");
+        html.append("        </div>\n");
+
+        // Summary cards
+        html.append("        <div class=\"summary\">\n");
+        html.append(String.format("            <div class=\"stat-card\">\n" +
+                "                <div class=\"label\">Mutation Score</div>\n" +
+                "                <div class=\"value mutation-score\">%.1f%%</div>\n" +
+                "            </div>\n", mutationScore));
+        html.append(String.format("            <div class=\"stat-card\">\n" +
+                "                <div class=\"label\">Total Mutants</div>\n" +
+                "                <div class=\"value\">%d</div>\n" +
+                "            </div>\n", mutantsMade));
+        html.append(String.format("            <div class=\"stat-card\">\n" +
+                "                <div class=\"label\">Killed</div>\n" +
+                "                <div class=\"value killed\">%d</div>\n" +
+                "            </div>\n", killed));
+        html.append(String.format("            <div class=\"stat-card\">\n" +
+                "                <div class=\"label\">Survived</div>\n" +
+                "                <div class=\"value survived\">%d</div>\n" +
+                "            </div>\n", survived));
+        html.append("        </div>\n");
+
+        // Body
+        try (BufferedReader reader = new BufferedReader(new FileReader(String.format("./samples/prototypeSample.%s", fileExt)))) {
+
+            String line;
+            int lineNum = 1;
+            boolean isKilled = rand.nextInt(mutantsMade) > killed;
+
+            while ((line = reader.readLine()) != null) {
+                html.append(String.format("<p id=\"%d\" class=\"%s\">%s</p>\n", lineNum, isKilled ? "killed" : "survived", line));
+                lineNum++;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Footer
+        html.append("    </div>\n");
+        html.append("</body>\n</html>");
+
+        // Write to file
+        try (FileWriter writer = new FileWriter(String.format("./output/report/allFiles/%s.html", file.substring(0, file.indexOf("."))))) {
             writer.write(html.toString());
         }
     }
