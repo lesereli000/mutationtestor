@@ -355,14 +355,13 @@ public class MockCommandLineMutationTester {
             killed -= killedInFile;
 
             html.append("                    <tr>\n");
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), i + 1));
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\"><span class=\"file-badge\">%s</span></a></td>\n", files[i].substring(0, files[i].indexOf(".")), files[i]));
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), killedInFile+survivedInFile));
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), killedInFile));
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%d</a></td>\n", files[i].substring(0, files[i].indexOf(".")), survivedInFile));
-            html.append(String.format("                        <td><a href=\"./output/report/allFiles/%s.html\">%.1f</a></td>\n", files[i].substring(0, files[i].indexOf(".")), ((double) killedInFile / (killedInFile + survivedInFile)) * 100));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", i + 1));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\"><span class=\"file-badge\">%s</span></a></td>\n", files[i]));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", killedInFile+survivedInFile));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", killedInFile));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", survivedInFile));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%.1f%%</a></td>\n", ((double) killedInFile / (killedInFile + survivedInFile)) * 100));
             html.append("                    </tr>\n");
-
 
             generateHTMLReportByFile(killedInFile + survivedInFile, buildFailures, killedInFile, survivedInFile, totalLines, mutatedLines, survivedMutants.stream().filter(mu -> mu.file.equals(files[0])).toList(), rand, files[i]);
         }
