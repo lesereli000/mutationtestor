@@ -1,12 +1,14 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.io.FileWriter;
+import java.util.stream.Collectors;
 
 public class MockCommandLineMutationTester {
     static class MockSurvivedMutant {
@@ -29,6 +31,9 @@ public class MockCommandLineMutationTester {
     }
 
     static String fileExt = "";
+    static Path projectRoot = null;
+    static Path sourceRoot = null;
+    static String reportSourceFile = null;
 
     public static void main(String[] args) {
         if (args.length != 2) {
@@ -69,6 +74,10 @@ public class MockCommandLineMutationTester {
             int numLangs = 1;
             String[] langsPresent = {"Java"};
             fileExt = "java";
+            projectRoot = projectPath;
+            sourceRoot = resolveSourceRoot(projectRoot, "java");
+            files = listSourceFilesOrDefault(sourceRoot, "java", new String[]{"Add1.java", "Add2.java", "Main.java", "Calculator.java", "Utils.java"});
+            reportSourceFile = pickReportSourceFile(sourceRoot, files, "samples/prototypeSample.java");
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Language(s) detected: " + Arrays.toString(langsPresent));
@@ -93,6 +102,10 @@ public class MockCommandLineMutationTester {
             int numLangs = 1;
             String[] langsPresent = {"JavaScript"};
             fileExt = "js";
+            projectRoot = projectPath;
+            sourceRoot = resolveSourceRoot(projectRoot, "js");
+            files = listSourceFilesOrDefault(sourceRoot, "js", new String[]{"Add1.js", "Add2.js", "Main.js"});
+            reportSourceFile = pickReportSourceFile(sourceRoot, files, "samples/prototypeSample.js");
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
@@ -148,6 +161,13 @@ public class MockCommandLineMutationTester {
 
         System.out.println("Generating Report ... \n");
 
+        try {
+            Files.createDirectories(Path.of("./output/report/allFiles"));
+        } catch (IOException e) {
+            System.err.println("Error creating output directories: " + e.getMessage());
+            return;
+        }
+
         int buildFailures = rand.nextInt(500);
         System.out.printf("Discovered %d mutants.\n", mutantsMade);
         System.out.printf("Only %d mutants could be built and ran successfully.\n", mutantsMade - buildFailures);
@@ -176,13 +196,13 @@ public class MockCommandLineMutationTester {
         try {
             double mutationScore = ((double) killed / (killed + survived)) * 100.0;
             PitStyleReportGenerator.generatePitStyleReport(
-                "samples/prototypeSample.java",
-                "./output/report/pit-style-report.html",
-                survivedMutants,
-                mutantsMade - buildFailures,
-                killed,
-                survived,
-                mutationScore
+                    reportSourceFile == null ? "samples/prototypeSample.java" : reportSourceFile,
+                    "./output/report/pit-style-report.html",
+                    survivedMutants,
+                    mutantsMade - buildFailures,
+                    killed,
+                    survived,
+                    mutationScore
             );
             System.out.println("\nPIT-style source code report generated: pit-style-report.html");
             System.out.println("   Open this file to view source code with HOVER TOOLTIPS!");
@@ -192,11 +212,78 @@ public class MockCommandLineMutationTester {
 
         System.out.println("\n------------------------------------------\n");
     }
-    
-
-
 
     static String[] files = {"Add1.java", "Add2.java", "Main.java", "Calculator.java", "Utils.java"};
+
+    private static Path resolveSourceRoot(Path projectRoot, String ext) {
+        Path[] candidates;
+
+        if ("js".equals(ext)) {
+            candidates = new Path[]{
+                    projectRoot.resolve("src")
+            };
+        } else if ("py".equals(ext)) {
+            candidates = new Path[]{
+                    projectRoot.resolve("src"),
+                    projectRoot
+            };
+        } else if ("java".equals(ext)) {
+            candidates = new Path[]{
+                    projectRoot.resolve("src"),
+                    projectRoot.resolve("src/main/java"),
+                    projectRoot
+            };
+        } else if ("cs".equals(ext)) {
+            candidates = new Path[]{
+                    projectRoot.resolve("src"),
+                    projectRoot
+            };
+        } else if ("rkt".equals(ext)) {
+            candidates = new Path[]{
+                    projectRoot.resolve("src"),
+                    projectRoot
+            };
+        } else {
+            candidates = new Path[]{projectRoot};
+        }
+
+        for (Path p : candidates) {
+            if (p != null && Files.exists(p) && Files.isDirectory(p)) {
+                return p;
+            }
+        }
+        return projectRoot;
+    }
+
+    private static String[] listSourceFilesOrDefault(Path sourceRoot, String ext, String[] fallback) {
+        if (sourceRoot == null || !Files.exists(sourceRoot) || !Files.isDirectory(sourceRoot)) {
+            return fallback;
+        }
+        try {
+            List<String> names = Files.list(sourceRoot)
+                    .filter(p -> Files.isRegularFile(p))
+                    .map(p -> p.getFileName().toString())
+                    .filter(n -> n.toLowerCase().endsWith("." + ext))
+                    .sorted()
+                    .collect(Collectors.toList());
+            if (names.isEmpty()) {
+                return fallback;
+            }
+            return names.toArray(new String[0]);
+        } catch (IOException e) {
+            return fallback;
+        }
+    }
+
+    private static String pickReportSourceFile(Path sourceRoot, String[] files, String fallback) {
+        if (sourceRoot != null && files != null && files.length > 0) {
+            Path candidate = sourceRoot.resolve(files[0]);
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) {
+                return candidate.toString();
+            }
+        }
+        return fallback;
+    }
 
     private static List<MockSurvivedMutant> generateMockSurvivedMutants(int count, Random rand) {
         List<MockSurvivedMutant> mutants = new ArrayList<>();
@@ -340,30 +427,49 @@ public class MockCommandLineMutationTester {
         html.append("                    </tr>\n");
         html.append("                </thead>\n");
         html.append("                <tbody>\n");
-        
+
+        int remainingSurvived = survived;
+        int remainingKilled = killed;
+
         for (int i = 0; i < files.length; i++) {
+
+            final String currentFile = files[i];
+
             MockSurvivedMutant m = survivedMutants.get(i);
             int survivedInFile = rand.nextInt(50, 150);
-            if(survived < survivedInFile){
+            if (survived < survivedInFile) {
                 survivedInFile = survived;
             }
             survived -= survivedInFile;
             int killedInFile = rand.nextInt(150, 300);
-            if(killed < killedInFile){
+            if (killed < killedInFile) {
                 killedInFile = killed;
             }
             killed -= killedInFile;
 
             html.append("                    <tr>\n");
             html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", i + 1));
-            html.append(String.format("                        <td><a href=\"pit-style-report.html\"><span class=\"file-badge\">%s</span></a></td>\n", files[i]));
-            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", killedInFile+survivedInFile));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\"><span class=\"file-badge\">%s</span></a></td>\n", currentFile));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", killedInFile + survivedInFile));
             html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", killedInFile));
             html.append(String.format("                        <td><a href=\"pit-style-report.html\">%d</a></td>\n", survivedInFile));
-            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%.1f%%</a></td>\n", ((double) killedInFile / (killedInFile + survivedInFile)) * 100));
+            html.append(String.format("                        <td><a href=\"pit-style-report.html\">%.1f%%</a></td>\n",
+                    ((double) killedInFile / (killedInFile + survivedInFile)) * 100));
             html.append("                    </tr>\n");
 
-            generateHTMLReportByFile(killedInFile + survivedInFile, buildFailures, killedInFile, survivedInFile, totalLines, mutatedLines, survivedMutants.stream().filter(mu -> mu.file.equals(files[0])).toList(), rand, files[i]);
+            generateHTMLReportByFile(
+                    killedInFile + survivedInFile,
+                    buildFailures,
+                    killedInFile,
+                    survivedInFile,
+                    totalLines,
+                    mutatedLines,
+                    survivedMutants.stream()
+                            .filter(mu -> mu.file.equals(currentFile))
+                            .toList(),
+                    rand,
+                    currentFile
+            );
         }
         
         html.append("                </tbody>\n");
@@ -381,7 +487,7 @@ public class MockCommandLineMutationTester {
     }
 
     private static void generateHTMLReportByFile(int mutantsMade, int buildFailures, int killed, int survived,
-                                           int totalLines, int mutatedLines, List<MockSurvivedMutant> survivedMutants, Random rand, String file)
+                                                 int totalLines, int mutatedLines, List<MockSurvivedMutant> survivedMutants, Random rand, String file)
             throws IOException {
         StringBuilder html = new StringBuilder();
 
@@ -449,7 +555,19 @@ public class MockCommandLineMutationTester {
         html.append("        </div>\n");
 
         // Body
-        try (BufferedReader reader = new BufferedReader(new FileReader(String.format("./samples/prototypeSample.%s", fileExt)))) {
+        Path sourceFile = null;
+        if (sourceRoot != null) {
+            Path candidate = sourceRoot.resolve(file);
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) {
+                sourceFile = candidate;
+            }
+        }
+
+        if (sourceFile == null) {
+            sourceFile = Path.of(String.format("./samples/prototypeSample.%s", fileExt));
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile.toString()))) {
 
             String line;
             int lineNum = 1;
