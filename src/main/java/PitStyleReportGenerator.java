@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.*;
 
 
 //Generates PIT-style HTML report with source code view and mutation overlays
@@ -75,7 +76,7 @@ public class PitStyleReportGenerator {
             for (int col = 0; col < line.length(); col++) {
                 char ch = line.charAt(col);
                 
-                if (ch == '+' && !isInString(line, col) && !isIncrement(line, col)) {
+                if (ch == '+' && !isInString(line, col) && !isIncrement(line, col) && !isAddingStrings(line, col)) {
                     boolean killed = rand.nextInt(100) < 90;
                     mutations.add(new LineMutation(lineNum, col, col + 1, "+", "-", killed));
                 }
@@ -85,7 +86,7 @@ public class PitStyleReportGenerator {
                     mutations.add(new LineMutation(lineNum, col, col + 1, "-", "+", killed));
                 }
                 
-                if (ch == '>' && col + 1 < line.length() && line.charAt(col + 1) != '=' && !isInString(line, col)) {
+                if (ch == '>' && col + 1 < line.length() && line.charAt(col + 1) != '=' && !isInString(line, col) && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
                     boolean killed = rand.nextInt(100) < 75;
                     mutations.add(new LineMutation(lineNum, col, col + 1, ">", ">=", killed));
                     
@@ -93,7 +94,7 @@ public class PitStyleReportGenerator {
                     mutations.add(new LineMutation(lineNum, col, col + 1, ">", "<", killed));
                 }
                 
-                if (col + 1 < line.length() && line.substring(col, col + 2).equals(">=") && !isInString(line, col)) {
+                if (col + 1 < line.length() && line.substring(col, col + 2).equals(">=") && !isInString(line, col) && !isPair(line, col, "<",">") && !isArrow(line, col)) {
                     boolean killed = rand.nextInt(100) < 70;
                     mutations.add(new LineMutation(lineNum, col, col + 2, ">=", ">", killed));
                 }
@@ -127,6 +128,10 @@ public class PitStyleReportGenerator {
         return (pos + 1 < line.length() && line.charAt(pos + 1) == '+') ||
                (pos > 0 && line.charAt(pos - 1) == '+');
     }
+
+    private static boolean isAddingStrings(String line, int pos) {
+        return posIsInRegex(line, pos,"\"\\s*\\+|\\+\\s*\"");
+    }
     
     private static boolean isDecrement(String line, int pos) {
         return (pos + 1 < line.length() && line.charAt(pos + 1) == '-') ||
@@ -134,7 +139,25 @@ public class PitStyleReportGenerator {
     }
     
     private static boolean isArrow(String line, int pos) {
-        return pos + 1 < line.length() && line.charAt(pos + 1) == '>';
+        return posIsInRegex(line, pos, "<[-_]+|[-_=]+>|<==+");
+    }
+
+    private static boolean isPair(String line, int pos, String open, String close) {
+        String targetRegex = open.concat("(.*,?\\s*)*").concat(close);
+        return posIsInRegex(line, pos, targetRegex);
+    }
+
+    private static boolean posIsInRegex(String line, int pos, String regex) {
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(line);
+
+        while (matcher.find()) {
+            if (pos >= matcher.start() && pos < matcher.end()) {
+                return true;
+            }
+        }
+
+        return false;
     }
     
     private static String generateHeader() {
