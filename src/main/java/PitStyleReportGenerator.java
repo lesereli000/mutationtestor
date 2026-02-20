@@ -263,11 +263,15 @@ public class PitStyleReportGenerator {
             String statusIcon = m.killed ? "✓" : "✗";
             
             tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
-                   .append("<div>").append(statusIcon).append(" <strong>").append(escapeHtml(m.original))
-                   .append("</strong> → <strong>").append(escapeHtml(m.mutated)).append("</strong> (col ")
-                   .append(m.columnStart).append(")</div>")
-                   .append("<div class=\"mutation-status ").append(statusClass).append("\">").append(statusText)
-                   .append("</div></div>\n");
+               .append("<div>").append(statusIcon).append(" ")
+               .append("<code>").append(escapeHtml(m.original)).append("</code>")
+               .append(" → ")
+               .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
+               .append(" (column ").append(m.columnStart).append(")")
+               .append("</div>")
+               .append("<div class=\"mutation-status ").append(statusClass).append("\">")
+               .append(statusText)
+               .append("</div></div>\n");
         }
         
         tooltip.append("</div>\n");
