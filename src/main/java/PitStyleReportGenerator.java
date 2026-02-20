@@ -75,18 +75,33 @@ public class PitStyleReportGenerator {
             
             for (int col = 0; col < line.length(); col++) {
                 char ch = line.charAt(col);
-                
-                if (ch == '+' && !isInString(line, col) && !isIncrement(line, col) && !isAddingStrings(line, col)) {
-                    boolean killed = rand.nextInt(100) < 90;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, "+", "-", killed));
+
+                if(isInString(line, col)){
+                    continue;
+                }
+
+                if(ch == '/' && col + 1 < line.length() && line.charAt(col + 1) == '/'){
+                    break;
+                }
+
+                if (ch == '+' && !isAddingStrings(line, col)) {
+                    if(!isDouble(line, col, "\\+")){
+                        boolean killed = rand.nextInt(100) < 90;
+                        mutations.add(new LineMutation(lineNum, col, col + 1, "+", "-", killed));
+                    } else {
+                        boolean killed = rand.nextInt(100) < 90;
+                        mutations.add(new LineMutation(lineNum, col, col + 2, "++", "--", killed));
+                    }
                 }
                 
-                if (ch == '-' && !isInString(line, col) && !isDecrement(line, col) && !isArrow(line, col)) {
+                if (ch == '-' && !isDouble(line, col, "-") && !isArrow(line, col)) {
                     boolean killed = rand.nextInt(100) < 85;
                     mutations.add(new LineMutation(lineNum, col, col + 1, "-", "+", killed));
                 }
                 
-                if (ch == '>' && col + 1 < line.length() && line.charAt(col + 1) != '=' && !isInString(line, col) && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
+                if (ch == '>' && col + 1 < line.length() && line.charAt(col + 1) != '='
+                        && !isPair(line, col, "<", ">") && !isArrow(line, col)
+                        && !isDouble(line, col, ">") && !isAddingStrings(line, col)) {
                     boolean killed = rand.nextInt(100) < 75;
                     mutations.add(new LineMutation(lineNum, col, col + 1, ">", ">=", killed));
                     
@@ -94,9 +109,38 @@ public class PitStyleReportGenerator {
                     mutations.add(new LineMutation(lineNum, col, col + 1, ">", "<", killed));
                 }
                 
-                if (col + 1 < line.length() && line.substring(col, col + 2).equals(">=") && !isInString(line, col) && !isPair(line, col, "<",">") && !isArrow(line, col)) {
+                if (col + 1 < line.length() && line.substring(col, col + 2).equals(">=")
+                        && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
                     boolean killed = rand.nextInt(100) < 70;
                     mutations.add(new LineMutation(lineNum, col, col + 2, ">=", ">", killed));
+                }
+
+                if (ch == '<' && col + 1 < line.length() && line.charAt(col + 1) != '='
+                        && !isPair(line, col, "<", ">") && !isArrow(line, col)
+                        && !isDouble(line, col, "<") && !isAddingStrings(line, col)) {
+                    boolean killed = rand.nextInt(100) < 75;
+                    mutations.add(new LineMutation(lineNum, col, col + 1, "<", "<=", killed));
+
+                    killed = rand.nextInt(100) < 80;
+                    mutations.add(new LineMutation(lineNum, col, col + 1, "<", ">", killed));
+                }
+
+                if (col + 1 < line.length() && line.substring(col, col + 2).equals("<=")
+                        && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
+                    boolean killed = rand.nextInt(100) < 70;
+                    mutations.add(new LineMutation(lineNum, col, col + 2, "<=", "<", killed));
+                }
+
+                if (ch == '=' && !isArrow(line, col)) {
+                    if(isDouble(line, col, "=")) {
+                        boolean killed = rand.nextInt(100) < 75;
+                        mutations.add(new LineMutation(lineNum, col, col + 2, "==", "!=", killed));
+                    }
+
+                    if(col > 0 && line.substring(col - 1, col + 1).equals("!=")){
+                        boolean killed = rand.nextInt(100) < 75;
+                        mutations.add(new LineMutation(lineNum, col - 1, col + 1, "!=", "==", killed));
+                    }
                 }
             }
         }
@@ -105,37 +149,35 @@ public class PitStyleReportGenerator {
     }
     
     private static boolean isInString(String line, int position) {
-        boolean inString = false;
-        char delimiter = '\0';
-        
-        for (int i = 0; i < position; i++) {
-            char c = line.charAt(i);
-            if (i > 0 && line.charAt(i - 1) == '\\') continue;
-            
-            if (c == '"' || c == '\'') {
-                if (!inString) {
-                    inString = true;
-                    delimiter = c;
-                } else if (c == delimiter) {
-                    inString = false;
-                }
-            }
-        }
-        return inString;
-    }
-    
-    private static boolean isIncrement(String line, int pos) {
-        return (pos + 1 < line.length() && line.charAt(pos + 1) == '+') ||
-               (pos > 0 && line.charAt(pos - 1) == '+');
+        String targetRegex = "\".*?\"|'.*?'";
+        return posIsInRegex(line, position, targetRegex);
+
+//        boolean inString = false;
+//        char delimiter = '\0';
+//
+//        for (int i = 0; i < position; i++) {
+//            char c = line.charAt(i);
+//            if (i > 0 && line.charAt(i - 1) == '\\') continue;
+//
+//            if (c == '"' || c == '\'') {
+//                if (!inString) {
+//                    inString = true;
+//                    delimiter = c;
+//                } else if (c == delimiter) {
+//                    inString = false;
+//                }
+//            }
+//        }
+//        return inString;
     }
 
     private static boolean isAddingStrings(String line, int pos) {
         return posIsInRegex(line, pos,"\"\\s*\\+|\\+\\s*\"");
     }
     
-    private static boolean isDecrement(String line, int pos) {
-        return (pos + 1 < line.length() && line.charAt(pos + 1) == '-') ||
-               (pos > 0 && line.charAt(pos - 1) == '-');
+    private static boolean isDouble(String line, int pos, String symbol) {
+        String targetRegex = symbol.concat(symbol);
+        return posIsInRegex(line, pos, targetRegex);
     }
     
     private static boolean isArrow(String line, int pos) {
