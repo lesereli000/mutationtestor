@@ -118,7 +118,7 @@ public class MutationTestDemo {
         int shr = a >> 1;
 
         // ================= OPERATORS IN STRINGS =================
-        string operatorString = "+ - * / % ++ -- == != > < >= <= && || ! & | ^ ~ << >>";
+        String operatorString = "+ - * / % ++ -- == != > < >= <= && || ! & | ^ ~ << >>";
 
         // ================= OPERATORS IN COMMENTS =================
         // + - * / % ++ --
