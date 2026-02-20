@@ -1,3 +1,5 @@
+import org.apache.commons.io.FileUtils;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -468,8 +470,12 @@ public class MockCommandLineMutationTester {
         html.append("</body>\n</html>");
 
         // Write to file
-        try (FileWriter writer = new FileWriter(String.format("./output/report/allFiles/%s.html", file.substring(0, file.indexOf("."))))) {
+        try {
+            FileUtils.createParentDirectories(Path.of("./output/report/allFiles/").toFile());
+            FileWriter writer = new FileWriter(String.format("./output/report/allFiles/%s.html", file.substring(0, file.indexOf("."))));
             writer.write(html.toString());
+        } catch (Exception e) {
+            System.out.println("Error creating individual reports " + e.getMessage());
         }
     }
 
