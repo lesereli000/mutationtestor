@@ -301,7 +301,7 @@ public class PitStyleReportGenerator {
                     indicatorClass = "mutation-indicator mixed";
                 }
                 
-                html.append("<div class=\"").append(lineClass).append("\"><div class=\"").append(indicatorClass)
+                html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum).append("\"><div class=\"").append(indicatorClass)
                     .append("\"></div><div class=\"line-number\">").append(lineNum)
                     .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div>")
                     .append(generateTooltip(lineNum, lineMutations))

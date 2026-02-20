@@ -12,13 +12,13 @@ import java.io.FileWriter;
 
 public class MockCommandLineMutationTester {
     static class MockSurvivedMutant {
-        String file;
-        int line;
-        int column;
-        String original;
-        String mutated;
-        String operator;
-        String replacement;
+        public String file;
+        public int line;
+        public int column;
+        public String original;
+        public String mutated;
+        public String operator;
+        public String replacement;
         MockSurvivedMutant(String file, int line, int column, String original, String mutated, String operator, String replacement) {
             this.file = file;
             this.line = line;
@@ -192,6 +192,18 @@ public class MockCommandLineMutationTester {
             System.err.println("Error generating PIT-style report: " + e.getMessage());
         }
 
+        // Generate All Survivors page with filtering
+        try {
+            AllSurvivorsPageGenerator.generateAllSurvivorsPage(
+                    survivedMutants,
+                    "./output/report/all-survivors.html"
+            );
+            System.out.println("\nAll Survivors page generated: all-survivors.html");
+            System.out.println("   Click any survivor to jump to its location in the source code!");
+        } catch (IOException e) {
+            System.err.println("Error generating All Survivors page: " + e.getMessage());
+        }
+
         System.out.println("\n------------------------------------------\n");
     }
     
@@ -326,6 +338,13 @@ public class MockCommandLineMutationTester {
                                   "            </div>\n", survived));
         html.append("        </div>\n");
         
+
+        // Survivors section with link to all survivors page
+        html.append("        <div class=\"survivors-section\">\n");
+        html.append("            <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\">\n");
+        html.append("                <h2>Survived Mutants By File</h2>\n");
+        html.append("                <a href=\"all-survivors.html\" style=\"padding: 10px 20px; background: #e74c3c; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;\">View All Survivors →</a>\n");
+        html.append("            </div>\n");
         // Survivors table
         html.append("        <div class=\"survivors-section\">\n");
         html.append("            <h2>Survived Mutants By File</h2>\n");
