@@ -325,12 +325,12 @@ public class PitStyleReportGenerator {
         for (LineMutation m : mutations) {
             String statusClass = m.killed ? "killed" : "survived";
             String statusText = m.killed ? "KILLED" : "SURVIVED";
-            String statusIcon = m.killed ? "✓" : "✗";
+            String statusIcon = m.killed ? "YES!" : "NO!";
             
             tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
                .append("<div>").append(statusIcon).append(" ")
                .append("<code>").append(escapeHtml(m.original)).append("</code>")
-               .append(" → ")
+               .append(" To ")
                .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
                .append(" (column ").append(m.columnStart).append(")")
                .append("</div>")

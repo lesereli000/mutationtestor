@@ -243,17 +243,17 @@ public class MockCommandLineMutationTester {
             System.out.printf("Total Survived: %d (showing first 20, see HTML report for complete list)\n\n", survived);
             for(int i = 0; i < Math.min(20, survivedMutants.size()); i++){
                 MockSurvivedMutant m = survivedMutants.get(i);
-                System.out.printf("[%d] %s:%d:%d - %s → %s\n", 
+                System.out.printf("[%d] %s:%d:%d - %s To %s\n", 
                     i + 1, m.file, m.line, m.column, m.operator, m.replacement);
             }
             System.out.println("\n  " + (survived - 20) + " more survived mutants not shown.");
-            System.out.println("   Open mutation-report-demo.html to view all survivors with interactive tooltips!");
+            System.out.println("   Open mutation-report-demo.html to vie    w all survivors with interactive tooltips!");
         } else {
             System.out.println("Mutants that survived:\n");
             for (MockSurvivedMutant m : survivedMutants) {
                 System.out.println("--------------------------");
                 System.out.printf("Location: %s, line %d, column %d\n", m.file, m.line, m.column);
-                System.out.printf("Mutation: %s → %s\n", m.operator, m.replacement);
+                System.out.printf("Mutation: %s To %s\n", m.operator, m.replacement);
                 System.out.printf("Original: %s\n", m.original);
                 System.out.printf("Mutated:  %s\n", m.mutated);
             }
