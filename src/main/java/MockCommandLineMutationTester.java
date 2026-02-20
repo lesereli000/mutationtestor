@@ -53,7 +53,7 @@ public class MockCommandLineMutationTester {
         }
 
         Path configPath = Path.of(args[1]);
-        if(configPath.equals(Path.of("proper.config"))){
+        if(configPath.equals(Path.of("js.config"))){
             System.out.println("Found Config File: " + args[1]);
         } else {
             System.out.println("Config file " + args[1] + " not found.");
