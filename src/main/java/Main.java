@@ -14,26 +14,22 @@ public class Main {
     private static final String WORKING_DIR = "output/";
     private static final String REPORT_DIR = WORKING_DIR + "report/";
 
+    static class CmdResult {
+        final int exitCode;
+        final String output;
+        CmdResult(int exitCode, String output) { this.exitCode = exitCode; this.output = output; }
+    }
+
     static String runCommand(String command, String directory) {
         Process process;
         List<String> commandList = new ArrayList<>(Arrays.asList(command.split(" ")));
         try {
-            // run the command on the correct shell based on OS
             String os = System.getProperty("os.name").toLowerCase();
             ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd.exe", "/c", command);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", command);
-            }
+            if (os.contains("win")) pb = new ProcessBuilder("cmd.exe", "/c", command);
+            else pb = new ProcessBuilder("sh", "-c", command);
 
-            // change child process's directory to
-            File workingDir;
-            if (directory != null) {
-                workingDir = new File(directory);
-            } else {
-                workingDir = null;
-            }
+            File workingDir = (directory != null) ? new File(directory) : null;
             pb.directory(workingDir);
             pb.redirectErrorStream(true);
             process = pb.start();
@@ -41,54 +37,52 @@ public class Main {
         } catch (IOException e) {
             System.out.println("Error running command " + command + ": " + e.getMessage());
             e.printStackTrace();
-            return "";
+            return "__EXIT_CODE__=999\n";
         }
 
-        // Consume output while child process runs
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append(System.lineSeparator());
-            }
+            while ((line = reader.readLine()) != null) output.append(line).append(System.lineSeparator());
         } catch (IOException e) {
             process.destroyForcibly();
             System.out.println("Error running command " + command + ": " + e.getMessage());
             e.printStackTrace();
-            return "";
+            return "__EXIT_CODE__=999\n";
         }
 
-        // Wait for child process to finish
         try {
-            boolean timeout = !process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
-
             ExecutorService executor = Executors.newSingleThreadExecutor();
-            Future<Integer> future = executor.submit(() -> process.waitFor());
+            Future<Integer> future = executor.submit((Callable<Integer>) () -> process.waitFor());
+
+            int exitCode;
             try {
-                int exitCode = future.get(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+                exitCode = future.get(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 process.destroyForcibly();
+                executor.shutdownNow();
                 System.out.println("Process " + commandList.get(0) + " timed out.");
-                return "";
+                return output.append("__EXIT_CODE__=124").append(System.lineSeparator()).toString();
             } catch (ExecutionException | InterruptedException e) {
-
                 process.destroyForcibly();
+                executor.shutdownNow();
                 System.out.println("Error running command " + command + ": " + e.getMessage());
                 e.printStackTrace();
-                return "";
+                return output.append("__EXIT_CODE__=999").append(System.lineSeparator()).toString();
             }
 
             executor.shutdown();
             process.destroy();
             System.out.println("Process " + commandList.get(0) + " finished");
+
+            output.append("__EXIT_CODE__=").append(exitCode).append(System.lineSeparator());
             return output.toString();
 
         } catch (Exception e) {
             process.destroyForcibly();
             System.out.println("Interrupted while waiting for process " + commandList.get(0) + " to finish");
             e.printStackTrace();
-            return "";
+            return output.append("__EXIT_CODE__=999").append(System.lineSeparator()).toString();
         }
     }
 
@@ -321,12 +315,30 @@ public class Main {
     }
 
     private static boolean hasTestFailures(String output) {
-        if (output == null || output.isEmpty()) return false;
+        if (output == null) return true;
+
+        int exitCode = 0;
+        int idx = output.lastIndexOf("__EXIT_CODE__=");
+        if (idx >= 0) {
+            int end = output.indexOf('\n', idx);
+            String line = (end >= 0) ? output.substring(idx, end) : output.substring(idx);
+            try {
+                exitCode = Integer.parseInt(line.replace("__EXIT_CODE__=", "").trim());
+            } catch (Exception ignored) {}
+        }
+
+        if (exitCode != 0) return true;
 
         if (output.contains("\nFAIL") || output.startsWith("FAIL")) return true;
         if (output.contains("Test Suites:") && output.contains("failed")) return true;
         if (output.contains("Tests:") && output.contains("failed")) return true;
         if (output.contains("npm ERR!")) return true;
+
+        // extra common signals (mocha/node, maven, dotnet, pytest)
+        if (output.contains("AssertionError") || output.contains("ERR_ASSERTION")) return true;
+        if (output.contains("BUILD FAILURE") || output.contains("There are test failures")) return true;
+        if (output.contains("Test Run Failed") || output.contains("Failed!") ) return true;
+        if (output.contains("FAILED") && output.contains("==")) return true;
 
         return false;
     }
