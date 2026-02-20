@@ -1,77 +1,238 @@
-public static String exampleCode(String input) {
+package mutationtester.demo;
 
-    if (input == null || input.isBlank()) {
-        return "Input was empty.";
+import java.util.*;
+import java.io.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+// Enum example
+enum Status { STARTED, RUNNING, FINISHED }
+
+// Interface example
+interface Greeter {
+    void greet(String name);
+}
+
+// Abstract class example
+abstract class Animal {
+    abstract void makeSound();
+}
+
+// Concrete class with inheritance
+class Dog extends Animal {
+    private final String breed;
+    static int dogCount = 0;
+    volatile int energy;
+
+    public Dog(String breed) {
+        this.breed = breed;
+        dogCount++;
+        this.energy = 100;
     }
 
-    String[] words = input.split("\\s+");
-    Map<Character, Integer> letterFrequency = new HashMap<>();
-    List<String> longWords = new ArrayList<>();
+    @Override
+    void makeSound() {
+        System.out.println("Woof!");
+    }
 
-    int totalLength = 0;
-    int vowelCount = 0;
+    public void play() throws InterruptedException {
+        synchronized(this) {
+            energy -= 10;
+        }
+    }
 
-    for (String word : words) {
+    public static Dog createDog(String breed) {
+        return new Dog(breed);
+    }
+}
 
-        totalLength += word.length();
+// Generic class example
+class Box<T> {
+    T value;
+    public Box(T value) { this.value = value; }
+    public T get() { return value; }
+    public void set(T value) { this.value = value; }
+}
 
-        if (word.length() > 5) {
-            longWords.add(word.toUpperCase());
+public class MutationTestDemo {
+
+    // Fields
+    static int counter = 0;
+    final int max = 10;
+    transient String tempValue = "temp";
+    volatile boolean flag = true;
+    String[] names = {"Alice", "Bob", "Charlie"};
+
+    // Constructor
+    public MutationTestDemo() {}
+
+    // Static method
+    static void staticMethod() {
+        System.out.println("Static method called");
+    }
+
+    // Instance method
+    int sum(int... nums) {
+        int result = 0;
+        for(int n : nums) {
+            result += n; // arithmetic + assignment
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        MutationTestDemo demo = new MutationTestDemo();
+
+        // Variables & assignments
+        int a = 5, b = 10;
+        double pi = 3.14;
+        boolean bool = true;
+        char letter = 'X';
+        String message = "Hello";
+
+        // ================= OPERATORS (REAL) =================
+        int add = a + b;
+        int sub = a - b;
+        int mul = a * b;
+        int div = a / b;
+        int mod = a % b;
+
+        a++;
+        b--;
+
+        bool eq = (a == b);
+        bool neq = (a != b);
+        bool gt = (a > b);
+        bool lt = (a < b);
+        bool ge = (a >= b);
+        bool le = (a <= b);
+
+        bool and = (a > 0 && b > 0);
+        bool or = (a > 0 || b > 0);
+        bool not = !and;
+
+        int bitAnd = a & b;
+        int bitOr = a | b;
+        int bitXor = a ^ b;
+        int bitNot = ~a;
+        int shl = a << 1;
+        int shr = a >> 1;
+
+        // ================= OPERATORS IN STRINGS =================
+        string operatorString = "+ - * / % ++ -- == != > < >= <= && || ! & | ^ ~ << >>";
+
+        // ================= OPERATORS IN COMMENTS =================
+        // + - * / % ++ --
+        // == != > < >= <=
+        // && || !
+        // & | ^ ~ << >>
+
+
+        // Logical operators
+        boolean logic = (a > 0 && b > 0) || !bool;
+
+        // Ternary operator
+        int ternary = (a > b) ? a : b;
+
+        // Conditional statements
+        if(a > 0) {
+            System.out.println("a positive");
+        } else if(a < 0) {
+            System.out.println("a negative");
+        } else {
+            System.out.println("a zero");
         }
 
-        for (char c : word.toLowerCase().toCharArray()) {
+        // Switch statement
+        Status status = Status.RUNNING;
+        switch(status) {
+            case STARTED -> System.out.println("Started");
+            case RUNNING -> System.out.println("Running");
+            case FINISHED -> System.out.println("Finished");
+        }
 
-            if (Character.isLetter(c)) {
+        // Loops
+        for(int i = 0; i < 3; i++) {
+            if(i!=1) continue;
+            System.out.println("For loop " + i);
+        }
 
-                letterFrequency.put(c,
-                        letterFrequency.getOrDefault(c, 0) + 1);
+        int j = 0;
+        while(j < 3) {
+            System.out.println("While " + j);
+            j++;
+        }
 
-                if ("aeiou".indexOf(c) >= 0) {
-                    vowelCount++;
-                }
+        int k = 0;
+        do {
+            System.out.println("Do-while " + k);
+            k++;
+            if(k==2) break;
+        } while(k<3);
+
+        // Arrays
+        for(int n : demo.names) System.out.println("Name: " + n);
+
+        // Collections
+        List<String> list = new ArrayList<>();
+        list.add("One"); list.add("Two");
+        Map<String, Integer> map = new HashMap<>();
+        map.put("A",1); map.put("B",2);
+
+        // Lambda
+        list.forEach(e -> System.out.println("Lambda: " + e));
+
+        // Try-catch-finally
+        try {
+            int x = 10 / 2;
+            if(x == 5) throw new IOException("Example exception");
+        } catch(IOException | ArithmeticException e) {
+            e.printStackTrace();
+        } finally {
+            System.out.println("Finally executed");
+        }
+
+        // Try-with-resources
+        try(Scanner scanner = new Scanner(System.in)) {
+            System.out.println("Scanner ready (no input needed)");
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        // Object creation
+        Dog dog = new Dog("Labrador");
+        dog.makeSound();
+        try { dog.play(); } catch(InterruptedException e) { }
+
+        // Interface implementation (anonymous class)
+        Greeter greeter = new Greeter() {
+            public void greet(String name) {
+                System.out.println("Hello " + name);
             }
-        }
+        };
+        greeter.greet("World");
+
+        // Generics
+        Box<String> box = new Box<>("Generics!");
+        System.out.println(box.get());
+
+        // Casting
+        double d = 3.5;
+        int di = (int)d;
+        System.out.println("Casted: " + di);
+
+        // instanceof
+        if(dog instanceof Animal) System.out.println("dog is Animal");
+
+        // synchronized
+        synchronized(MutationTestDemo.class) { counter++; }
+
+        // assert
+        assert counter >= 0;
+
+        // null check
+        String s = null;
+        if(s == null) System.out.println("s is null");
+
+        // break & continue handled in loops above
     }
-
-    double averageLength = totalLength / (double) words.length;
-
-    List<Map.Entry<Character, Integer>> sortedLetters =
-            new ArrayList<>(letterFrequency.entrySet());
-
-    sortedLetters.sort((a, b) -> b.getValue() - a.getValue());
-
-    StringBuilder result = new StringBuilder();
-
-    result.append("=== Text Analysis ===\n");
-    result.append("Word count: ").append(words.length).append("\n");
-    result.append("Average word length: ")
-            .append(String.format("%.2f", averageLength))
-            .append("\n");
-    result.append("Total vowels: ").append(vowelCount).append("\n\n");
-
-    result.append("Top 5 most frequent letters:\n");
-
-    for (int i = 0; i < Math.min(5, sortedLetters.size()); i++) {
-        Map.Entry<Character, Integer> entry = sortedLetters.get(i);
-        result.append(entry.getKey())
-                .append(" -> ")
-                .append(entry.getValue())
-                .append("\n");
-    }
-
-    result.append("\nLong words (uppercase):\n");
-
-    for (String w : longWords) {
-        result.append("- ").append(w).append("\n");
-    }
-
-    if (averageLength > 6) {
-        result.append("\nText complexity: HIGH");
-    } else if (averageLength > 4) {
-        result.append("\nText complexity: MEDIUM");
-    } else {
-        result.append("\nText complexity: LOW");
-    }
-
-    return result.toString();
 }
