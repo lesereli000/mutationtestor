@@ -189,6 +189,7 @@ public class Main {
         System.out.println("\nTesting mutants");
         List<MutantResult> results = new ArrayList<>();
         int current = 1;
+        int mutantId = 1;
 
         for (MutationPoint point : mutationPoints) {
             System.out.printf("[%d/%d] Testing %s:%d:%d (%s → %s)... ",
@@ -201,7 +202,7 @@ public class Main {
                     point.getReplacement()
             );
 
-            MutantResult result = testSingleMutant(point, mutantPath, command2);
+            MutantResult result = testSingleMutant(point, mutantPath, command2, mutatorType, mutantId++);
             results.add(result);
 
             if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
@@ -236,7 +237,9 @@ public class Main {
     private static MutantResult testSingleMutant(
             MutationPoint point,
             Path workingDir,
-            String testCommand
+            String testCommand,
+            String mutatorType,
+            int mutantId
     ) {
         File originalFile = point.getSourceFile();
         String originalContent = null;
@@ -249,6 +252,11 @@ public class Main {
             // Apply mutation
             String mutatedContent = applyMutation(originalContent, point);
             Files.writeString(originalFile.toPath(), mutatedContent);
+
+            try {
+                saveMutantFile(workingDir, originalFile.toPath(), mutatedContent, mutatorType, mutantId);
+            } catch (IOException ignored) {
+            }
 
             // Run tests
             String testOutput = runCommand(testCommand, workingDir.toString());
@@ -274,6 +282,18 @@ public class Main {
                 }
             }
         }
+    }
+
+    private static void saveMutantFile(Path workingDir, Path mutatedFilePath, String mutatedContent, String mutatorType, int mutantId) throws IOException {
+        Path rel = workingDir.relativize(mutatedFilePath);
+        String mutantFolder = String.format("mutant-%03d", mutantId);
+        Path out = workingDir
+                .resolve("mutants")
+                .resolve(mutatorType)
+                .resolve(mutantFolder)
+                .resolve(rel);
+        Files.createDirectories(out.getParent());
+        Files.writeString(out, mutatedContent);
     }
 
     private static String applyMutation(String content, MutationPoint point) {
