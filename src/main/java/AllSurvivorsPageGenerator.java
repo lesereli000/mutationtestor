@@ -1,5 +1,6 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 
 /**
@@ -7,7 +8,7 @@ import java.util.*;
  * Allows users to click on a survivor to jump directly to that line in the source code
  */
 public class AllSurvivorsPageGenerator {
-    
+
     static class SurvivorEntry {
         String file;
         int line;
@@ -15,41 +16,56 @@ public class AllSurvivorsPageGenerator {
         String operator;
         String replacement;
         String sourceCodeSnippet;
-        
-        SurvivorEntry(String file, int line, int column, String operator, String replacement, String sourceCodeSnippet) {
+        String link;
+
+        SurvivorEntry(String file, int line, int column, String operator, String replacement, String sourceCodeSnippet, String link) {
             this.file = file;
             this.line = line;
             this.column = column;
             this.operator = operator;
             this.replacement = replacement;
             this.sourceCodeSnippet = sourceCodeSnippet;
+            this.link = link;
         }
     }
-    
+
     public static void generateAllSurvivorsPage(
             List<?> survivedMutants,
             String outputPath
     ) throws IOException {
-        
+
         List<SurvivorEntry> survivors = convertToSurvivorEntries(survivedMutants);
-        
+
         StringBuilder html = new StringBuilder();
         html.append(generateHeader());
         html.append(generateSearchAndFilters(survivors));
         html.append(generateSurvivorsTable(survivors));
         html.append(generateFooter());
-        
+
         try (FileWriter writer = new FileWriter(outputPath)) {
             writer.write(html.toString());
         }
     }
-    
+
     private static List<SurvivorEntry> convertToSurvivorEntries(List<?> mutants) {
         List<SurvivorEntry> entries = new ArrayList<>();
-        
-        // Try to extract data using reflection
+
         for (Object mutant : mutants) {
             try {
+                if (mutant instanceof MutantResult result) {
+                    MutationPoint point = result.getMutationPoint();
+                    String file = point.getSourceFile().getName();
+                    int line = point.getLineNumber();
+                    int column = point.getColumnNumber();
+                    String operator = point.getOperator();
+                    String replacement = point.getReplacement();
+                    String sourceCodeSnippet = getLineSnippet(point.getSourceFile(), line);
+                    String link = "allFiles/" + stripExtension(file) + ".html#line-" + line;
+
+                    entries.add(new SurvivorEntry(file, line, column, operator, replacement, sourceCodeSnippet, link));
+                    continue;
+                }
+
                 String file = (String) mutant.getClass().getField("file").get(mutant);
                 int line = (int) mutant.getClass().getField("line").get(mutant);
                 int column = (int) mutant.getClass().getField("column").get(mutant);
@@ -61,16 +77,29 @@ public class AllSurvivorsPageGenerator {
                 } catch (Exception e) {
                     original = "return x " + operator + " y;";
                 }
-                
-                entries.add(new SurvivorEntry(file, line, column, operator, replacement, original));
+
+                String link = "pit-style-report.html#line-" + line;
+                entries.add(new SurvivorEntry(file, line, column, operator, replacement, original, link));
             } catch (Exception e) {
                 System.err.println("Error converting mutant: " + e.getMessage());
             }
         }
-        
+
         return entries;
     }
-    
+
+    private static String getLineSnippet(java.io.File file, int lineNumber) {
+        try {
+            List<String> lines = Files.readAllLines(file.toPath());
+            if (lineNumber > 0 && lineNumber <= lines.size()) {
+                return lines.get(lineNumber - 1);
+            }
+        } catch (IOException e) {
+            return "";
+        }
+        return "";
+    }
+
     private static String generateHeader() {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
@@ -113,63 +142,59 @@ public class AllSurvivorsPageGenerator {
         sb.append("<div class=\"container\">\n");
         return sb.toString();
     }
-    
+
     private static String generateSearchAndFilters(List<SurvivorEntry> survivors) {
         StringBuilder sb = new StringBuilder();
-        
-        // Header
+
         sb.append("<div class=\"header\">\n");
         sb.append("    <h1>All Surviving Mutants</h1>\n");
         sb.append("    <div class=\"subtitle\">Click any mutant to jump to its location in the source code</div>\n");
         sb.append("</div>\n");
-        
-        // Stats bar
+
         sb.append("<div class=\"stats\">\n");
         sb.append("    <div>Total Survivors: <strong id=\"total-count\">").append(survivors.size()).append("</strong></div>\n");
         sb.append("    <div>Showing: <strong id=\"visible-count\">").append(survivors.size()).append("</strong></div>\n");
         sb.append("</div>\n");
-        
-        // Get unique files and operators for filters
+
         Set<String> files = new HashSet<>();
         Set<String> operators = new HashSet<>();
         for (SurvivorEntry s : survivors) {
             files.add(s.file);
             operators.add(s.operator);
         }
-        
-        // Search and filters
+
         sb.append("<div class=\"controls\">\n");
         sb.append("    <div class=\"search-box\">\n");
         sb.append("        <input type=\"text\" id=\"search-input\" placeholder=\"Search by file, line, operator, or code snippet...\">\n");
         sb.append("    </div>\n");
-        
-        sb.append("    <div class=\"filter-group\">\n");
-        sb.append("        <label>File:</label>\n");
-        sb.append("        <select id=\"file-filter\">\n");
-        sb.append("            <option value=\"\">All Files</option>\n");
+
+        sb.append("<div class=\"filter-group\">\n");
+        sb.append("    <label>File:</label>\n");
+        sb.append("    <select id=\"file-filter\">\n");
+        sb.append("        <option value=\"\">All Files</option>\n");
         for (String file : files.stream().sorted().toList()) {
-            sb.append("            <option value=\"").append(escapeHtml(file)).append("\">").append(escapeHtml(file)).append("</option>\n");
+            sb.append("        <option value=\"").append(escapeHtml(file)).append("\">").append(escapeHtml(file)).append("</option>\n");
         }
-        sb.append("        </select>\n");
-        sb.append("    </div>\n");
-        
-        sb.append("    <div class=\"filter-group\">\n");
-        sb.append("        <label>Operator:</label>\n");
-        sb.append("        <select id=\"operator-filter\">\n");
-        sb.append("            <option value=\"\">All Operators</option>\n");
-        for (String op : operators.stream().sorted().toList()) {
-            sb.append("            <option value=\"").append(escapeHtml(op)).append("\">").append(escapeHtml(op)).append("</option>\n");
-        }
-        sb.append("        </select>\n");
-        sb.append("    </div>\n");
+        sb.append("    </select>\n");
         sb.append("</div>\n");
-        
+
+        sb.append("<div class=\"filter-group\">\n");
+        sb.append("    <label>Operator:</label>\n");
+        sb.append("    <select id=\"operator-filter\">\n");
+        sb.append("        <option value=\"\">All Operators</option>\n");
+        for (String op : operators.stream().sorted().toList()) {
+            sb.append("        <option value=\"").append(escapeHtml(op)).append("\">").append(escapeHtml(op)).append("</option>\n");
+        }
+        sb.append("    </select>\n");
+        sb.append("</div>\n");
+        sb.append("</div>\n");
+
         return sb.toString();
     }
-    
+
     private static String generateSurvivorsTable(List<SurvivorEntry> survivors) {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append("<div class=\"table-container\">\n");
         sb.append("    <table class=\"survivors-table\">\n");
         sb.append("        <thead>\n");
@@ -183,44 +208,42 @@ public class AllSurvivorsPageGenerator {
         sb.append("            </tr>\n");
         sb.append("        </thead>\n");
         sb.append("        <tbody id=\"survivors-tbody\">\n");
-        
+
         for (int i = 0; i < survivors.size(); i++) {
             SurvivorEntry s = survivors.get(i);
-            
+
             sb.append("            <tr class=\"survivor-row\" ");
             sb.append("data-file=\"").append(escapeHtml(s.file)).append("\" ");
             sb.append("data-line=\"").append(s.line).append("\" ");
             sb.append("data-operator=\"").append(escapeHtml(s.operator)).append("\" ");
-            sb.append("onclick=\"window.location.href='pit-style-report.html#line-").append(s.line).append("'\">\n");
-            
+            sb.append("onclick=\"window.location.href='").append(escapeHtml(s.link)).append("'\">\n");
+
             sb.append("                <td>").append(i + 1).append("</td>\n");
             sb.append("                <td><span class=\"file-badge\">").append(escapeHtml(s.file)).append("</span></td>\n");
             sb.append("                <td class=\"location\">Line ").append(s.line).append(", Col ").append(s.column).append("</td>\n");
             sb.append("                <td><span class=\"mutation-badge\">").append(escapeHtml(s.operator)).append(" -> ").append(escapeHtml(s.replacement)).append("</span></td>\n");
             sb.append("                <td><code class=\"code-snippet\">").append(escapeHtml(s.sourceCodeSnippet)).append("</code></td>\n");
-            sb.append("                <td><a href=\"pit-style-report.html#line-").append(s.line).append("\" class=\"action-link\">Jump to Source →</a></td>\n");
+            sb.append("                <td><a href=\"").append(escapeHtml(s.link)).append("\" class=\"action-link\">Jump to Source →</a></td>\n");
             sb.append("            </tr>\n");
         }
-        
+
         sb.append("        </tbody>\n");
         sb.append("    </table>\n");
-        
-        // No results message
+
         sb.append("    <div id=\"no-results\" class=\"no-results hidden\">\n");
         sb.append("        <div class=\"no-results-icon\">Search</div>\n");
         sb.append("        <h3>No survivors found</h3>\n");
         sb.append("        <p>Try adjusting your search or filter criteria</p>\n");
         sb.append("    </div>\n");
-        
+
         sb.append("</div>\n");
-        
+
         return sb.toString();
     }
-    
+
     private static String generateFooter() {
         StringBuilder sb = new StringBuilder();
-        
-        // Add JavaScript for filtering and search
+
         sb.append("<script>\n");
         sb.append("const searchInput = document.getElementById('search-input');\n");
         sb.append("const fileFilter = document.getElementById('file-filter');\n");
@@ -228,23 +251,23 @@ public class AllSurvivorsPageGenerator {
         sb.append("const rows = document.querySelectorAll('.survivor-row');\n");
         sb.append("const visibleCount = document.getElementById('visible-count');\n");
         sb.append("const noResults = document.getElementById('no-results');\n\n");
-        
+
         sb.append("function filterRows() {\n");
         sb.append("    const searchTerm = searchInput.value.toLowerCase();\n");
         sb.append("    const fileValue = fileFilter.value;\n");
         sb.append("    const operatorValue = operatorFilter.value;\n");
         sb.append("    let visibleRowCount = 0;\n\n");
-        
+
         sb.append("    rows.forEach(row => {\n");
         sb.append("        const file = row.dataset.file;\n");
         sb.append("        const line = row.dataset.line;\n");
         sb.append("        const operator = row.dataset.operator;\n");
         sb.append("        const text = row.textContent.toLowerCase();\n\n");
-        
+
         sb.append("        const matchesSearch = text.includes(searchTerm);\n");
         sb.append("        const matchesFile = !fileValue || file === fileValue;\n");
         sb.append("        const matchesOperator = !operatorValue || operator === operatorValue;\n\n");
-        
+
         sb.append("        if (matchesSearch && matchesFile && matchesOperator) {\n");
         sb.append("            row.classList.remove('hidden');\n");
         sb.append("            visibleRowCount++;\n");
@@ -252,25 +275,33 @@ public class AllSurvivorsPageGenerator {
         sb.append("            row.classList.add('hidden');\n");
         sb.append("        }\n");
         sb.append("    });\n\n");
-        
+
         sb.append("    visibleCount.textContent = visibleRowCount;\n");
         sb.append("    noResults.classList.toggle('hidden', visibleRowCount > 0);\n");
         sb.append("}\n\n");
-        
+
         sb.append("searchInput.addEventListener('input', filterRows);\n");
         sb.append("fileFilter.addEventListener('change', filterRows);\n");
         sb.append("operatorFilter.addEventListener('change', filterRows);\n");
         sb.append("</script>\n\n");
-        
+
         sb.append("</div>\n</body>\n</html>");
         return sb.toString();
     }
-    
+
+    private static String stripExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0) {
+            return fileName;
+        }
+        return fileName.substring(0, dot);
+    }
+
     private static String escapeHtml(String text) {
         return text.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace("\"", "&quot;")
-                   .replace("'", "&#39;");
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

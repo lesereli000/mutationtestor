@@ -9,7 +9,7 @@ import java.util.regex.*;
 //Generates PIT-style HTML report with source code view and mutation overlays
 
 public class PitStyleReportGenerator {
-    
+
     static class LineMutation {
         int lineNumber;
         int columnStart;
@@ -17,7 +17,7 @@ public class PitStyleReportGenerator {
         String original;
         String mutated;
         boolean killed;
-        
+
         LineMutation(int line, int colStart, int colEnd, String orig, String mut, boolean killed) {
             this.lineNumber = line;
             this.columnStart = colStart;
@@ -27,159 +27,116 @@ public class PitStyleReportGenerator {
             this.killed = killed;
         }
     }
-    
+
     public static void generatePitStyleReport(
-            String sourceFilePath, 
+            String sourceFilePath,
             String outputPath,
-            List<?> allMutants,  // Use wildcard to avoid dependency
+            List<?> allMutants,
             int totalMutants,
             int killed,
             int survived,
             double mutationScore
     ) throws IOException {
-        
-        // Read source file
+
         List<String> sourceLines = Files.readAllLines(Path.of(sourceFilePath));
-        
-        // Convert mutants to line mutations
-        List<LineMutation> mutations = convertMutations(sourceLines);
-        
-        // Group mutations by line
+
+        List<LineMutation> mutations = convertMutations(allMutants, sourceLines);
+
         Map<Integer, List<LineMutation>> mutationsByLine = new HashMap<>();
         for (LineMutation m : mutations) {
             mutationsByLine.putIfAbsent(m.lineNumber, new ArrayList<>());
             mutationsByLine.get(m.lineNumber).add(m);
         }
-        
-        // Generate HTML
+
         StringBuilder html = new StringBuilder();
         html.append(generateHeader());
         html.append(generateSummaryBar(totalMutants, killed, survived, mutationScore));
         html.append(generateSourceCodeView(sourceLines, mutationsByLine, sourceFilePath));
         html.append(generateFooter());
-        
-        // Write to file
+
         try (FileWriter writer = new FileWriter(outputPath)) {
             writer.write(html.toString());
         }
     }
-    
-    private static List<LineMutation> convertMutations(List<String> sourceLines) {
-        List<LineMutation> mutations = new ArrayList<>();
-        Random rand = new Random(42);
-        
-        // Find operators in source and create mutations
-        for (int i = 0; i < sourceLines.size(); i++) {
-            String line = sourceLines.get(i);
-            int lineNum = i + 1;
-            
-            for (int col = 0; col < line.length(); col++) {
-                char ch = line.charAt(col);
 
-                if(isInString(line, col)){
+    private static List<LineMutation> convertMutations(List<?> allMutants, List<String> sourceLines) {
+        List<LineMutation> mutations = new ArrayList<>();
+
+        for (Object mutant : allMutants) {
+            try {
+                if (mutant instanceof MutantResult result) {
+                    MutationPoint point = result.getMutationPoint();
+                    int line = point.getLineNumber();
+                    int col = point.getColumnNumber();
+                    String original = point.getOperator();
+                    String mutated = point.getReplacement();
+                    boolean killed = result.getStatus() == MutantResult.MutantStatus.KILLED;
+
+                    mutations.add(new LineMutation(
+                            line,
+                            col,
+                            col + Math.max(1, original.length()),
+                            original,
+                            mutated,
+                            killed
+                    ));
                     continue;
                 }
 
-                if(ch == '/' && col + 1 < line.length() && line.charAt(col + 1) == '/'){
-                    break;
+                int line = (int) mutant.getClass().getField("line").get(mutant);
+                int col = (int) mutant.getClass().getField("column").get(mutant);
+                String original = "";
+                String mutated = "";
+                boolean killed = false;
+
+                try {
+                    original = (String) mutant.getClass().getField("original").get(mutant);
+                } catch (Exception e) {
+                    original = "";
                 }
 
-                if (ch == '+' && !isAddingStrings(line, col)) {
-                    if(!isDouble(line, col, "\\+")){
-                        boolean killed = rand.nextInt(100) < 90;
-                        mutations.add(new LineMutation(lineNum, col, col + 1, "+", "-", killed));
-                    } else {
-                        boolean killed = rand.nextInt(100) < 90;
-                        mutations.add(new LineMutation(lineNum, col, col + 2, "++", "--", killed));
-                    }
-                }
-                
-                if (ch == '-' && !isDouble(line, col, "-") && !isArrow(line, col)) {
-                    boolean killed = rand.nextInt(100) < 85;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, "-", "+", killed));
-                }
-                
-                if (ch == '>' && col + 1 < line.length() && line.charAt(col + 1) != '='
-                        && !isPair(line, col, "<", ">") && !isArrow(line, col)
-                        && !isDouble(line, col, ">") && !isAddingStrings(line, col)) {
-                    boolean killed = rand.nextInt(100) < 75;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, ">", ">=", killed));
-                    
-                    killed = rand.nextInt(100) < 80;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, ">", "<", killed));
-                }
-                
-                if (col + 1 < line.length() && line.substring(col, col + 2).equals(">=")
-                        && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
-                    boolean killed = rand.nextInt(100) < 70;
-                    mutations.add(new LineMutation(lineNum, col, col + 2, ">=", ">", killed));
+                try {
+                    mutated = (String) mutant.getClass().getField("mutated").get(mutant);
+                } catch (Exception e) {
+                    mutated = "";
                 }
 
-                if (ch == '<' && col + 1 < line.length() && line.charAt(col + 1) != '='
-                        && !isPair(line, col, "<", ">") && !isArrow(line, col)
-                        && !isDouble(line, col, "<") && !isAddingStrings(line, col)) {
-                    boolean killed = rand.nextInt(100) < 75;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, "<", "<=", killed));
-
-                    killed = rand.nextInt(100) < 80;
-                    mutations.add(new LineMutation(lineNum, col, col + 1, "<", ">", killed));
+                try {
+                    killed = (boolean) mutant.getClass().getField("killed").get(mutant);
+                } catch (Exception e) {
+                    killed = false;
                 }
 
-                if (col + 1 < line.length() && line.substring(col, col + 2).equals("<=")
-                        && !isPair(line, col, "<", ">") && !isArrow(line, col)) {
-                    boolean killed = rand.nextInt(100) < 70;
-                    mutations.add(new LineMutation(lineNum, col, col + 2, "<=", "<", killed));
-                }
-
-                if (ch == '=' && !isArrow(line, col)) {
-                    if(isDouble(line, col, "=")) {
-                        boolean killed = rand.nextInt(100) < 75;
-                        mutations.add(new LineMutation(lineNum, col, col + 2, "==", "!=", killed));
-                    }
-
-                    if(col > 0 && line.substring(col - 1, col + 1).equals("!=")){
-                        boolean killed = rand.nextInt(100) < 75;
-                        mutations.add(new LineMutation(lineNum, col - 1, col + 1, "!=", "==", killed));
-                    }
-                }
+                mutations.add(new LineMutation(
+                        line,
+                        col,
+                        col + 1,
+                        original,
+                        mutated,
+                        killed
+                ));
+            } catch (Exception e) {
+                System.err.println("Error converting mutation for PIT report: " + e.getMessage());
             }
         }
-        
+
         return mutations;
     }
-    
+
     private static boolean isInString(String line, int position) {
         String targetRegex = "\".*?\"|'.*?'";
         return posIsInRegex(line, position, targetRegex);
-
-//        boolean inString = false;
-//        char delimiter = '\0';
-//
-//        for (int i = 0; i < position; i++) {
-//            char c = line.charAt(i);
-//            if (i > 0 && line.charAt(i - 1) == '\\') continue;
-//
-//            if (c == '"' || c == '\'') {
-//                if (!inString) {
-//                    inString = true;
-//                    delimiter = c;
-//                } else if (c == delimiter) {
-//                    inString = false;
-//                }
-//            }
-//        }
-//        return inString;
     }
 
     private static boolean isAddingStrings(String line, int pos) {
         return posIsInRegex(line, pos,"\"\\s*\\+|\\+\\s*\"");
     }
-    
+
     private static boolean isDouble(String line, int pos, String symbol) {
         String targetRegex = symbol.concat(symbol);
         return posIsInRegex(line, pos, targetRegex);
     }
-    
+
     private static boolean isArrow(String line, int pos) {
         return posIsInRegex(line, pos, "<[-_]+|[-_=]+>|<==+");
     }
@@ -201,7 +158,7 @@ public class PitStyleReportGenerator {
 
         return false;
     }
-    
+
     private static String generateHeader() {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
@@ -251,10 +208,10 @@ public class PitStyleReportGenerator {
         sb.append("    </style>\n</head>\n<body>\n<div class=\"container\">\n");
         return sb.toString();
     }
-    
+
     private static String generateSummaryBar(int total, long killed, long survived, double mutationScore) {
         String scoreClass = mutationScore >= 80 ? "" : (mutationScore >= 60 ? "medium" : "low");
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"summary-bar\">\n");
         sb.append("    <div class=\"stat\"><div class=\"stat-value\">").append(total).append("</div><div class=\"stat-label\">Total Mutations</div></div>\n");
@@ -264,31 +221,31 @@ public class PitStyleReportGenerator {
         sb.append("</div>\n");
         return sb.toString();
     }
-    
+
     private static String generateSourceCodeView(List<String> sourceLines, Map<Integer, List<LineMutation>> mutationsByLine, String filename) {
         StringBuilder html = new StringBuilder();
-        
+
         String displayName = filename.substring(Math.max(filename.lastIndexOf('/'), filename.lastIndexOf('\\')) + 1);
-        
+
         html.append("<div class=\"source-view\">\n");
         html.append("    <div class=\"source-header\"><h2>").append(escapeHtml(displayName)).append("</h2></div>\n");
         html.append("    <div class=\"source-code\">\n");
-        
+
         for (int i = 0; i < sourceLines.size(); i++) {
             int lineNum = i + 1;
             String line = sourceLines.get(i);
             List<LineMutation> lineMutations = mutationsByLine.get(lineNum);
-            
+
             if (lineMutations == null || lineMutations.isEmpty()) {
-                html.append("<div class=\"code-line\"><div class=\"line-number\">").append(lineNum)
-                    .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div></div>\n");
+                html.append("<div class=\"code-line\" id=\"line-").append(lineNum).append("\"><div class=\"line-number\">").append(lineNum)
+                        .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div></div>\n");
             } else {
                 boolean hasKilled = lineMutations.stream().anyMatch(m -> m.killed);
                 boolean hasSurvived = lineMutations.stream().anyMatch(m -> !m.killed);
-                
+
                 String lineClass = "code-line has-mutations";
                 String indicatorClass = "mutation-indicator";
-                
+
                 if (hasSurvived) {
                     lineClass += " has-survived";
                     indicatorClass += " survived";
@@ -296,53 +253,53 @@ public class PitStyleReportGenerator {
                     lineClass += " all-killed";
                     indicatorClass += " killed";
                 }
-                
+
                 if (hasKilled && hasSurvived) {
                     indicatorClass = "mutation-indicator mixed";
                 }
-                
+
                 html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum).append("\"><div class=\"").append(indicatorClass)
-                    .append("\"></div><div class=\"line-number\">").append(lineNum)
-                    .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div>")
-                    .append(generateTooltip(lineNum, lineMutations))
-                    .append("</div>\n");
+                        .append("\"></div><div class=\"line-number\">").append(lineNum)
+                        .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div>")
+                        .append(generateTooltip(lineNum, lineMutations))
+                        .append("</div>\n");
             }
         }
-        
+
         html.append("    </div>\n");
         html.append(generateLegend());
         html.append("</div>\n");
-        
+
         return html.toString();
     }
-    
+
     private static String generateTooltip(int lineNum, List<LineMutation> mutations) {
         StringBuilder tooltip = new StringBuilder();
         tooltip.append("<div class=\"mutation-tooltip\">\n");
         tooltip.append("<div class=\"tooltip-header\">Line ").append(lineNum).append(": ")
-               .append(mutations.size()).append(" mutation(s)</div>\n");
-        
+                .append(mutations.size()).append(" mutation(s)</div>\n");
+
         for (LineMutation m : mutations) {
             String statusClass = m.killed ? "killed" : "survived";
             String statusText = m.killed ? "KILLED" : "SURVIVED";
             String statusIcon = m.killed ? "YES!" : "NO!";
-            
+
             tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
-               .append("<div>").append(statusIcon).append(" ")
-               .append("<code>").append(escapeHtml(m.original)).append("</code>")
-               .append(" To ")
-               .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
-               .append(" (column ").append(m.columnStart).append(")")
-               .append("</div>")
-               .append("<div class=\"mutation-status ").append(statusClass).append("\">")
-               .append(statusText)
-               .append("</div></div>\n");
+                    .append("<div>").append(statusIcon).append(" ")
+                    .append("<code>").append(escapeHtml(m.original)).append("</code>")
+                    .append(" To ")
+                    .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
+                    .append(" (column ").append(m.columnStart).append(")")
+                    .append("</div>")
+                    .append("<div class=\"mutation-status ").append(statusClass).append("\">")
+                    .append(statusText)
+                    .append("</div></div>\n");
         }
-        
+
         tooltip.append("</div>\n");
         return tooltip.toString();
     }
-    
+
     private static String generateLegend() {
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"legend\">\n");
@@ -355,16 +312,16 @@ public class PitStyleReportGenerator {
         sb.append("</div>\n");
         return sb.toString();
     }
-    
+
     private static String generateFooter() {
         return "</div>\n</body>\n</html>";
     }
-    
+
     private static String escapeHtml(String text) {
         return text.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace("\"", "&quot;")
-                   .replace("'", "&#39;");
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }
