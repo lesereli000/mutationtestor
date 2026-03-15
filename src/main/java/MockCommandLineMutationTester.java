@@ -1,3 +1,5 @@
+import org.apache.commons.io.FileUtils;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -10,13 +12,13 @@ import java.io.FileWriter;
 
 public class MockCommandLineMutationTester {
     static class MockSurvivedMutant {
-        String file;
-        int line;
-        int column;
-        String original;
-        String mutated;
-        String operator;
-        String replacement;
+        public String file;
+        public int line;
+        public int column;
+        public String original;
+        public String mutated;
+        public String operator;
+        public String replacement;
         MockSurvivedMutant(String file, int line, int column, String original, String mutated, String operator, String replacement) {
             this.file = file;
             this.line = line;
@@ -68,7 +70,7 @@ public class MockCommandLineMutationTester {
         if(projectPath.equals(Path.of("./samples/MavenProject"))) {
             int numLangs = 1;
             String[] langsPresent = {"Java"};
-            fileExt = "java";
+            fileExt = ".java";
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Language(s) detected: " + Arrays.toString(langsPresent));
@@ -76,7 +78,7 @@ public class MockCommandLineMutationTester {
         } else if(projectPath.equals(Path.of("./samples/PytestProject"))){
             int numLangs = 1;
             String[] langsPresent = {"Python"};
-            fileExt = "py";
+            fileExt = ".py";
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
@@ -100,7 +102,7 @@ public class MockCommandLineMutationTester {
         } else if(projectPath.equals(Path.of("./samples/JSProject"))){
             int numLangs = 1;
             String[] langsPresent = {"JavaScript"};
-            fileExt = "js";
+            fileExt = ".js";
 
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
@@ -184,7 +186,7 @@ public class MockCommandLineMutationTester {
         try {
             double mutationScore = ((double) killed / (killed + survived)) * 100.0;
             PitStyleReportGenerator.generatePitStyleReport(
-                "samples/prototypeSample.java",
+                "samples/prototypeSample" + fileExt,
                 "./output/report/pit-style-report.html",
                 survivedMutants,
                 mutantsMade - buildFailures,
@@ -196,6 +198,18 @@ public class MockCommandLineMutationTester {
             System.out.println("   Open this file to view source code with HOVER TOOLTIPS!");
         } catch (IOException e) {
             System.err.println("Error generating PIT-style report: " + e.getMessage());
+        }
+
+        // Generate All Survivors page with filtering
+        try {
+            AllSurvivorsPageGenerator.generateAllSurvivorsPage(
+                    survivedMutants,
+                    "./output/report/all-survivors.html"
+            );
+            System.out.println("\nAll Survivors page generated: all-survivors.html");
+            System.out.println("   Click any survivor to jump to its location in the source code!");
+        } catch (IOException e) {
+            System.err.println("Error generating All Survivors page: " + e.getMessage());
         }
 
         System.out.println("\n------------------------------------------\n");
@@ -220,7 +234,7 @@ public class MockCommandLineMutationTester {
             String replacement = replacements[opIdx];
             String original = String.format("return x %s y;", operator);
             String mutated = String.format("return x %s y;", replacement);
-            
+
             mutants.add(new MockSurvivedMutant(file, line, column, original, mutated, operator, replacement));
         }
         
@@ -249,18 +263,17 @@ public class MockCommandLineMutationTester {
             System.out.printf("Total Survived: %d (showing first 20, see HTML report for complete list)\n\n", survived);
             for(int i = 0; i < Math.min(20, survivedMutants.size()); i++){
                 MockSurvivedMutant m = survivedMutants.get(i);
-                System.out.printf("[%d] %s:%d:%d - %s → %s\n", 
+                System.out.printf("[%d] %s:%d:%d - %s To %s\n", 
                     i + 1, m.file, m.line, m.column, m.operator, m.replacement);
             }
             System.out.println("\n  " + (survived - 20) + " more survived mutants not shown.");
-            System.out.println("   Open mutation-report-demo.html to view all survivors with interactive tooltips!");
+            System.out.println("   Open mutation-report-demo.html to vie    w all survivors with interactive tooltips!");
         } else {
             System.out.println("Mutants that survived:\n");
-            for(int i = 0; i < survivedMutants.size(); i++){
-                MockSurvivedMutant m = survivedMutants.get(i);
+            for (MockSurvivedMutant m : survivedMutants) {
                 System.out.println("--------------------------");
                 System.out.printf("Location: %s, line %d, column %d\n", m.file, m.line, m.column);
-                System.out.printf("Mutation: %s → %s\n", m.operator, m.replacement);
+                System.out.printf("Mutation: %s To %s\n", m.operator, m.replacement);
                 System.out.printf("Original: %s\n", m.original);
                 System.out.printf("Mutated:  %s\n", m.mutated);
             }
@@ -333,6 +346,13 @@ public class MockCommandLineMutationTester {
                                   "            </div>\n", survived));
         html.append("        </div>\n");
         
+
+        // Survivors section with link to all survivors page
+        html.append("        <div class=\"survivors-section\">\n");
+        html.append("            <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\">\n");
+        html.append("                <h2>Survived Mutants By File</h2>\n");
+        html.append("                <a href=\"all-survivors.html\" style=\"padding: 10px 20px; background: #e74c3c; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;\">View All Survivors →</a>\n");
+        html.append("            </div>\n");
         // Survivors table
         html.append("        <div class=\"survivors-section\">\n");
         html.append("            <h2>Survived Mutants By File</h2>\n");
@@ -457,7 +477,7 @@ public class MockCommandLineMutationTester {
         html.append("        </div>\n");
 
         // Body
-        try (BufferedReader reader = new BufferedReader(new FileReader(String.format("./samples/prototypeSample.%s", fileExt)))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("./samples/prototypeSample" + fileExt))) {
 
             String line;
             int lineNum = 1;
@@ -477,8 +497,12 @@ public class MockCommandLineMutationTester {
         html.append("</body>\n</html>");
 
         // Write to file
-        try (FileWriter writer = new FileWriter(String.format("./output/report/allFiles/%s.html", file.substring(0, file.indexOf("."))))) {
+        try {
+            FileUtils.createParentDirectories(Path.of("./output/report/allFiles/").toFile());
+            FileWriter writer = new FileWriter(String.format("./output/report/allFiles/%s.html", file.substring(0, file.indexOf("."))));
             writer.write(html.toString());
+        } catch (Exception e) {
+            System.out.println("Error creating individual reports " + e.getMessage());
         }
     }
 
