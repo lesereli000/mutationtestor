@@ -97,7 +97,6 @@ public class HtmlReportGenerator {
 
         html.append("        <div class=\"header\">\n");
         html.append("            <h1>Mutation Testing Report</h1>\n");
-        html.append("            <p>Interactive Demo - Prototype Report</p>\n");
         html.append("        </div>\n");
 
         html.append("        <div class=\"summary\">\n");
