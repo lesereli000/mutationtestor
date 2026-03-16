@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -8,7 +9,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.Iterator;  
+import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 
@@ -16,11 +19,17 @@ public class Main {
     private static final long MAX_CMD_TIME = 60000;
     private static final String WORKING_DIR = "output/";
 
+    static class Config {
+        String sourceCodeDirectory;
+        String mutatorType;
+        String compileCommand;
+        String testCommand;
+    }
+
     static String runCommand(String command, String directory) {
         Process process;
         List<String> commandList = new ArrayList<>(Arrays.asList(command.split(" ")));
         try {
-            // run the command on the correct shell based on OS
             String os = System.getProperty("os.name").toLowerCase();
             ProcessBuilder pb;
             if (os.contains("win")) {
@@ -29,7 +38,6 @@ public class Main {
                 pb = new ProcessBuilder("sh", "-c", command);
             }
 
-            // change child process's directory to
             File workingDir;
             if (directory != null) {
                 workingDir = new File(directory);
@@ -46,7 +54,6 @@ public class Main {
             return "";
         }
 
-        // Consume output while child process runs
         StringBuilder output = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream()))) {
@@ -61,7 +68,6 @@ public class Main {
             return "";
         }
 
-        // Wait for child process to finish
         try {
             boolean timeout = !process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
 
@@ -78,13 +84,12 @@ public class Main {
                 System.out.println("Error running command " + command + ": " + e.getMessage());
                 e.printStackTrace();
                 return "";
-                }
+            }
             executor.shutdown();
 
             process.destroy();
             System.out.println("Process " + commandList.get(0) + " finished");
             return output.toString();
-
 
         } catch (InterruptedException e) {
             process.destroyForcibly();
@@ -95,17 +100,81 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        // TODO: Refactor to use <project_directory> <config_file>
-        if (args.length < 5) {
-            System.out.println("Usage: java src.main.java.Main <project_directory> <source_code_directory> <mutator_type> \"command to compile code\" \"command to run the code\"");
+        if (args.length != 2) {
+            System.out.println("Usage: java -jar MutationTester.jar <project_directory> <config_file>");
             return;
         }
 
-        // TODO: read config file and pass args to mutationTest
+        String projectDirectory = args[0];
+        String configFile = args[1];
 
-        mutationTest(args[0], args[1], args[2], args[3], args[4]);
+        Config config;
+        try {
+            config = readConfig(configFile);
+        } catch (IOException e) {
+            System.out.println("Error reading config file " + configFile + ": " + e.getMessage());
+            return;
+        }
+
+        mutationTest(
+                projectDirectory,
+                config.sourceCodeDirectory,
+                config.mutatorType,
+                config.compileCommand,
+                config.testCommand
+        );
 
         System.out.println("Quitting");
+    }
+
+    private static Config readConfig(String configFile) throws IOException {
+        Path configPath = Path.of(configFile);
+
+        if (!Files.exists(configPath)) {
+            throw new IOException("Config file not found");
+        }
+
+        Map<String, String> values = new HashMap<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(configPath.toFile()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+
+                int idx = line.indexOf('=');
+                if (idx < 0) {
+                    continue;
+                }
+
+                String key = line.substring(0, idx).trim();
+                String value = line.substring(idx + 1).trim();
+                values.put(key, value);
+            }
+        }
+
+        Config config = new Config();
+        config.sourceCodeDirectory = values.get("source_code_directory");
+        config.mutatorType = values.get("mutator_type");
+        config.compileCommand = values.getOrDefault("compile_command", "");
+        config.testCommand = values.get("test_command");
+
+        if (config.sourceCodeDirectory == null || config.sourceCodeDirectory.isEmpty()) {
+            throw new IOException("Missing source_code_directory in config file");
+        }
+
+        if (config.mutatorType == null || config.mutatorType.isEmpty()) {
+            throw new IOException("Missing mutator_type in config file");
+        }
+
+        if (config.testCommand == null || config.testCommand.isEmpty()) {
+            throw new IOException("Missing test_command in config file");
+        }
+
+        return config;
     }
 
     private static void mutationTest(String projectDir, String sourceCode, String mutatorType, String command1, String command2) {
@@ -113,8 +182,6 @@ public class Main {
         Path sourcePath = Path.of(sourceCode);
         Path mutantPath = Path.of(WORKING_DIR);
 
-
-        // clone project directory into our working directory
         System.out.println("Setting up working directory");
         try {
             FileUtils.deleteDirectory(mutantPath.toFile());
@@ -125,17 +192,18 @@ public class Main {
         }
         System.out.println("Working directory created: " + mutantPath);
 
-        // Run baseline tests (verify tests pass on original code)
         System.out.println("\nRunning baseline tests");
+        if (!command1.isEmpty()) {
+            runCommand(command1, mutantPath.toString());
+        }
         String baselineOutput = runCommand(command2, mutantPath.toString());
-         if (hasTestFailures(baselineOutput)) {
+        if (hasTestFailures(baselineOutput)) {
             System.err.println("ERROR: Tests fail on original code! Fix tests before running mutation testing.");
             System.err.println("Baseline output:\n" + baselineOutput);
             return;
         }
         System.out.println("Baseline tests pass");
 
-        // scan for mutation points
         System.out.println("\nScanning for mutations...");
         Path sourceDir = mutantPath.resolve(sourcePath);
         List<MutationPoint> mutationPoints = scanForMutations(
@@ -148,31 +216,7 @@ public class Main {
             System.out.println("No mutations found. Exiting.");
             return;
         }
-                
-        // mutate the files
 
-        //old mutate all approach
-        // try {
-        //     String mutatedCode = Mutator.mutate(sourcePath, Mutator.MutatorType.valueOf(mutatorType));
-        //     Files.createDirectories(mutantPath.getParent());
-        //     Files.writeString(mutantPath, mutatedCode);
-        // } catch (Exception e) {
-        //     System.out.println("Error mutating code: " + e.getMessage());
-        //     e.printStackTrace();
-        // }
-        // // run tests
-        // String compileOutput;
-        // String runOutput;
-        // if (!command1.isEmpty()) {
-        //     String compileCommand = command1.replace(sourcePath.toString(), mutantPath.toAbsolutePath().toString());
-        //     compileOutput = runCommand(compileCommand, mutantPath.toString());
-        // }
-        // if (!command2.isEmpty()) {
-        //     String runCommand = command2.replace(sourcePath.toString(), mutantPath.toAbsolutePath().toString());
-        //     runOutput = runCommand(runCommand, mutantPath.toString());
-        // }
-
-        // Test each mutant ONE at a time
         System.out.println("\nTesting mutants");
         List<MutantResult> results = new ArrayList<>();
         int current = 1;
@@ -180,7 +224,7 @@ public class Main {
         for (MutationPoint point : mutationPoints) {
             System.out.printf("[%d/%d] Testing %s:%d:%d (%s → %s)... ",
                     current++,
-                    mutationPoints.size(),  
+                    mutationPoints.size(),
                     point.getSourceFile().getName(),
                     point.getLineNumber(),
                     point.getColumnNumber(),
@@ -188,10 +232,9 @@ public class Main {
                     point.getReplacement()
             );
 
-            MutantResult result = testSingleMutant(point, mutantPath, command2);
+            MutantResult result = testSingleMutant(point, mutantPath, command1, command2);
             results.add(result);
 
-            // Print result
             if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
                 System.out.println("KILLED");
             } else if (result.getStatus() == MutantResult.MutantStatus.SURVIVED) {
@@ -203,51 +246,53 @@ public class Main {
             }
         }
 
-        // generate report
         System.out.println("\nGenerating report");
         MutationReport report = new MutationReport(results);
-        report.printReport();   
+        report.printReport();
+
+        try {
+            HtmlReportGenerator.generateHtmlReport(report, results);
+            System.out.println("HTML report generated at: output/report/mutation-report.html");
+        } catch (IOException e) {
+            System.err.println("Failed to generate HTML report: " + e.getMessage());
+        }
 
         System.out.println("\n Mutation testing complete");
     }
 
-    //helper metehods below
- 
-    //Tests a single mutant by applying the mutation, running tests, and checking results
     private static MutantResult testSingleMutant(
             MutationPoint point,
             Path workingDir,
+            String compileCommand,
             String testCommand
     ) {
-    File originalFile = point.getSourceFile();
+        File originalFile = point.getSourceFile();
         String originalContent = null;
 
         try {
-            // Backup original file content
             originalContent = Files.readString(originalFile.toPath());
 
-            // Apply the mutation
             String mutatedContent = applyMutation(originalContent, point);
             Files.writeString(originalFile.toPath(), mutatedContent);
 
-            // Run tests on the mutated code
+            if (!compileCommand.isEmpty()) {
+                String compileOutput = runCommand(compileCommand, workingDir.toString());
+            }
+
             String testOutput = runCommand(testCommand, workingDir.toString());
 
-            // Check if tests failed
             boolean testsPass = !hasTestFailures(testOutput);
 
-            // Determine status
             MutantResult.MutantStatus status;
             if (testsPass) {
-                status = MutantResult.MutantStatus.SURVIVED;  // Tests didn't catch mutation
+                status = MutantResult.MutantStatus.SURVIVED;
             } else {
-                status = MutantResult.MutantStatus.KILLED;    // Tests caught mutation
+                status = MutantResult.MutantStatus.KILLED;
             }
 
             return new MutantResult(point, status, testOutput, testsPass);
 
         } catch (IOException e) {
-            // Compilation or file error
             return new MutantResult(
                     point,
                     MutantResult.MutantStatus.COMPILE_ERROR,
@@ -255,7 +300,6 @@ public class Main {
                     false
             );
         } finally {
-            // 6. ALWAYS restore original file
             if (originalContent != null) {
                 try {
                     Files.writeString(originalFile.toPath(), originalContent);
@@ -266,11 +310,8 @@ public class Main {
         }
     }
 
-    //Applies a single mutation to the source code at the specified location
     private static String applyMutation(String content, MutationPoint point) {
-        String[] lines = content.split("\n", -1);  // -1 preserves trailing empty lines
-
-        // Get the line to mutate (convert to 0-indexed)
+        String[] lines = content.split("\n", -1);
         int lineIndex = point.getLineNumber() - 1;
 
         if (lineIndex < 0 || lineIndex >= lines.length) {
@@ -280,13 +321,11 @@ public class Main {
 
         String line = lines[lineIndex];
 
-        // Check if column is valid
         if (point.getColumnNumber() < 0 || point.getColumnNumber() >= line.length()) {
             System.err.println("Warning: Column number " + point.getColumnNumber() + " out of bounds");
             return content;
         }
 
-        // Replace character at specific column
         char[] chars = line.toCharArray();
         chars[point.getColumnNumber()] = point.getReplacement().charAt(0);
         lines[lineIndex] = new String(chars);
@@ -294,21 +333,19 @@ public class Main {
         return String.join("\n", lines);
     }
 
-    //Checks if test output contains failure indicators
     private static boolean hasTestFailures(String output) {
         if (output == null || output.isEmpty()) {
             return false;
         }
 
-        // Regex pattern to detect failures in test output
-        // Matches: "2 failures", "Failures: 2", "2 failed", "2 Failures"
-        String pattern = "[1-9]\\d* [Ff]ailure\\(?s?\\)?|[Ff]ailure\\(?s?\\)?: [1-9]\\d*|[1-9]\\d* [Ff]ailed";
-        String[] split = output.split(pattern);
+        String lower = output.toLowerCase();
 
-        return split.length > 1;
+        return lower.matches("(?s).*\\b[1-9]\\d*\\s+failure(s)?\\b.*")
+                || lower.matches("(?s).*\\bfailure(s)?\\s*:\\s*[1-9]\\d*\\b.*")
+                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
+                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*");
     }
 
-    //Scans a directory for all mutation points
     private static List<MutationPoint> scanForMutations(
             Path sourceDir,
             Mutator.MutatorType type
@@ -316,12 +353,10 @@ public class Main {
         List<MutationPoint> points = new ArrayList<>();
 
         try {
-            // Iterate through all files in source directory
             for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false);
                  it.hasNext(); ) {
                 File file = it.next();
 
-                // Find mutation points in this file
                 List<MutationPoint> filePoints = findMutationsInFile(file, type);
                 points.addAll(filePoints);
             }
@@ -333,7 +368,6 @@ public class Main {
         return points;
     }
 
-    //Finds all mutation points in a single file
     private static List<MutationPoint> findMutationsInFile(
             File file,
             Mutator.MutatorType type
@@ -342,25 +376,22 @@ public class Main {
         String content = Files.readString(file.toPath());
         String[] lines = content.split("\n", -1);
 
-        // Scan each line for mutation opportunities
         for (int lineNum = 0; lineNum < lines.length; lineNum++) {
             String line = lines[lineNum];
 
-            // For PLUS_TO_MINUS: find all + operators
             if (type == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
                 for (int col = 0; col < line.length(); col++) {
                     if (line.charAt(col) == '+' && !isInStringOrComment(line, col)) {
-                        // Avoid ++ (increment operator)
                         if (col + 1 < line.length() && line.charAt(col + 1) == '+') {
-                            continue;  // Skip ++
+                            continue;
                         }
                         if (col > 0 && line.charAt(col - 1) == '+') {
-                            continue;  // Skip second + in ++
+                            continue;
                         }
 
                         MutationPoint point = new MutationPoint(
                                 file,
-                                lineNum + 1,  // Convert to 1-indexed
+                                lineNum + 1,
                                 col,
                                 "+",
                                 "-",
@@ -371,25 +402,22 @@ public class Main {
                 }
             }
 
-            // For MINUS_TO_PLUS: find all - operators
             if (type == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
                 for (int col = 0; col < line.length(); col++) {
                     if (line.charAt(col) == '-' && !isInStringOrComment(line, col)) {
-                        // Avoid -- (decrement operator)
                         if (col + 1 < line.length() && line.charAt(col + 1) == '-') {
-                            continue;  // Skip --
+                            continue;
                         }
                         if (col > 0 && line.charAt(col - 1) == '-') {
-                            continue;  // Skip second - in --
+                            continue;
                         }
-                        // Avoid -> (arrow operator)
                         if (col + 1 < line.length() && line.charAt(col + 1) == '>') {
-                            continue;  // Skip ->
+                            continue;
                         }
 
                         MutationPoint point = new MutationPoint(
                                 file,
-                                lineNum + 1,  // Convert to 1-indexed
+                                lineNum + 1,
                                 col,
                                 "-",
                                 "+",
@@ -404,22 +432,17 @@ public class Main {
         return points;
     }
 
-    //Simple check to avoid mutating operators inside strings or comments
-
     private static boolean isInStringOrComment(String line, int position) {
-        // Check if position is inside a string
         boolean inString = false;
         char stringDelimiter = '\0';
 
         for (int i = 0; i < position; i++) {
             char c = line.charAt(i);
 
-            // Check for escape sequences
             if (i > 0 && line.charAt(i - 1) == '\\') {
-                continue;  // Skip escaped characters
+                continue;
             }
 
-            // Toggle string state
             if (c == '"' || c == '\'') {
                 if (!inString) {
                     inString = true;
@@ -435,7 +458,6 @@ public class Main {
             return true;
         }
 
-        // Check if position is inside a line comment
         int commentStart = line.indexOf("//");
         if (commentStart >= 0 && commentStart < position) {
             return true;

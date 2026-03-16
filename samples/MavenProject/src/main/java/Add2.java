@@ -5,3 +5,6 @@ public class Add2 {
         return x + 2;
     }
 }
+
+
+
