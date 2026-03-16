@@ -2,11 +2,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
-import java.util.regex.*;
-
-
-//Generates PIT-style HTML report with source code view and mutation overlays
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PitStyleReportGenerator {
 
@@ -39,8 +41,7 @@ public class PitStyleReportGenerator {
     ) throws IOException {
 
         List<String> sourceLines = Files.readAllLines(Path.of(sourceFilePath));
-
-        List<LineMutation> mutations = convertMutations(allMutants, sourceLines);
+        List<LineMutation> mutations = convertMutations(allMutants);
 
         Map<Integer, List<LineMutation>> mutationsByLine = new HashMap<>();
         for (LineMutation m : mutations) {
@@ -59,64 +60,26 @@ public class PitStyleReportGenerator {
         }
     }
 
-    private static List<LineMutation> convertMutations(List<?> allMutants, List<String> sourceLines) {
+    private static List<LineMutation> convertMutations(List<?> allMutants) {
         List<LineMutation> mutations = new ArrayList<>();
 
         for (Object mutant : allMutants) {
             try {
                 if (mutant instanceof MutantResult result) {
                     MutationPoint point = result.getMutationPoint();
-                    int line = point.getLineNumber();
-                    int col = point.getColumnNumber();
-                    String original = point.getOperator();
-                    String mutated = point.getReplacement();
                     boolean killed = result.getStatus() == MutantResult.MutantStatus.KILLED;
 
                     mutations.add(new LineMutation(
-                            line,
-                            col,
-                            col + Math.max(1, original.length()),
-                            original,
-                            mutated,
+                            point.getLineNumber(),
+                            point.getColumnNumber(),
+                            point.getColumnNumber() + point.getOperator().length(),
+                            point.getOperator(),
+                            point.getReplacement(),
                             killed
                     ));
-                    continue;
                 }
-
-                int line = (int) mutant.getClass().getField("line").get(mutant);
-                int col = (int) mutant.getClass().getField("column").get(mutant);
-                String original = "";
-                String mutated = "";
-                boolean killed = false;
-
-                try {
-                    original = (String) mutant.getClass().getField("original").get(mutant);
-                } catch (Exception e) {
-                    original = "";
-                }
-
-                try {
-                    mutated = (String) mutant.getClass().getField("mutated").get(mutant);
-                } catch (Exception e) {
-                    mutated = "";
-                }
-
-                try {
-                    killed = (boolean) mutant.getClass().getField("killed").get(mutant);
-                } catch (Exception e) {
-                    killed = false;
-                }
-
-                mutations.add(new LineMutation(
-                        line,
-                        col,
-                        col + 1,
-                        original,
-                        mutated,
-                        killed
-                ));
             } catch (Exception e) {
-                System.err.println("Error converting mutation for PIT report: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
@@ -129,7 +92,7 @@ public class PitStyleReportGenerator {
     }
 
     private static boolean isAddingStrings(String line, int pos) {
-        return posIsInRegex(line, pos,"\"\\s*\\+|\\+\\s*\"");
+        return posIsInRegex(line, pos, "\"\\s*\\+|\\+\\s*\"");
     }
 
     private static boolean isDouble(String line, int pos, String symbol) {
@@ -237,7 +200,7 @@ public class PitStyleReportGenerator {
             List<LineMutation> lineMutations = mutationsByLine.get(lineNum);
 
             if (lineMutations == null || lineMutations.isEmpty()) {
-                html.append("<div class=\"code-line\" id=\"line-").append(lineNum).append("\"><div class=\"line-number\">").append(lineNum)
+                html.append("<div class=\"code-line\"><div class=\"line-number\">").append(lineNum)
                         .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div></div>\n");
             } else {
                 boolean hasKilled = lineMutations.stream().anyMatch(m -> m.killed);
@@ -258,8 +221,8 @@ public class PitStyleReportGenerator {
                     indicatorClass = "mutation-indicator mixed";
                 }
 
-                html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum).append("\"><div class=\"").append(indicatorClass)
-                        .append("\"></div><div class=\"line-number\">").append(lineNum)
+                html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum).append("\"><div class=\"")
+                        .append(indicatorClass).append("\"></div><div class=\"line-number\">").append(lineNum)
                         .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div>")
                         .append(generateTooltip(lineNum, lineMutations))
                         .append("</div>\n");
@@ -282,14 +245,14 @@ public class PitStyleReportGenerator {
         for (LineMutation m : mutations) {
             String statusClass = m.killed ? "killed" : "survived";
             String statusText = m.killed ? "KILLED" : "SURVIVED";
-            String statusIcon = m.killed ? "YES!" : "NO!";
+            String statusIcon = m.killed ? "✓" : "✗";
+            String operatorName = getMutationOperatorName(m.original, m.mutated);
 
             tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
                     .append("<div>").append(statusIcon).append(" ")
-                    .append("<code>").append(escapeHtml(m.original)).append("</code>")
-                    .append(" To ")
-                    .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
-                    .append(" (column ").append(m.columnStart).append(")")
+                    .append("<strong>").append(escapeHtml(operatorName)).append("</strong>")
+                    .append(" (").append(escapeHtml(m.original)).append(" → ").append(escapeHtml(m.mutated)).append(")")
+                    .append(" at column ").append(m.columnStart)
                     .append("</div>")
                     .append("<div class=\"mutation-status ").append(statusClass).append("\">")
                     .append(statusText)
@@ -298,6 +261,62 @@ public class PitStyleReportGenerator {
 
         tooltip.append("</div>\n");
         return tooltip.toString();
+    }
+
+    private static String getMutationOperatorName(String original, String mutated) {
+        if ("+".equals(original) && "-".equals(mutated)) return "AOR_PLUS_TO_MINUS";
+        if ("-".equals(original) && "+".equals(mutated)) return "AOR_MINUS_TO_PLUS";
+        if ("*".equals(original) && "/".equals(mutated)) return "AOR_MULTIPLY_TO_DIVIDE";
+        if ("/".equals(original) && "*".equals(mutated)) return "AOR_DIVIDE_TO_MULTIPLY";
+        if ("%".equals(original) && "*".equals(mutated)) return "AOR_MODULO_TO_MULTIPLY";
+        if ("++".equals(original) && "--".equals(mutated)) return "AOR_INCREMENT_TO_DECREMENT";
+        if ("--".equals(original) && "++".equals(mutated)) return "AOR_DECREMENT_TO_INCREMENT";
+
+        if (">".equals(original) && ">=".equals(mutated)) return "ROR_GT_TO_GE";
+        if (">".equals(original) && "<".equals(mutated)) return "ROR_GT_TO_LT";
+        if (">".equals(original) && "<=".equals(mutated)) return "ROR_GT_TO_LE";
+        if (">".equals(original) && "==".equals(mutated)) return "ROR_GT_TO_EQ";
+        if (">".equals(original) && "!=".equals(mutated)) return "ROR_GT_TO_NE";
+
+        if (">=".equals(original) && ">".equals(mutated)) return "ROR_GE_TO_GT";
+        if (">=".equals(original) && "<".equals(mutated)) return "ROR_GE_TO_LT";
+        if (">=".equals(original) && "<=".equals(mutated)) return "ROR_GE_TO_LE";
+
+        if ("<".equals(original) && "<=".equals(mutated)) return "ROR_LT_TO_LE";
+        if ("<".equals(original) && ">".equals(mutated)) return "ROR_LT_TO_GT";
+        if ("<".equals(original) && ">=".equals(mutated)) return "ROR_LT_TO_GE";
+
+        if ("<=".equals(original) && "<".equals(mutated)) return "ROR_LE_TO_LT";
+        if ("<=".equals(original) && ">".equals(mutated)) return "ROR_LE_TO_GT";
+        if ("<=".equals(original) && ">=".equals(mutated)) return "ROR_LE_TO_GE";
+
+        if ("==".equals(original) && "!=".equals(mutated)) return "ROR_EQ_TO_NE";
+        if ("!=".equals(original) && "==".equals(mutated)) return "ROR_NE_TO_EQ";
+
+        if ("&&".equals(original) && "||".equals(mutated)) return "LCR_AND_TO_OR";
+        if ("||".equals(original) && "&&".equals(mutated)) return "LCR_OR_TO_AND";
+        if ("and".equals(original) && "or".equals(mutated)) return "LCR_AND_TO_OR";
+        if ("or".equals(original) && "and".equals(mutated)) return "LCR_OR_TO_AND";
+
+        if ("!".equals(original)) return "UOI_NEGATE";
+        if ("not".equals(original)) return "UOI_NEGATE";
+
+        if ("&".equals(original) && "|".equals(mutated)) return "BOR_AND_TO_OR";
+        if ("|".equals(original) && "&".equals(mutated)) return "BOR_OR_TO_AND";
+        if ("^".equals(original) && "&".equals(mutated)) return "BOR_XOR_TO_AND";
+        if ("<<".equals(original) && ">>".equals(mutated)) return "BOR_LSHIFT_TO_RSHIFT";
+        if (">>".equals(original) && "<<".equals(mutated)) return "BOR_RSHIFT_TO_LSHIFT";
+
+        return "MUTATION_" + sanitizeOperatorName(original) + "_TO_" + sanitizeOperatorName(mutated);
+    }
+
+    private static String sanitizeOperatorName(String value) {
+        if (value == null || value.isEmpty()) {
+            return "UNKNOWN";
+        }
+        String sanitized = value.toUpperCase().replaceAll("[^A-Z0-9]+", "_");
+        sanitized = sanitized.replaceAll("^_+", "").replaceAll("_+$", "");
+        return sanitized.isEmpty() ? "UNKNOWN" : sanitized;
     }
 
     private static String generateLegend() {
@@ -318,6 +337,9 @@ public class PitStyleReportGenerator {
     }
 
     private static String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
         return text.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
