@@ -317,32 +317,86 @@ public class PitStyleReportGenerator {
     }
     
     private static String generateTooltip(int lineNum, List<LineMutation> mutations) {
-        StringBuilder tooltip = new StringBuilder();
-        tooltip.append("<div class=\"mutation-tooltip\">\n");
-        tooltip.append("<div class=\"tooltip-header\">Line ").append(lineNum).append(": ")
-               .append(mutations.size()).append(" mutation(s)</div>\n");
-        
+            StringBuilder tooltip = new StringBuilder();
+            tooltip.append("<div class=\"mutation-tooltip\">\n");
+            tooltip.append("<div class=\"tooltip-header\">Line ").append(lineNum).append(": ")
+                   .append(mutations.size()).append(" mutation(s)</div>\n");
+    
         for (LineMutation m : mutations) {
             String statusClass = m.killed ? "killed" : "survived";
             String statusText = m.killed ? "KILLED" : "SURVIVED";
-            String statusIcon = m.killed ? "YES!" : "NO!";
-            
+            String statusIcon = m.killed ? "✓" : "✗";
+        
+            // Determine mutation operator name based on the mutation
+            String operatorName = getMutationOperatorName(m.original, m.mutated);
+
             tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
                .append("<div>").append(statusIcon).append(" ")
-               .append("<code>").append(escapeHtml(m.original)).append("</code>")
-               .append(" To ")
-               .append("<code>").append(escapeHtml(m.mutated)).append("</code>")
-               .append(" (column ").append(m.columnStart).append(")")
+               .append("<strong>").append(operatorName).append("</strong>")
+               .append(" (").append(escapeHtml(m.original)).append(" → ").append(escapeHtml(m.mutated)).append(")")
+               .append(" at column ").append(m.columnStart)
                .append("</div>")
                .append("<div class=\"mutation-status ").append(statusClass).append("\">")
                .append(statusText)
                .append("</div></div>\n");
         }
-        
+    
         tooltip.append("</div>\n");
         return tooltip.toString();
     }
+
+        private static String getMutationOperatorName(String original, String mutated) {
+        // Arithmetic Operator Replacement (AOR)
+        if (original.equals("+") && mutated.equals("-")) return "AOR_PLUS_TO_MINUS";
+        if (original.equals("-") && mutated.equals("+")) return "AOR_MINUS_TO_PLUS";
+        if (original.equals("*") && mutated.equals("/")) return "AOR_MULTIPLY_TO_DIVIDE";
+        if (original.equals("/") && mutated.equals("*")) return "AOR_DIVIDE_TO_MULTIPLY";
+        if (original.equals("%") && mutated.equals("*")) return "AOR_MODULO_TO_MULTIPLY";
+        if (original.equals("++")) return "AOR_INCREMENT_TO_DECREMENT";
+        if (original.equals("--")) return "AOR_DECREMENT_TO_INCREMENT";
     
+        // Relational Operator Replacement (ROR)
+        if (original.equals(">") && mutated.equals(">=")) return "ROR_GT_TO_GE";
+        if (original.equals(">") && mutated.equals("<")) return "ROR_GT_TO_LT";
+        if (original.equals(">") && mutated.equals("<=")) return "ROR_GT_TO_LE";
+        if (original.equals(">") && mutated.equals("==")) return "ROR_GT_TO_EQ";
+        if (original.equals(">") && mutated.equals("!=")) return "ROR_GT_TO_NE";
+    
+        if (original.equals(">=") && mutated.equals(">")) return "ROR_GE_TO_GT";
+        if (original.equals(">=") && mutated.equals("<")) return "ROR_GE_TO_LT";
+        if (original.equals(">=") && mutated.equals("<=")) return "ROR_GE_TO_LE";
+    
+        if (original.equals("<") && mutated.equals("<=")) return "ROR_LT_TO_LE";
+        if (original.equals("<") && mutated.equals(">")) return "ROR_LT_TO_GT";
+        if (original.equals("<") && mutated.equals(">=")) return "ROR_LT_TO_GE";
+    
+        if (original.equals("<=") && mutated.equals("<")) return "ROR_LE_TO_LT";
+        if (original.equals("<=") && mutated.equals(">")) return "ROR_LE_TO_GT";
+        if (original.equals("<=") && mutated.equals(">=")) return "ROR_LE_TO_GE";
+    
+        if (original.equals("==") && mutated.equals("!=")) return "ROR_EQ_TO_NE";
+        if (original.equals("!=") && mutated.equals("==")) return "ROR_NE_TO_EQ";
+    
+        // Logical Connector Replacement (LCR)
+        if (original.equals("&&") && mutated.equals("||")) return "LCR_AND_TO_OR";
+        if (original.equals("||") && mutated.equals("&&")) return "LCR_OR_TO_AND";
+        if (original.equals("and") && mutated.equals("or")) return "LCR_AND_TO_OR";
+        if (original.equals("or") && mutated.equals("and")) return "LCR_OR_TO_AND";
+    
+        // Unary Operator Insertion (UOI)
+        if (original.equals("!")) return "UOI_NEGATE";
+        if (original.equals("not")) return "UOI_NEGATE";
+    
+        // Bitwise Operator Replacement (BOR)
+        if (original.equals("&") && mutated.equals("|")) return "BOR_AND_TO_OR";
+        if (original.equals("|") && mutated.equals("&")) return "BOR_OR_TO_AND";
+        if (original.equals("^") && mutated.equals("&")) return "BOR_XOR_TO_AND";
+        if (original.equals("<<") && mutated.equals(">>")) return "BOR_LSHIFT_TO_RSHIFT";
+        if (original.equals(">>") && mutated.equals("<<")) return "BOR_RSHIFT_TO_LSHIFT";
+    
+        // If no match found, return generic format
+        return "MUTATION_" + escapeHtml(original) + "_TO_" + escapeHtml(mutated);
+    }
     private static String generateLegend() {
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"legend\">\n");
