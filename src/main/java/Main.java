@@ -13,7 +13,14 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.antlr.v4.gui.TreeViewer;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.CharStreams;
+
 import org.apache.commons.io.FileUtils;
+
+import javax.swing.*;
 
 public class Main {
     private static final long MAX_CMD_TIME = 60000;
@@ -100,6 +107,13 @@ public class Main {
     }
 
     public static void main(String[] args) {
+
+        // These are for testing purposes because the GUI tree view does not open in test mode
+        MyParser py = new MyParser("samples/PytestProject/src/Add1.py");
+        MyParser java = new MyParser("samples/MavenProject/src/main/java/Add1.java");
+        MyParser js = new MyParser("samples/JSProject/src/Add1.js");
+        MyParser cs = new MyParser("samples/CSProject/src/CSProject/Add1.cs");
+
         if (args.length != 2) {
             System.out.println("Usage: java -jar MutationTester.jar <project_directory> <config_file>");
             return;
