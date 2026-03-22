@@ -53,12 +53,28 @@ public class AllSurvivorsPageGenerator {
         // Try to extract data using reflection
         for (Object mutant : mutants) {
             try {
+                if (mutant instanceof MutantResult result) {
+                    MutationPoint point = result.getMutationPoint();
+
+                    String file = point.getSourceFile().getName();
+                    int line = point.getLineNumber();
+                    int column = point.getColumnNumber();
+                    String operator = point.getOperator();
+                    String replacement = point.getReplacement();
+                    String original = "return x " + operator + " y;";
+                    String operatorName = getMutationOperatorName(operator, replacement);
+
+                    entries.add(new SurvivorEntry(file, line, column, operator, replacement, original, operatorName));
+                    continue;
+                }
+
                 String file = (String) mutant.getClass().getField("file").get(mutant);
                 int line = (int) mutant.getClass().getField("line").get(mutant);
                 int column = (int) mutant.getClass().getField("column").get(mutant);
                 String operator = (String) mutant.getClass().getField("operator").get(mutant);
                 String replacement = (String) mutant.getClass().getField("replacement").get(mutant);
-                String original = "";
+
+                String original;
                 try {
                     original = (String) mutant.getClass().getField("original").get(mutant);
                 } catch (Exception e) {
@@ -202,7 +218,7 @@ public class AllSurvivorsPageGenerator {
             sb.append("data-file=\"").append(escapeHtml(s.file)).append("\" ");
             sb.append("data-line=\"").append(s.line).append("\" ");
             sb.append("data-column=\"").append(s.column).append("\" ");
-            sb.append("data-operator=\"").append(escapeHtml(s.operator)).append("\" ");
+            sb.append("data-operator=\"").append(escapeHtml(s.operatorName)).append("\" ");
             sb.append("data-replacement=\"").append(escapeHtml(s.replacement)).append("\" ");
             sb.append("onclick=\"window.location.href='pit-style-report.html#line-").append(s.line).append("'\">\n");
         
