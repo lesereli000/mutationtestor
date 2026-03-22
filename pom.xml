@@ -33,6 +33,18 @@
             <artifactId>antlr4</artifactId>
             <version>4.13.2</version>
         </dependency>
+    
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-expressions</artifactId>
+        <version>10.4.0</version>
+      </dependency>
+    
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-expressions</artifactId>
+        <version>10.4.0</version>
+      </dependency>
     </dependencies>
 
     <build>
