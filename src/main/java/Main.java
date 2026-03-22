@@ -386,9 +386,19 @@ public class Main {
             File file,
             Mutator.MutatorType type
     ) throws IOException {
+        // Check if this is a JavaScript file - use AST approach
+        if (file.getName().endsWith(".js")) {
+        System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
+        return JavaScriptMutationScanner.scanFile(file, type);
+        }
+
+        // For other files (.java, .py, .cs) k33p using existing dictionary approach
+        System.out.println("  [Dictionary] Scanning " + file.getName() + " using regex");
+    
         List<MutationPoint> points = new ArrayList<>();
         String content = Files.readString(file.toPath());
         String[] lines = content.split("\n", -1);
+ 
 
         for (int lineNum = 0; lineNum < lines.length; lineNum++) {
             String line = lines[lineNum];
