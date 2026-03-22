@@ -1,9 +1,14 @@
-namespace samples.CSProject.src;
-
-public static class Add2
+namespace samples.CSProject.src
 {
-    public static int add2(int x)
+    public static class Add2
     {
-        return x + 2;
+        public static int add2(int x)
+        {
+            return x + 2;
+        }
     }
 }
+
+
+
+

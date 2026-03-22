@@ -45,12 +45,7 @@ public class Main {
                 pb = new ProcessBuilder("sh", "-c", command);
             }
 
-            File workingDir;
-            if (directory != null) {
-                workingDir = new File(directory);
-            } else {
-                workingDir = null;
-            }
+            File workingDir = (directory != null) ? new File(directory) : null;
             pb.directory(workingDir);
             pb.redirectErrorStream(true);
             process = pb.start();
@@ -357,7 +352,10 @@ public class Main {
         return lower.matches("(?s).*\\b[1-9]\\d*\\s+failure(s)?\\b.*")
                 || lower.matches("(?s).*\\bfailure(s)?\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
-                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*");
+                || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
+                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
+                || lower.contains("build failed")
+                || lower.contains("test run failed");
     }
 
     private static List<MutationPoint> scanForMutations(
@@ -388,8 +386,13 @@ public class Main {
     ) throws IOException {
         // Check if this is a JavaScript file - use AST approach
         if (file.getName().endsWith(".js")) {
-        System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
-        return JavaScriptMutationScanner.scanFile(file, type);
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
+            return JavaScriptMutationScanner.scanFile(file, type);
+        }
+
+        if (file.getName().endsWith(".cs")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
+            return CSharpMutationScanner.scanFile(file, type);
         }
 
         // For other files (.java, .py, .cs) k33p using existing dictionary approach
