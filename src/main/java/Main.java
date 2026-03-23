@@ -104,10 +104,10 @@ public class Main {
     public static void main(String[] args) {
 
         // These are for testing purposes because the GUI tree view does not open in test mode
-        MyParser py = new MyParser("samples/PytestProject/src/Add1.py");
-        MyParser java = new MyParser("samples/MavenProject/src/main/java/Add1.java");
-        MyParser js = new MyParser("samples/JSProject/src/Add1.js");
-        MyParser cs = new MyParser("samples/CSProject/src/CSProject/Add1.cs");
+//        MyParser py = new MyParser("samples/PytestProject/src/Add1.py");
+//        MyParser java = new MyParser("samples/MavenProject/src/main/java/Add1.java");
+//        MyParser js = new MyParser("samples/JSProject/src/Add1.js");
+//        MyParser cs = new MyParser("samples/CSProject/src/CSProject/Add1.cs");
 
         if (args.length != 2) {
             System.out.println("Usage: java -jar MutationTester.jar <project_directory> <config_file>");
@@ -365,8 +365,7 @@ public class Main {
         List<MutationPoint> points = new ArrayList<>();
 
         try {
-            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false);
-                 it.hasNext(); ) {
+            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false); it.hasNext();) {
                 File file = it.next();
 
                 List<MutationPoint> filePoints = findMutationsInFile(file, type);
@@ -386,16 +385,21 @@ public class Main {
     ) throws IOException {
         // Check if this is a JavaScript file - use AST approach
         if (file.getName().endsWith(".js")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR JavaScript parser");
             return JavaScriptMutationScanner.scanFile(file, type);
         }
 
         if (file.getName().endsWith(".cs")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR parser");
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR C# parser");
             return CSharpMutationScanner.scanFile(file, type);
         }
 
-        // For other files (.java, .py, .cs) k33p using existing dictionary approach
+        if (file.getName().endsWith(".java")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
+            return JavaMutationScanner.scanFile(file, type);
+        }
+
+        // For other files (.java, .py, .cs) keep using existing dictionary approach
         System.out.println("  [Dictionary] Scanning " + file.getName() + " using regex");
     
         List<MutationPoint> points = new ArrayList<>();
