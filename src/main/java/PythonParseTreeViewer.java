@@ -8,8 +8,28 @@ import javax.swing.JFrame;
 
 /**
  * GUI viewer for Python parse trees using ANTLR's built-in tree visualization.
- * Usage: java PythonParseTreeViewer <python-file>
+ *
+ * This tool parses a Python source file and displays its parse tree in a GUI window.
+ * It also prints the source code and the parse tree (S-expression) to the console.
+ *
+ * Usage:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonParseTreeViewer" "-Dexec.args=path/to/file/filename.py" -q
+ *   or
+ *   mvn compile exec:java "-Dexec.mainClass=PythonParseTreeViewer" -q
+ *   (Run from the root folder, not src)
+ *
+ * Examples:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonParseTreeViewer" "-Dexec.args=samples\\Demo.py" -q
+ *   mvn compile exec:java "-Dexec.mainClass=PythonParseTreeViewer" "-Dexec.args=samples\\PytestProject\\src\\Add1.py" -q
+ *
+ * If no file is provided, a built-in sample Python code is used.
+ *
+ * Output:
+ *   - Prints the source code.
+ *   - Prints the parse tree (S-expression).
+ *   - Launches a GUI window showing the parse tree.
  */
+
 public class PythonParseTreeViewer {
     
     public static void main(String[] args) throws Exception {

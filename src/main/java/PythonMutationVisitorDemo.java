@@ -4,9 +4,28 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Demo program to test PythonMutationVisitor
- * Run: mvn exec:java -Dexec.mainClass="PythonMutationVisitorDemo" -Dexec.args="path/to/file.py"
+ * Demo program for the PythonMutationVisitor.
+ *
+ * This tool parses a Python source file and prints all detected mutation opportunities
+ * (arithmetic, logical, and comparison operator mutations) to the console.
+ *
+ * Usage:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=path/to/file/filename.py" -q
+ *   or
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" -q
+ *   (Run from the root folder, not src)
+ *
+ * Examples:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=samples\\Demo.py" -q
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=samples\\PytestProject\\src\\Add1.py" -q
+ *
+ * If no file is provided, a built-in sample Python code is used.
+ *
+ * Output:
+ *   - Prints the source code.
+ *   - Prints the number and details of mutation opportunities found.
  */
+
 public class PythonMutationVisitorDemo {
     
     public static void main(String[] args) throws Exception {
