@@ -13,7 +13,14 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.antlr.v4.gui.TreeViewer;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.CharStreams;
+
 import org.apache.commons.io.FileUtils;
+
+import javax.swing.*;
 
 public class Main {
     private static final long MAX_CMD_TIME = 60000;
@@ -38,12 +45,7 @@ public class Main {
                 pb = new ProcessBuilder("sh", "-c", command);
             }
 
-            File workingDir;
-            if (directory != null) {
-                workingDir = new File(directory);
-            } else {
-                workingDir = null;
-            }
+            File workingDir = (directory != null) ? new File(directory) : null;
             pb.directory(workingDir);
             pb.redirectErrorStream(true);
             process = pb.start();
@@ -100,6 +102,13 @@ public class Main {
     }
 
     public static void main(String[] args) {
+
+        // These are for testing purposes because the GUI tree view does not open in test mode
+//        MyParser py = new MyParser("samples/PytestProject/src/Add1.py");
+//        MyParser java = new MyParser("samples/MavenProject/src/main/java/Add1.java");
+//        MyParser js = new MyParser("samples/JSProject/src/Add1.js");
+//        MyParser cs = new MyParser("samples/CSProject/src/CSProject/Add1.cs");
+
         if (args.length != 2) {
             System.out.println("Usage: java -jar MutationTester.jar <project_directory> <config_file>");
             return;
@@ -343,7 +352,10 @@ public class Main {
         return lower.matches("(?s).*\\b[1-9]\\d*\\s+failure(s)?\\b.*")
                 || lower.matches("(?s).*\\bfailure(s)?\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
-                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*");
+                || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
+                || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
+                || lower.contains("build failed")
+                || lower.contains("test run failed");
     }
 
     private static List<MutationPoint> scanForMutations(
@@ -353,8 +365,7 @@ public class Main {
         List<MutationPoint> points = new ArrayList<>();
 
         try {
-            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false);
-                 it.hasNext(); ) {
+            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false); it.hasNext();) {
                 File file = it.next();
 
                 List<MutationPoint> filePoints = findMutationsInFile(file, type);
@@ -372,9 +383,34 @@ public class Main {
             File file,
             Mutator.MutatorType type
     ) throws IOException {
+        // Check if this is a JavaScript file - use AST approach
+        if (file.getName().endsWith(".js")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR JavaScript parser");
+            return JavaScriptMutationScanner.scanFile(file, type);
+        }
+
+        if (file.getName().endsWith(".cs")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR C# parser");
+            return CSharpMutationScanner.scanFile(file, type);
+        }
+
+        if (file.getName().endsWith(".java")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
+            return JavaMutationScanner.scanFile(file, type);
+        }
+
+        if (file.getName().endsWith(".rkt")) {
+            System.out.println("  [AST] Scanning " + file.getName() + " using Racket S-expression parser");
+            return RacketMutationScanner.scanFile(file, type);
+        }
+
+        // For other files (.java, .py, .cs) keep using existing dictionary approach
+        System.out.println("  [Dictionary] Scanning " + file.getName() + " using regex");
+    
         List<MutationPoint> points = new ArrayList<>();
         String content = Files.readString(file.toPath());
         String[] lines = content.split("\n", -1);
+ 
 
         for (int lineNum = 0; lineNum < lines.length; lineNum++) {
             String line = lines[lineNum];
