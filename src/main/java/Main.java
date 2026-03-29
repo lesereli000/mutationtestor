@@ -284,8 +284,17 @@ public class Main {
             String mutatedContent = applyMutation(originalContent, point);
             Files.writeString(originalFile.toPath(), mutatedContent);
 
+            String compileOutput = "";
             if (!compileCommand.isEmpty()) {
-                String compileOutput = runCommand(compileCommand, workingDir.toString());
+                compileOutput = runCommand(compileCommand, workingDir.toString());
+                if (hasTestFailures(compileOutput)) {
+                    return new MutantResult(
+                            point,
+                            MutantResult.MutantStatus.COMPILE_ERROR,
+                            compileOutput,
+                            false
+                    );
+                }
             }
 
             String testOutput = runCommand(testCommand, workingDir.toString());
@@ -330,18 +339,20 @@ public class Main {
 
         String line = lines[lineIndex];
 
-        if (point.getColumnNumber() < 0 || point.getColumnNumber() >= line.length()) {
+        if (point.getColumnNumber() < 0 || point.getColumnNumber() > line.length()) {
             System.err.println("Warning: Column number " + point.getColumnNumber() + " out of bounds");
             return content;
         }
 
-        char[] chars = line.toCharArray();
-        chars[point.getColumnNumber()] = point.getReplacement().charAt(0);
-        lines[lineIndex] = new String(chars);
+        String newLine =
+                line.substring(0, point.getColumnNumber()) +
+                        point.getReplacement() +
+                        line.substring(point.getColumnNumber() + point.getOperator().length());
+
+        lines[lineIndex] = newLine;
 
         return String.join("\n", lines);
     }
-
     private static boolean hasTestFailures(String output) {
         if (output == null || output.isEmpty()) {
             return false;

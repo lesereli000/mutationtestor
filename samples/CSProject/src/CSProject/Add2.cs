@@ -2,12 +2,14 @@ namespace samples.CSProject.src
 {
     public static class Add2
     {
-        public static int add2(int x)
+        public static double add2(double x)
         {
-            return x + 2;
+            double y = x + 2.0;
+            return y;
         }
     }
 }
+
 
 
 

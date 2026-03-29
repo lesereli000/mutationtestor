@@ -13,7 +13,11 @@ public class Mutator {
         ROR_GE_TO_GT,
         EQ_NEGATE,          // switch between == and !=
         LOGICAL_AND_TO_OR,  // && to || (or language equivalents)
-        LOGICAL_OR_TO_AND   // || to && (or language equivalents)
+        LOGICAL_OR_TO_AND,   // || to && (or language equivalents)
+        TYPE_INT_TO_DOUBLE,
+        TYPE_INT_TO_FLOAT,
+        TYPE_DOUBLE_TO_INT,
+        TYPE_FLOAT_TO_INT
         // INC_TO_DEC,         // ++ to --
         // DEC_TO_INC          // -- to ++
     }
@@ -126,8 +130,8 @@ public class Mutator {
                     // // For JS:
                     // // === to !==
                     // if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 == '=') {
-                    //     String fileName = ""; 
-                    //     if (equalTo.length == 3) { 
+                    //     String fileName = "";
+                    //     if (equalTo.length == 3) {
                     //         out.append("!==");
                     //         i += 2;
                     //         edits++;
@@ -137,7 +141,7 @@ public class Mutator {
 
                     // // !== to ===
                     // if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 == '=') {
-                    //     if (notEqual.length == 3) { 
+                    //     if (notEqual.length == 3) {
                     //         out.append("===");
                     //         i += 2;
                     //         edits++;
@@ -171,6 +175,36 @@ public class Mutator {
                         i += (type == MutatorType.LOGICAL_AND_TO_OR ? logicalAnd.length : logicalOr.length) - 1;
                         edits++;
                         continue;
+                    }
+
+                    if (!isRacket) {
+                        if (type == MutatorType.TYPE_INT_TO_DOUBLE && matchesWord(code, i, "int")) {
+                            out.append("double");
+                            i += "int".length() - 1;
+                            edits++;
+                            continue;
+                        }
+
+                        if (type == MutatorType.TYPE_INT_TO_FLOAT && matchesWord(code, i, "int")) {
+                            out.append("float");
+                            i += "int".length() - 1;
+                            edits++;
+                            continue;
+                        }
+
+                        if (type == MutatorType.TYPE_DOUBLE_TO_INT && matchesWord(code, i, "double")) {
+                            out.append("int");
+                            i += "double".length() - 1;
+                            edits++;
+                            continue;
+                        }
+
+                        if (type == MutatorType.TYPE_FLOAT_TO_INT && matchesWord(code, i, "float")) {
+                            out.append("int");
+                            i += "float".length() - 1;
+                            edits++;
+                            continue;
+                        }
                     }
 
                     //  Mutation cases
@@ -209,21 +243,21 @@ public class Mutator {
                     }
 
                     // 4. - -> +
-                     if (type == MutatorType.AOR_MINUS_TO_PLUS && c == '-') {
-                         if (isRacket) {
-                             if (shouldMutateRacketMinusToken(code, i)) {
-                                 out.append('+');
-                                 edits++;
-                                 continue;
-                             }
-                         } else {
-                             if (next != '-' && next != '=' && next != '>' && shouldMutateBinaryOp(code, i)) {
-                                 out.append('+');
-                                 edits++;
-                                 continue;
-                             }
-                         }
-                     }
+                    if (type == MutatorType.AOR_MINUS_TO_PLUS && c == '-') {
+                        if (isRacket) {
+                            if (shouldMutateRacketMinusToken(code, i)) {
+                                out.append('+');
+                                edits++;
+                                continue;
+                            }
+                        } else {
+                            if (next != '-' && next != '=' && next != '>' && shouldMutateBinaryOp(code, i)) {
+                                out.append('+');
+                                edits++;
+                                continue;
+                            }
+                        }
+                    }
                     // Relational
                     // 5. < -> <=
                     // if (type == MutatorType.ROR_LT_TO_LE && c == '<' && next != '=' && next != '<') {
@@ -254,7 +288,7 @@ public class Mutator {
                         edits++;
                         continue;
                     }
-                   
+
                     // Logical && <-> || (or language-specific equivalents)
                     if (tryMutateLogicalOperators(code, type, i, logicalAnd, logicalOr, out)) {
                         i += (type == MutatorType.LOGICAL_AND_TO_OR ? logicalAnd.length : logicalOr.length) - 1;
@@ -406,5 +440,14 @@ public class Mutator {
 
     private static boolean isIdentifierLike(char ch) {
         return Character.isLetterOrDigit(ch) || ch == '_' || ch == '?' || ch == '!' || ch == '-' || ch == '.';
+    }
+
+    private static boolean matchesWord(String code, int index, String word) {
+        if (!code.startsWith(word, index)) return false;
+        char before = index > 0 ? code.charAt(index - 1) : '\0';
+        char after = index + word.length() < code.length() ? code.charAt(index + word.length()) : '\0';
+        boolean beforeOk = before == '\0' || !isIdentifierLike(before);
+        boolean afterOk = after == '\0' || !isIdentifierLike(after);
+        return beforeOk && afterOk;
     }
 }

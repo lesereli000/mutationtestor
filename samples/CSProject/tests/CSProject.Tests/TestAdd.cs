@@ -24,4 +24,10 @@ public class TestAdd
         Assert.Equal(13, Add2.add2(11));
         Assert.Equal(int.MaxValue, Add2.add2(int.MaxValue - 2));
     }
+
+    [Fact]
+    public void testProgram()
+    {
+        Assert.Equal(11.5f, Program.RunPipeline(5));
+    }
 }
