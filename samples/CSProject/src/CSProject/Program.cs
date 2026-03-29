@@ -4,23 +4,27 @@ namespace samples.CSProject.src
 {
     public class Program
     {
-        public static float Adjust(float x)
+        public static float Choose(int x)
         {
-            return x + 0.5f;
+            return x + 0.25f;
         }
 
-        public static float Adjust(int x)
+        public static float Choose(double x)
         {
-            return x + 1.5f;
+            return (float)x + 1.25f;
+        }
+
+        public static float Choose(float x)
+        {
+            return x + 2.25f;
         }
 
         public static float RunPipeline(float input)
         {
             int a = (int)input;
-            int b = Add1.add1(a);
-            double c = Add2.add2(b);
-            float d = (int)Add3.add3((float)c);
-            return Adjust(d);
+            int b = Add1.add1((int)a);
+            double c = (int)Add2.add2((int)b);
+            return Choose(a) + Choose(b) + Choose(c);
         }
 
         public static void Main(string[] args)
@@ -29,8 +33,3 @@ namespace samples.CSProject.src
         }
     }
 }
-
-
-
-
-
