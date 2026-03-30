@@ -200,6 +200,52 @@ public class CSharpMutationScanner {
             return visitChildren(ctx);
         }
 
+        @Override
+        public Void visitExplicitly_typed_local_variable_declaration(CSharpParser.Explicitly_typed_local_variable_declarationContext ctx) {
+            ParseTree typeNode = ctx.getChild(0);
+            String typeText = typeNode.getText();
+            Token token = ((ParserRuleContext) typeNode).getStart();
+
+            if (typeText.equals("int") && mutationType == Mutator.MutatorType.TYPE_INT_TO_DOUBLE) {
+                mutationPoints.add(new MutationPoint(
+                        sourceFile,
+                        token.getLine(),
+                        token.getCharPositionInLine(),
+                        "int",
+                        "double",
+                        mutationType
+                ));
+            } else if (typeText.equals("int") && mutationType == Mutator.MutatorType.TYPE_INT_TO_FLOAT) {
+                mutationPoints.add(new MutationPoint(
+                        sourceFile,
+                        token.getLine(),
+                        token.getCharPositionInLine(),
+                        "int",
+                        "float",
+                        mutationType
+                ));
+            } else if (typeText.equals("double") && mutationType == Mutator.MutatorType.TYPE_DOUBLE_TO_INT) {
+                mutationPoints.add(new MutationPoint(
+                        sourceFile,
+                        token.getLine(),
+                        token.getCharPositionInLine(),
+                        "double",
+                        "int",
+                        mutationType
+                ));
+            } else if (typeText.equals("float") && mutationType == Mutator.MutatorType.TYPE_FLOAT_TO_INT) {
+                mutationPoints.add(new MutationPoint(
+                        sourceFile,
+                        token.getLine(),
+                        token.getCharPositionInLine(),
+                        "float",
+                        "int",
+                        mutationType
+                ));
+            }
+
+            return visitChildren(ctx);
+        }
         public List<MutationPoint> getMutationPoints() {
             return mutationPoints;
         }
