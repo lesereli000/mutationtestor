@@ -11,6 +11,10 @@ public class JavaMutationScanner {
      * Scan a Java file for mutations using AST parsing
      */
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
+        return scanFile(file, type, true);
+    }
+
+    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type, boolean showViewer) throws IOException {
         String sourceCode = Files.readString(file.toPath());
 
         // Parse Java using ANTLR (same as MyParser)
@@ -21,8 +25,11 @@ public class JavaMutationScanner {
 
         // Get parse tree starting from program() rule (same as MyParser)
         ParseTree tree = parser.compilationUnit();
-        TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
-        viewer.open();
+        
+        if (showViewer) {
+            TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
+            viewer.open();
+        }
 
         // Create visitor based on mutation type
         JavaMutationScanner.JavaMutationVisitor visitor = new JavaMutationScanner.JavaMutationVisitor(file, type);
@@ -51,6 +58,11 @@ public class JavaMutationScanner {
          */
         @Override
         public Void visitBinaryOperatorExpression(JavaParser.BinaryOperatorExpressionContext ctx) {
+            // If there aren't exactly 3 children, it's not a simple binary operator (e.g., >> or >>>)
+            if (ctx.getChildCount() != 3) {
+                return super.visitBinaryOperatorExpression(ctx);
+            }
+
             // Walk through all children of this expression
             for (int i = 0; i < ctx.getChildCount(); i++) {
                 ParseTree child = ctx.getChild(i);
