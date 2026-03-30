@@ -4,8 +4,7 @@ namespace samples.CSProject.src
     {
         public static int add1(int x)
         {
-            int y = x + 1;
-            return y;
+            return x + 1;
         }
     }
 }

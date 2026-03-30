@@ -5,11 +5,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CSharpMutationScanner {
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         String sourceCode = Files.readString(file.toPath());
+        sourceCode = removeBom(sourceCode);
+
+        if (isTypeSwapMutation(type)) {
+            return scanTypeSwapMutations(file, sourceCode, type);
+        }
 
         CharStream input = CharStreams.fromString(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
@@ -22,6 +29,108 @@ public class CSharpMutationScanner {
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
+    }
+
+    private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
+        return type == Mutator.MutatorType.TYPE_INT_TO_DOUBLE
+                || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
+                || type == Mutator.MutatorType.TYPE_DOUBLE_TO_INT
+                || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT;
+    }
+
+    private static String removeBom(String sourceCode) {
+        if (sourceCode != null && !sourceCode.isEmpty() && sourceCode.charAt(0) == '\uFEFF') {
+            return sourceCode.substring(1);
+        }
+        return sourceCode;
+    }
+
+    private static List<MutationPoint> scanTypeSwapMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+
+        Pattern pattern = Pattern.compile(
+                "^(\\s*)(int|double|float)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(.+?)(;\\s*)$"
+        );
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            Matcher matcher = pattern.matcher(line);
+
+            if (!matcher.find()) {
+                continue;
+            }
+
+            String indent = matcher.group(1);
+            String declaredType = matcher.group(2);
+            String varName = matcher.group(3);
+            String exprText = matcher.group(4).trim();
+            String semicolonPart = matcher.group(5);
+
+            String original = declaredType + " " + varName + " = " + exprText;
+            String replacement = getTypeSwapReplacement(declaredType, varName, exprText, type);
+
+            if (replacement == null || replacement.equals(original)) {
+                continue;
+            }
+
+            int column = line.indexOf(original);
+            if (column < 0) {
+                continue;
+            }
+
+            points.add(new MutationPoint(
+                    file,
+                    i + 1,
+                    column,
+                    original,
+                    replacement,
+                    type
+            ));
+        }
+
+        return points;
+    }
+
+    private static String getTypeSwapReplacement(String declaredType, String varName, String exprText, Mutator.MutatorType type) {
+        switch (type) {
+            case TYPE_INT_TO_DOUBLE:
+                if (declaredType.equals("int")) {
+                    return "double " + varName + " = " + convertIntExpressionToDouble(exprText);
+                }
+                break;
+
+            case TYPE_INT_TO_FLOAT:
+                if (declaredType.equals("int")) {
+                    return "float " + varName + " = " + convertIntExpressionToFloat(exprText);
+                }
+                break;
+
+            case TYPE_DOUBLE_TO_INT:
+                if (declaredType.equals("double")) {
+                    return "int " + varName + " = (int)(" + exprText + ")";
+                }
+                break;
+
+            case TYPE_FLOAT_TO_INT:
+                if (declaredType.equals("float")) {
+                    return "int " + varName + " = (int)(" + exprText + ")";
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        return null;
+    }
+
+    private static String convertIntExpressionToDouble(String exprText) {
+        return exprText.replaceAll("(?<![\\w.])(\\d+)(?![\\w.])", "$1.0");
+    }
+
+    private static String convertIntExpressionToFloat(String exprText) {
+        return exprText.replaceAll("(?<![\\w.])(\\d+)(?![\\w.])", "$1.0f");
     }
 
     private static class CSharpMutationVisitor extends CSharpParserBaseVisitor<Void> {
@@ -200,52 +309,6 @@ public class CSharpMutationScanner {
             return visitChildren(ctx);
         }
 
-        @Override
-        public Void visitExplicitly_typed_local_variable_declaration(CSharpParser.Explicitly_typed_local_variable_declarationContext ctx) {
-            ParseTree typeNode = ctx.getChild(0);
-            String typeText = typeNode.getText();
-            Token token = ((ParserRuleContext) typeNode).getStart();
-
-            if (typeText.equals("int") && mutationType == Mutator.MutatorType.TYPE_INT_TO_DOUBLE) {
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        token.getLine(),
-                        token.getCharPositionInLine(),
-                        "int",
-                        "double",
-                        mutationType
-                ));
-            } else if (typeText.equals("int") && mutationType == Mutator.MutatorType.TYPE_INT_TO_FLOAT) {
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        token.getLine(),
-                        token.getCharPositionInLine(),
-                        "int",
-                        "float",
-                        mutationType
-                ));
-            } else if (typeText.equals("double") && mutationType == Mutator.MutatorType.TYPE_DOUBLE_TO_INT) {
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        token.getLine(),
-                        token.getCharPositionInLine(),
-                        "double",
-                        "int",
-                        mutationType
-                ));
-            } else if (typeText.equals("float") && mutationType == Mutator.MutatorType.TYPE_FLOAT_TO_INT) {
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        token.getLine(),
-                        token.getCharPositionInLine(),
-                        "float",
-                        "int",
-                        mutationType
-                ));
-            }
-
-            return visitChildren(ctx);
-        }
         public List<MutationPoint> getMutationPoints() {
             return mutationPoints;
         }

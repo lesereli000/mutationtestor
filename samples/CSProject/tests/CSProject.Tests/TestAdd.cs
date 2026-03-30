@@ -28,6 +28,6 @@ public class TestAdd
     [Fact]
     public void testProgram()
     {
-        Assert.Equal(20.75f, Program.RunPipeline(5));
+        Assert.Equal(21, Program.RunPipeline(5));
     }
 }

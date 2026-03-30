@@ -2,10 +2,9 @@ namespace samples.CSProject.src
 {
     public static class Add3
     {
-        public static float add3(float x)
+        public static int add3(int x)
         {
-            float y = x + 3.0f;
-            return y;
+            return x + 3;
         }
     }
 }
