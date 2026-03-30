@@ -83,13 +83,17 @@ public class MutantExecutionTests {
             fail("Directory Setup Failed: " + e.getMessage());
         }
 
-        // mutate source code in sandbox folder
         try {
             Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, true); it.hasNext();) {
+            String[] extensions = { "java", "cs", "js", "py", "rkt" };
+            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), extensions, true); it.hasNext();) {
                 File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
+                try {
+                    String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
+                    Files.writeString(source.toPath(), mutatedCode);
+                } catch (Exception e) {
+                    System.err.println("Skipping mutation for " + source.getName() + ": " + e.getMessage());
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
