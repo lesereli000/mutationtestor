@@ -35,12 +35,19 @@ public class PythonMutationVisitorDemo {
             // Read from file
             testCode = Files.readString(Path.of(args[0]));
         } else {
-            // Use sample code
+            // Use sample code with type annotations
             testCode = """
-                def add1(a):
+                x: int = 5
+                y: float = 2.0
+                z = 3  # untyped, should not mutate
+
+                def add1(a: int) -> int:
                     return a + 1
-                
-                def calculate(x, y):
+
+                def add2(b: float) -> float:
+                    return b + 1.0
+
+                def calculate(x: int, y: float):
                     if x > y and x != 0:
                         return x * y + 10
                     elif x <= y or y == 0:
@@ -73,5 +80,7 @@ public class PythonMutationVisitorDemo {
         for (Mutation m : mutations) {
             System.out.println(m);
         }
+        System.out.println("\nNotice: There will be duplicate mutation entries for function definitions due to visitTest and visitFuncDef both processing the same function. Currently we won't do anything about this for the time being, but there will be fixes via post-processing to remove duplicates in the future.\n");
+        System.out.println("\nNote: Only annotated int/float variables and parameters are mutated for type swaps. Untyped variables are skipped.\n");
     }
 }
