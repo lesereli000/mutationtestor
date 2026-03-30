@@ -342,7 +342,7 @@ public class Main {
         return String.join("\n", lines);
     }
 
-    private static boolean hasTestFailures(String output) {
+    static boolean hasTestFailures(String output) {
         if (output == null || output.isEmpty()) {
             return false;
         }
@@ -355,6 +355,7 @@ public class Main {
                 || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
                 || lower.contains("build failed")
+                || lower.contains("build failure")
                 || lower.contains("test run failed");
     }
 
