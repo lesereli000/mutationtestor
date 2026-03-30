@@ -1,4 +1,4 @@
 source_code_directory=src
-mutator_type=NLT_INTEGER_TO_FLOAT
+mutator_type=NLT_EXPONENTIAL_TO_FLOAT
 compile_command=npm install
 test_command=npm test

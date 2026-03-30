@@ -1,0 +1,56 @@
+COMPREHENSIVE MUTATION TESTING SUMMARY 
+======================================== 
+Test Date: Sun 03/29/2026 22:24:02.96 
+======================================== 
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_INTEGER_TO_FLOAT 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           0 (0.0%)
+Survived:         9 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_INTEGER_TO_EXPONENTIAL 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           0 (0.0%)
+Survived:         9 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_FLOAT_TO_INTEGER 
+---------------------------------------- 
+Total Mutants:    8
+Killed:           7 (87.5%)
+Survived:         1 (12.5%)
+MUTATION SCORE:   87.5%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_FLOAT_TO_EXPONENTIAL 
+---------------------------------------- 
+Total Mutants:    8
+Killed:           0 (0.0%)
+Survived:         8 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_EXPONENTIAL_TO_INTEGER 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           3 (33.3%)
+Survived:         6 (66.7%)
+MUTATION SCORE:   33.3%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_EXPONENTIAL_TO_FLOAT 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           3 (33.3%)
+Survived:         6 (66.7%)
+MUTATION SCORE:   33.3%
+ 
+======================================== 
+END OF REPORT 
+======================================== 
