@@ -1,0 +1,77 @@
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.tree.*;
+import java.nio.file.*;
+import java.util.*;
+
+/**
+ * Demo program for the PythonMutationVisitor.
+ *
+ * This tool parses a Python source file and prints all detected mutation opportunities
+ * (arithmetic, logical, and comparison operator mutations) to the console.
+ *
+ * Usage:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=path/to/file/filename.py" -q
+ *   or
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" -q
+ *   (Run from the root folder, not src)
+ *
+ * Examples:
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=samples\\Demo.py" -q
+ *   mvn compile exec:java "-Dexec.mainClass=PythonMutationVisitorDemo" "-Dexec.args=samples\\PytestProject\\src\\Add1.py" -q
+ *
+ * If no file is provided, a built-in sample Python code is used.
+ *
+ * Output:
+ *   - Prints the source code.
+ *   - Prints the number and details of mutation opportunities found.
+ */
+
+public class PythonMutationVisitorDemo {
+    
+    public static void main(String[] args) throws Exception {
+        String testCode;
+        
+        if (args.length > 0) {
+            // Read from file
+            testCode = Files.readString(Path.of(args[0]));
+        } else {
+            // Use sample code
+            testCode = """
+                def add1(a):
+                    return a + 1
+                
+                def calculate(x, y):
+                    if x > y and x != 0:
+                        return x * y + 10
+                    elif x <= y or y == 0:
+                        return x - y // 2
+                    else:
+                        return x ** 2
+                """;
+        }
+        
+        System.out.println("=== Source Code ===");
+        System.out.println(testCode);
+        System.out.println();
+        
+        // Parse the code
+        CharStream input = CharStreams.fromString(testCode);
+        PythonLexer lexer = new PythonLexer(input);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PythonParser parser = new PythonParser(tokens);
+        
+        // Get the parse tree
+        ParseTree tree = parser.root();
+        
+        // Create and run the visitor
+        PythonMutationVisitor visitor = new PythonMutationVisitor(testCode);
+        visitor.visit(tree);
+        
+        // Print results
+        List<Mutation> mutations = visitor.getMutations();
+        System.out.println("=== Found " + mutations.size() + " Mutation Opportunities ===");
+        for (Mutation m : mutations) {
+            System.out.println(m);
+        }
+    }
+}

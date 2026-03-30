@@ -52,7 +52,7 @@ class Box<T> {
     public void set(T value) { this.value = value; }
 }
 
-public class MutationTestDemo {
+class MutationTestDemo {
 
     // Fields
     static int counter = 0;
@@ -98,16 +98,16 @@ public class MutationTestDemo {
         a++;
         b--;
 
-        bool eq = (a == b);
-        bool neq = (a != b);
-        bool gt = (a > b);
-        bool lt = (a < b);
-        bool ge = (a >= b);
-        bool le = (a <= b);
+        boolean eq = (a == b);
+        boolean neq = (a != b);
+        boolean gt = (a > b);
+        boolean lt = (a < b);
+        boolean ge = (a >= b);
+        boolean le = (a <= b);
 
-        bool and = (a > 0 && b > 0);
-        bool or = (a > 0 || b > 0);
-        bool not = !and;
+        boolean and = (a > 0 && b > 0);
+        boolean or = (a > 0 || b > 0);
+        boolean not = !and;
 
         int bitAnd = a & b;
         int bitOr = a | b;
@@ -169,7 +169,7 @@ public class MutationTestDemo {
         } while(k<3);
 
         // Arrays
-        for(int n : demo.names) System.out.println("Name: " + n);
+        for(String n : demo.names) System.out.println("Name: " + n);
 
         // Collections
         List<String> list = new ArrayList<>();

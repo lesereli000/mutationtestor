@@ -1,17 +1,18 @@
-﻿using samples.CSProject.src;
-
 namespace samples.CSProject.src
 {
     public class Program
     {
+        public static int RunPipeline(int x)
+        {
+            return Add1.add1(x) + Add2.add2(x) + Add3.add3(x);
+        }
+
         public static void Main(string[] args)
         {
-            int a = 5;
-            int b = Add1.add1(a);
-            int c = Add2.add2(b);
-            int d = Add2.add2(c);
-            int e = Add1.add1(Add2.add2(Add1.add1(d)));
-            System.Console.WriteLine(e);
+            System.Console.WriteLine("Pipeline: " + RunPipeline(1));
+            System.Console.WriteLine("UseInt: " + TypeMutationDemo.UseInt());
+            System.Console.WriteLine("UseDouble: " + TypeMutationDemo.UseDouble());
+            System.Console.WriteLine("UseFloat: " + TypeMutationDemo.UseFloat());
         }
     }
 }

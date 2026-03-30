@@ -18,10 +18,16 @@ public class TestAdd
     [Fact]
     public void testAdd2()
     {
-        Assert.Equal(7, Add2.add2(5));
-        Assert.Equal(1, Add2.add2(-1));
-        Assert.Equal(790, Add2.add2(788));
-        Assert.Equal(13, Add2.add2(11));
-        Assert.Equal(int.MaxValue, Add2.add2(int.MaxValue - 2));
+        Assert.Equal(7.0, Add2.add2(5));
+        Assert.Equal(1.0, Add2.add2(-1));
+        Assert.Equal(790.0, Add2.add2(788));
+        Assert.Equal(13.0, Add2.add2(11));
+        Assert.Equal((double)int.MaxValue, Add2.add2(int.MaxValue - 2));
+    }
+
+    [Fact]
+    public void testProgram()
+    {
+        Assert.Equal(21, Program.RunPipeline(5));
     }
 }

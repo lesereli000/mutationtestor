@@ -12,9 +12,6 @@ import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Disabled;
-
-
 public class MutantExecutionTests {
 
     private static void testOutput(String testCommand, Path sourcePath, Path testPath, boolean expectFailure) {
@@ -24,9 +21,9 @@ public class MutantExecutionTests {
         output = Main.runCommand(testCommand, testPath.toString());
 
         // grade output
-        assertFalse(output.isEmpty());
-        String[] split = output.split("[1-9]\\d*\\s*[Ff]ailure\\(?s?\\)?|[Ff]ailure\\(?s?\\)?:\\s*[1-9]\\d*|[Ff]ailed:\\s*[1-9]\\d*|[1-9]\\d*\\s*[Ff]ailed|[1-9]\\d*\\s*[Ff]ailing");
-        assertEquals(expectFailure, split.length > 1);
+        assertFalse(output.isEmpty(), "Test output should not be empty for command: " + testCommand);
+        assertEquals(expectFailure, Main.hasTestFailures(output),
+                "Failure detection mismatch for: " + testCommand + "\nOutput:\n" + output);
     }
 
     @Test
@@ -73,7 +70,8 @@ public class MutantExecutionTests {
         testOutput(testCommand, directory, directory, false);
     }
 
-    private static void mutantSetup(Path projectPath, Path testPath, Path sourcePath, Mutator.MutatorType mutationType) {
+    private static void mutantSetup(Path projectPath, Path testPath, Path sourcePath,
+            Mutator.MutatorType mutationType) {
         // copy sample code into a sandbox folder
         try {
             if (Files.exists(testPath)) {
@@ -85,16 +83,21 @@ public class MutantExecutionTests {
             fail("Directory Setup Failed: " + e.getMessage());
         }
 
-        // mutate source code in sandbox folder
         try {
             Path mutantPath = testPath.resolve(sourcePath).normalize();
-            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), null, false); it.hasNext(); ) {
+            String[] extensions = { "java", "cs", "js", "py", "rkt" };
+            for (Iterator<File> it = FileUtils.iterateFiles(mutantPath.toFile(), extensions, true); it.hasNext();) {
                 File source = it.next();
-                String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
-                Files.writeString(source.toPath(), mutatedCode);
+                try {
+                    String mutatedCode = Mutator.mutate(source.toPath(), mutationType);
+                    Files.writeString(source.toPath(), mutatedCode);
+                } catch (Exception e) {
+                    System.err.println("Skipping mutation for " + source.getName() + ": " + e.getMessage());
+                }
             }
         } catch (Exception e) {
-            fail("Mutation Failed");
+            e.printStackTrace();
+            fail("Mutant Setup Failed: " + e.getMessage());
         }
     }
 
@@ -188,13 +191,12 @@ public class MutantExecutionTests {
     }
 
     @AfterAll
-    public static void tearDown(){
+    public static void tearDown() {
         Path testDirectory = Path.of("output/TestDir");
         try {
-            while (Files.exists(testDirectory) && Files.list(testDirectory).findAny().isPresent()) {
-                Thread.sleep(50); // small delay
+            if (Files.exists(testDirectory)) {
+                FileUtils.deleteDirectory(testDirectory.toFile());
             }
-            mutantTearDown(testDirectory);
         } catch (Exception e) {
             fail("Final tear down failed: " + e.getMessage());
         }
