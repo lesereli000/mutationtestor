@@ -17,9 +17,18 @@ public class Mutator {
         TYPE_INT_TO_DOUBLE,
         TYPE_INT_TO_FLOAT,
         TYPE_DOUBLE_TO_INT,
-        TYPE_FLOAT_TO_INT
+        TYPE_FLOAT_TO_INT,
         // INC_TO_DEC,         // ++ to --
-        // DEC_TO_INC          // -- to ++
+        // DEC_TO_INC，          // -- to ++
+
+         
+        // Numeric Literal Type mutations for JavaScript
+        NLT_INTEGER_TO_FLOAT,       // 42 → 42.0
+        NLT_INTEGER_TO_EXPONENTIAL, // 42 → 4.2e1
+        NLT_FLOAT_TO_INTEGER,       // 3.14 → 3
+        NLT_FLOAT_TO_EXPONENTIAL,   // 3.14 → 3.14e0
+        NLT_EXPONENTIAL_TO_INTEGER, // 1e10 → 10000000000
+        NLT_EXPONENTIAL_TO_FLOAT    // 1e10 → 10000000000.0
     }
 
     // State machine states

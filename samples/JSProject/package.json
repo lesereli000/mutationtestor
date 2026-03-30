@@ -1,21 +1,13 @@
 {
   "name": "jsproject",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
   "scripts": {
-    "test": "mocha ./tests/TestAdd.test.js"
+    "test": "jest"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "jest": {
+    "testMatch": ["**/tests/**/*.test.js"]
+  },
   "devDependencies": {
-    "mocha": "^11.7.5"
+    "jest": "^29.0.0"
   }
 }
-
-
-

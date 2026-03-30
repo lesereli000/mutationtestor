@@ -1,6 +1,4 @@
-```
 source_code_directory=src
-mutator_type=AOR_PLUS_TO_MINUS
-compile_command=
+mutator_type=NLT_INTEGER_TO_FLOAT
+compile_command=npm install
 test_command=npm test
-```
