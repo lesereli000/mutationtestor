@@ -312,4 +312,56 @@ public class SchemeScannerTests {
             assertEquals("+", p.getOperator());
         }
     }
+
+    // -------------------------------------------------------------------------
+    // TYPE_INT_TO_FLOAT
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testTypedFunctionsIntToFloat() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/typed-functions.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
+
+        // typed-functions.rkt has 4 Integer type annotations
+        assertEquals(4, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("Integer", p.getOperator());
+            assertEquals("Float", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testOperatorsIntToFloat() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
+
+        // operators.rkt has no type annotations (not Typed Racket)
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
+    // TYPE_FLOAT_TO_INT
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testTypedFunctionsFloatToInt() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/typed-functions.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
+
+        // typed-functions.rkt has 3 Float type annotations
+        assertEquals(3, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("Float", p.getOperator());
+            assertEquals("Integer", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testOperatorsFloatToInt() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
+
+        // operators.rkt has no type annotations (not Typed Racket)
+        assertEquals(0, points.size());
+    }
 }

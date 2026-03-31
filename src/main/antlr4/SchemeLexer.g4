@@ -84,6 +84,16 @@ STRING
     ;
 
 // -------------------------------------------------------------------------
+// Type annotations (for Typed Racket)
+// -------------------------------------------------------------------------
+
+// Type annotation operator
+COLON   : ':' ;
+
+// Arrow for function types
+ARROW   : '->' ;
+
+// -------------------------------------------------------------------------
 // Identifiers
 // Racket identifiers can contain letters, digits, and: - _ ? ! > < = + * / .
 // Read greedily — list->vector, zero?, set!, my-var are single tokens.

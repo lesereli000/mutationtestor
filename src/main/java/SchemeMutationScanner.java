@@ -65,6 +65,26 @@ public class SchemeMutationScanner {
             return visitChildren(ctx);
         }
 
+        // -- Type annotation visitor ------------------------------------------
+
+        @Override
+        public Void visitTypeAnnotation(SchemeParser.TypeAnnotationContext ctx) {
+            // Visit the type expression to find type keywords
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitSimpleType(SchemeParser.SimpleTypeContext ctx) {
+            checkTypeKeyword(ctx);
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitFunctionType(SchemeParser.FunctionTypeContext ctx) {
+            // Visit all type expressions in the function signature
+            return visitChildren(ctx);
+        }
+
         // -- Atom visitor (for numeric literal mutations) ----------------------
 
         /**
@@ -169,6 +189,38 @@ public class SchemeMutationScanner {
                 int dotIndex = text.indexOf('.');
                 String intPart = dotIndex > 0 ? text.substring(0, dotIndex) : text;
                 mutationPoints.add(new MutationPoint(sourceFile, line, col, text, intPart, mutationType));
+            }
+        }
+
+        // -- Type keyword check -----------------------------------------------
+
+        /**
+         * Checks a simple type identifier for type swap mutations.
+         * Applies to Typed Racket type annotations like Integer, Float, etc.
+         *
+         * TYPE_INT_TO_FLOAT  : Integer → Float
+         * TYPE_INT_TO_DOUBLE : Integer → Double (same as Float in Racket)
+         * TYPE_FLOAT_TO_INT  : Float → Integer
+         * TYPE_DOUBLE_TO_INT : Double → Integer (same as Float in Racket)
+         */
+        private void checkTypeKeyword(SchemeParser.SimpleTypeContext ctx) {
+            if (ctx.IDENTIFIER() == null) return;
+
+            Token token = ctx.IDENTIFIER().getSymbol();
+            String text = token.getText();
+            int line = token.getLine();
+            int col = token.getCharPositionInLine();
+
+            switch (mutationType) {
+                case TYPE_INT_TO_FLOAT, TYPE_INT_TO_DOUBLE -> {
+                    if (text.equals("Integer"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "Integer", "Float", mutationType));
+                }
+                case TYPE_FLOAT_TO_INT, TYPE_DOUBLE_TO_INT -> {
+                    if (text.equals("Float"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "Float", "Integer", mutationType));
+                }
+                default -> { }
             }
         }
 

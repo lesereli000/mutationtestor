@@ -26,6 +26,7 @@ form
     : list
     | atom
     | quotedForm
+    | typeAnnotation
     ;
 
 // -------------------------------------------------------------------------
@@ -74,4 +75,20 @@ atom
     | CHARACTER
     | HASH_PREFIX
     | IDENTIFIER
+    | ARROW
     ;
+
+// -------------------------------------------------------------------------
+// Type annotation: (: function-name Type)
+// In Typed Racket: (: typed-add (-> Integer Integer Integer))
+// -------------------------------------------------------------------------
+
+typeAnnotation
+    : LPAREN COLON IDENTIFIER typeExpr RPAREN
+    ;
+
+typeExpr
+    : IDENTIFIER                                    # simpleType
+    | LPAREN ARROW typeExpr+ RPAREN                 # functionType
+    ;
+
