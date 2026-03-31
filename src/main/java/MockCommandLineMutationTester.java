@@ -83,7 +83,7 @@ public class MockCommandLineMutationTester {
             System.out.println("Found Project directory: " + args[0]);
             System.out.println(numLangs + " Languages detected: " + Arrays.toString(langsPresent));
 
-        } else if(projectPath.equals(Path.of("./samples/RacketProject"))) {
+        } else if(projectPath.equals(Path.of("./samples/SchemeProject"))) {
             int numLangs = 1;
             String[] langsPresent = {"Racket Scheme"};
             fileExt = ".rkt";

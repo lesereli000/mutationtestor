@@ -342,7 +342,7 @@ public class Main {
         return String.join("\n", lines);
     }
 
-    private static boolean hasTestFailures(String output) {
+    static boolean hasTestFailures(String output) {
         if (output == null || output.isEmpty()) {
             return false;
         }
@@ -355,6 +355,7 @@ public class Main {
                 || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
                 || lower.contains("build failed")
+                || lower.contains("build failure")
                 || lower.contains("test run failed");
     }
 
@@ -398,8 +399,8 @@ public class Main {
         }
 
         if (file.getName().endsWith(".rkt")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using Racket S-expression parser");
-            return RacketMutationScanner.scanFile(file, type);
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
+            return SchemeMutationScanner.scanFile(file, type);
         }
 
         // For other files (.java, .py, .cs) keep using existing dictionary approach

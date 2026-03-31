@@ -36,5 +36,5 @@ output/
 /samples/CSProject/tests/CSProject.Tests/obj/
 /samples/JSProject/node_modules/
 /samples/PytestProject/venv/
-/samples/RacketProject/project/compiled
+/samples/SchemeProject/project/compiled
 /samples/PytestProject/tests/__pycache__

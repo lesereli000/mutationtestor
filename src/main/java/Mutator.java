@@ -11,24 +11,29 @@ public class Mutator {
         // ROR_LE_TO_LT,
         ROR_GT_TO_GE,
         ROR_GE_TO_GT,
-        EQ_NEGATE,          // switch between == and !=
-        LOGICAL_AND_TO_OR,  // && to || (or language equivalents)
-        LOGICAL_OR_TO_AND,   // || to && (or language equivalents)
+        EQ_NEGATE, // switch between == and !=
+        LOGICAL_AND_TO_OR, // && to || (or language equivalents)
+        LOGICAL_OR_TO_AND, // || to && (or language equivalents)
         TYPE_INT_TO_DOUBLE,
         TYPE_INT_TO_FLOAT,
         TYPE_DOUBLE_TO_INT,
         TYPE_FLOAT_TO_INT,
-        // INC_TO_DEC,         // ++ to --
-        // DEC_TO_INC，          // -- to ++
+        TYPE_INT_TO_LONG,
+        TYPE_LONG_TO_INT,
+        TYPE_LONG_TO_DOUBLE,
+        TYPE_LONG_TO_FLOAT,
+        TYPE_DOUBLE_TO_LONG,
+        TYPE_FLOAT_TO_LONG,
+        // INC_TO_DEC, // ++ to --
+        // DEC_TO_INC， // -- to ++
 
-         
         // Numeric Literal Type mutations for JavaScript
-        NLT_INTEGER_TO_FLOAT,       // 42 → 42.0
+        NLT_INTEGER_TO_FLOAT, // 42 → 42.0
         NLT_INTEGER_TO_EXPONENTIAL, // 42 → 4.2e1
-        NLT_FLOAT_TO_INTEGER,       // 3.14 → 3
-        NLT_FLOAT_TO_EXPONENTIAL,   // 3.14 → 3.14e0
+        NLT_FLOAT_TO_INTEGER, // 3.14 → 3
+        NLT_FLOAT_TO_EXPONENTIAL, // 3.14 → 3.14e0
         NLT_EXPONENTIAL_TO_INTEGER, // 1e10 → 10000000000
-        NLT_EXPONENTIAL_TO_FLOAT    // 1e10 → 10000000000.0
+        NLT_EXPONENTIAL_TO_FLOAT // 1e10 → 10000000000.0
     }
 
     // State machine states
@@ -45,19 +50,19 @@ public class Mutator {
         Language language;
         try {
             language = new Language(inputPath.getFileName().toString());
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return code;
         }
 
-
         boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
 
-        //return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
+        // return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
         return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
-    static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language, boolean isRacket) {
+    static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language,
+            boolean isRacket) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;
         int edits = 0;
@@ -114,69 +119,73 @@ public class Mutator {
                         continue;
                     }
 
-                    //                     // Equality
+                    // // Equality
                     // //Racket specific mutations
                     // // equal to not-equal
                     // if ((type == MutatorType.EQ_TO_NEQ) && isRacket) {
-                    //     if (matchesAtPosition(code, i, "equal?")) {
-                    //         out.append("not-equal?");
-                    //         i += "equal?".length() - 1;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // if (matchesAtPosition(code, i, "equal?")) {
+                    // out.append("not-equal?");
+                    // i += "equal?".length() - 1;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // // not equal to equal
                     // if ((type == MutatorType.NEQ_TO_EQ) && isRacket) {
-                    //     if (matchesAtPosition(code, i, "not-equal?")) {
-                    //         out.append("equal?");
-                    //         i += "not-equal?".length() - 1;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // if (matchesAtPosition(code, i, "not-equal?")) {
+                    // out.append("equal?");
+                    // i += "not-equal?".length() - 1;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // // For JS:
                     // // === to !==
-                    // if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 == '=') {
-                    //     String fileName = "";
-                    //     if (equalTo.length == 3) {
-                    //         out.append("!==");
-                    //         i += 2;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 ==
+                    // '=') {
+                    // String fileName = "";
+                    // if (equalTo.length == 3) {
+                    // out.append("!==");
+                    // i += 2;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // // !== to ===
-                    // if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 == '=') {
-                    //     if (notEqual.length == 3) {
-                    //         out.append("===");
-                    //         i += 2;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 ==
+                    // '=') {
+                    // if (notEqual.length == 3) {
+                    // out.append("===");
+                    // i += 2;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // // C-style languages:
-                    // //  == to !=
-                    // if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 != '=') {
-                    //     if (equalTo.length == 2 && !isRacket) {
-                    //         out.append("!=");
-                    //         i += 1;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // // == to !=
+                    // if ((type == MutatorType.EQ_TO_NEQ) && c == '=' && next == '=' && next2 !=
+                    // '=') {
+                    // if (equalTo.length == 2 && !isRacket) {
+                    // out.append("!=");
+                    // i += 1;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // // != to ==
-                    // if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 != '=') {
-                    //     if (notEqual.length == 2 && !isRacket) {
-                    //         out.append("==");
-                    //         i += 1;
-                    //         edits++;
-                    //         continue;
-                    //     }
+                    // if ((type == MutatorType.NEQ_TO_EQ) && c == '!' && next == '=' && next2 !=
+                    // '=') {
+                    // if (notEqual.length == 2 && !isRacket) {
+                    // out.append("==");
+                    // i += 1;
+                    // edits++;
+                    // continue;
+                    // }
                     // }
 
                     // Logical && <-> || (or language-specific equivalents)
@@ -216,22 +225,22 @@ public class Mutator {
                         }
                     }
 
-                    //  Mutation cases
+                    // Mutation cases
                     // math:
                     // 1. ++ -> --
                     // if (type == MutatorType.INC_TO_DEC && c == '+' && next == '+') {
-                    //     out.append("--");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
+                    // out.append("--");
+                    // i++;
+                    // edits++;
+                    // continue;
                     // }
 
                     // 2. -- -> ++
                     // if (type == MutatorType.DEC_TO_INC && c == '-' && next == '-') {
-                    //     out.append("++");
-                    //     i++;
-                    //     edits++;
-                    //     continue;
+                    // out.append("++");
+                    // i++;
+                    // edits++;
+                    // continue;
                     // }
 
                     // 3. + -> -
@@ -269,22 +278,24 @@ public class Mutator {
                     }
                     // Relational
                     // 5. < -> <=
-                    // if (type == MutatorType.ROR_LT_TO_LE && c == '<' && next != '=' && next != '<') {
-                    //     out.append("<=");
-                    //     edits++;
-                    //     continue;
+                    // if (type == MutatorType.ROR_LT_TO_LE && c == '<' && next != '=' && next !=
+                    // '<') {
+                    // out.append("<=");
+                    // edits++;
+                    // continue;
                     // }
 
                     // 6. <= -> <
                     // if (type == MutatorType.ROR_LE_TO_LT && c == '<' && next == '=') {
-                    //     out.append('<');
-                    //     i++;
-                    //     edits++;
-                    //     continue;
+                    // out.append('<');
+                    // i++;
+                    // edits++;
+                    // continue;
                     // }
 
                     // 7. > -> >=
-                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>' && next != '?' && prev != '>' && prev != '\\' && prev != '=') {
+                    if (type == MutatorType.ROR_GT_TO_GE && c == '>' && next != '=' && next != '>' && next != '?'
+                            && prev != '>' && prev != '\\' && prev != '=') {
                         out.append(">=");
                         edits++;
                         continue;
@@ -310,7 +321,8 @@ public class Mutator {
 
                 case LINE_COMMENT -> {
                     out.append(c);
-                    if (c == '\n') state = State.CODE;
+                    if (c == '\n')
+                        state = State.CODE;
                 }
 
                 case BLOCK_COMMENT -> {
@@ -329,7 +341,8 @@ public class Mutator {
                         i++;
                         continue;
                     }
-                    if (doubleQuote.length >= 1 && c == doubleQuote[0]) state = State.CODE;
+                    if (doubleQuote.length >= 1 && c == doubleQuote[0])
+                        state = State.CODE;
                 }
 
                 case STRING_SINGLE -> {
@@ -339,7 +352,8 @@ public class Mutator {
                         i++;
                         continue;
                     }
-                    if (singleQuote.length >= 1 && c == singleQuote[0]) state = State.CODE;
+                    if (singleQuote.length >= 1 && c == singleQuote[0])
+                        state = State.CODE;
                 }
             }
         }
@@ -350,21 +364,28 @@ public class Mutator {
     // binary operator check
     private static boolean shouldMutateBinaryOp(String code, int opIndex) {
         int left = opIndex - 1;
-        while (left >= 0 && Character.isWhitespace(code.charAt(left))) left--;
-        if (left < 0) return false;
+        while (left >= 0 && Character.isWhitespace(code.charAt(left)))
+            left--;
+        if (left < 0)
+            return false;
 
         int right = opIndex + 1;
-        while (right < code.length() && Character.isWhitespace(code.charAt(right))) right++;
-        if (right >= code.length()) return false;
+        while (right < code.length() && Character.isWhitespace(code.charAt(right)))
+            right++;
+        if (right >= code.length())
+            return false;
 
         char l = code.charAt(left);
         char r = code.charAt(right);
 
         // Avoid obvious unary contexts
-        if ("(=,{[;:+-*/%&|^!<>".indexOf(l) >= 0) return false;
+        if ("(=,{[;:+-*/%&|^!<>".indexOf(l) >= 0)
+            return false;
 
-        if (!isLikelyOperandChar(l)) return false;
-        if (!isLikelyOperandChar(r) && r != '(') return false;
+        if (!isLikelyOperandChar(l))
+            return false;
+        if (!isLikelyOperandChar(r) && r != '(')
+            return false;
 
         return true;
     }
@@ -377,7 +398,8 @@ public class Mutator {
         char prev = (plusIndex - 1 >= 0) ? code.charAt(plusIndex - 1) : '\0';
         char next = (plusIndex + 1 < code.length()) ? code.charAt(plusIndex + 1) : '\0';
 
-        if (Character.isDigit(next) || next == '.') return false;
+        if (Character.isDigit(next) || next == '.')
+            return false;
 
         return isRacketDelimiter(prev) && isRacketDelimiter(next);
     }
@@ -386,23 +408,28 @@ public class Mutator {
         char prev = (minusIndex - 1 >= 0) ? code.charAt(minusIndex - 1) : '\0';
         char next = (minusIndex + 1 < code.length()) ? code.charAt(minusIndex + 1) : '\0';
 
-        if (Character.isDigit(next) || next == '.') return false;
+        if (Character.isDigit(next) || next == '.')
+            return false;
 
         return isRacketDelimiter(prev) && isRacketDelimiter(next);
     }
 
-
     private static boolean isRacketDelimiter(char c) {
-        if (c == '\0') return true;
-        if (Character.isWhitespace(c)) return true;
+        if (c == '\0')
+            return true;
+        if (Character.isWhitespace(c))
+            return true;
         return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}';
     }
 
     private static boolean matchesAt(String code, int index, char[] token) {
-        if (token.length == 0) return false;
-        if (index + token.length > code.length()) return false;
+        if (token.length == 0)
+            return false;
+        if (index + token.length > code.length())
+            return false;
         for (int j = 0; j < token.length; j++) {
-            if (code.charAt(index + j) != token[j]) return false;
+            if (code.charAt(index + j) != token[j])
+                return false;
         }
         return true;
     }
@@ -411,8 +438,10 @@ public class Mutator {
         out.append(token, 0, token.length);
     }
 
-    private static boolean tryMutateLogicalOperators(String code, MutatorType type, int index, char[] logicalAnd, char[] logicalOr, StringBuilder out) {
-        if (logicalAnd.length == 0 || logicalOr.length == 0) return false;
+    private static boolean tryMutateLogicalOperators(String code, MutatorType type, int index, char[] logicalAnd,
+            char[] logicalOr, StringBuilder out) {
+        if (logicalAnd.length == 0 || logicalOr.length == 0)
+            return false;
 
         if (type == MutatorType.LOGICAL_AND_TO_OR && matchesTokenWithBoundaries(code, index, logicalAnd)) {
             appendToken(out, logicalOr);
@@ -428,8 +457,10 @@ public class Mutator {
     }
 
     private static boolean matchesTokenWithBoundaries(String code, int index, char[] token) {
-        if (!matchesAt(code, index, token)) return false;
-        if (!needsWordBoundaryCheck(token)) return true;
+        if (!matchesAt(code, index, token))
+            return false;
+        if (!needsWordBoundaryCheck(token))
+            return true;
         int len = token.length;
         char before = index > 0 ? code.charAt(index - 1) : '\0';
         char after = (index + len < code.length()) ? code.charAt(index + len) : '\0';
@@ -452,7 +483,8 @@ public class Mutator {
     }
 
     private static boolean matchesWord(String code, int index, String word) {
-        if (!code.startsWith(word, index)) return false;
+        if (!code.startsWith(word, index))
+            return false;
         char before = index > 0 ? code.charAt(index - 1) : '\0';
         char after = index + word.length() < code.length() ? code.charAt(index + word.length()) : '\0';
         boolean beforeOk = before == '\0' || !isIdentifierLike(before);
