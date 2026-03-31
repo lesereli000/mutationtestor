@@ -399,8 +399,8 @@ public class Main {
         }
 
         if (file.getName().endsWith(".rkt")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using Racket S-expression parser");
-            return RacketMutationScanner.scanFile(file, type);
+            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
+            return SchemeMutationScanner.scanFile(file, type);
         }
 
         // For other files (.java, .py, .cs) keep using existing dictionary approach
