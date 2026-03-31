@@ -5,17 +5,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for RacketMutationScanner.
+ * Tests for SchemeMutationScanner (Racket/.rkt files).
  *
- * Each test scans a real .rkt sample file and asserts:
- *   - the correct number of mutation points are found
- *   - the operator and replacement are correct
- *   - line numbers are correct
- *
- * Sample files used:
- *   samples/RacketProject/project/src/add1.rkt  → (+ 1 x)
- *   samples/RacketProject/project/src/add2.rkt  → (+ 2 x)
- *   samples/Demo.rkt                            → multiple operators, comments, strings
+ * Uses:
+ *   samples/SchemeProject/project/src/add1.rkt      → (+ 1 x)
+ *   samples/SchemeProject/project/src/add2.rkt      → (+ 2 x)
+ *   samples/SchemeProject/project/src/operators.rkt → covers all mutation types
  */
 public class SchemeScannerTests {
 
@@ -48,17 +43,15 @@ public class SchemeScannerTests {
     }
 
     @Test
-    public void testDemoPlusToMinus() throws IOException {
-        File file = new File("samples/Demo.rkt");
+    public void testOperatorsPlusToMinus() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
 
-        // Demo.rkt has: (+ a b), (+ (+ a b) c), (+ 1 2 3)
-        // + inside string "String has +: 2+3" and comments should NOT be counted
-        assertEquals(4, points.size());
-        for (MutationPoint p : points) {
-            assertEquals("+", p.getOperator());
-            assertEquals("-", p.getReplacement());
-        }
+        // operators.rkt has one (+ x y) in add function
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("+", p.getOperator());
+        assertEquals("-", p.getReplacement());
     }
 
     // -------------------------------------------------------------------------
@@ -75,11 +68,15 @@ public class SchemeScannerTests {
     }
 
     @Test
-    public void testAdd2MinusToPlus() throws IOException {
-        File file = new File("samples/SchemeProject/project/src/add2.rkt");
+    public void testOperatorsMinusToPlus() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
 
-        assertEquals(0, points.size());
+        // operators.rkt has one (- x y) in subtract function
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("-", p.getOperator());
+        assertEquals("+", p.getReplacement());
     }
 
     // -------------------------------------------------------------------------
@@ -87,15 +84,16 @@ public class SchemeScannerTests {
     // -------------------------------------------------------------------------
 
     @Test
-    public void testDemoGTtoGE() throws IOException {
-        File file = new File("samples/Demo.rkt");
+    public void testOperatorsGTtoGE() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_GE);
 
-        // Demo.rkt has one (> a equal) in GTtoGE function
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals(">", p.getOperator());
-        assertEquals(">=", p.getReplacement());
+        // operators.rkt has (> x y) in compare-gt, and two (> x 0) in check-logic
+        assertEquals(5, points.size());
+        for (MutationPoint p : points) {
+            assertEquals(">", p.getOperator());
+            assertEquals(">=", p.getReplacement());
+        }
     }
 
     @Test
@@ -111,11 +109,11 @@ public class SchemeScannerTests {
     // -------------------------------------------------------------------------
 
     @Test
-    public void testDemoGEtoGT() throws IOException {
-        File file = new File("samples/Demo.rkt");
+    public void testOperatorsGEtoGT() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GE_TO_GT);
 
-        // Demo.rkt has one (>= a equal) in GEtoGT function
+        // operators.rkt has one (>= x y) in compare-ge
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
         assertEquals(">=", p.getOperator());
@@ -127,26 +125,40 @@ public class SchemeScannerTests {
     // -------------------------------------------------------------------------
 
     @Test
+    public void testOperatorsEqNegate() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
+
+        // operators.rkt has one (= x y) in check-equal
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("=", p.getOperator());
+        assertEquals("not =", p.getReplacement());
+    }
+
+    @Test
     public void testAdd1EqNegate() throws IOException {
         File file = new File("samples/SchemeProject/project/src/add1.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
 
-        // add1.rkt has no = operators
         assertEquals(0, points.size());
     }
+
+    // -------------------------------------------------------------------------
+    // LOGICAL_AND_TO_OR
+    // -------------------------------------------------------------------------
 
     @Test
-    public void testDemoEqNegate() throws IOException {
-        File file = new File("samples/Demo.rkt");
-        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
+    public void testOperatorsAndToOr() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_AND_TO_OR);
 
-        // Demo.rkt has no (= ...) forms — update count if you add = to Demo.rkt
-        assertEquals(0, points.size());
+        // operators.rkt has one (and ...) in check-logic
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("and", p.getOperator());
+        assertEquals("or", p.getReplacement());
     }
-
-    // -------------------------------------------------------------------------
-    // LOGICAL_AND_TO_OR / LOGICAL_OR_TO_AND
-    // -------------------------------------------------------------------------
 
     @Test
     public void testAdd1AndToOr() throws IOException {
@@ -156,12 +168,20 @@ public class SchemeScannerTests {
         assertEquals(0, points.size());
     }
 
+    // -------------------------------------------------------------------------
+    // LOGICAL_OR_TO_AND
+    // -------------------------------------------------------------------------
+
     @Test
-    public void testAdd1OrToAnd() throws IOException {
-        File file = new File("samples/SchemeProject/project/src/add1.rkt");
+    public void testOperatorsOrToAnd() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_OR_TO_AND);
 
-        assertEquals(0, points.size());
+        // operators.rkt has one (or ...) in check-logic
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("or", p.getOperator());
+        assertEquals("and", p.getReplacement());
     }
 
     // -------------------------------------------------------------------------
@@ -193,16 +213,15 @@ public class SchemeScannerTests {
     }
 
     @Test
-    public void testDemoIntegerToFloat() throws IOException {
-        File file = new File("samples/Demo.rkt");
+    public void testOperatorsIntegerToFloat() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.NLT_INTEGER_TO_FLOAT);
 
-        // Demo.rkt has integers: 5 (twice in GTtoGE), 5 (twice in GEtoGT), 2, 3, 1, 2, 3, 1, 2, 3
-        // Exact count depends on Demo.rkt content — adjust after first run
-        assertTrue(points.size() > 0);
+        // operators.rkt has integers: 0 (twice in check-logic), 5, 10 in check-floats
+        assertEquals(6, points.size());
         for (MutationPoint p : points) {
-            assertTrue(p.getReplacement().endsWith(".0"));
             assertFalse(p.getOperator().contains("."));
+            assertTrue(p.getReplacement().endsWith(".0"));
         }
     }
 
@@ -220,12 +239,15 @@ public class SchemeScannerTests {
     }
 
     @Test
-    public void testAdd2FloatToInteger() throws IOException {
-        File file = new File("samples/SchemeProject/project/src/add2.rkt");
+    public void testOperatorsFloatToInteger() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.NLT_FLOAT_TO_INTEGER);
 
-        // add2.rkt has no float literals
-        assertEquals(0, points.size());
+        // operators.rkt has one float literal: 3.14 in check-floats
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("3.14", p.getOperator());
+        assertEquals("3", p.getReplacement());
     }
 
     // -------------------------------------------------------------------------
@@ -233,14 +255,13 @@ public class SchemeScannerTests {
     // -------------------------------------------------------------------------
 
     @Test
-    public void testStringOperatorsNotMutated() throws IOException {
-        // Demo.rkt has "String has +: 2+3" — the + inside should not be flagged
-        File file = new File("samples/Demo.rkt");
+    public void testOperatorsStringNotMutated() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
 
-        // All found points should be on lines with real code, not the string line
+        // All found points should have operator "+" not inside a string
         for (MutationPoint p : points) {
-            assertNotEquals(13, p.getLineNumber()); // line 13 is the displayln with string
+            assertEquals("+", p.getOperator());
         }
     }
 }
