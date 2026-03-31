@@ -28,3 +28,11 @@
 (: mixed-types (-> Integer Float Integer Float Float))
 (define (mixed-types a b c d)
   (+ (* a b) (* c d)))
+
+
+
+
+
+
+
+
