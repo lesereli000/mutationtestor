@@ -322,8 +322,8 @@ public class SchemeScannerTests {
         File file = new File("samples/SchemeProject/project/src/typed-functions.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
 
-        // typed-functions.rkt has 4 Integer type annotations
-        assertEquals(4, points.size());
+        // typed-functions.rkt has 9 Integer type annotations
+        assertEquals(9, points.size());
         for (MutationPoint p : points) {
             assertEquals("Integer", p.getOperator());
             assertEquals("Float", p.getReplacement());
@@ -348,8 +348,8 @@ public class SchemeScannerTests {
         File file = new File("samples/SchemeProject/project/src/typed-functions.rkt");
         List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
 
-        // typed-functions.rkt has 3 Float type annotations
-        assertEquals(3, points.size());
+        // typed-functions.rkt has 7 Float type annotations
+        assertEquals(7, points.size());
         for (MutationPoint p : points) {
             assertEquals("Float", p.getOperator());
             assertEquals("Integer", p.getReplacement());
