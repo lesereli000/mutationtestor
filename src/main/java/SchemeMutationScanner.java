@@ -10,7 +10,7 @@ import org.antlr.v4.gui.TreeViewer;
 import java.util.Arrays;
 
 
-public class RacketMutationScanner {
+public class SchemeMutationScanner {
 
     // -------------------------------------------------------------------------
     // Public entry point
@@ -19,7 +19,6 @@ public class RacketMutationScanner {
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         String sourceCode = Files.readString(file.toPath());
 
-        // Build ANTLR parse tree
         CharStream input = CharStreams.fromString(sourceCode);
         SchemeLexer lexer = new SchemeLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -27,11 +26,10 @@ public class RacketMutationScanner {
 
         ParseTree tree = parser.program();
 
-// ANTLR tree viewer — same as JavaMutationScanner
+        // ANTLR tree viewer — mirrors JavaMutationScanner
         TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
         viewer.open();
 
-        // Walk the tree with the mutation visitor
         RacketMutationVisitor visitor = new RacketMutationVisitor(file, type);
         visitor.visit(tree);
 
@@ -53,43 +51,47 @@ public class RacketMutationScanner {
             this.mutationType = mutationType;
         }
 
-        /**
-         * Visit every paren list: ( form* )
-         * Checks whether the first child is an operator atom that matches
-         * the requested mutation type.
-         */
+        // -- List visitors ----------------------------------------------------
+
         @Override
         public Void visitParenList(SchemeParser.ParenListContext ctx) {
             checkHead(ctx.form());
             return visitChildren(ctx);
         }
 
-        /**
-         * Visit every bracket list: [ form* ]
-         * Same logic as paren lists — Racket allows [] as an alternative
-         * to () in certain contexts (e.g. let bindings).
-         */
         @Override
         public Void visitBracketList(SchemeParser.BracketListContext ctx) {
             checkHead(ctx.form());
             return visitChildren(ctx);
         }
 
+        // -- Atom visitor (for numeric literal mutations) ----------------------
+
         /**
-         * Inspects the first form in a list to see if it is an operator atom
-         * matching the requested mutation type. If so, records a MutationPoint
-         * at the token's source position.
+         * Visits every atom in the tree. Used for NLT mutations where we need
+         * to flag numeric literals regardless of their position.
+         */
+        @Override
+        public Void visitAtom(SchemeParser.AtomContext ctx) {
+            if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT
+                    || mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER) {
+                checkNumericLiteral(ctx);
+            }
+            return visitChildren(ctx);
+        }
+
+        // -- Head operator check ----------------------------------------------
+
+        /**
+         * Inspects the first form of a list to find operator mutation targets.
          */
         private void checkHead(List<SchemeParser.FormContext> forms) {
             if (forms == null || forms.isEmpty()) return;
 
             SchemeParser.FormContext head = forms.get(0);
-
-            // Head must be a bare atom (not a nested list or quoted form)
             if (head.atom() == null) return;
 
-            SchemeParser.AtomContext atomCtx = head.atom();
-            Token token = getAtomToken(atomCtx);
+            Token token = getAtomToken(head.atom());
             if (token == null) return;
 
             String text = token.getText();
@@ -113,27 +115,65 @@ public class RacketMutationScanner {
                     if (text.equals(">="))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, ">=", ">", mutationType));
                 }
+                case ROR_LT_TO_LE -> {
+                    if (text.equals("<"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<", "<=", mutationType));
+                }
+                case ROR_LE_TO_LT -> {
+                    if (text.equals("<="))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<=", "<", mutationType));
+                }
                 case EQ_NEGATE -> {
-                    // Not implemented for Racket: negating = requires structural
-                    // wrapping (not (= ...)) rather than a simple token swap.
+                    // Racket numeric equality is `=`.
+                    // Flagged here; mutator is responsible for wrapping as (not (= ...))
+                    if (text.equals("="))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "=", "not =", mutationType));
                 }
                 case LOGICAL_AND_TO_OR -> {
-                    // In Racket, logical and is the identifier "and"
                     if (text.equals("and"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "and", "or", mutationType));
                 }
                 case LOGICAL_OR_TO_AND -> {
-                    // In Racket, logical or is the identifier "or"
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
                 }
+                default -> { }
             }
         }
 
+        // -- Numeric literal check --------------------------------------------
+
         /**
-         * Extracts the single terminal token from an atom context.
-         * An atom rule matches exactly one token, so we take child 0.
+         * Checks an atom for numeric literal mutation targets.
+         * Applies to all numeric literals regardless of position.
+         *
+         * NLT_INTEGER_TO_FLOAT : 5 → 5.0
+         * NLT_FLOAT_TO_INTEGER : 5.0 → 5
          */
+        private void checkNumericLiteral(SchemeParser.AtomContext ctx) {
+            Token token = getAtomToken(ctx);
+            if (token == null) return;
+
+            if (token.getType() != SchemeLexer.NUMBER) return;
+
+            String text = token.getText();
+            int line    = token.getLine();
+            int col     = token.getCharPositionInLine();
+
+            boolean isFloat   = text.contains(".");
+            boolean isInteger = !isFloat;
+
+            if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT && isInteger) {
+                mutationPoints.add(new MutationPoint(sourceFile, line, col, text, text + ".0", mutationType));
+            } else if (mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER && isFloat) {
+                int dotIndex = text.indexOf('.');
+                String intPart = dotIndex > 0 ? text.substring(0, dotIndex) : text;
+                mutationPoints.add(new MutationPoint(sourceFile, line, col, text, intPart, mutationType));
+            }
+        }
+
+        // -- Helper -----------------------------------------------------------
+
         private Token getAtomToken(SchemeParser.AtomContext ctx) {
             if (ctx.getChildCount() == 0) return null;
             ParseTree child = ctx.getChild(0);

@@ -7,8 +7,8 @@ public class Mutator {
     public enum MutatorType {
         AOR_PLUS_TO_MINUS,
         AOR_MINUS_TO_PLUS,
-        // ROR_LT_TO_LE,
-        // ROR_LE_TO_LT,
+        ROR_LT_TO_LE,
+        ROR_LE_TO_LT,
         ROR_GT_TO_GE,
         ROR_GE_TO_GT,
         EQ_NEGATE, // switch between == and !=

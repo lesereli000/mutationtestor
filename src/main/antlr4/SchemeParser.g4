@@ -1,6 +1,6 @@
 // Scheme/Racket Parser Grammar for ANTLR4
 // Depends on SchemeLexer.g4.
-// Produces a parse tree of S-expressions that RacketMutationScanner
+// Produces a parse tree of S-expressions that SchemeMutationRunner
 // walks with a visitor to find mutation points.
 
 parser grammar SchemeParser;
