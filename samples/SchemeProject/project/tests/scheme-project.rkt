@@ -27,11 +27,15 @@
     (check-equal? (subtract 10 3) 7)
     (check-equal? (compare-gt 5 3) "greater")
     (check-equal? (compare-gt 3 5) "not-greater")
+    (check-equal? (compare-gt 5 5) "not-greater")
     (check-equal? (compare-ge 5 5) "greater-or-equal")
     (check-equal? (compare-ge 3 5) "less")
     (check-equal? (check-equal 5 5) "equal")
     (check-equal? (check-equal 5 3) "not-equal")
     (check-equal? (check-logic 1 2) "both-positive")
+    (check-equal? (check-logic 0 2) "one-positive")
+    (check-equal? (check-logic 2 0) "one-positive")
+    (check-equal? (check-logic 0 0) "neither-positive")
     (check-equal? (check-logic -1 2) "one-positive")
     (check-equal? (check-logic -1 -2) "neither-positive")
     (check-equal? (check-floats) '(5 3.14 10))))
@@ -43,7 +47,7 @@
     operators-suite))
 
 
-; run with ' Racket ./project/tests/racket-project.rkt '
+; run with ' Racket ./project/tests/scheme-project.rkt '
 (module+ main
   (void
    (run-tests all-tests)))
