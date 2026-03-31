@@ -121,6 +121,54 @@ public class SchemeScannerTests {
     }
 
     // -------------------------------------------------------------------------
+// ROR_LT_TO_LE
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsLTtoLE() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
+
+        // operators.rkt has one (< x y) in compare-lt
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<", p.getOperator());
+        assertEquals("<=", p.getReplacement());
+    }
+
+    @Test
+    public void testAdd1LTtoLE() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/add1.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
+
+        assertEquals(0, points.size());
+    }
+
+// -------------------------------------------------------------------------
+// ROR_LE_TO_LT
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsLEtoLT() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/operators.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
+
+        // operators.rkt has one (<= x y) in compare-le
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<=", p.getOperator());
+        assertEquals("<", p.getReplacement());
+    }
+
+    @Test
+    public void testAdd1LEtoLT() throws IOException {
+        File file = new File("samples/SchemeProject/project/src/add1.rkt");
+        List<MutationPoint> points = SchemeMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
+
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
     // EQ_NEGATE
     // -------------------------------------------------------------------------
 

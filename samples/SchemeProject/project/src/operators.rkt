@@ -20,6 +20,18 @@
       "greater-or-equal"
       "less"))
 
+; ROR: < and <=
+(define (compare-lt x y)
+  (if (< x y)
+      "less"
+      "not-less"))
+
+(define (compare-le x y)
+  (if (<= x y)
+      "less-or-equal"
+      "greater"))
+
+
 ; EQ_NEGATE: =
 (define (check-equal x y)
   (if (= x y)

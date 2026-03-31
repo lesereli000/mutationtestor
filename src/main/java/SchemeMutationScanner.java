@@ -115,6 +115,14 @@ public class SchemeMutationScanner {
                     if (text.equals(">="))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, ">=", ">", mutationType));
                 }
+                case ROR_LT_TO_LE -> {
+                    if (text.equals("<"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<", "<=", mutationType));
+                }
+                case ROR_LE_TO_LT -> {
+                    if (text.equals("<="))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<=", "<", mutationType));
+                }
                 case EQ_NEGATE -> {
                     // Racket numeric equality is `=`.
                     // Flagged here; mutator is responsible for wrapping as (not (= ...))
