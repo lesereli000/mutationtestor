@@ -162,6 +162,6 @@ public class CSharpScannerTests {
     public void testProgramArithmeticMutations() throws IOException {
         File file = new File("samples/CSProject/src/CSProject/Program.cs");
         List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        assertEquals(11, points.size());
+        assertEquals(17, points.size());
     }
 }
