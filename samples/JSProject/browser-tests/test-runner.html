@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Mutation Testing - Browser Tests</title>
+    <style>
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: #4ec9b0;
+            border-bottom: 2px solid #4ec9b0;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #569cd6;
+            margin-top: 30px;
+        }
+        
+        .test-suite {
+            background-color: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-case {
+            padding: 5px 0;
+            font-size: 14px;
+        }
+        
+        .pass {
+            color: #4ec9b0;
+        }
+        
+        .fail {
+            color: #f48771;
+        }
+        
+        .summary {
+            background-color: #264f78;
+            border: 2px solid #4ec9b0;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 30px;
+            font-size: 16px;
+        }
+        
+        .summary strong {
+            color: #4ec9b0;
+        }
+        
+        .error {
+            background-color: #5a1d1d;
+            border: 1px solid #f48771;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Mutation Testing - Browser Test Suite</h1>
+    <div id="test-output"></div>
+    <div id="summary"></div>
+
+    <!-- Load source files -->
+    <script src="../src/integerTypes.js"></script>
+    <script src="../src/floatTypes.js"></script>
+    <script src="../src/exponentialTypes.js"></script>
+    <script src="../src/mixedTypes.js"></script>
+
+    <!-- Test framework and tests -->
+      <script>
+        console.log('=== TEST SCRIPT STARTING ===');
+        console.log('jQuery loaded?', typeof $ !== 'undefined');
+        console.log('Functions available:');
+        console.log('  addInteger:', typeof addInteger);
+        console.log('  calculatePi:', typeof calculatePi);
+        console.log('  largeNumber:', typeof largeNumber);
+        console.log('  complexCalculation:', typeof complexCalculation);
+        // Simple test framework
+        class TestRunner {
+            constructor() {
+                this.totalTests = 0;
+                this.passedTests = 0;
+                this.failedTests = 0;
+                this.output = [];
+                this.currentSuite = '';
+            }
+
+            suite(name) {
+                this.currentSuite = name;
+                this.output.push(`<div class="test-suite"><h2>${name}</h2>`);
+            }
+
+            endSuite() {
+                this.output.push('</div>');
+            }
+
+            test(name, fn) {
+                this.totalTests++;
+                try {
+                    fn();
+                    this.passedTests++;
+                    this.output.push(`<div class="test-case pass">[PASS] ${name}</div>`);
+                } catch (error) {
+                    this.failedTests++;
+                    this.output.push(`<div class="test-case fail">[FAIL] ${name}</div>`);
+                    this.output.push(`<div class="error">Error: ${error.message}</div>`);
+                }
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEquals(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(message || `Expected ${expected} but got ${actual}`);
+                }
+            }
+
+            assertClose(actual, expected, tolerance, message) {
+                if (Math.abs(actual - expected) > tolerance) {
+                    throw new Error(message || `Expected ${expected} ± ${tolerance} but got ${actual}`);
+                }
+            }
+
+            getResults() {
+                return {
+                    total: this.totalTests,
+                    passed: this.passedTests,
+                    failed: this.failedTests,
+                    successRate: ((this.passedTests / this.totalTests) * 100).toFixed(1)
+                };
+            }
+
+            render() {
+                document.getElementById('test-output').innerHTML = this.output.join('');
+                
+                const results = this.getResults();
+                const summaryHTML = `
+                    <strong>TEST SUMMARY</strong><br><br>
+                    Total Tests: ${results.total}<br>
+                    <span class="pass">Passed: ${results.passed}</span><br>
+                    <span class="fail">Failed: ${results.failed}</span><br>
+                    <strong>Success Rate: ${results.successRate}%</strong>
+                `;
+                
+                document.getElementById('summary').innerHTML = summaryHTML;
+                document.getElementById('summary').className = 'summary';
+                
+                // Add a hidden div with JSON for PhantomJS
+                var resultsDiv = document.createElement('div');
+                resultsDiv.id = 'phantomjs-results';
+                resultsDiv.style.display = 'none';
+                resultsDiv.textContent = JSON.stringify({
+                    total: this.totalTests,
+                    passed: this.passedTests,
+                    failed: this.failedTests,
+                    allPassed: this.failedTests === 0
+                });
+                document.body.appendChild(resultsDiv);
+            }
+        }
+
+        // Create test runner
+        const runner = new TestRunner();
+
+        // Run all tests (same as before)
+        runner.suite('Integer Types Tests');
+        runner.test('addInteger(8) should return 50', () => {
+            runner.assertEquals(addInteger(8), 50);
+        });
+        runner.test('addInteger(0) should return 42', () => {
+            runner.assertEquals(addInteger(0), 42);
+        });
+        runner.test('addInteger(-42) should return 0', () => {
+            runner.assertEquals(addInteger(-42), 0);
+        });
+        runner.test('multiplyInteger(5) should return 50', () => {
+            runner.assertEquals(multiplyInteger(5), 50);
+        });
+        runner.test('multiplyInteger(0) should return 0', () => {
+            runner.assertEquals(multiplyInteger(0), 0);
+        });
+        runner.test('zeroInteger() should return 0', () => {
+            runner.assertEquals(zeroInteger(), 0);
+        });
+        runner.test('negativeInteger() should return -42', () => {
+            runner.assertEquals(negativeInteger(), -42);
+        });
+        runner.test('largeInteger() should return 1000', () => {
+            runner.assertEquals(largeInteger(), 1000);
+        });
+        runner.endSuite();
+
+        runner.suite('Float Types Tests');
+        runner.test('calculatePi() should return ~3.14159', () => {
+            runner.assertClose(calculatePi(), 3.14159, 0.00001);
+        });
+        runner.test('halfValue(10) should return 5', () => {
+            runner.assertEquals(halfValue(10), 5);
+        });
+        runner.test('halfValue(7) should return 3.5', () => {
+            runner.assertEquals(halfValue(7), 3.5);
+        });
+        runner.test('precisionTest() should return ~0.3', () => {
+            runner.assertClose(precisionTest(), 0.3, 0.1);
+        });
+        runner.test('negativeFloat() should return -2.5', () => {
+            runner.assertEquals(negativeFloat(), -2.5);
+        });
+        runner.test('smallDecimal() should return 0.001', () => {
+            runner.assertEquals(smallDecimal(), 0.001);
+        });
+        runner.endSuite();
+
+        runner.suite('Exponential Types Tests');
+        runner.test('largeNumber() should return 10000000000', () => {
+            runner.assertEquals(largeNumber(), 10000000000);
+        });
+        runner.test('smallNumber() should return 0.00001', () => {
+            runner.assertEquals(smallNumber(), 0.00001);
+        });
+        runner.test('scientificCalculation(4) should return 10000', () => {
+            runner.assertEquals(scientificCalculation(4), 10000);
+        });
+        runner.test('scientificCalculation(1) should return 2500', () => {
+            runner.assertEquals(scientificCalculation(1), 2500);
+        });
+        runner.test('negativeExponent() should return 0.005', () => {
+            runner.assertEquals(negativeExponent(), 0.005);
+        });
+        runner.test('largeExponent() should return 1e20', () => {
+            runner.assertEquals(largeExponent(), 1e20);
+        });
+        runner.endSuite();
+
+        runner.suite('Mixed Types Tests');
+        runner.test('complexCalculation(2) should return 2100', () => {
+            runner.assertEquals(complexCalculation(2), 2100);
+        });
+        runner.test('complexCalculation(1) should return 1050', () => {
+            runner.assertEquals(complexCalculation(1), 1050);
+        });
+        runner.test('complexCalculation(0) should return 0', () => {
+            runner.assertEquals(complexCalculation(0), 0);
+        });
+        runner.test('typeConversion() should return 630', () => {
+            runner.assertEquals(typeConversion(), 630);
+        });
+        runner.test('edgeCases() should return ~1e15', () => {
+            runner.assertClose(edgeCases(), 1e15, 1e5);
+        });
+        runner.endSuite();
+
+        // Render results
+        runner.render();
+
+        // Create downloadable results file
+        var results = runner.getResults();
+        var resultsText = '========================================\n';
+        resultsText += 'BROWSER TEST RESULTS\n';
+        resultsText += '========================================\n';
+        resultsText += 'Total Tests: ' + results.total + '\n';
+        resultsText += 'Passed: ' + results.passed + '\n';
+        resultsText += 'Failed: ' + results.failed + '\n';
+        resultsText += 'Success Rate: ' + results.successRate + '%\n';
+        resultsText += '========================================\n';
+        
+        if (results.failed === 0) {
+            resultsText += 'STATUS: PASS\n';
+        } else {
+            resultsText += 'STATUS: FAIL\n';
+        }
+        
+        // Store in a pre tag for easy copying
+        var pre = document.createElement('pre');
+        pre.id = 'test-results-text';
+        pre.style.display = 'none';
+        pre.textContent = resultsText;
+        document.body.appendChild(pre);
+        
+        // Also expose for automation
+        window.testResults = results;
+        window.testResults.allPassed = (runner.failedTests === 0);
+        window.testResults.textOutput = resultsText;
+        
+        // Set completion flag for Puppeteer
+        window.testsComplete = true;
+        
+        console.log(resultsText);
+        console.log('=== TESTS COMPLETE FLAG SET ===');
+    </script>
+</body>
+</html>

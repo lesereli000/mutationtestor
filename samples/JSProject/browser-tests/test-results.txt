@@ -1,0 +1,44 @@
+========================================
+JavaScript Mutation Testing - Browser Test Results
+Test Run: 2026-04-04T17:28:23.635Z
+Test Runner: Puppeteer (Chrome Headless)
+========================================
+
+Integer Types Tests
+✓ addInteger(8) should return 50
+✓ addInteger(0) should return 42
+✓ addInteger(-42) should return 0
+✓ multiplyInteger(5) should return 50
+✓ multiplyInteger(0) should return 0
+✓ zeroInteger() should return 0
+✓ negativeInteger() should return -42
+✓ largeInteger() should return 1000
+Float Types Tests
+✓ calculatePi() should return ~3.14159
+✓ halfValue(10) should return 5
+✓ halfValue(7) should return 3.5
+✓ precisionTest() should return ~0.3
+✓ negativeFloat() should return -2.5
+✓ smallDecimal() should return 0.001
+Exponential Types Tests
+✓ largeNumber() should return 10000000000
+✓ smallNumber() should return 0.00001
+✓ scientificCalculation(4) should return 10000
+✓ scientificCalculation(1) should return 2500
+✓ negativeExponent() should return 0.005
+✓ largeExponent() should return 1e20
+Mixed Types Tests
+✓ complexCalculation(2) should return 2100
+✓ complexCalculation(1) should return 1050
+✓ complexCalculation(0) should return 0
+✓ typeConversion() should return 630
+✓ edgeCases() should return ~1e15
+
+========================================
+TEST SUMMARY
+
+Total Tests: 25
+Passed: 25
+Failed: 0
+Success Rate: 100.0%
+========================================

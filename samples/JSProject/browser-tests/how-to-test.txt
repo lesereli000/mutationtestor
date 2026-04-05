@@ -1,0 +1,23 @@
+========================================
+BROWSER-BASED JAVASCRIPT TESTING
+========================================
+
+STEP 1: Open test file in browser
+---------------------------------
+Open browser-tests/test-runner.html
+in Chrome/Firefox/Edge
+
+or run  .\run-manual-testing.bat
+
+STEP 2: Verify all tests pass
+------------------------------
+Look at the bottom of the page for:
+and you should see:
+Success Rate: 100.0%
+
+STEP 3: Proceed with mutation testing
+--------------------------------------
+If all tests pass, run:
+  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config.txt
+
+========================================
