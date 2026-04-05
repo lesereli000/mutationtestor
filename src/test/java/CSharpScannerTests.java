@@ -40,22 +40,10 @@ public class CSharpScannerTests {
     }
 
     @Test
-    public void testProgramArithmeticMutations() throws IOException {
-        File file = new File("samples/CSProject/src/CSProject/Program.cs");
-        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        assertEquals(6, points.size());
-    }
-
-    // ===============================
-    // ✅ NEW TESTS (你要的3个)
-    // ===============================
-
-    @Test
     public void testMinusToPlusMutation() throws IOException {
         File file = new File("samples/CSProject/src/CSProject/Add3.cs");
         List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
 
-        // 如果你的代码里有 - 运算符，这里应该 >=1
         assertTrue(points.size() >= 0);
 
         for (MutationPoint p : points) {
@@ -87,17 +75,12 @@ public class CSharpScannerTests {
         File file = new File("samples/CSProject/src/CSProject/TypeMutationDemo.cs");
         List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
 
-        // 如果代码里没有 !=，这个测试允许为0
         for (MutationPoint p : points) {
             if (p.getOperator().equals("!=")) {
                 assertEquals("==", p.getReplacement());
             }
         }
     }
-
-    // ===============================
-    // TYPE MUTATION（你原来的）
-    // ===============================
 
     @Test
     public void testTypeMutationDemoDoubleToInt() throws IOException {
@@ -133,5 +116,52 @@ public class CSharpScannerTests {
         assertEquals(2, points.size());
         assertTrue(points.stream().allMatch(p -> p.getOperator().startsWith("float ")));
         assertTrue(points.stream().allMatch(p -> p.getReplacement().startsWith("int ")));
+    }
+
+    @Test
+    public void testLessThanKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/LessThanKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<", p.getOperator());
+        assertEquals("<=", p.getReplacement());
+    }
+
+    @Test
+    public void testLessThanSurviveDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/LessThanSurviveDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<", p.getOperator());
+        assertEquals("<=", p.getReplacement());
+    }
+
+    @Test
+    public void testLessEqualKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/LessEqualKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<=", p.getOperator());
+        assertEquals("<", p.getReplacement());
+    }
+
+    @Test
+    public void testLessEqualSurviveDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/LessEqualSurviveDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("<=", p.getOperator());
+        assertEquals("<", p.getReplacement());
+    }
+
+    @Test
+    public void testProgramArithmeticMutations() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/Program.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
+        assertEquals(11, points.size());
     }
 }

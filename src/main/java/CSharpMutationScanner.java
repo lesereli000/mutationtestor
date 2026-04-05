@@ -204,6 +204,24 @@ public class CSharpMutationScanner {
                                 ">",
                                 mutationType
                         ));
+                    } else if (operator.equals("<") && mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "<",
+                                "<=",
+                                mutationType
+                        ));
+                    } else if (operator.equals("<=") && mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "<=",
+                                "<",
+                                mutationType
+                        ));
                     }
                 }
             }
