@@ -17,6 +17,9 @@ public class CSharpMutationScanner {
         if (isTypeSwapMutation(type)) {
             return scanTypeSwapMutations(file, sourceCode, type);
         }
+        if (type == Mutator.MutatorType.REMOVE_INCREMENT) {
+            return scanRemoveIncrementMutations(file, sourceCode);
+        }
 
         CharStream input = CharStreams.fromString(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
@@ -29,6 +32,77 @@ public class CSharpMutationScanner {
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
+    }
+
+    private static List<MutationPoint> scanRemoveIncrementMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            for (int col = 0; col < line.length() - 1; col++) {
+                if (isInStringOrComment(line, col)) {
+                    continue;
+                }
+
+                String two = line.substring(col, col + 2);
+
+                if (two.equals("++")) {
+                    points.add(new MutationPoint(
+                            file,
+                            i + 1,
+                            col,
+                            "++",
+                            "__INC_NOOP__",
+                            Mutator.MutatorType.REMOVE_INCREMENT
+                    ));
+                    col++;
+                } else if (two.equals("--")) {
+                    points.add(new MutationPoint(
+                            file,
+                            i + 1,
+                            col,
+                            "--",
+                            "__DEC_NOOP__",
+                            Mutator.MutatorType.REMOVE_INCREMENT
+                    ));
+                    col++;
+                }
+            }
+        }
+
+        return points;
+    }
+
+    private static boolean isInStringOrComment(String line, int position) {
+        boolean inString = false;
+        char stringDelimiter = '\0';
+
+        for (int i = 0; i < position; i++) {
+            char c = line.charAt(i);
+
+            if (i > 0 && line.charAt(i - 1) == '\\') {
+                continue;
+            }
+
+            if (c == '"' || c == '\'') {
+                if (!inString) {
+                    inString = true;
+                    stringDelimiter = c;
+                } else if (c == stringDelimiter) {
+                    inString = false;
+                    stringDelimiter = '\0';
+                }
+            }
+        }
+
+        if (inString) {
+            return true;
+        }
+
+        int commentStart = line.indexOf("//");
+        return commentStart >= 0 && commentStart < position;
     }
 
     private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
@@ -61,11 +135,9 @@ public class CSharpMutationScanner {
                 continue;
             }
 
-            String indent = matcher.group(1);
             String declaredType = matcher.group(2);
             String varName = matcher.group(3);
             String exprText = matcher.group(4).trim();
-            String semicolonPart = matcher.group(5);
 
             String original = declaredType + " " + varName + " = " + exprText;
             String replacement = getTypeSwapReplacement(declaredType, varName, exprText, type);
@@ -204,6 +276,24 @@ public class CSharpMutationScanner {
                                 token.getCharPositionInLine(),
                                 ">=",
                                 ">",
+                                mutationType
+                        ));
+                    } else if (operator.equals("<") && mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "<",
+                                "<=",
+                                mutationType
+                        ));
+                    } else if (operator.equals("<=") && mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "<=",
+                                "<",
                                 mutationType
                         ));
                     }

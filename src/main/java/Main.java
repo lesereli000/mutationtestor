@@ -343,6 +343,12 @@ public class Main {
             return content;
         }
 
+        if (point.getType() == Mutator.MutatorType.REMOVE_INCREMENT) {
+            String newLine = mutateRemoveIncrementLine(line, point);
+            lines[lineIndex] = newLine;
+            return String.join("\n", lines);
+        }
+
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
                 line.substring(point.getColumnNumber() + point.getOperator().length());
@@ -350,6 +356,57 @@ public class Main {
         lines[lineIndex] = newLine;
 
         return String.join("\n", lines);
+    }
+
+    private static String mutateRemoveIncrementLine(String line, MutationPoint point) {
+        int col = point.getColumnNumber();
+        String op = point.getOperator();
+
+        int identStart;
+        int identEnd;
+
+        if (op.equals("++") || op.equals("--")) {
+            boolean postfix = col > 0 && isIdentifierChar(line.charAt(col - 1));
+
+            if (postfix) {
+                identEnd = col;
+                identStart = identEnd - 1;
+                while (identStart >= 0 && isIdentifierChar(line.charAt(identStart))) {
+                    identStart--;
+                }
+                identStart++;
+
+                String varName = line.substring(identStart, identEnd);
+                String replacement = op.equals("++") ? varName + " += 0" : varName + " -= 0";
+
+                return line.substring(0, identStart) +
+                        replacement +
+                        line.substring(col + 2);
+            } else {
+                identStart = col + 2;
+                while (identStart < line.length() && Character.isWhitespace(line.charAt(identStart))) {
+                    identStart++;
+                }
+
+                identEnd = identStart;
+                while (identEnd < line.length() && isIdentifierChar(line.charAt(identEnd))) {
+                    identEnd++;
+                }
+
+                String varName = line.substring(identStart, identEnd);
+                String replacement = op.equals("++") ? varName + " += 0" : varName + " -= 0";
+
+                return line.substring(0, col) +
+                        replacement +
+                        line.substring(identEnd);
+            }
+        }
+
+        return line;
+    }
+
+    private static boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     static boolean hasTestFailures(String output) {

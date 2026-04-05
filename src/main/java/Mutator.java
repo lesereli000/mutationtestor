@@ -27,6 +27,8 @@ public class Mutator {
         // INC_TO_DEC, // ++ to --
         // DEC_TO_INC， // -- to ++
 
+        REMOVE_INCREMENT, // remove-- or ++
+
         // Numeric Literal Type mutations for JavaScript
         NLT_INTEGER_TO_FLOAT, // 42 → 42.0
         NLT_INTEGER_TO_EXPONENTIAL, // 42 → 4.2e1

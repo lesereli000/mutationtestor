@@ -1,0 +1,17 @@
+namespace samples.CSProject.src
+{
+    public static class IncrementSurviveDemo
+    {
+        public static int test()
+        {
+            int x = 1;
+            x++;
+            return x;
+        }
+    }
+}
+
+
+
+
+
