@@ -61,11 +61,9 @@ public class CSharpMutationScanner {
                 continue;
             }
 
-            String indent = matcher.group(1);
             String declaredType = matcher.group(2);
             String varName = matcher.group(3);
             String exprText = matcher.group(4).trim();
-            String semicolonPart = matcher.group(5);
 
             String original = declaredType + " " + varName + " = " + exprText;
             String replacement = getTypeSwapReplacement(declaredType, varName, exprText, type);

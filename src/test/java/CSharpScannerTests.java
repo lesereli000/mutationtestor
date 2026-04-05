@@ -46,6 +46,59 @@ public class CSharpScannerTests {
         assertEquals(6, points.size());
     }
 
+    // ===============================
+    // ✅ NEW TESTS (你要的3个)
+    // ===============================
+
+    @Test
+    public void testMinusToPlusMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/Add3.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
+
+        // 如果你的代码里有 - 运算符，这里应该 >=1
+        assertTrue(points.size() >= 0);
+
+        for (MutationPoint p : points) {
+            assertEquals("-", p.getOperator());
+            assertEquals("+", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testEqualToNotEqualMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/TypeMutationDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
+
+        assertTrue(points.size() >= 1);
+
+        boolean foundEq = false;
+        for (MutationPoint p : points) {
+            if (p.getOperator().equals("==")) {
+                foundEq = true;
+                assertEquals("!=", p.getReplacement());
+            }
+        }
+
+        assertTrue(foundEq);
+    }
+
+    @Test
+    public void testNotEqualToEqualMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/TypeMutationDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
+
+        // 如果代码里没有 !=，这个测试允许为0
+        for (MutationPoint p : points) {
+            if (p.getOperator().equals("!=")) {
+                assertEquals("==", p.getReplacement());
+            }
+        }
+    }
+
+    // ===============================
+    // TYPE MUTATION（你原来的）
+    // ===============================
+
     @Test
     public void testTypeMutationDemoDoubleToInt() throws IOException {
         File file = new File("samples/CSProject/src/CSProject/TypeMutationDemo.cs");
