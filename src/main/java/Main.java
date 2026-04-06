@@ -499,6 +499,10 @@ public class Main {
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
                 || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
+                || lower.contains("0 tests passed, ")   // rackunit: "0 tests passed, N failed"
+                || lower.contains("tests failed")       // rackunit summary variant
+                || lower.contains("\nfailure\n")        // rackunit per-failure block header (lowercased)
+                || lower.contains("check-equal? failed")
             || lower.contains("not recognized as an internal or external command")
             || lower.contains("commandnotfoundexception")
             || lower.contains("no module named pytest")
