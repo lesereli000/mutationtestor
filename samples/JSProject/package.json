@@ -5,9 +5,14 @@
     "test": "jest"
   },
   "jest": {
-    "testMatch": ["**/tests/**/*.test.js"]
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
   "devDependencies": {
     "jest": "^29.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^24.40.0"
   }
 }

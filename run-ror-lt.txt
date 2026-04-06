@@ -1,0 +1,72 @@
+﻿Setting up working directory
+java : Warning: Failed to delete temporary work directory output\workdir-1775447447256: 1 exception(s): [org.apache.commons.io.IOIndexedException: 
+IOException #0: Cannot delete file: output\workdir-1775447447256\.venv]
+At line:1 char:1
++ java -jar $jar "samples\PytestProject" "py-ror_lt_to_le.config" 2>&1  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Failed...47447256\.venv]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Working directory created: output\workdir-1775447468609
+
+Running baseline tests
+Process python finished
+Baseline tests pass
+
+Scanning for mutations...
+Mutation strategy: AST
+  [AST] Scanning Add1.py using ANTLR Python parser
+  [AST] Scanning Add2.py using ANTLR Python parser
+  [AST] Scanning EdgeCaseMath.py using ANTLR Python parser
+  [AST] Scanning FibonacciDemo.py using ANTLR Python parser
+  [AST] Scanning GuardLogicDemo.py using ANTLR Python parser
+  [AST] Scanning Main.py using ANTLR Python parser
+  [AST] Scanning SearchDemo.py using ANTLR Python parser
+  [AST] Scanning TypeHintsDemo.py using ANTLR Python parser
+  [AST] Scanning __init__.py using ANTLR Python parser
+Found 5 mutation points
+
+Testing mutants
+[1/5] Testing EdgeCaseMath.py:24:14 (< ? <=)... Process python finished
+SURVIVED
+[2/5] Testing FibonacciDemo.py:2:9 (< ? <=)... Process python finished
+KILLED
+[3/5] Testing FibonacciDemo.py:15:9 (< ? <=)... Process python finished
+KILLED
+[4/5] Testing GuardLogicDemo.py:7:28 (< ? <=)... Process python finished
+ERROR: Failed to restore output\workdir-1775447468609\src\GuardLogicDemo.py: output\workdir-1775447468609\src\GuardLogicDemo.py
+SURVIVED
+[5/5] Testing SearchDemo.py:21:17 (< ? <=)... COMPILE ERROR
+
+Generating report
+
+================================================================================
+MUTATION TESTING REPORT
+================================================================================
+Total Mutants:    5
+Killed:           2 (40.0%)
+Survived:         3 (60.0%)
+--------------------------------------------------------------------------------
+MUTATION SCORE:   40.0%
+================================================================================
+
+SURVIVED MUTANTS (Weak Test Coverage):
+--------------------------------------------------------------------------------
+[1] EdgeCaseMath.py:24:14 - < -> <=
+[2] GuardLogicDemo.py:7:28 - < -> <=
+--------------------------------------------------------------------------------
+These mutations were NOT caught by tests!
+Consider adding tests to cover these cases.
+
+KILLED MUTANTS:
+--------------------------------------------------------------------------------
+2 mutants were successfully detected by tests
+  FibonacciDemo.py:2 - < -> <=
+  FibonacciDemo.py:15 - < -> <=
+
+================================================================================
+Failed to generate HTML report: output\workdir-1775447468609\src\EdgeCaseMath.py
+
+ Mutation testing complete
+Warning: Failed to delete temporary work directory output\workdir-1775447481329: output\workdir-1775447481329
+Quitting

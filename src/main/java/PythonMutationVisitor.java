@@ -1,185 +1,182 @@
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
-import java.util.*;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
-/**
- * Visitor that identifies and records mutation opportunities in Python code.
- * Finds arithmetic, comparison, and logical operators for mutation testing.
- */
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
-    
-    private List<Mutation> mutations = new ArrayList<>();
-    private String sourceCode;
-    
-    public PythonMutationVisitor(String sourceCode) {
+
+    private final File sourceFile;
+    private final String sourceCode;
+    private final Mutator.MutatorType mutationType;
+    private final List<MutationPoint> mutationPoints = new ArrayList<>();
+    private final Set<String> seenMutations = new HashSet<>();
+
+    public PythonMutationVisitor(File sourceFile, String sourceCode, Mutator.MutatorType mutationType) {
+        this.sourceFile = sourceFile;
         this.sourceCode = sourceCode;
+        this.mutationType = mutationType;
     }
-    
-    /**
-     * Visit expressions to find arithmetic operators: +, -, *, /, //, %, **
-     */
+
+    @Override
+    public Void visitExpr_stmt(PythonParser.Expr_stmtContext ctx) {
+        if (ctx.assign_part() != null && ctx.assign_part().COLON() != null && ctx.assign_part().test() != null) {
+            maybeAddTypeSwapMutation(ctx.assign_part().test().getText().trim(), ctx.assign_part().test().getStart());
+        }
+
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitNamed_parameter(PythonParser.Named_parameterContext ctx) {
+        if (ctx.test() != null) {
+            maybeAddTypeSwapMutation(ctx.test().getText().trim(), ctx.test().getStart());
+        }
+
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitFuncdef(PythonParser.FuncdefContext ctx) {
+        for (int i = 0; i < ctx.getChildCount() - 1; i++) {
+            ParseTree child = ctx.getChild(i);
+            if (!(child instanceof TerminalNode terminalNode)) {
+                continue;
+            }
+
+            Token token = terminalNode.getSymbol();
+            if (token.getType() != PythonLexer.ARROW) {
+                continue;
+            }
+
+            ParseTree typeNode = ctx.getChild(i + 1);
+            if (typeNode instanceof PythonParser.TestContext returnType) {
+                maybeAddTypeSwapMutation(returnType.getText().trim(), returnType.getStart());
+            }
+            break;
+        }
+
+        return visitChildren(ctx);
+    }
+
     @Override
     public Void visitExpr(PythonParser.ExprContext ctx) {
-        // Check if this expression has an operator
-        if (ctx.op != null) {
-            Token opToken = ctx.op;
-            String operator = opToken.getText();
-            int line = opToken.getLine();
-            int column = opToken.getCharPositionInLine();
-            String srcLine = getSourceLine(line);
-            
-            switch (operator) {
-                case "+":
-                    mutations.add(new Mutation("AOR_PLUS_TO_MINUS", line, column, "+", "-", srcLine));
-                    mutations.add(new Mutation("AOR_PLUS_TO_MULTIPLY", line, column, "+", "*", srcLine));
-                    mutations.add(new Mutation("AOR_PLUS_TO_DIVIDE", line, column, "+", "/", srcLine));
-                    break;
-                    
-                case "-":
-                    mutations.add(new Mutation("AOR_MINUS_TO_PLUS", line, column, "-", "+", srcLine));
-                    mutations.add(new Mutation("AOR_MINUS_TO_MULTIPLY", line, column, "-", "*", srcLine));
-                    mutations.add(new Mutation("AOR_MINUS_TO_DIVIDE", line, column, "-", "/", srcLine));
-                    break;
-                    
-                case "*":
-                    mutations.add(new Mutation("AOR_MULTIPLY_TO_DIVIDE", line, column, "*", "/", srcLine));
-                    mutations.add(new Mutation("AOR_MULTIPLY_TO_PLUS", line, column, "*", "+", srcLine));
-                    mutations.add(new Mutation("AOR_MULTIPLY_TO_MINUS", line, column, "*", "-", srcLine));
-                    break;
-                    
-                case "/":
-                    mutations.add(new Mutation("AOR_DIVIDE_TO_MULTIPLY", line, column, "/", "*", srcLine));
-                    mutations.add(new Mutation("AOR_DIVIDE_TO_PLUS", line, column, "/", "+", srcLine));
-                    mutations.add(new Mutation("AOR_DIVIDE_TO_MINUS", line, column, "/", "-", srcLine));
-                    break;
-                    
-                case "//":  // Integer division (Python specific)
-                    mutations.add(new Mutation("AOR_INTDIV_TO_DIVIDE", line, column, "//", "/", srcLine));
-                    mutations.add(new Mutation("AOR_INTDIV_TO_MULTIPLY", line, column, "//", "*", srcLine));
-                    break;
-                    
-                case "%":
-                    mutations.add(new Mutation("AOR_MODULO_TO_MULTIPLY", line, column, "%", "*", srcLine));
-                    mutations.add(new Mutation("AOR_MODULO_TO_DIVIDE", line, column, "%", "/", srcLine));
-                    break;
-                    
-                case "**":  // Power (Python specific)
-                    mutations.add(new Mutation("AOR_POWER_TO_MULTIPLY", line, column, "**", "*", srcLine));
-                    mutations.add(new Mutation("AOR_POWER_TO_DIVIDE", line, column, "**", "/", srcLine));
-                    break;
-            }
+        if (ctx.op == null) {
+            return visitChildren(ctx);
         }
-        
-        // Continue visiting children
+
+        String operator = ctx.op.getText();
+        if (mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS && operator.equals("+")) {
+            addMutation(ctx.op, "+", "-");
+        } else if (mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS && operator.equals("-")) {
+            addMutation(ctx.op, "-", "+");
+        }
+
         return visitChildren(ctx);
     }
-    
-    /**
-     * Visit logical_test to find logical operators: and, or
-     */
+
     @Override
     public Void visitLogical_test(PythonParser.Logical_testContext ctx) {
-        if (ctx.op != null) {
-            Token opToken = ctx.op;
-            String operator = opToken.getText();
-            int line = opToken.getLine();
-            int column = opToken.getCharPositionInLine();
-            String srcLine = getSourceLine(line);
-            
-            switch (operator) {
-                case "and":
-                    mutations.add(new Mutation("LCR_AND_TO_OR", line, column, "and", "or", srcLine));
-                    break;
-                    
-                case "or":
-                    mutations.add(new Mutation("LCR_OR_TO_AND", line, column, "or", "and", srcLine));
-                    break;
-            }
+        if (ctx.op == null) {
+            return visitChildren(ctx);
         }
-        
+
+        String operator = ctx.op.getText();
+        if (mutationType == Mutator.MutatorType.LOGICAL_AND_TO_OR && operator.equals("and")) {
+            addMutation(ctx.op, "and", "or");
+        } else if (mutationType == Mutator.MutatorType.LOGICAL_OR_TO_AND && operator.equals("or")) {
+            addMutation(ctx.op, "or", "and");
+        }
+
         return visitChildren(ctx);
     }
-    
-    /**
-     * Visit comparison expressions to find relational operators: <, >, ==, >=, <=, !=
-     */
+
     @Override
     public Void visitComparison(PythonParser.ComparisonContext ctx) {
-        // Comparison has multiple children: expr (comp_op expr)*
-        // We need to iterate through and find comparison operators
         for (int i = 0; i < ctx.getChildCount(); i++) {
             ParseTree child = ctx.getChild(i);
-            
-            if (child instanceof TerminalNode) {
-                Token token = ((TerminalNode) child).getSymbol();
-                String operator = token.getText();
-                int line = token.getLine();
-                int column = token.getCharPositionInLine();
-                String srcLine = getSourceLine(line);
-                
-                switch (operator) {
-                    case "<":
-                        mutations.add(new Mutation("ROR_LT_TO_LE", line, column, "<", "<=", srcLine));
-                        mutations.add(new Mutation("ROR_LT_TO_GT", line, column, "<", ">", srcLine));
-                        mutations.add(new Mutation("ROR_LT_TO_EQ", line, column, "<", "==", srcLine));
-                        break;
-                        
-                    case ">":
-                        mutations.add(new Mutation("ROR_GT_TO_GE", line, column, ">", ">=", srcLine));
-                        mutations.add(new Mutation("ROR_GT_TO_LT", line, column, ">", "<", srcLine));
-                        mutations.add(new Mutation("ROR_GT_TO_EQ", line, column, ">", "==", srcLine));
-                        break;
-                        
-                    case "==":
-                        mutations.add(new Mutation("ROR_EQ_TO_NE", line, column, "==", "!=", srcLine));
-                        mutations.add(new Mutation("ROR_EQ_TO_LT", line, column, "==", "<", srcLine));
-                        mutations.add(new Mutation("ROR_EQ_TO_GT", line, column, "==", ">", srcLine));
-                        break;
-                        
-                    case "!=":
-                        mutations.add(new Mutation("ROR_NE_TO_EQ", line, column, "!=", "==", srcLine));
-                        break;
-                        
-                    case ">=":
-                        mutations.add(new Mutation("ROR_GE_TO_GT", line, column, ">=", ">", srcLine));
-                        mutations.add(new Mutation("ROR_GE_TO_LT", line, column, ">=", "<", srcLine));
-                        mutations.add(new Mutation("ROR_GE_TO_EQ", line, column, ">=", "==", srcLine));
-                        break;
-                        
-                    case "<=":
-                        mutations.add(new Mutation("ROR_LE_TO_LT", line, column, "<=", "<", srcLine));
-                        mutations.add(new Mutation("ROR_LE_TO_GT", line, column, "<=", ">", srcLine));
-                        mutations.add(new Mutation("ROR_LE_TO_EQ", line, column, "<=", "==", srcLine));
-                        break;
-                }
+            if (!(child instanceof TerminalNode terminalNode)) {
+                continue;
+            }
+
+            Token token = terminalNode.getSymbol();
+            String operator = token.getText();
+
+            if (mutationType == Mutator.MutatorType.ROR_LT_TO_LE && operator.equals("<")) {
+                addMutation(token, "<", "<=");
+            } else if (mutationType == Mutator.MutatorType.ROR_LE_TO_LT && operator.equals("<=")) {
+                addMutation(token, "<=", "<");
+            } else if (mutationType == Mutator.MutatorType.ROR_GT_TO_GE && operator.equals(">")) {
+                addMutation(token, ">", ">=");
+            } else if (mutationType == Mutator.MutatorType.ROR_GE_TO_GT && operator.equals(">=")) {
+                addMutation(token, ">=", ">");
+            } else if (mutationType == Mutator.MutatorType.EQ_NEGATE && operator.equals("==")) {
+                addMutation(token, "==", "!=");
+            } else if (mutationType == Mutator.MutatorType.EQ_NEGATE && operator.equals("!=")) {
+                addMutation(token, "!=", "==");
             }
         }
-        
+
         return visitChildren(ctx);
     }
-    
-    /**
-     * Helper to get source code line by line number
-     */
+
+    private void maybeAddTypeSwapMutation(String annotatedType, Token token) {
+        if (mutationType == Mutator.MutatorType.TYPE_INT_TO_FLOAT && annotatedType.equals("int")) {
+            addMutation(token, "int", "float");
+        } else if (mutationType == Mutator.MutatorType.TYPE_FLOAT_TO_INT && annotatedType.equals("float")) {
+            addMutation(token, "float", "int");
+        }
+    }
+
+    private void addMutation(Token token, String operator, String replacement) {
+        String key = token.getLine() + ":" + token.getCharPositionInLine() + ":" + operator + ":" + replacement;
+        if (!seenMutations.add(key)) {
+            return;
+        }
+
+        mutationPoints.add(new MutationPoint(
+                sourceFile,
+                token.getLine(),
+                token.getCharPositionInLine(),
+                operator,
+                replacement,
+                mutationType
+        ));
+    }
+
+    public List<MutationPoint> getMutationPoints() {
+        return mutationPoints;
+    }
+
+    public List<Mutation> getMutations() {
+        List<Mutation> legacyMutations = new ArrayList<>();
+        for (MutationPoint point : mutationPoints) {
+            legacyMutations.add(new Mutation(
+                    point.getType().name(),
+                    point.getLineNumber(),
+                    point.getColumnNumber(),
+                    point.getOperator(),
+                    point.getReplacement(),
+                    getSourceLine(point.getLineNumber())
+            ));
+        }
+        return legacyMutations;
+    }
+
+    public void clearMutations() {
+        mutationPoints.clear();
+        seenMutations.clear();
+    }
+
     private String getSourceLine(int lineNumber) {
-        String[] lines = sourceCode.split("\n");
+        String[] lines = sourceCode.split("\n", -1);
         if (lineNumber > 0 && lineNumber <= lines.length) {
             return lines[lineNumber - 1].trim();
         }
         return "";
-    }
-    
-    /**
-     * Get all detected mutations
-     */
-    public List<Mutation> getMutations() {
-        return mutations;
-    }
-    
-    /**
-     * Clear all mutations (useful for reusing visitor)
-     */
-    public void clearMutations() {
-        mutations.clear();
     }
 }

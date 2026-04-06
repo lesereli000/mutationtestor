@@ -17,13 +17,16 @@ import org.apache.commons.io.FileUtils;
 
 public class Main {
     private static final long MAX_CMD_TIME = 60000;
-    private static final String WORKING_DIR = "output/";
+    private static final String OUTPUT_ROOT = "output";
+    private static final String WORKING_DIR_PREFIX = "workdir-";
 
     static class Config {
         String sourceCodeDirectory;
         String mutatorType;
         String compileCommand;
         String testCommand;
+        String mutationStrategy;  // AST or DICTIONARY, or AUTO
+        String testMode;          // BROWSER, CLI, or AUTO
     }
 
     static String runCommand(String command, String directory) {
@@ -124,7 +127,8 @@ public class Main {
                 config.sourceCodeDirectory,
                 config.mutatorType,
                 config.compileCommand,
-                config.testCommand);
+                config.testCommand,
+                config.mutationStrategy); 
 
         System.out.println("Quitting");
     }
@@ -164,6 +168,10 @@ public class Main {
         config.compileCommand = values.getOrDefault("compile_command", "");
         config.testCommand = values.get("test_command");
 
+        // Read mutation strategy (defaults to AUTO)
+        config.mutationStrategy = values.getOrDefault("mutation_strategy", "AUTO");
+        config.testMode = values.getOrDefault("test_mode", "AUTO");
+
         if (config.sourceCodeDirectory == null || config.sourceCodeDirectory.isEmpty()) {
             throw new IOException("Missing source_code_directory in config file");
         }
@@ -180,20 +188,24 @@ public class Main {
     }
 
     private static void mutationTest(String projectDir, String sourceCode, String mutatorType, String command1,
-            String command2) {
+        String command2, String mutationStrategy) {
         Path projectPath = Path.of(projectDir);
         Path sourcePath = Path.of(sourceCode);
-        Path mutantPath = Path.of(WORKING_DIR);
+        Path outputRoot = Path.of(OUTPUT_ROOT);
+        Path mutantPath = outputRoot.resolve(WORKING_DIR_PREFIX + System.currentTimeMillis());
 
         System.out.println("Setting up working directory");
         try {
-            FileUtils.deleteDirectory(mutantPath.toFile());
+            FileUtils.forceMkdir(outputRoot.toFile());
+            cleanupWorkDirectories(outputRoot, null);
             FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
         } catch (IOException e) {
             System.err.println("Error copying " + sourcePath + " to " + mutantPath + ": " + e.getMessage());
             return;
         }
         System.out.println("Working directory created: " + mutantPath);
+
+        try {
 
         System.out.println("\nRunning baseline tests");
         if (!command1.isEmpty()) {
@@ -208,11 +220,14 @@ public class Main {
         System.out.println("Baseline tests pass");
 
         System.out.println("\nScanning for mutations...");
+        System.out.println("Mutation strategy: " + mutationStrategy); 
+
         Path sourceDir = mutantPath.resolve(sourcePath);
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,
-                Mutator.MutatorType.valueOf(mutatorType));
-        System.out.println("✅ Found " + mutationPoints.size() + " mutation points");
+                Mutator.MutatorType.valueOf(mutatorType),
+                mutationStrategy);
+        System.out.println("Found " + mutationPoints.size() + " mutation points");
 
         if (mutationPoints.isEmpty()) {
             System.out.println("No mutations found. Exiting.");
@@ -253,12 +268,50 @@ public class Main {
 
         try {
             HtmlReportGenerator.generateHtmlReport(report, results);
-            System.out.println("HTML report generated at: output/report/mutation-report.html");
+            System.out.println("HTML report generated at: output/report/mutation-report-demo.html");
         } catch (IOException e) {
             System.err.println("Failed to generate HTML report: " + e.getMessage());
         }
 
         System.out.println("\n Mutation testing complete");
+        } finally {
+            cleanupWorkDirectories(outputRoot, mutantPath);
+        }
+    }
+
+    private static void cleanupWorkDirectories(Path outputRoot, Path activeWorkdir) {
+        File outputDirectory = outputRoot.toFile();
+        File[] children = outputDirectory.listFiles();
+
+        if (children == null) {
+            return;
+        }
+
+        String activePath = activeWorkdir != null ? activeWorkdir.toAbsolutePath().normalize().toString() : null;
+        for (File child : children) {
+            if (!child.isDirectory() || !child.getName().startsWith(WORKING_DIR_PREFIX)) {
+                continue;
+            }
+
+            String childPath = child.toPath().toAbsolutePath().normalize().toString();
+            if (activePath != null && activePath.equals(childPath)) {
+                continue;
+            }
+
+            try {
+                FileUtils.deleteDirectory(child);
+            } catch (IOException e) {
+                System.err.println("Warning: Failed to delete temporary work directory " + child + ": " + e.getMessage());
+            }
+        }
+
+        if (activeWorkdir != null) {
+            try {
+                FileUtils.deleteDirectory(activeWorkdir.toFile());
+            } catch (IOException e) {
+                System.err.println("Warning: Failed to delete temporary work directory " + activeWorkdir + ": " + e.getMessage());
+            }
+        }
     }
 
     private static MutantResult testSingleMutant(
@@ -339,6 +392,31 @@ public class Main {
             return String.join("\n", lines);
         }
 
+        // Racket EQ_NEGATE: wrap (= x y) as (not (= x y)) instead of
+        // naively replacing just the "=" token, which produces broken syntax.
+        if (point.getType() == Mutator.MutatorType.EQ_NEGATE
+                && point.getSourceFile().getName().endsWith(".rkt")) {
+            int parenCol = point.getColumnNumber() - 1;
+            if (parenCol >= 0 && parenCol < line.length() && line.charAt(parenCol) == '(') {
+                int depth = 0;
+                int closeIdx = -1;
+                for (int i = parenCol; i < line.length(); i++) {
+                    if (line.charAt(i) == '(') depth++;
+                    else if (line.charAt(i) == ')') {
+                        depth--;
+                        if (depth == 0) { closeIdx = i; break; }
+                    }
+                }
+                if (closeIdx != -1) {
+                    String inner = line.substring(parenCol, closeIdx + 1); // e.g. "(= x y)"
+                    String mutated = "(not " + inner + ")";               // "(not (= x y))"
+                    String newLine = line.substring(0, parenCol) + mutated + line.substring(closeIdx + 1);
+                    lines[lineIndex] = newLine;
+                    return String.join("\n", lines);
+                }
+            }
+        }
+
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
                 line.substring(point.getColumnNumber() + point.getOperator().length());
@@ -404,28 +482,48 @@ public class Main {
             return false;
         }
 
+
+
         String lower = output.toLowerCase();
 
+        // Check for explicit success indicators first
+        if (lower.contains("all tests passed") || 
+            lower.contains("status: pass") ||
+            lower.contains("success rate: 100.0%")) {
+            return false;  // Tests passed!
+        }
+        
+        // Then check for failure patterns
         return lower.matches("(?s).*\\b[1-9]\\d*\\s+failure(s)?\\b.*")
                 || lower.matches("(?s).*\\bfailure(s)?\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
                 || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
+                || lower.contains("0 tests passed, ")   // rackunit: "0 tests passed, N failed"
+                || lower.contains("tests failed")       // rackunit summary variant
+                || lower.contains("\nfailure\n")        // rackunit per-failure block header (lowercased)
+                || lower.contains("check-equal? failed")
+            || lower.contains("not recognized as an internal or external command")
+            || lower.contains("commandnotfoundexception")
+            || lower.contains("no module named pytest")
                 || lower.contains("build failed")
                 || lower.contains("build failure")
-                || lower.contains("test run failed");
+                || lower.contains("test run failed")
+                || lower.contains("type checker:")
+                || lower.contains("type mismatch");
     }
 
     private static List<MutationPoint> scanForMutations(
             Path sourceDir,
-            Mutator.MutatorType type) {
+            Mutator.MutatorType type,
+            String mutationStrategy) {
         List<MutationPoint> points = new ArrayList<>();
 
         try {
             for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false); it.hasNext();) {
                 File file = it.next();
 
-                List<MutationPoint> filePoints = findMutationsInFile(file, type);
+                List<MutationPoint> filePoints = findMutationsInFile(file, type, mutationStrategy);
                 points.addAll(filePoints);
             }
         } catch (Exception e) {
@@ -438,31 +536,79 @@ public class Main {
 
     private static List<MutationPoint> findMutationsInFile(
             File file,
-            Mutator.MutatorType type) throws IOException {
-        // Check if this is a JavaScript file - use AST approach
-        if (file.getName().endsWith(".js")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR JavaScript parser");
-            return JavaScriptMutationScanner.scanFile(file, type);
+            Mutator.MutatorType type,
+            String mutationStrategy) throws IOException {
+
+        String fileName = file.getName();
+        boolean useAST = shouldUseAST(fileName, type, mutationStrategy);
+        if (useAST) {
+            // AST APPROACH - Use ANTLR parsers
+            // Check if this is a JavaScript file - use AST approach
+            if (file.getName().endsWith(".js")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR JavaScript parser");
+                return JavaScriptMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".cs")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR C# parser");
+                return CSharpMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".java")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
+                return JavaMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".py")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
+                return PythonMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".rkt")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
+                return SchemeMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".py")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
+                return PythonMutationScanner.scanFile(file, type);
+            }
         }
+        // DICTIONARY APPROACH - Use regex pattern matching
+        System.out.println("  [Dictionary] Scanning " + fileName + " using regex");
+        return scanWithDictionary(file, type);
+    }
 
-        if (file.getName().endsWith(".cs")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR C# parser");
-            return CSharpMutationScanner.scanFile(file, type);
+     /**
+     * Determines whether to use AST or Dictionary approach
+     */
+    private static boolean shouldUseAST(String fileName, Mutator.MutatorType type, String strategy) {
+        // If explicitly set, use that
+        if (strategy.equals("AST")) {
+            return true;
         }
-
-        if (file.getName().endsWith(".java")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
-            return JavaMutationScanner.scanFile(file, type);
+        if (strategy.equals("DICTIONARY")) {
+            return false;
         }
-
-        if (file.getName().endsWith(".rkt")) {
-            System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
-            return SchemeMutationScanner.scanFile(file, type);
+        
+        // AUTO mode - use AST whenever an ANTLR scanner exists for the file type
+        if (strategy.equals("AUTO")) {
+            return fileName.endsWith(".js") || 
+                   fileName.endsWith(".cs") || 
+                   fileName.endsWith(".java") ||
+                   fileName.endsWith(".py") ||
+                   fileName.endsWith(".rkt");
         }
+        
+        return false;
+    }
 
-        // For other files (.java, .py, .cs) keep using existing dictionary approach
-        System.out.println("  [Dictionary] Scanning " + file.getName() + " using regex");
 
+    /**
+     * Dictionary-based mutation scanning using regex patterns
+     * This is the original approach - works for AOR, ROR, LOR mutations
+     */
+    private static List<MutationPoint> scanWithDictionary(File file, Mutator.MutatorType type) throws IOException {
         List<MutationPoint> points = new ArrayList<>();
         String content = Files.readString(file.toPath());
         String[] lines = content.split("\n", -1);
@@ -470,9 +616,11 @@ public class Main {
         for (int lineNum = 0; lineNum < lines.length; lineNum++) {
             String line = lines[lineNum];
 
+            // AOR: Arithmetic Operator Replacement
             if (type == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
                 for (int col = 0; col < line.length(); col++) {
                     if (line.charAt(col) == '+' && !isInStringOrComment(line, col)) {
+                        // Skip ++ increment operators
                         if (col + 1 < line.length() && line.charAt(col + 1) == '+') {
                             continue;
                         }
@@ -495,12 +643,14 @@ public class Main {
             if (type == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
                 for (int col = 0; col < line.length(); col++) {
                     if (line.charAt(col) == '-' && !isInStringOrComment(line, col)) {
+                        // Skip -- decrement operators
                         if (col + 1 < line.length() && line.charAt(col + 1) == '-') {
                             continue;
                         }
                         if (col > 0 && line.charAt(col - 1) == '-') {
                             continue;
                         }
+                        // Skip -> (arrow operator in some languages)
                         if (col + 1 < line.length() && line.charAt(col + 1) == '>') {
                             continue;
                         }
@@ -516,6 +666,11 @@ public class Main {
                     }
                 }
             }
+
+            // Add more dictionary-based mutations here as needed
+            // ROR: Relational Operator Replacement
+            // LOR: Logical Operator Replacement
+            // etc.
         }
 
         return points;

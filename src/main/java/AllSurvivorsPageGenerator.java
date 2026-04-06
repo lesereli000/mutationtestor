@@ -9,25 +9,25 @@ import java.util.*;
 public class AllSurvivorsPageGenerator {
     
         static class SurvivorEntry {
-        String file;
-        int line;
-        int column;
-        String operator;
-        String replacement;
-        String sourceCodeSnippet;
-        String operatorName;  
+            String file;
+            int line;
+            int column;
+            String operator;
+            String replacement;
+            String sourceCodeSnippet;
+            String operatorName;
     
-        SurvivorEntry(String file, int line, int column, String operator, String replacement, 
-            String sourceCodeSnippet, String operatorName) {
-            this.file = file;
-            this.line = line;
-            this.column = column;
-            this.operator = operator;
-            this.replacement = replacement;
-            this.sourceCodeSnippet = sourceCodeSnippet;
-            this.operatorName = operatorName;  
+            SurvivorEntry(String file, int line, int column, String operator, String replacement, 
+                String sourceCodeSnippet, String operatorName) {
+                this.file = file;
+                this.line = line;
+                this.column = column;
+                this.operator = operator;
+                this.replacement = replacement;
+                this.sourceCodeSnippet = sourceCodeSnippet;
+                this.operatorName = operatorName;
+            }
         }
-    }
     
     public static void generateAllSurvivorsPage(
             List<?> survivedMutants,

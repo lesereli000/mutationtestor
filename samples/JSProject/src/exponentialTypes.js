@@ -23,10 +23,4 @@ function largeExponent() {
     return huge;
 }
 
-module.exports = { 
-    largeNumber, 
-    smallNumber, 
-    scientificCalculation,
-    negativeExponent,
-    largeExponent 
-};
+module.exports = { largeNumber, smallNumber, scientificCalculation, negativeExponent, largeExponent };
