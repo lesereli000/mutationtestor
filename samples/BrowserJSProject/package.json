@@ -1,0 +1,16 @@
+{
+  "name": "browser-js-sample",
+  "version": "1.0.0",
+  "description": "Browser JavaScript sample project for mutation testing - covers all operator categories",
+  "scripts": {
+    "test": "jest --verbose"
+  },
+  "jest": {
+    "testMatch": ["**/tests/**/*.test.js"],
+    "testEnvironment": "jsdom"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0"
+  }
+}

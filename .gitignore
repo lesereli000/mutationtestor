@@ -29,3 +29,17 @@ output/
 *.bak
 *.zo
 *.dep
+<<<<<<< Updated upstream
+=======
+*.pyc
+/samples/CSProject/src/CSProject/bin/
+/samples/CSProject/src/CSProject/obj/
+/samples/CSProject/tests/CSProject.Tests/bin/
+/samples/CSProject/tests/CSProject.Tests/obj/
+/samples/JSProject/node_modules/
+/samples/PytestProject/venv/
+/samples/SchemeProject/project/compiled
+/samples/PytestProject/tests/__pycache__
+/samples/PytestProject/src/__pycache__
+/samples/BrowserJSProject/node_modules/
+>>>>>>> Stashed changes

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser JS Mutation Testing Sample</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 2rem;
+        }
+        h1 { color: #e94560; margin-bottom: 1rem; }
+        h2 { color: #0f3460; background: #e94560; display: inline-block; padding: 0.3rem 0.8rem; border-radius: 4px; margin: 1rem 0 0.5rem; }
+        .section { background: #16213e; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #e94560; }
+        .result { font-family: monospace; color: #89ffb1; margin: 0.25rem 0; }
+        .label { color: #a0a0c0; }
+        #progress-container { margin-top: 0.5rem; }
+        .progress-bar { border-radius: 4px; color: #fff; text-align: center; font-size: 0.8rem; line-height: 20px; transition: width 0.3s; }
+        #list-container ul { list-style: none; border-radius: 4px; overflow: hidden; }
+        #list-container li { padding: 8px 12px; }
+        button {
+            background: #e94560; color: white; border: none; padding: 0.5rem 1rem;
+            border-radius: 4px; cursor: pointer; margin: 0.25rem; font-size: 0.9rem;
+        }
+        button:hover { background: #c73650; }
+        #counter-display { font-size: 1.5rem; margin: 0.5rem 0; color: #89ffb1; }
+    </style>
+</head>
+<body>
+    <h1>🧬 Browser JS — Mutation Testing Showcase</h1>
+    <p style="color:#a0a0c0; margin-bottom:1.5rem;">
+        This sample exercises every operator category supported (and planned) by the mutation tester.
+    </p>
+
+    <!-- Arithmetic -->
+    <div class="section">
+        <h2>Arithmetic (AOR)</h2>
+        <div id="arithmetic-results"></div>
+    </div>
+
+    <!-- Comparisons -->
+    <div class="section">
+        <h2>Comparisons (ROR / EQ)</h2>
+        <div id="comparison-results"></div>
+    </div>
+
+    <!-- Logic -->
+    <div class="section">
+        <h2>Logical Operators</h2>
+        <div id="logic-results"></div>
+    </div>
+
+    <!-- Increment -->
+    <div class="section">
+        <h2>Increment / Decrement</h2>
+        <div id="increment-results"></div>
+    </div>
+
+    <!-- Numerics -->
+    <div class="section">
+        <h2>Numeric Literal Types (NLT)</h2>
+        <div id="numeric-results"></div>
+    </div>
+
+    <!-- DOM interactions -->
+    <div class="section">
+        <h2>DOM Manipulation</h2>
+        <div id="progress-container"></div>
+        <div id="list-container" style="margin-top:1rem;"></div>
+        <div style="margin-top:1rem;">
+            <button data-action="decrement" class="counter-btn">−</button>
+            <span id="counter-display">0</span>
+            <button data-action="increment" class="counter-btn">+</button>
+            <button data-action="reset" class="counter-btn">Reset</button>
+        </div>
+    </div>
+
+    <!-- Ternary -->
+    <div class="section">
+        <h2>Ternary / Conditional</h2>
+        <div id="ternary-results"></div>
+    </div>
+
+    <!-- Bitwise -->
+    <div class="section">
+        <h2>Bitwise Operators</h2>
+        <div id="bitwise-results"></div>
+    </div>
+
+    <script src="src/arithmetic.js"></script>
+    <script src="src/comparisons.js"></script>
+    <script src="src/logic.js"></script>
+    <script src="src/increment.js"></script>
+    <script src="src/numerics.js"></script>
+    <script src="src/ternary.js"></script>
+    <script src="src/bitwise.js"></script>
+    <script src="src/dom.js"></script>
+    <script>
+        function show(id, label, value) {
+            const el = document.getElementById(id);
+            const div = document.createElement('div');
+            div.className = 'result';
+            div.innerHTML = `<span class="label">${label}:</span> ${JSON.stringify(value)}`;
+            el.appendChild(div);
+        }
+
+        // Arithmetic demos
+        show('arithmetic-results', 'add(3, 4)', add(3, 4));
+        show('arithmetic-results', 'subtract(10, 3)', subtract(10, 3));
+        show('arithmetic-results', 'multiply(6, 7)', multiply(6, 7));
+        show('arithmetic-results', 'divide(20, 4)', divide(20, 4));
+        show('arithmetic-results', 'modulo(17, 5)', modulo(17, 5));
+        show('arithmetic-results', 'trapezoidArea(3,5,4)', trapezoidArea(3, 5, 4));
+        show('arithmetic-results', 'distance(0,0,3,4)', distance(0, 0, 3, 4));
+
+        // Comparison demos
+        show('comparison-results', 'isGreaterThan(5, 3)', isGreaterThan(5, 3));
+        show('comparison-results', 'isGreaterThanOrEqual(5, 5)', isGreaterThanOrEqual(5, 5));
+        show('comparison-results', 'isLessThan(2, 7)', isLessThan(2, 7));
+        show('comparison-results', 'clamp(15, 0, 10)', clamp(15, 0, 10));
+        show('comparison-results', 'getGrade(85)', getGrade(85));
+        show('comparison-results', 'isInRange(5, 1, 10)', isInRange(5, 1, 10));
+
+        // Logic demos
+        show('logic-results', 'bothPositive(1, 2)', bothPositive(1, 2));
+        show('logic-results', 'eitherPositive(-1, 2)', eitherPositive(-1, 2));
+        show('logic-results', 'isValidTriangle(3,4,5)', isValidTriangle(3, 4, 5));
+        show('logic-results', 'isWeekend("Saturday")', isWeekend('Saturday'));
+        show('logic-results', 'canAccessContent(20, true, false)', canAccessContent(20, true, false));
+
+        // Increment demos
+        show('increment-results', 'countUp(0, 5)', countUp(0, 5));
+        show('increment-results', 'countDown(10, 3)', countDown(10, 3));
+        show('increment-results', 'sumRange(1, 10)', sumRange(1, 10));
+
+        // Numeric demos
+        show('numeric-results', 'getAnswerToLife()', getAnswerToLife());
+        show('numeric-results', 'circleArea(5)', circleArea(5));
+        show('numeric-results', 'celsiusToFahrenheit(100)', celsiusToFahrenheit(100));
+        show('numeric-results', 'toKilo(5000)', toKilo(5000));
+        show('numeric-results', 'getQuarterThousand()', getQuarterThousand());
+
+        // Ternary demos
+        show('ternary-results', 'absoluteValue(-7)', absoluteValue(-7));
+        show('ternary-results', 'parity(4)', parity(4));
+        show('ternary-results', 'sign(-3)', sign(-3));
+        show('ternary-results', 'formatStatus(true)', formatStatus(true));
+
+        // Bitwise demos
+        show('bitwise-results', 'bitwiseAnd(0b1100, 0b1010)', bitwiseAnd(0b1100, 0b1010));
+        show('bitwise-results', 'bitwiseOr(0b1100, 0b1010)', bitwiseOr(0b1100, 0b1010));
+        show('bitwise-results', 'extractRGB(0xFF8040)', extractRGB(0xFF8040));
+        show('bitwise-results', 'isBitSet(0b1010, 1)', isBitSet(0b1010, 1));
+
+        // DOM demos
+        createProgressBar('progress-container', 75);
+        createStripedList('list-container', ['Arithmetic', 'Comparisons', 'Logic', 'Bitwise', 'Ternary']);
+
+        // Counter with event delegation
+        const counterState = { count: 0, buttonClass: 'counter-btn' };
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON' && e.target.classList.contains('counter-btn')) {
+                const result = handleDelegatedClick(e, counterState);
+                if (result !== null) {
+                    document.getElementById('counter-display').textContent = counterState.count;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
