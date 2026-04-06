@@ -535,6 +535,11 @@ public class Main {
                 System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
                 return SchemeMutationScanner.scanFile(file, type);
             }
+
+            if (file.getName().endsWith(".py")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
+                return PythonMutationScanner.scanFile(file, type);
+            }
         }
         // DICTIONARY APPROACH - Use regex pattern matching
         System.out.println("  [Dictionary] Scanning " + fileName + " using regex");
@@ -553,32 +558,13 @@ public class Main {
             return false;
         }
         
-        // AUTO mode - decide based on mutation type and file type
+        // AUTO mode - use AST whenever an ANTLR scanner exists for the file type
         if (strategy.equals("AUTO")) {
-            if (fileName.endsWith(".py")) {
-                return type == Mutator.MutatorType.AOR_PLUS_TO_MINUS
-                        || type == Mutator.MutatorType.AOR_MINUS_TO_PLUS
-                        || type == Mutator.MutatorType.ROR_LT_TO_LE
-                        || type == Mutator.MutatorType.ROR_LE_TO_LT
-                        || type == Mutator.MutatorType.ROR_GT_TO_GE
-                        || type == Mutator.MutatorType.ROR_GE_TO_GT
-                        || type == Mutator.MutatorType.EQ_NEGATE
-                        || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
-                        || type == Mutator.MutatorType.LOGICAL_OR_TO_AND
-                        || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
-                        || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT;
-            }
-
-            // Use AST for numeric literal type mutations (NLT_*)
-            if (type.name().startsWith("NLT_")) {
-                return fileName.endsWith(".js") || 
-                       fileName.endsWith(".cs") || 
-                       fileName.endsWith(".java");
-            }
-            
-            // Use dictionary for arithmetic/relational/logical operators
-            // (AOR, ROR, LOR, etc.)
-            return false;
+            return fileName.endsWith(".js") || 
+                   fileName.endsWith(".cs") || 
+                   fileName.endsWith(".java") ||
+                   fileName.endsWith(".py") ||
+                   fileName.endsWith(".rkt");
         }
         
         return false;

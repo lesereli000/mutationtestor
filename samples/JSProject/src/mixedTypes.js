@@ -21,3 +21,5 @@ function edgeCases() {
     
     return zero + tiny + big;
 }
+
+module.exports = { complexCalculation, typeConversion, edgeCases };
