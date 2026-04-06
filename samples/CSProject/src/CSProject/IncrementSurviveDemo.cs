@@ -5,7 +5,7 @@ namespace samples.CSProject.src
         public static int test()
         {
             int x = 1;
-            x++;
+            x--;
             return x;
         }
     }
