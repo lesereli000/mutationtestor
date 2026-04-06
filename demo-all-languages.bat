@@ -51,10 +51,10 @@ if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\java\" >nul 2>&1
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [2/5] JAVASCRIPT (Jest Project) - NLT_INTEGER_TO_EXPONENTIAL
+echo   [2/5] JAVASCRIPT (Browser-Based) - NLT_EXPONENTIAL_TO_FLOAT
 echo ============================================================================
 echo.
-java -jar %JAR% samples/JSProject js.config
+java -jar %JAR% samples/JSProject samples/JSProject/config.txt
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\javascript\" >nul 2>&1
 
