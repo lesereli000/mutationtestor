@@ -4,15 +4,102 @@ import java.util.*;
 
 /**
  * Visitor that identifies and records mutation opportunities in Python code.
- * Finds arithmetic, comparison, and logical operators for mutation testing.
+ * Finds arithmetic, comparison, and logical operators for mutation testing,
+ * PLUS the new variable-type-swap mutation (int <-> float) using only
+ * the tokens and rules present in the project's PythonParser.g4.
  */
 public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
     
     private List<Mutation> mutations = new ArrayList<>();
     private String sourceCode;
+    // Track variable and parameter annotations: name -> type
+    private Map<String, String> variableTypes = new HashMap<>();
     
     public PythonMutationVisitor(String sourceCode) {
         this.sourceCode = sourceCode;
+    }
+
+    /**
+     * Detect int/float type annotations after a COLON (:).
+     * This catches BOTH variable annotations (x: int = 5)
+     * and function parameter annotations (def func(x: int)).
+     * Uses token traversal because the grammar does NOT generate
+     * AnnassignContext or TfpdefContext.
+     */
+    @Override
+    public Void visitTest(PythonParser.TestContext ctx) {
+        ParseTree parent = ctx.getParent();
+        if (parent != null) {
+            for (int i = 0; i < parent.getChildCount() - 1; i++) {
+                ParseTree child = parent.getChild(i);
+                if (child instanceof TerminalNode) {
+                    Token token = ((TerminalNode) child).getSymbol();
+                    if (token.getType() == PythonLexer.COLON) {
+                        String type = ctx.getText().trim();
+
+                        if (type.equals("int") || type.equals("float")) {
+                            // The name is the child immediately before the colon
+                            String name = (i > 0) ? parent.getChild(i - 1).getText() : "unknown";
+
+                            Token typeToken = ctx.getStart();
+                            int line = typeToken.getLine();
+                            int column = typeToken.getCharPositionInLine();
+                            String srcLine = getSourceLine(line);
+
+                            variableTypes.put(name, type);
+
+                            if (type.equals("int")) {
+                                mutations.add(new Mutation("TYPE_INT_TO_FLOAT", line, column, "int", "float", srcLine));
+                            } else {
+                                mutations.add(new Mutation("TYPE_FLOAT_TO_INT", line, column, "float", "int", srcLine));
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        return visitChildren(ctx);
+    }
+
+    /**
+     * Catch return annotations (-> int / -> float) inside funcdef.
+     * The grammar defines funcdef with an ARROW token followed by a test.
+     * Function name comes from the 'name' rule.
+     */
+    @Override
+    public Void visitFuncdef(PythonParser.FuncdefContext ctx) {
+        for (int i = 0; i < ctx.getChildCount() - 1; i++) {
+            ParseTree child = ctx.getChild(i);
+            if (child instanceof TerminalNode) {
+                Token token = ((TerminalNode) child).getSymbol();
+                if (token.getType() == PythonLexer.ARROW) {
+                    ParseTree typeNode = ctx.getChild(i + 1);
+                    String returnType = typeNode.getText().trim();
+
+                    if (returnType.equals("int") || returnType.equals("float")) {
+                        String funcName = (ctx.name() != null) ? ctx.name().getText() : "unknown";
+
+                        // Safe cast: typeNode after ARROW is always a ParserRuleContext (TestContext)
+                        Token typeToken = (typeNode instanceof ParserRuleContext)
+                                ? ((ParserRuleContext) typeNode).getStart()
+                                : token;   // fallback (should never be hit)
+
+                        int line = typeToken.getLine();
+                        int column = typeToken.getCharPositionInLine();
+                        String srcLine = getSourceLine(line);
+
+                        if (returnType.equals("int")) {
+                            mutations.add(new Mutation("TYPE_INT_TO_FLOAT", line, column, "int", "float", srcLine));
+                        } else {
+                            mutations.add(new Mutation("TYPE_FLOAT_TO_INT", line, column, "float", "int", srcLine));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return visitChildren(ctx);
     }
     
     /**
