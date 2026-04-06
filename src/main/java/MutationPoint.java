@@ -25,4 +25,18 @@ public class MutationPoint {
     public String getOperator() { return operator; }
     public String getReplacement() { return replacement; }
     public Mutator.MutatorType getType() { return type; }
+
+    @Override
+    public String toString() {
+        String fileName = sourceFile != null ? sourceFile.getName() : "<unknown>";
+        return String.format(
+                "%s:%d:%d - %s -> %s (%s)",
+                fileName,
+                lineNumber,
+                columnNumber,
+                operator,
+                replacement,
+                type
+        );
+    }
 }

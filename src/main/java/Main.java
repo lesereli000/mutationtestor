@@ -17,7 +17,8 @@ import org.apache.commons.io.FileUtils;
 
 public class Main {
     private static final long MAX_CMD_TIME = 60000;
-    private static final String WORKING_DIR = "output/";
+    private static final String OUTPUT_ROOT = "output";
+    private static final String WORKING_DIR_PREFIX = "workdir-";
 
     static class Config {
         String sourceCodeDirectory;
@@ -190,17 +191,21 @@ public class Main {
         String command2, String mutationStrategy) {
         Path projectPath = Path.of(projectDir);
         Path sourcePath = Path.of(sourceCode);
-        Path mutantPath = Path.of(WORKING_DIR);
+        Path outputRoot = Path.of(OUTPUT_ROOT);
+        Path mutantPath = outputRoot.resolve(WORKING_DIR_PREFIX + System.currentTimeMillis());
 
         System.out.println("Setting up working directory");
         try {
-            FileUtils.deleteDirectory(mutantPath.toFile());
+            FileUtils.forceMkdir(outputRoot.toFile());
+            cleanupWorkDirectories(outputRoot, null);
             FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
         } catch (IOException e) {
             System.err.println("Error copying " + sourcePath + " to " + mutantPath + ": " + e.getMessage());
             return;
         }
         System.out.println("Working directory created: " + mutantPath);
+
+        try {
 
         System.out.println("\nRunning baseline tests");
         if (!command1.isEmpty()) {
@@ -263,12 +268,50 @@ public class Main {
 
         try {
             HtmlReportGenerator.generateHtmlReport(report, results);
-            System.out.println("HTML report generated at: output/report/mutation-report.html");
+            System.out.println("HTML report generated at: output/report/mutation-report-demo.html");
         } catch (IOException e) {
             System.err.println("Failed to generate HTML report: " + e.getMessage());
         }
 
         System.out.println("\n Mutation testing complete");
+        } finally {
+            cleanupWorkDirectories(outputRoot, mutantPath);
+        }
+    }
+
+    private static void cleanupWorkDirectories(Path outputRoot, Path activeWorkdir) {
+        File outputDirectory = outputRoot.toFile();
+        File[] children = outputDirectory.listFiles();
+
+        if (children == null) {
+            return;
+        }
+
+        String activePath = activeWorkdir != null ? activeWorkdir.toAbsolutePath().normalize().toString() : null;
+        for (File child : children) {
+            if (!child.isDirectory() || !child.getName().startsWith(WORKING_DIR_PREFIX)) {
+                continue;
+            }
+
+            String childPath = child.toPath().toAbsolutePath().normalize().toString();
+            if (activePath != null && activePath.equals(childPath)) {
+                continue;
+            }
+
+            try {
+                FileUtils.deleteDirectory(child);
+            } catch (IOException e) {
+                System.err.println("Warning: Failed to delete temporary work directory " + child + ": " + e.getMessage());
+            }
+        }
+
+        if (activeWorkdir != null) {
+            try {
+                FileUtils.deleteDirectory(activeWorkdir.toFile());
+            } catch (IOException e) {
+                System.err.println("Warning: Failed to delete temporary work directory " + activeWorkdir + ": " + e.getMessage());
+            }
+        }
     }
 
     private static MutantResult testSingleMutant(
@@ -429,6 +472,9 @@ public class Main {
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failed\\b.*")
                 || lower.matches("(?s).*\\bfailed\\s*:\\s*[1-9]\\d*\\b.*")
                 || lower.matches("(?s).*\\b[1-9]\\d*\\s+failing\\b.*")
+            || lower.contains("not recognized as an internal or external command")
+            || lower.contains("commandnotfoundexception")
+            || lower.contains("no module named pytest")
                 || lower.contains("build failed")
                 || lower.contains("build failure")
                 || lower.contains("test run failed");
@@ -478,6 +524,11 @@ public class Main {
             if (file.getName().endsWith(".java")) {
                 System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
                 return JavaMutationScanner.scanFile(file, type);
+            }
+
+            if (file.getName().endsWith(".py")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
+                return PythonMutationScanner.scanFile(file, type);
             }
 
             if (file.getName().endsWith(".rkt")) {

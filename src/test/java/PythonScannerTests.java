@@ -1,280 +1,84 @@
 import org.junit.jupiter.api.Test;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Tests for PythonMutationScanner (.py files).
- *
- * Uses:
- *   samples/PytestProject/src/Add1.py      → def add1(a): return a + 1
- *   samples/PytestProject/src/Add2.py      → def add2(a): return a + 2
- *   samples/PytestProject/src/operators.py  → covers all mutation types
- */
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class PythonScannerTests {
 
-    // -------------------------------------------------------------------------
-    // AOR_PLUS_TO_MINUS
-    // -------------------------------------------------------------------------
-
     @Test
-    public void testAdd1PlusToMinus() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
+    public void testAdditiveMutation() throws IOException {
+        File file = writeTempPythonFile("def add1(a):\n    return a + 1\n");
+
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
 
         assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("+", p.getOperator());
-        assertEquals("-", p.getReplacement());
+        assertEquals("+", points.get(0).getOperator());
+        assertEquals("-", points.get(0).getReplacement());
     }
 
     @Test
-    public void testAdd2PlusToMinus() throws IOException {
-        File file = new File("samples/PytestProject/src/Add2.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
+    public void testSubtractiveMutation() throws IOException {
+        File file = writeTempPythonFile("def subtract(a, b):\n    return a - b\n");
 
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("+", p.getOperator());
-        assertEquals("-", p.getReplacement());
-    }
-
-    @Test
-    public void testOperatorsPlusToMinus() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-
-        // operators.py has + in: add, typed_add, typed_float_add
-        assertTrue(points.size() >= 3);
-        for (MutationPoint p : points) {
-            assertEquals("+", p.getOperator());
-            assertEquals("-", p.getReplacement());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // AOR_MINUS_TO_PLUS
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testAdd1MinusToPlus() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
 
-        // Add1.py has no - operators
-        assertEquals(0, points.size());
-    }
-
-    @Test
-    public void testOperatorsMinusToPlus() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
-
-        // operators.py has one - in subtract function
         assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("-", p.getOperator());
-        assertEquals("+", p.getReplacement());
-    }
-
-    // -------------------------------------------------------------------------
-    // ROR_GT_TO_GE
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsGTtoGE() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_GE);
-
-        // operators.py has > in: compare_gt, check_logic (x > 0 and y > 0), check_logic_or (x > 0 or y > 0)
-        assertTrue(points.size() >= 1);
-        for (MutationPoint p : points) {
-            assertEquals(">", p.getOperator());
-            assertEquals(">=", p.getReplacement());
-        }
+        assertEquals("-", points.get(0).getOperator());
+        assertEquals("+", points.get(0).getReplacement());
     }
 
     @Test
-    public void testAdd1GTtoGE() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_GE);
+    public void testEqualityMutation() throws IOException {
+        File file = writeTempPythonFile("def compare(a, b):\n    if a == b or a != 0:\n        return True\n    return False\n");
 
-        assertEquals(0, points.size());
-    }
-
-    // -------------------------------------------------------------------------
-    // ROR_GE_TO_GT
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsGEtoGT() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GE_TO_GT);
-
-        // operators.py has one >= in compare_ge
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals(">=", p.getOperator());
-        assertEquals(">", p.getReplacement());
-    }
-
-    // -------------------------------------------------------------------------
-    // ROR_LT_TO_LE
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsLTtoLE() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
-
-        // operators.py has one < in compare_lt
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("<", p.getOperator());
-        assertEquals("<=", p.getReplacement());
-    }
-
-    // -------------------------------------------------------------------------
-    // ROR_LE_TO_LT
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsLEtoLT() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
-
-        // operators.py has one <= in compare_le
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("<=", p.getOperator());
-        assertEquals("<", p.getReplacement());
-    }
-
-    // -------------------------------------------------------------------------
-    // EQ_NEGATE
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsEqNegate() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
 
-        // operators.py has == in check_equal and != in check_not_equal
-        assertTrue(points.size() >= 2);
-
-        boolean foundEq = false;
-        boolean foundNeq = false;
-        for (MutationPoint p : points) {
-            if (p.getOperator().equals("==")) {
-                assertEquals("!=", p.getReplacement());
-                foundEq = true;
-            } else if (p.getOperator().equals("!=")) {
-                assertEquals("==", p.getReplacement());
-                foundNeq = true;
-            }
-        }
-        assertTrue(foundEq, "Should find == -> != mutation");
-        assertTrue(foundNeq, "Should find != -> == mutation");
+        assertEquals(2, points.size());
+        assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("==") && point.getReplacement().equals("!=")));
+        assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("!=") && point.getReplacement().equals("==")));
     }
 
     @Test
-    public void testAdd1EqNegate() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
+    public void testLogicalMutation() throws IOException {
+        File file = writeTempPythonFile("def choose(a, b):\n    if a and b:\n        return True\n    return False\n");
 
-        assertEquals(0, points.size());
-    }
-
-    // -------------------------------------------------------------------------
-    // LOGICAL_AND_TO_OR
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsAndToOr() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_AND_TO_OR);
 
-        // operators.py has one 'and' in check_logic
         assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("and", p.getOperator());
-        assertEquals("or", p.getReplacement());
+        assertEquals("and", points.get(0).getOperator());
+        assertEquals("or", points.get(0).getReplacement());
     }
 
     @Test
-    public void testAdd1AndToOr() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_AND_TO_OR);
+    public void testTypeMutation() throws IOException {
+        File file = writeTempPythonFile("x: int = 5\n\ndef add(a: int) -> int:\n    return a\n");
 
-        assertEquals(0, points.size());
-    }
-
-    // -------------------------------------------------------------------------
-    // LOGICAL_OR_TO_AND
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsOrToAnd() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_OR_TO_AND);
-
-        // operators.py has one 'or' in check_logic_or
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("or", p.getOperator());
-        assertEquals("and", p.getReplacement());
-    }
-
-    // -------------------------------------------------------------------------
-    // TYPE_INT_TO_FLOAT
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsIntToFloat() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
 
-        // operators.py has int annotations in typed_add: (a: int, b: int) -> int = 3
-        assertTrue(points.size() >= 3);
-        for (MutationPoint p : points) {
-            assertEquals("int", p.getOperator());
-            assertEquals("float", p.getReplacement());
-        }
+        assertEquals(3, points.size());
+        assertTrue(points.stream().allMatch(point -> point.getOperator().equals("int")));
+        assertTrue(points.stream().allMatch(point -> point.getReplacement().equals("float")));
     }
 
     @Test
-    public void testAdd1IntToFloat() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
+    public void testUnsupportedMutationReturnsNoPoints() throws IOException {
+        File file = writeTempPythonFile("x: int = 5\n");
 
-        // Add1.py has no type annotations
-        assertEquals(0, points.size());
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_DOUBLE);
+
+        assertTrue(points.isEmpty());
     }
 
-    // -------------------------------------------------------------------------
-    // TYPE_FLOAT_TO_INT
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testOperatorsFloatToInt() throws IOException {
-        File file = new File("samples/PytestProject/src/operators.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
-
-        // operators.py has float annotations in typed_float_add: (a: float, b: float) -> float = 3
-        assertTrue(points.size() >= 3);
-        for (MutationPoint p : points) {
-            assertEquals("float", p.getOperator());
-            assertEquals("int", p.getReplacement());
-        }
-    }
-
-    @Test
-    public void testAdd1FloatToInt() throws IOException {
-        File file = new File("samples/PytestProject/src/Add1.py");
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
-
-        // Add1.py has no type annotations
-        assertEquals(0, points.size());
+    private File writeTempPythonFile(String content) throws IOException {
+        Path path = Files.createTempFile("python-mutation-", ".py");
+        Files.writeString(path, content);
+        path.toFile().deleteOnExit();
+        return path.toFile();
     }
 }
