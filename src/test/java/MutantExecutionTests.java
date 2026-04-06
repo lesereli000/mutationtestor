@@ -46,7 +46,7 @@ public class MutantExecutionTests {
     @Test
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedRacketProject() {
-        Path directory = Path.of("samples/SchemeProject");
+        Path directory = Path.of("samples/RacketProject");
         String testCommand = "Racket ./project/tests/scheme-project.rkt";
 
         testOutput(testCommand, directory, directory, false);
@@ -146,7 +146,7 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandWithRacketMutants() {
         Path testPath = Path.of("output/TestDir/RacketProject");
-        Path projectPath = Path.of("samples/SchemeProject");
+        Path projectPath = Path.of("samples/RacketProject");
         Path sourcePath = Path.of("project/src");
         Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_PLUS_TO_MINUS;
         String testCommand = "Racket ./project/tests/scheme-project.rkt";

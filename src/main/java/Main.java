@@ -566,7 +566,7 @@ public class Main {
 
             if (file.getName().endsWith(".rkt")) {
                 System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
-                return SchemeMutationScanner.scanFile(file, type);
+                return RacketMutationScanner.scanFile(file, type);
             }
 
             if (file.getName().endsWith(".py")) {

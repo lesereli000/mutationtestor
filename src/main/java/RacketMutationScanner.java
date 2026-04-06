@@ -9,7 +9,7 @@ import java.util.List;
 import org.antlr.v4.gui.TreeViewer;
 import java.util.Arrays;
 
-public class SchemeMutationScanner {
+public class RacketMutationScanner {
 
     // -------------------------------------------------------------------------
     // Public entry point
