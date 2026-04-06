@@ -9,7 +9,6 @@ import java.util.List;
 import org.antlr.v4.gui.TreeViewer;
 import java.util.Arrays;
 
-
 public class SchemeMutationScanner {
 
     // -------------------------------------------------------------------------
@@ -28,7 +27,7 @@ public class SchemeMutationScanner {
 
         // ANTLR tree viewer — mirrors JavaMutationScanner
         TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
-        viewer.open();
+        // viewer.open();
 
         RacketMutationVisitor visitor = new RacketMutationVisitor(file, type);
         visitor.visit(tree);
@@ -106,17 +105,20 @@ public class SchemeMutationScanner {
          * Inspects the first form of a list to find operator mutation targets.
          */
         private void checkHead(List<SchemeParser.FormContext> forms) {
-            if (forms == null || forms.isEmpty()) return;
+            if (forms == null || forms.isEmpty())
+                return;
 
             SchemeParser.FormContext head = forms.get(0);
-            if (head.atom() == null) return;
+            if (head.atom() == null)
+                return;
 
             Token token = getAtomToken(head.atom());
-            if (token == null) return;
+            if (token == null)
+                return;
 
             String text = token.getText();
-            int line    = token.getLine();
-            int col     = token.getCharPositionInLine();
+            int line = token.getLine();
+            int col = token.getCharPositionInLine();
 
             switch (mutationType) {
                 case AOR_PLUS_TO_MINUS -> {
@@ -157,7 +159,8 @@ public class SchemeMutationScanner {
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
                 }
-                default -> { }
+                default -> {
+                }
             }
         }
 
@@ -172,15 +175,17 @@ public class SchemeMutationScanner {
          */
         private void checkNumericLiteral(SchemeParser.AtomContext ctx) {
             Token token = getAtomToken(ctx);
-            if (token == null) return;
+            if (token == null)
+                return;
 
-            if (token.getType() != SchemeLexer.NUMBER) return;
+            if (token.getType() != SchemeLexer.NUMBER)
+                return;
 
             String text = token.getText();
-            int line    = token.getLine();
-            int col     = token.getCharPositionInLine();
+            int line = token.getLine();
+            int col = token.getCharPositionInLine();
 
-            boolean isFloat   = text.contains(".");
+            boolean isFloat = text.contains(".");
             boolean isInteger = !isFloat;
 
             if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT && isInteger) {
@@ -198,13 +203,14 @@ public class SchemeMutationScanner {
          * Checks a simple type identifier for type swap mutations.
          * Applies to Typed Racket type annotations like Integer, Float, etc.
          *
-         * TYPE_INT_TO_FLOAT  : Integer → Float
+         * TYPE_INT_TO_FLOAT : Integer → Float
          * TYPE_INT_TO_DOUBLE : Integer → Double (same as Float in Racket)
-         * TYPE_FLOAT_TO_INT  : Float → Integer
+         * TYPE_FLOAT_TO_INT : Float → Integer
          * TYPE_DOUBLE_TO_INT : Double → Integer (same as Float in Racket)
          */
         private void checkTypeKeyword(SchemeParser.SimpleTypeContext ctx) {
-            if (ctx.IDENTIFIER() == null) return;
+            if (ctx.IDENTIFIER() == null)
+                return;
 
             Token token = ctx.IDENTIFIER().getSymbol();
             String text = token.getText();
@@ -220,14 +226,16 @@ public class SchemeMutationScanner {
                     if (text.equals("Float"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "Float", "Integer", mutationType));
                 }
-                default -> { }
+                default -> {
+                }
             }
         }
 
         // -- Helper -----------------------------------------------------------
 
         private Token getAtomToken(SchemeParser.AtomContext ctx) {
-            if (ctx.getChildCount() == 0) return null;
+            if (ctx.getChildCount() == 0)
+                return null;
             ParseTree child = ctx.getChild(0);
             if (child instanceof TerminalNode terminal) {
                 return terminal.getSymbol();

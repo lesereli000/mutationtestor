@@ -22,3 +22,5 @@ function largeExponent() {
     let huge = 1e20;  // Very large number
     return huge;
 }
+
+module.exports = { largeNumber, smallNumber, scientificCalculation, negativeExponent, largeExponent };

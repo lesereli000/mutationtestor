@@ -484,6 +484,11 @@ public class Main {
                 System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
                 return SchemeMutationScanner.scanFile(file, type);
             }
+
+            if (file.getName().endsWith(".py")) {
+                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
+                return PythonMutationScanner.scanFile(file, type);
+            }
         }
         // DICTIONARY APPROACH - Use regex pattern matching
         System.out.println("  [Dictionary] Scanning " + fileName + " using regex");
@@ -502,18 +507,13 @@ public class Main {
             return false;
         }
         
-        // AUTO mode - decide based on mutation type and file type
+        // AUTO mode - use AST whenever an ANTLR scanner exists for the file type
         if (strategy.equals("AUTO")) {
-            // Use AST for numeric literal type mutations (NLT_*)
-            if (type.name().startsWith("NLT_")) {
-                return fileName.endsWith(".js") || 
-                       fileName.endsWith(".cs") || 
-                       fileName.endsWith(".java");
-            }
-            
-            // Use dictionary for arithmetic/relational/logical operators
-            // (AOR, ROR, LOR, etc.)
-            return false;
+            return fileName.endsWith(".js") || 
+                   fileName.endsWith(".cs") || 
+                   fileName.endsWith(".java") ||
+                   fileName.endsWith(".py") ||
+                   fileName.endsWith(".rkt");
         }
         
         return false;

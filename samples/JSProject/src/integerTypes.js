@@ -22,3 +22,5 @@ function largeInteger() {
     let large = 1000;
     return large;
 }
+
+module.exports = { addInteger, multiplyInteger, zeroInteger, negativeInteger, largeInteger };

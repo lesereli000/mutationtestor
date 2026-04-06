@@ -11,7 +11,7 @@ public class JavaMutationScanner {
      * Scan a Java file for mutations using AST parsing
      */
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        return scanFile(file, type, true);
+        return scanFile(file, type, false);
     }
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type, boolean showViewer)
