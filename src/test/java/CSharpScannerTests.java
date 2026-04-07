@@ -159,9 +159,53 @@ public class CSharpScannerTests {
     }
 
     @Test
-    public void testProgramArithmeticMutations() throws IOException {
-        File file = new File("samples/CSProject/src/CSProject/Program.cs");
-        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        assertEquals(17, points.size());
+    public void testMultiplyKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/MultiplyKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("*", p.getOperator());
+        assertEquals("/", p.getReplacement());
     }
+
+    @Test
+    public void testDivideKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/DivideKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("/", p.getOperator());
+        assertEquals("*", p.getReplacement());
+    }
+
+    @Test
+    public void testModuloKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/ModuloKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("%", p.getOperator());
+        assertEquals("*", p.getReplacement());
+    }
+
+    @Test
+    public void testBitwiseAndKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/BitwiseAndKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.BOR_AND_TO_OR);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("&", p.getOperator());
+        assertEquals("|", p.getReplacement());
+    }
+
+    @Test
+    public void testBitwiseOrKilledDemoMutation() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/BitwiseOrKilledDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.BOR_OR_TO_AND);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("|", p.getOperator());
+        assertEquals("&", p.getReplacement());
+    }
+
 }
