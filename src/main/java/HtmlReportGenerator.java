@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 
@@ -13,6 +14,10 @@ public class HtmlReportGenerator {
     public static void generateHtmlReport(MutationReport report, List<MutantResult> results) throws IOException {
         FileUtils.createParentDirectories(Path.of("./output/report/mutation-report-demo.html").toFile());
         FileUtils.forceMkdir(Path.of("./output/report/allFiles").toFile());
+
+        Set<String> hiddenMutantIds = EquivalentMutantStore.loadHiddenMutantIds();
+
+        MutationReport visibleReport = new MutationReport(results);
 
         List<MutantResult> survivedMutants = results.stream()
                 .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
@@ -59,7 +64,7 @@ public class HtmlReportGenerator {
 
         StringBuilder html = new StringBuilder();
 
-        double mutationScore = report.getMutationScore();
+        double mutationScore = visibleReport.getMutationScore();
 
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
         html.append("    <meta charset=\"UTF-8\">\n");
@@ -71,7 +76,6 @@ public class HtmlReportGenerator {
         html.append("        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }\n");
         html.append("        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 30px; }\n");
         html.append("        .header h1 { font-size: 32px; margin-bottom: 8px; }\n");
-        html.append("        .header p { opacity: 0.9; font-size: 16px; }\n");
         html.append("        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 30px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }\n");
         html.append("        .stat-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }\n");
         html.append("        .stat-card .label { color: #64748b; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }\n");
@@ -79,6 +83,7 @@ public class HtmlReportGenerator {
         html.append("        .mutation-score { color: #10b981; }\n");
         html.append("        .killed { color: #10b981; }\n");
         html.append("        .survived { color: #ef4444; }\n");
+        html.append("        .equivalent { color: #8e44ad; }\n");
         html.append("        .survivors-section { padding: 30px; }\n");
         html.append("        .survivors-section h2 { font-size: 24px; color: #1e293b; margin-bottom: 20px; }\n");
         html.append("        .survivor-table { width: 100%; border-collapse: collapse; margin-top: 20px; }\n");
@@ -90,32 +95,29 @@ public class HtmlReportGenerator {
         html.append("        .file-badge { display: inline-block; padding: 4px 8px; background: #e0e7ff; color: #4338ca; border-radius: 4px; font-size: 13px; }\n");
         html.append("        .view-all { padding: 10px 20px; background: #e74c3c; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; }\n");
         html.append("        .view-all:hover { background: #c0392b; }\n");
+        html.append("        .store-note { margin-top: 8px; color: #64748b; font-size: 13px; }\n");
         html.append("    </style>\n");
         html.append("</head>\n<body>\n");
 
         html.append("    <div class=\"container\">\n");
-
         html.append("        <div class=\"header\">\n");
         html.append("            <h1>Mutation Testing Report</h1>\n");
+        html.append("            <div class=\"store-note\">Equivalent store: ")
+                .append(escapeHtml(EquivalentMutantStore.getStorePath().toString()))
+                .append("</div>\n");
         html.append("        </div>\n");
 
         html.append("        <div class=\"summary\">\n");
-        html.append(String.format("            <div class=\"stat-card\">\n" +
-                "                <div class=\"label\">Mutation Score</div>\n" +
-                "                <div class=\"value mutation-score\">%.1f%%</div>\n" +
-                "            </div>\n", mutationScore));
-        html.append(String.format("            <div class=\"stat-card\">\n" +
-                "                <div class=\"label\">Total Mutants</div>\n" +
-                "                <div class=\"value\">%d</div>\n" +
-                "            </div>\n", report.getTotalMutants()));
-        html.append(String.format("            <div class=\"stat-card\">\n" +
-                "                <div class=\"label\">Killed</div>\n" +
-                "                <div class=\"value killed\">%d</div>\n" +
-                "            </div>\n", report.getKilled()));
-        html.append(String.format("            <div class=\"stat-card\">\n" +
-                "                <div class=\"label\">Survived</div>\n" +
-                "                <div class=\"value survived\">%d</div>\n" +
-                "            </div>\n", report.getSurvived()));
+        int totalMutants = visibleReport.getTotalMutants();
+        int killedCount = visibleReport.getKilled();
+        int survivedCount = visibleReport.getSurvived();
+        double initialScore = totalMutants > 0 ? (survivedCount * 100.0 / totalMutants) : 0.0;
+
+        html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Mutation Score</div><div id=\"top-mutation-score\" class=\"value mutation-score\">%.1f%%</div></div>\n", initialScore));
+        html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Total Mutants</div><div id=\"top-total-count\" class=\"value\">%d</div></div>\n", totalMutants));
+        html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Killed</div><div id=\"top-killed-count\" class=\"value killed\">%d</div></div>\n", killedCount));
+        html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Survived</div><div id=\"top-survived-count\" class=\"value survived\">%d</div></div>\n", survivedCount));
+        html.append("            <div class=\"stat-card\"><div class=\"label\">Equivalent</div><div id=\"top-equivalent-count\" class=\"value equivalent\">0</div></div>\n");
         html.append("        </div>\n");
 
         html.append("        <div class=\"survivors-section\">\n");
@@ -153,12 +155,15 @@ public class HtmlReportGenerator {
 
             String link = "allFiles/" + stripExtension(file) + ".html";
 
-            html.append("                    <tr>\n");
+            html.append(String.format(
+                    "                    <tr class=\"summary-row\" data-file=\"%s\" data-survived=\"%d\">\n",
+                    escapeHtml(file), survived
+            ));
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, index++));
             html.append(String.format("                        <td><a href=\"%s\"><span class=\"file-badge\">%s</span></a></td>\n", link, escapeHtml(file)));
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, total));
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, killed));
-            html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, survived));
+            html.append(String.format("                        <td class=\"survived-cell\"><a href=\"%s\">%d</a></td>\n", link, survived));
             html.append(String.format("                        <td><a href=\"%s\">%.1f%%</a></td>\n", link, score));
             html.append("                    </tr>\n");
         }
@@ -168,6 +173,66 @@ public class HtmlReportGenerator {
         html.append("        </div>\n");
 
         html.append("    </div>\n");
+
+        html.append("<script>\n");
+        html.append("async function applyEquivalentFilteringToSummary() {\n");
+        html.append("    try {\n");
+        html.append("        const res = await fetch('http://localhost:8081/api/equivalent-mutants');\n");
+        html.append("        if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        html.append("        const data = await res.json();\n");
+        html.append("        const hiddenIds = new Set(data.hiddenMutantIds || []);\n");
+        html.append("\n");
+        html.append("        let visibleSurvivedTotal = 0;\n");
+        html.append("        let equivalentTotal = 0;\n");
+        html.append("\n");
+        html.append("        document.querySelectorAll('.summary-row').forEach(row => {\n");
+        html.append("            const file = row.dataset.file;\n");
+        html.append("            const survivedCount = parseInt(row.dataset.survived || '0', 10);\n");
+        html.append("\n");
+        html.append("            if (survivedCount <= 0) {\n");
+        html.append("                row.style.display = '';\n");
+        html.append("                return;\n");
+        html.append("            }\n");
+        html.append("\n");
+        html.append("            let hiddenForThisFile = 0;\n");
+        html.append("            hiddenIds.forEach(id => {\n");
+        html.append("                if (id.startsWith(file + ':')) {\n");
+        html.append("                    hiddenForThisFile++;\n");
+        html.append("                }\n");
+        html.append("            });\n");
+        html.append("\n");
+        html.append("            const visibleForThisFile = Math.max(0, survivedCount - hiddenForThisFile);\n");
+        html.append("            equivalentTotal += hiddenForThisFile;\n");
+        html.append("\n");
+        html.append("            const survivedCell = row.querySelector('.survived-cell a');\n");
+        html.append("            if (survivedCell) survivedCell.textContent = visibleForThisFile;\n");
+        html.append("\n");
+        html.append("            if (visibleForThisFile === 0) {\n");
+        html.append("                row.style.display = 'none';\n");
+        html.append("            } else {\n");
+        html.append("                row.style.display = '';\n");
+        html.append("            }\n");
+        html.append("\n");
+        html.append("            visibleSurvivedTotal += visibleForThisFile;\n");
+        html.append("        });\n");
+        html.append("\n");
+        html.append("        const totalEl = document.getElementById('top-total-count');\n");
+        html.append("        const survivedEl = document.getElementById('top-survived-count');\n");
+        html.append("        const equivalentEl = document.getElementById('top-equivalent-count');\n");
+        html.append("        const scoreEl = document.getElementById('top-mutation-score');\n");
+        html.append("\n");
+        html.append("        const total = totalEl ? parseInt(totalEl.textContent || '0', 10) : 0;\n");
+        html.append("        const score = total > 0 ? (visibleSurvivedTotal * 100.0 / total) : 0;\n");
+        html.append("\n");
+        html.append("        if (survivedEl) survivedEl.textContent = visibleSurvivedTotal;\n");
+        html.append("        if (equivalentEl) equivalentEl.textContent = equivalentTotal;\n");
+        html.append("        if (scoreEl) scoreEl.textContent = score.toFixed(1) + '%';\n");
+        html.append("    } catch (e) {\n");
+        html.append("        console.error('Failed to apply equivalent filtering on summary page:', e);\n");
+        html.append("    }\n");
+        html.append("}\n");
+        html.append("document.addEventListener('DOMContentLoaded', applyEquivalentFilteringToSummary);\n");
+        html.append("</script>\n");
         html.append("</body>\n</html>");
 
         try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html")) {
