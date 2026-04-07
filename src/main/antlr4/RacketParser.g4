@@ -6,7 +6,7 @@
 parser grammar RacketParser;
 
 options {
-    tokenVocab = SchemeLexer;
+    tokenVocab = RacketLexer;
 }
 
 // -------------------------------------------------------------------------
