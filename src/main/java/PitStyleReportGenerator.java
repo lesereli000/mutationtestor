@@ -141,11 +141,11 @@ public class PitStyleReportGenerator {
         sb.append("        .source-view { padding: 30px; }\n");
         sb.append("        .source-header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #ecf0f1; }\n");
         sb.append("        .source-header h2 { color: #2c3e50; font-size: 24px; }\n");
-        sb.append("        .source-code { background: #fafafa; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; }\n");
-        sb.append("        .code-line { display: flex; border-bottom: 1px solid #eee; position: relative; min-height: 20px; }\n");
-        sb.append("        .code-line:hover { background: #f0f0f0; }\n");
-        sb.append("        .line-number { background: #e8e8e8; color: #666; padding: 2px 10px; text-align: right; min-width: 50px; user-select: none; border-right: 1px solid #ddd; font-size: 12px; }\n");
-        sb.append("        .line-content { padding: 2px 10px; white-space: pre; flex: 1; }\n");
+        sb.append("        .source-code { background: #fafafa; border: 1px solid #ddd; border-radius: 5px; overflow: visible; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; }\n");
+        sb.append("        .code-line { display: flex; flex-wrap: wrap; border-bottom: 1px solid #eee; position: relative; min-height: 20px; }\n");
+        sb.append("        .code-line:hover .mutation-tooltip { display: block; }\n");
+        sb.append("        .line-number { background: #e8e8e8; color: #666; padding: 2px 10px; text-align: right; min-width: 50px; user-select: none; border-right: 1px solid #ddd; font-size: 12px; align-self: stretch; }\n");
+        sb.append("        .line-content { padding: 2px 10px; white-space: pre; flex: 1; min-width: 0; }\n");
         sb.append("        .code-line.has-mutations { background: #fff3cd; }\n");
         sb.append("        .code-line.all-killed { background: #d4edda; }\n");
         sb.append("        .code-line.has-survived { background: #f8d7da; }\n");
@@ -153,7 +153,7 @@ public class PitStyleReportGenerator {
         sb.append("        .mutation-indicator.killed { background: #28a745; }\n");
         sb.append("        .mutation-indicator.survived { background: #dc3545; }\n");
         sb.append("        .mutation-indicator.mixed { background: linear-gradient(to bottom, #28a745 0%, #28a745 50%, #dc3545 50%, #dc3545 100%); }\n");
-        sb.append("        .mutation-tooltip { display: none; position: absolute; background: white; border: 2px solid #333; border-radius: 5px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 1000; min-width: 300px; left: 60px; top: 100%; margin-top: 5px; }\n");
+        sb.append("        .mutation-tooltip { display: none; position: static; background: white; border: 2px solid #333; border-radius: 5px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); width: calc(100% - 60px); margin: 6px 0 8px 60px; z-index: 1; }\n");
         sb.append("        .code-line:hover .mutation-tooltip { display: block; }\n");
         sb.append("        .tooltip-header { font-weight: bold; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #ddd; color: #2c3e50; font-size: 13px; }\n");
         sb.append("        .mutation-entry { padding: 6px 8px; margin: 4px 0; border-radius: 3px; border-left: 3px solid; font-size: 12px; }\n");

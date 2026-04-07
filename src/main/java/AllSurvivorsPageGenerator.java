@@ -1,5 +1,6 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 
 /**
@@ -7,28 +8,30 @@ import java.util.*;
  * Allows users to click on a survivor to jump directly to that line in the source code
  */
 public class AllSurvivorsPageGenerator {
-    
-        static class SurvivorEntry {
-            String file;
-            int line;
-            int column;
-            String operator;
-            String replacement;
-            String sourceCodeSnippet;
-            String operatorName;
-    
-            SurvivorEntry(String file, int line, int column, String operator, String replacement, 
-                String sourceCodeSnippet, String operatorName) {
-                this.file = file;
-                this.line = line;
-                this.column = column;
-                this.operator = operator;
-                this.replacement = replacement;
-                this.sourceCodeSnippet = sourceCodeSnippet;
-                this.operatorName = operatorName;
-            }
+
+    static class SurvivorEntry {
+        String file;
+        int line;
+        int column;
+        String operator;
+        String replacement;
+        String sourceCodeSnippet;
+        String operatorName;
+        String targetLink;
+
+        SurvivorEntry(String file, int line, int column, String operator, String replacement,
+                      String sourceCodeSnippet, String operatorName, String targetLink) {
+            this.file = file;
+            this.line = line;
+            this.column = column;
+            this.operator = operator;
+            this.replacement = replacement;
+            this.sourceCodeSnippet = sourceCodeSnippet;
+            this.operatorName = operatorName;
+            this.targetLink = targetLink;
         }
-    
+    }
+
     public static void generateAllSurvivorsPage(
             List<?> survivedMutants,
             String outputPath
@@ -61,10 +64,20 @@ public class AllSurvivorsPageGenerator {
                     int column = point.getColumnNumber();
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
-                    String original = "return x " + operator + " y;";
+                    String sourceSnippet = readSourceLine(point.getSourceFile(), line);
                     String operatorName = getMutationOperatorName(operator, replacement);
+                    String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
 
-                    entries.add(new SurvivorEntry(file, line, column, operator, replacement, original, operatorName));
+                    entries.add(new SurvivorEntry(
+                            file,
+                            line,
+                            column,
+                            operator,
+                            replacement,
+                            sourceSnippet,
+                            operatorName,
+                            targetLink
+                    ));
                     continue;
                 }
 
@@ -74,17 +87,27 @@ public class AllSurvivorsPageGenerator {
                 String operator = (String) mutant.getClass().getField("operator").get(mutant);
                 String replacement = (String) mutant.getClass().getField("replacement").get(mutant);
 
-                String original;
+                String sourceSnippet;
                 try {
-                    original = (String) mutant.getClass().getField("original").get(mutant);
+                    sourceSnippet = (String) mutant.getClass().getField("original").get(mutant);
                 } catch (Exception e) {
-                    original = "return x " + operator + " y;";
+                    sourceSnippet = "return x " + operator + " y;";
                 }
             
                 // Generate mutation operator name
                 String operatorName = getMutationOperatorName(operator, replacement);
-            
-                entries.add(new SurvivorEntry(file, line, column, operator, replacement, original, operatorName));
+                String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
+
+                entries.add(new SurvivorEntry(
+                        file,
+                        line,
+                        column,
+                        operator,
+                        replacement,
+                        sourceSnippet,
+                        operatorName,
+                        targetLink
+                ));
             } catch (Exception e) {
                 System.err.println("Error converting mutant: " + e.getMessage());
             }
@@ -92,8 +115,17 @@ public class AllSurvivorsPageGenerator {
     
         return entries;
     }
-    
 
+    private static String readSourceLine(java.io.File file, int lineNumber) {
+        try {
+            List<String> lines = Files.readAllLines(file.toPath());
+            if (lineNumber >= 1 && lineNumber <= lines.size()) {
+                return lines.get(lineNumber - 1).trim();
+            }
+        } catch (Exception e) {
+        }
+        return "";
+    }
 
     private static String getMutationOperatorName(String original, String mutated) {
         // Arithmetic Operator Replacement (AOR)
@@ -220,8 +252,8 @@ public class AllSurvivorsPageGenerator {
             sb.append("data-column=\"").append(s.column).append("\" ");
             sb.append("data-operator=\"").append(escapeHtml(s.operatorName)).append("\" ");
             sb.append("data-replacement=\"").append(escapeHtml(s.replacement)).append("\" ");
-            sb.append("onclick=\"window.location.href='pit-style-report.html#line-").append(s.line).append("'\">\n");
-        
+            sb.append("onclick=\"window.location.href='").append(escapeHtml(s.targetLink)).append("'\">\n");
+
             sb.append("                <td>").append(i + 1).append("</td>\n");
             sb.append("                <td><span class=\"file-badge\">").append(escapeHtml(s.file)).append("</span></td>\n");
             sb.append("                <td class=\"location\">Line ").append(s.line).append(", Col ").append(s.column).append("</td>\n");
@@ -355,6 +387,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("<div class=\"container\">\n");
         return sb.toString();
     }
+
     private static String generateFooter() {
         StringBuilder sb = new StringBuilder();
         
@@ -438,11 +471,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("    \n");
         sb.append("    markAsEquivalent(mutantId, file, line, column, operator, replacement) {\n");
         sb.append("        if (this.isEquivalent(mutantId)) return;\n");
-        sb.append("        this.equivalentMutants.push({\n");
-        sb.append("            id: mutantId,\n");
-        sb.append("            file, line, column, operator, replacement,\n");
-        sb.append("            markedAt: new Date().toISOString()\n");
-        sb.append("        });\n");
+        sb.append("        this.equivalentMutants.push({ id: mutantId, file, line, column, operator, replacement, markedAt: new Date().toISOString() });\n");
         sb.append("        this.save();\n");
         sb.append("    }\n");
         sb.append("    \n");
@@ -455,13 +484,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
         sb.append("            const mutantId = row.dataset.mutantId;\n");
         sb.append("            const isEq = this.isEquivalent(mutantId);\n");
-        sb.append("            \n");
-        sb.append("            if (isEq) {\n");
-        sb.append("                row.classList.add('equivalent');\n");
-        sb.append("            } else {\n");
-        sb.append("                row.classList.remove('equivalent');\n");
-        sb.append("            }\n");
-        sb.append("            \n");
+        sb.append("            if (isEq) row.classList.add('equivalent'); else row.classList.remove('equivalent');\n");
         sb.append("            const btn = row.querySelector('.mark-equivalent-btn');\n");
         sb.append("            if (btn) {\n");
         sb.append("                btn.textContent = isEq ? '✓ Equivalent' : 'Mark as Equivalent';\n");
@@ -470,9 +493,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("        });\n");
         sb.append("        \n");
         sb.append("        const statsEl = document.getElementById('equivalent-stats');\n");
-        sb.append("        if (statsEl) {\n");
-        sb.append("            statsEl.innerHTML = `<strong>${this.equivalentMutants.length}</strong> mutant(s) marked as equivalent`;\n");
-        sb.append("        }\n");
+        sb.append("        if (statsEl) statsEl.innerHTML = `<strong>${this.equivalentMutants.length}</strong> mutant(s) marked as equivalent`;\n");
         sb.append("    }\n");
         sb.append("    \n");
         sb.append("    init() {\n");
@@ -496,9 +517,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("                btn.onclick = (e) => {\n");
         sb.append("                    e.stopPropagation();\n");
         sb.append("                    if (this.isEquivalent(mutantId)) {\n");
-        sb.append("                        if (confirm('Remove \"equivalent\" marking from this mutant?')) {\n");
-        sb.append("                            this.unmarkAsEquivalent(mutantId);\n");
-        sb.append("                        }\n");
+        sb.append("                        if (confirm('Remove \"equivalent\" marking from this mutant?')) this.unmarkAsEquivalent(mutantId);\n");
         sb.append("                    } else {\n");
         sb.append("                        this.markAsEquivalent(mutantId, file, line, column, operator, replacement);\n");
         sb.append("                    }\n");
@@ -532,8 +551,19 @@ public class AllSurvivorsPageGenerator {
         sb.append("</div>\n</body>\n</html>");
         return sb.toString();
     }
-    
+
+    private static String stripExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0) {
+            return fileName;
+        }
+        return fileName.substring(0, dot);
+    }
+
     private static String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
         return text.replace("&", "&amp;")
                    .replace("<", "&lt;")
                    .replace(">", "&gt;")
