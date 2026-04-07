@@ -3,7 +3,7 @@
 // Handles the subset of Racket syntax needed to identify
 // arithmetic, relational, and logical operator mutation points.
 
-lexer grammar SchemeLexer;
+lexer grammar RacketLexer;
 
 // -------------------------------------------------------------------------
 // Whitespace and comments — skipped, never reach the parser

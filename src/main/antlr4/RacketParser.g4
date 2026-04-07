@@ -3,7 +3,7 @@
 // Produces a parse tree of S-expressions that SchemeMutationRunner
 // walks with a visitor to find mutation points.
 
-parser grammar SchemeParser;
+parser grammar RacketParser;
 
 options {
     tokenVocab = SchemeLexer;
