@@ -5,12 +5,23 @@ import java.nio.file.Path;
 public class Mutator {
 
     public enum MutatorType {
+        // Arithmetic Operator Replacement
         AOR_PLUS_TO_MINUS,
         AOR_MINUS_TO_PLUS,
+        AOR_MULTIPLY_TO_DIVIDE,
+        AOR_DIVIDE_TO_MULTIPLY,
+        AOR_MODULO_TO_MULTIPLY,
+
+        //Bitwise Operator Replacement
+        BOR_AND_TO_OR,
+        BOR_OR_TO_AND,
+
+        // Relational Operator Replacement
         ROR_LT_TO_LE,
         ROR_LE_TO_LT,
         ROR_GT_TO_GE,
         ROR_GE_TO_GT,
+
         EQ_NEGATE, // switch between == and !=
         LOGICAL_AND_TO_OR, // && to || (or language equivalents)
         LOGICAL_OR_TO_AND, // || to && (or language equivalents)

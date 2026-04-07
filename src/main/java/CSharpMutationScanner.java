@@ -399,6 +399,107 @@ public class CSharpMutationScanner {
             return visitChildren(ctx);
         }
 
+        @Override
+        public Void visitMultiplicative_expression(CSharpParser.Multiplicative_expressionContext ctx) {
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+
+                if (child instanceof TerminalNode) {
+                    String operator = child.getText();
+                    Token token = ((TerminalNode) child).getSymbol();
+
+                    if (operator.equals("*") && mutationType == Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "*",
+                                "/",
+                                mutationType
+                        ));
+                    } else if (operator.equals("/") && mutationType == Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "/",
+                                "*",
+                                mutationType
+                        ));
+                    } else if (operator.equals("%") && mutationType == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "%",
+                                "*",
+                                mutationType
+                        ));
+                    }
+                }
+            }
+
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitAnd_expression(CSharpParser.And_expressionContext ctx) {
+            if (mutationType != Mutator.MutatorType.BOR_AND_TO_OR) {
+                return visitChildren(ctx);
+            }
+
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+
+                if (child instanceof TerminalNode) {
+                    String operator = child.getText();
+                    Token token = ((TerminalNode) child).getSymbol();
+
+                    if (operator.equals("&")) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "&",
+                                "|",
+                                mutationType
+                        ));
+                    }
+                }
+            }
+
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitInclusive_or_expression(CSharpParser.Inclusive_or_expressionContext ctx) {
+            if (mutationType != Mutator.MutatorType.BOR_OR_TO_AND) {
+                return visitChildren(ctx);
+            }
+
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+
+                if (child instanceof TerminalNode) {
+                    String operator = child.getText();
+                    Token token = ((TerminalNode) child).getSymbol();
+
+                    if (operator.equals("|")) {
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile,
+                                token.getLine(),
+                                token.getCharPositionInLine(),
+                                "|",
+                                "&",
+                                mutationType
+                        ));
+                    }
+                }
+            }
+
+            return visitChildren(ctx);
+        }
+
         public List<MutationPoint> getMutationPoints() {
             return mutationPoints;
         }
