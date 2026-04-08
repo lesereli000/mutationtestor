@@ -19,9 +19,9 @@ public class RacketMutationScanner {
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);
-        SchemeLexer lexer = new SchemeLexer(input);
+        RacketLexer lexer = new RacketLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        SchemeParser parser = new SchemeParser(tokens);
+        RacketParser parser = new RacketParser(tokens);
 
         ParseTree tree = parser.program();
 
@@ -39,7 +39,7 @@ public class RacketMutationScanner {
     // Visitor
     // -------------------------------------------------------------------------
 
-    private static class RacketMutationVisitor extends SchemeParserBaseVisitor<Void> {
+    private static class RacketMutationVisitor extends RacketParserBaseVisitor<Void> {
 
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
@@ -53,13 +53,13 @@ public class RacketMutationScanner {
         // -- List visitors ----------------------------------------------------
 
         @Override
-        public Void visitParenList(SchemeParser.ParenListContext ctx) {
+        public Void visitParenList(RacketParser.ParenListContext ctx) {
             checkHead(ctx.form());
             return visitChildren(ctx);
         }
 
         @Override
-        public Void visitBracketList(SchemeParser.BracketListContext ctx) {
+        public Void visitBracketList(RacketParser.BracketListContext ctx) {
             checkHead(ctx.form());
             return visitChildren(ctx);
         }
@@ -67,19 +67,19 @@ public class RacketMutationScanner {
         // -- Type annotation visitor ------------------------------------------
 
         @Override
-        public Void visitTypeAnnotation(SchemeParser.TypeAnnotationContext ctx) {
+        public Void visitTypeAnnotation(RacketParser.TypeAnnotationContext ctx) {
             // Visit the type expression to find type keywords
             return visitChildren(ctx);
         }
 
         @Override
-        public Void visitSimpleType(SchemeParser.SimpleTypeContext ctx) {
+        public Void visitSimpleType(RacketParser.SimpleTypeContext ctx) {
             checkTypeKeyword(ctx);
             return visitChildren(ctx);
         }
 
         @Override
-        public Void visitFunctionType(SchemeParser.FunctionTypeContext ctx) {
+        public Void visitFunctionType(RacketParser.FunctionTypeContext ctx) {
             // Visit all type expressions in the function signature
             return visitChildren(ctx);
         }
@@ -91,7 +91,7 @@ public class RacketMutationScanner {
          * to flag numeric literals regardless of their position.
          */
         @Override
-        public Void visitAtom(SchemeParser.AtomContext ctx) {
+        public Void visitAtom(RacketParser.AtomContext ctx) {
             if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT
                     || mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER) {
                 checkNumericLiteral(ctx);
@@ -104,11 +104,11 @@ public class RacketMutationScanner {
         /**
          * Inspects the first form of a list to find operator mutation targets.
          */
-        private void checkHead(List<SchemeParser.FormContext> forms) {
+        private void checkHead(List<RacketParser.FormContext> forms) {
             if (forms == null || forms.isEmpty())
                 return;
 
-            SchemeParser.FormContext head = forms.get(0);
+            RacketParser.FormContext head = forms.get(0);
             if (head.atom() == null)
                 return;
 
@@ -173,12 +173,12 @@ public class RacketMutationScanner {
          * NLT_INTEGER_TO_FLOAT : 5 → 5.0
          * NLT_FLOAT_TO_INTEGER : 5.0 → 5
          */
-        private void checkNumericLiteral(SchemeParser.AtomContext ctx) {
+        private void checkNumericLiteral(RacketParser.AtomContext ctx) {
             Token token = getAtomToken(ctx);
             if (token == null)
                 return;
 
-            if (token.getType() != SchemeLexer.NUMBER)
+            if (token.getType() != RacketLexer.NUMBER)
                 return;
 
             String text = token.getText();
@@ -208,7 +208,7 @@ public class RacketMutationScanner {
          * TYPE_FLOAT_TO_INT : Float → Integer
          * TYPE_DOUBLE_TO_INT : Double → Integer (same as Float in Racket)
          */
-        private void checkTypeKeyword(SchemeParser.SimpleTypeContext ctx) {
+        private void checkTypeKeyword(RacketParser.SimpleTypeContext ctx) {
             if (ctx.IDENTIFIER() == null)
                 return;
 
@@ -233,7 +233,7 @@ public class RacketMutationScanner {
 
         // -- Helper -----------------------------------------------------------
 
-        private Token getAtomToken(SchemeParser.AtomContext ctx) {
+        private Token getAtomToken(RacketParser.AtomContext ctx) {
             if (ctx.getChildCount() == 0)
                 return null;
             ParseTree child = ctx.getChild(0);

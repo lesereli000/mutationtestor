@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,14 +18,16 @@ public class PitStyleReportGenerator {
         String original;
         String mutated;
         boolean killed;
+        String mutantId;
 
-        LineMutation(int line, int colStart, int colEnd, String orig, String mut, boolean killed) {
+        LineMutation(int line, int colStart, int colEnd, String orig, String mut, boolean killed, String mutantId) {
             this.lineNumber = line;
             this.columnStart = colStart;
             this.columnEnd = colEnd;
             this.original = orig;
             this.mutated = mut;
             this.killed = killed;
+            this.mutantId = mutantId;
         }
     }
 
@@ -75,7 +76,8 @@ public class PitStyleReportGenerator {
                             point.getColumnNumber() + point.getOperator().length(),
                             point.getOperator(),
                             point.getReplacement(),
-                            killed
+                            killed,
+                            EquivalentMutantStore.buildMutantId(result)
                     ));
                 }
             } catch (Exception e) {
@@ -179,7 +181,7 @@ public class PitStyleReportGenerator {
         sb.append("<div class=\"summary-bar\">\n");
         sb.append("    <div class=\"stat\"><div class=\"stat-value\">").append(total).append("</div><div class=\"stat-label\">Total Mutations</div></div>\n");
         sb.append("    <div class=\"stat\"><div class=\"stat-value\" style=\"color: #2ecc71\">").append(killed).append("</div><div class=\"stat-label\">Killed</div></div>\n");
-        sb.append("    <div class=\"stat\"><div class=\"stat-value\" style=\"color: #e74c3c\">").append(survived).append("</div><div class=\"stat-label\">Survived</div></div>\n");
+        sb.append("    <div class=\"stat\"><div id=\"top-survived-count\" class=\"stat-value\" style=\"color: #e74c3c\">").append(survived).append("</div><div class=\"stat-label\">Survived</div></div>\n");
         sb.append("    <div class=\"mutation-score ").append(scoreClass).append("\">").append(String.format("%.0f%%", mutationScore)).append("</div>\n");
         sb.append("</div>\n");
         return sb.toString();
@@ -200,8 +202,8 @@ public class PitStyleReportGenerator {
             List<LineMutation> lineMutations = mutationsByLine.get(lineNum);
 
             if (lineMutations == null || lineMutations.isEmpty()) {
-                html.append("<div class=\"code-line\"><div class=\"line-number\">").append(lineNum)
-                        .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div></div>\n");
+                html.append("<div class=\"code-line\" data-line-number=\"").append(lineNum).append("\"><div class=\"line-number\">")
+                        .append(lineNum).append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div></div>\n");
             } else {
                 boolean hasKilled = lineMutations.stream().anyMatch(m -> m.killed);
                 boolean hasSurvived = lineMutations.stream().anyMatch(m -> !m.killed);
@@ -221,7 +223,8 @@ public class PitStyleReportGenerator {
                     indicatorClass = "mutation-indicator mixed";
                 }
 
-                html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum).append("\"><div class=\"")
+                html.append("<div class=\"").append(lineClass).append("\" id=\"line-").append(lineNum)
+                        .append("\" data-line-number=\"").append(lineNum).append("\"><div class=\"")
                         .append(indicatorClass).append("\"></div><div class=\"line-number\">").append(lineNum)
                         .append("</div><div class=\"line-content\">").append(escapeHtml(line)).append("</div>")
                         .append(generateTooltip(lineNum, lineMutations))
@@ -238,7 +241,7 @@ public class PitStyleReportGenerator {
 
     private static String generateTooltip(int lineNum, List<LineMutation> mutations) {
         StringBuilder tooltip = new StringBuilder();
-        tooltip.append("<div class=\"mutation-tooltip\">\n");
+        tooltip.append("<div class=\"mutation-tooltip\" data-line-number=\"").append(lineNum).append("\">\n");
         tooltip.append("<div class=\"tooltip-header\">Line ").append(lineNum).append(": ")
                 .append(mutations.size()).append(" mutation(s)</div>\n");
 
@@ -248,7 +251,8 @@ public class PitStyleReportGenerator {
             String statusIcon = m.killed ? "✓" : "✗";
             String operatorName = getMutationOperatorName(m.original, m.mutated);
 
-            tooltip.append("<div class=\"mutation-entry ").append(statusClass).append("\">")
+            tooltip.append("<div class=\"mutation-entry ").append(statusClass)
+                    .append("\" data-mutant-id=\"").append(escapeHtml(m.mutantId)).append("\">")
                     .append("<div>").append(statusIcon).append(" ")
                     .append("<strong>").append(escapeHtml(operatorName)).append("</strong>")
                     .append(" (").append(escapeHtml(m.original)).append(" → ").append(escapeHtml(m.mutated)).append(")")
@@ -333,7 +337,82 @@ public class PitStyleReportGenerator {
     }
 
     private static String generateFooter() {
-        return "</div>\n</body>\n</html>";
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("<script>\n");
+        sb.append("async function applyEquivalentFilteringToFilePage() {\n");
+        sb.append("    try {\n");
+        sb.append("        const res = await fetch('http://localhost:8081/api/equivalent-mutants');\n");
+        sb.append("        if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("        const data = await res.json();\n");
+        sb.append("        const hiddenIds = new Set(data.hiddenMutantIds || []);\n");
+        sb.append("\n");
+        sb.append("        document.querySelectorAll('.mutation-entry[data-mutant-id]').forEach(entry => {\n");
+        sb.append("            const id = entry.dataset.mutantId;\n");
+        sb.append("            if (hiddenIds.has(id)) {\n");
+        sb.append("                entry.style.display = 'none';\n");
+        sb.append("            }\n");
+        sb.append("        });\n");
+        sb.append("\n");
+        sb.append("        let visibleSurvivedCount = 0;\n");
+        sb.append("\n");
+        sb.append("        document.querySelectorAll('.mutation-tooltip[data-line-number]').forEach(tooltip => {\n");
+        sb.append("            const lineNumber = tooltip.dataset.lineNumber;\n");
+        sb.append("            const row = document.querySelector('.code-line[data-line-number=\"' + lineNumber + '\"]');\n");
+        sb.append("            const indicator = row ? row.querySelector('.mutation-indicator') : null;\n");
+        sb.append("            const visibleEntries = tooltip.querySelectorAll('.mutation-entry:not([style*=\"display: none\"])');\n");
+        sb.append("            const visibleSurvivedEntries = tooltip.querySelectorAll('.mutation-entry.survived:not([style*=\"display: none\"])');\n");
+        sb.append("            const visibleKilledEntries = tooltip.querySelectorAll('.mutation-entry.killed:not([style*=\"display: none\"])');\n");
+        sb.append("\n");
+        sb.append("            if (visibleEntries.length === 0) {\n");
+        sb.append("                tooltip.style.display = 'none';\n");
+        sb.append("                if (row) {\n");
+        sb.append("                    row.classList.remove('has-mutations');\n");
+        sb.append("                    row.classList.remove('has-survived');\n");
+        sb.append("                    row.classList.remove('all-killed');\n");
+        sb.append("                }\n");
+        sb.append("                if (indicator) {\n");
+        sb.append("                    indicator.style.display = 'none';\n");
+        sb.append("                }\n");
+        sb.append("            } else {\n");
+        sb.append("                tooltip.style.display = '';\n");
+        sb.append("                if (row) {\n");
+        sb.append("                    row.classList.add('has-mutations');\n");
+        sb.append("                    row.classList.remove('has-survived');\n");
+        sb.append("                    row.classList.remove('all-killed');\n");
+        sb.append("                    if (visibleSurvivedEntries.length > 0) {\n");
+        sb.append("                        row.classList.add('has-survived');\n");
+        sb.append("                    } else if (visibleKilledEntries.length > 0) {\n");
+        sb.append("                        row.classList.add('all-killed');\n");
+        sb.append("                    }\n");
+        sb.append("                }\n");
+        sb.append("                if (indicator) {\n");
+        sb.append("                    indicator.style.display = '';\n");
+        sb.append("                    indicator.className = 'mutation-indicator';\n");
+        sb.append("                    if (visibleSurvivedEntries.length > 0 && visibleKilledEntries.length > 0) {\n");
+        sb.append("                        indicator.classList.add('mixed');\n");
+        sb.append("                    } else if (visibleSurvivedEntries.length > 0) {\n");
+        sb.append("                        indicator.classList.add('survived');\n");
+        sb.append("                    } else if (visibleKilledEntries.length > 0) {\n");
+        sb.append("                        indicator.classList.add('killed');\n");
+        sb.append("                    }\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("\n");
+        sb.append("            visibleSurvivedCount += visibleSurvivedEntries.length;\n");
+        sb.append("        });\n");
+        sb.append("\n");
+        sb.append("        const survivedEl = document.getElementById('top-survived-count');\n");
+        sb.append("        if (survivedEl) survivedEl.textContent = visibleSurvivedCount;\n");
+        sb.append("    } catch (e) {\n");
+        sb.append("        console.error('Failed to apply equivalent filtering on file page:', e);\n");
+        sb.append("    }\n");
+        sb.append("}\n");
+        sb.append("document.addEventListener('DOMContentLoaded', applyEquivalentFilteringToFilePage);\n");
+        sb.append("</script>\n");
+
+        sb.append("</div>\n</body>\n</html>");
+        return sb.toString();
     }
 
     private static String escapeHtml(String text) {

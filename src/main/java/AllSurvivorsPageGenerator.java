@@ -1,6 +1,5 @@
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 
 /**
@@ -18,9 +17,19 @@ public class AllSurvivorsPageGenerator {
         String sourceCodeSnippet;
         String operatorName;
         String targetLink;
+        String mutantId;
 
-        SurvivorEntry(String file, int line, int column, String operator, String replacement,
-                      String sourceCodeSnippet, String operatorName, String targetLink) {
+        SurvivorEntry(
+                String file,
+                int line,
+                int column,
+                String operator,
+                String replacement,
+                String sourceCodeSnippet,
+                String operatorName,
+                String targetLink,
+                String mutantId
+        ) {
             this.file = file;
             this.line = line;
             this.column = column;
@@ -29,6 +38,7 @@ public class AllSurvivorsPageGenerator {
             this.sourceCodeSnippet = sourceCodeSnippet;
             this.operatorName = operatorName;
             this.targetLink = targetLink;
+            this.mutantId = mutantId;
         }
     }
 
@@ -49,11 +59,10 @@ public class AllSurvivorsPageGenerator {
             writer.write(html.toString());
         }
     }
-    
+
     private static List<SurvivorEntry> convertToSurvivorEntries(List<?> mutants) {
         List<SurvivorEntry> entries = new ArrayList<>();
-        
-        // Try to extract data using reflection
+
         for (Object mutant : mutants) {
             try {
                 if (mutant instanceof MutantResult result) {
@@ -64,9 +73,10 @@ public class AllSurvivorsPageGenerator {
                     int column = point.getColumnNumber();
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
-                    String sourceSnippet = readSourceLine(point.getSourceFile(), line);
+                    String sourceSnippet = readSourceLine(point.getSourceFile().toPath(), line);
                     String operatorName = getMutationOperatorName(operator, replacement);
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
+                    String mutantId = EquivalentMutantStore.buildMutantId(result);
 
                     entries.add(new SurvivorEntry(
                             file,
@@ -76,7 +86,8 @@ public class AllSurvivorsPageGenerator {
                             replacement,
                             sourceSnippet,
                             operatorName,
-                            targetLink
+                            targetLink,
+                            mutantId
                     ));
                     continue;
                 }
@@ -86,17 +97,16 @@ public class AllSurvivorsPageGenerator {
                 int column = (int) mutant.getClass().getField("column").get(mutant);
                 String operator = (String) mutant.getClass().getField("operator").get(mutant);
                 String replacement = (String) mutant.getClass().getField("replacement").get(mutant);
+                String operatorName = getMutationOperatorName(operator, replacement);
+                String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
+                String mutantId = file + ":" + line + ":" + column + ":UNKNOWN:" + operator + ":" + replacement;
 
                 String sourceSnippet;
                 try {
                     sourceSnippet = (String) mutant.getClass().getField("original").get(mutant);
                 } catch (Exception e) {
-                    sourceSnippet = "return x " + operator + " y;";
+                    sourceSnippet = "";
                 }
-            
-                // Generate mutation operator name
-                String operatorName = getMutationOperatorName(operator, replacement);
-                String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
 
                 entries.add(new SurvivorEntry(
                         file,
@@ -106,19 +116,20 @@ public class AllSurvivorsPageGenerator {
                         replacement,
                         sourceSnippet,
                         operatorName,
-                        targetLink
+                        targetLink,
+                        mutantId
                 ));
             } catch (Exception e) {
                 System.err.println("Error converting mutant: " + e.getMessage());
             }
         }
-    
+
         return entries;
     }
 
-    private static String readSourceLine(java.io.File file, int lineNumber) {
+    private static String readSourceLine(java.nio.file.Path path, int lineNumber) {
         try {
-            List<String> lines = Files.readAllLines(file.toPath());
+            List<String> lines = java.nio.file.Files.readAllLines(path);
             if (lineNumber >= 1 && lineNumber <= lines.size()) {
                 return lines.get(lineNumber - 1).trim();
             }
@@ -224,7 +235,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("            <strong>0</strong> mutant(s) marked as equivalent\n");
         sb.append("        </div>\n");
         sb.append("        <label class=\"filter-checkbox\">\n");
-        sb.append("            <input type=\"checkbox\" id=\"hide-equivalent\" onchange=\"toggleEquivalent()\">\n");
+        sb.append("            <input type=\"checkbox\" id=\"hide-equivalent\" checked onchange=\"toggleEquivalent()\">\n");
         sb.append("            Hide equivalent mutants\n");
         sb.append("        </label>\n");
         sb.append("    </div>\n");
@@ -245,13 +256,14 @@ public class AllSurvivorsPageGenerator {
     
         for (int i = 0; i < survivors.size(); i++) {
             SurvivorEntry s = survivors.get(i);
-        
+
             sb.append("            <tr class=\"mutant-row survivor-row\" ");
             sb.append("data-file=\"").append(escapeHtml(s.file)).append("\" ");
             sb.append("data-line=\"").append(s.line).append("\" ");
             sb.append("data-column=\"").append(s.column).append("\" ");
             sb.append("data-operator=\"").append(escapeHtml(s.operatorName)).append("\" ");
             sb.append("data-replacement=\"").append(escapeHtml(s.replacement)).append("\" ");
+            sb.append("data-mutant-id=\"").append(escapeHtml(s.mutantId)).append("\" ");
             sb.append("onclick=\"window.location.href='").append(escapeHtml(s.targetLink)).append("'\">\n");
 
             sb.append("                <td>").append(i + 1).append("</td>\n");
@@ -427,124 +439,156 @@ public class AllSurvivorsPageGenerator {
         sb.append("    visibleCount.textContent = visibleRowCount;\n");
         sb.append("    noResults.classList.toggle('hidden', visibleRowCount > 0);\n");
         sb.append("}\n\n");
-        
-        sb.append("searchInput.addEventListener('input', filterRows);\n");
-        sb.append("fileFilter.addEventListener('change', filterRows);\n");
-        sb.append("operatorFilter.addEventListener('change', filterRows);\n");
+
+        sb.append("searchInput.addEventListener('input', toggleEquivalent);\n");
+        sb.append("fileFilter.addEventListener('change', toggleEquivalent);\n");
+        sb.append("operatorFilter.addEventListener('change', toggleEquivalent);\n");
         sb.append("</script>\n\n");
         
         // Mark as Equivalent JavaScript
         sb.append("<script>\n");
         sb.append("class EquivalentMutantManager {\n");
         sb.append("    constructor() {\n");
-        sb.append("        this.storageKey = 'mutation_testing_equivalent_mutants';\n");
-        sb.append("        this.equivalentMutants = this.load();\n");
-        sb.append("        this.init();\n");
+        sb.append("        this.apiUrl = 'http://localhost:8081/api/equivalent-mutants';\n");
+        sb.append("        this.equivalentMutants = new Set();\n");
+        sb.append("        this.initPromise = this.init();\n");
         sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    load() {\n");
+
+        sb.append("    async load() {\n");
         sb.append("        try {\n");
-        sb.append("            const data = localStorage.getItem(this.storageKey);\n");
-        sb.append("            return data ? JSON.parse(data) : [];\n");
+        sb.append("            const res = await fetch(this.apiUrl);\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            const data = await res.json();\n");
+        sb.append("            this.equivalentMutants = new Set(data.hiddenMutantIds || []);\n");
         sb.append("        } catch (e) {\n");
-        sb.append("            console.error('Error loading:', e);\n");
-        sb.append("            return [];\n");
+        sb.append("            console.error('Failed to load equivalent mutants:', e);\n");
+        sb.append("            this.equivalentMutants = new Set();\n");
         sb.append("        }\n");
         sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    save() {\n");
+
+        sb.append("    async markAsEquivalent(mutantId) {\n");
         sb.append("        try {\n");
-        sb.append("            localStorage.setItem(this.storageKey, JSON.stringify(this.equivalentMutants));\n");
+        sb.append("            const res = await fetch(this.apiUrl, {\n");
+        sb.append("                method: 'POST',\n");
+        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
+        sb.append("                body: JSON.stringify({ id: mutantId })\n");
+        sb.append("            });\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            this.equivalentMutants.add(mutantId);\n");
         sb.append("            this.updateUI();\n");
+        sb.append("            toggleEquivalent();\n");
         sb.append("        } catch (e) {\n");
-        sb.append("            console.error('Error saving:', e);\n");
+        sb.append("            console.error('Failed to mark equivalent mutant:', e);\n");
+        sb.append("            alert('Failed to mark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
         sb.append("        }\n");
         sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    getMutantId(file, line, column, operator, replacement) {\n");
-        sb.append("        return `${file}:${line}:${column}:${operator}->${replacement}`;\n");
+
+        sb.append("    async unmarkAsEquivalent(mutantId) {\n");
+        sb.append("        try {\n");
+        sb.append("            const res = await fetch(this.apiUrl, {\n");
+        sb.append("                method: 'DELETE',\n");
+        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
+        sb.append("                body: JSON.stringify({ id: mutantId })\n");
+        sb.append("            });\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            this.equivalentMutants.delete(mutantId);\n");
+        sb.append("            this.updateUI();\n");
+        sb.append("            toggleEquivalent();\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            console.error('Failed to unmark equivalent mutant:', e);\n");
+        sb.append("            alert('Failed to unmark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
+        sb.append("        }\n");
         sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    isEquivalent(mutantId) {\n");
-        sb.append("        return this.equivalentMutants.some(m => m.id === mutantId);\n");
-        sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    markAsEquivalent(mutantId, file, line, column, operator, replacement) {\n");
-        sb.append("        if (this.isEquivalent(mutantId)) return;\n");
-        sb.append("        this.equivalentMutants.push({ id: mutantId, file, line, column, operator, replacement, markedAt: new Date().toISOString() });\n");
-        sb.append("        this.save();\n");
-        sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    unmarkAsEquivalent(mutantId) {\n");
-        sb.append("        this.equivalentMutants = this.equivalentMutants.filter(m => m.id !== mutantId);\n");
-        sb.append("        this.save();\n");
-        sb.append("    }\n");
-        sb.append("    \n");
+
         sb.append("    updateUI() {\n");
+        sb.append("        let pageEquivalentCount = 0;\n");
         sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
         sb.append("            const mutantId = row.dataset.mutantId;\n");
-        sb.append("            const isEq = this.isEquivalent(mutantId);\n");
-        sb.append("            if (isEq) row.classList.add('equivalent'); else row.classList.remove('equivalent');\n");
+        sb.append("            const isEq = mutantId && this.equivalentMutants.has(mutantId);\n");
+        sb.append("            row.classList.toggle('equivalent', isEq);\n");
+        sb.append("            if (isEq) pageEquivalentCount++;\n");
         sb.append("            const btn = row.querySelector('.mark-equivalent-btn');\n");
         sb.append("            if (btn) {\n");
         sb.append("                btn.textContent = isEq ? '✓ Equivalent' : 'Mark as Equivalent';\n");
         sb.append("                btn.classList.toggle('marked', isEq);\n");
         sb.append("            }\n");
         sb.append("        });\n");
-        sb.append("        \n");
         sb.append("        const statsEl = document.getElementById('equivalent-stats');\n");
-        sb.append("        if (statsEl) statsEl.innerHTML = `<strong>${this.equivalentMutants.length}</strong> mutant(s) marked as equivalent`;\n");
+        sb.append("        if (statsEl) {\n");
+        sb.append("            statsEl.innerHTML = `<strong>${pageEquivalentCount}</strong> mutant(s) marked as equivalent`;\n");
+        sb.append("        }\n");
+        sb.append("        toggleEquivalent();\n");
         sb.append("    }\n");
-        sb.append("    \n");
-        sb.append("    init() {\n");
+
+        sb.append("    async init() {\n");
+        sb.append("        await this.load();\n");
         sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
-        sb.append("            const file = row.dataset.file;\n");
-        sb.append("            const line = row.dataset.line;\n");
-        sb.append("            const column = row.dataset.column;\n");
-        sb.append("            const operator = row.dataset.operator;\n");
-        sb.append("            const replacement = row.dataset.replacement;\n");
-        sb.append("            \n");
-        sb.append("            const mutantId = this.getMutantId(file, line, column, operator, replacement);\n");
-        sb.append("            row.dataset.mutantId = mutantId;\n");
-        sb.append("            \n");
+        sb.append("            const mutantId = row.dataset.mutantId;\n");
         sb.append("            const actionCell = row.querySelector('.action-cell');\n");
-        sb.append("            if (actionCell) {\n");
+        sb.append("            if (actionCell && !actionCell.querySelector('.mark-equivalent-btn')) {\n");
         sb.append("                const btn = document.createElement('button');\n");
+        sb.append("                btn.type = 'button';\n");
         sb.append("                btn.className = 'mark-equivalent-btn';\n");
-        sb.append("                btn.textContent = this.isEquivalent(mutantId) ? '✓ Equivalent' : 'Mark as Equivalent';\n");
-        sb.append("                if (this.isEquivalent(mutantId)) btn.classList.add('marked');\n");
-        sb.append("                \n");
-        sb.append("                btn.onclick = (e) => {\n");
+        sb.append("                btn.onclick = async (e) => {\n");
+        sb.append("                    e.preventDefault();\n");
         sb.append("                    e.stopPropagation();\n");
-        sb.append("                    if (this.isEquivalent(mutantId)) {\n");
-        sb.append("                        if (confirm('Remove \"equivalent\" marking from this mutant?')) this.unmarkAsEquivalent(mutantId);\n");
+        sb.append("                    if (!mutantId) return;\n");
+        sb.append("                    if (this.equivalentMutants.has(mutantId)) {\n");
+        sb.append("                        await this.unmarkAsEquivalent(mutantId);\n");
         sb.append("                    } else {\n");
-        sb.append("                        this.markAsEquivalent(mutantId, file, line, column, operator, replacement);\n");
+        sb.append("                        await this.markAsEquivalent(mutantId);\n");
         sb.append("                    }\n");
         sb.append("                };\n");
-        sb.append("                \n");
         sb.append("                actionCell.appendChild(btn);\n");
         sb.append("            }\n");
         sb.append("        });\n");
-        sb.append("        \n");
         sb.append("        this.updateUI();\n");
         sb.append("    }\n");
         sb.append("}\n");
-        sb.append("\n");
+
         sb.append("let equivalentManager;\n");
-        sb.append("document.addEventListener('DOMContentLoaded', () => {\n");
+        sb.append("document.addEventListener('DOMContentLoaded', async () => {\n");
         sb.append("    equivalentManager = new EquivalentMutantManager();\n");
+        sb.append("    await equivalentManager.initPromise;\n");
+        sb.append("    toggleEquivalent();\n");
         sb.append("});\n");
-        sb.append("\n");
+
         sb.append("function toggleEquivalent() {\n");
         sb.append("    const hide = document.getElementById('hide-equivalent').checked;\n");
-        sb.append("    document.querySelectorAll('.mutant-row.equivalent').forEach(row => {\n");
-        sb.append("        row.style.display = hide ? 'none' : '';\n");
+        sb.append("    const searchTerm = document.getElementById('search-input').value.toLowerCase();\n");
+        sb.append("    const fileValue = document.getElementById('file-filter').value;\n");
+        sb.append("    const operatorValue = document.getElementById('operator-filter').value;\n");
+        sb.append("    let visible = 0;\n");
+        sb.append("\n");
+        sb.append("    document.querySelectorAll('.mutant-row').forEach(row => {\n");
+        sb.append("        const isEquivalent = row.classList.contains('equivalent');\n");
+        sb.append("        const file = row.dataset.file || '';\n");
+        sb.append("        const operator = row.dataset.operator || '';\n");
+        sb.append("        const text = row.textContent.toLowerCase();\n");
+        sb.append("\n");
+        sb.append("        const matchesSearch = text.includes(searchTerm);\n");
+        sb.append("        const matchesFile = !fileValue || file === fileValue;\n");
+        sb.append("        const matchesOperator = !operatorValue || operator === operatorValue;\n");
+        sb.append("        const passesFilters = matchesSearch && matchesFile && matchesOperator;\n");
+        sb.append("\n");
+        sb.append("        if (!passesFilters) {\n");
+        sb.append("            row.style.display = 'none';\n");
+        sb.append("            return;\n");
+        sb.append("        }\n");
+        sb.append("\n");
+        sb.append("        if (hide && isEquivalent) {\n");
+        sb.append("            row.style.display = 'none';\n");
+        sb.append("        } else {\n");
+        sb.append("            row.style.display = '';\n");
+        sb.append("            visible++;\n");
+        sb.append("        }\n");
         sb.append("    });\n");
-        sb.append("    \n");
-        sb.append("    const visible = document.querySelectorAll('.mutant-row:not([style*=\"display: none\"])').length;\n");
+        sb.append("\n");
         sb.append("    const countEl = document.getElementById('visible-count');\n");
         sb.append("    if (countEl) countEl.textContent = visible;\n");
+        sb.append("\n");
+        sb.append("    const noResults = document.getElementById('no-results');\n");
+        sb.append("    if (noResults) noResults.classList.toggle('hidden', visible > 0);\n");
         sb.append("}\n");
         sb.append("</script>\n");
         
