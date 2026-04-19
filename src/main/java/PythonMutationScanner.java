@@ -30,6 +30,22 @@ public class PythonMutationScanner {
         return visitor.getMutationPoints();
     }
 
+    public static List<Mutator.MutatorType> getSupportedTypes() {
+        return List.of(
+                Mutator.MutatorType.AOR_PLUS_TO_MINUS,
+                Mutator.MutatorType.AOR_MINUS_TO_PLUS,
+                Mutator.MutatorType.ROR_LT_TO_LE,
+                Mutator.MutatorType.ROR_LE_TO_LT,
+                Mutator.MutatorType.ROR_GT_TO_GE,
+                Mutator.MutatorType.ROR_GE_TO_GT,
+                Mutator.MutatorType.EQ_NEGATE,
+                Mutator.MutatorType.LOGICAL_AND_TO_OR,
+                Mutator.MutatorType.LOGICAL_OR_TO_AND,
+                Mutator.MutatorType.TYPE_INT_TO_FLOAT,
+                Mutator.MutatorType.TYPE_FLOAT_TO_INT
+        );
+    }
+
     private static boolean supportsMutation(Mutator.MutatorType type) {
         return type == Mutator.MutatorType.AOR_PLUS_TO_MINUS
                 || type == Mutator.MutatorType.AOR_MINUS_TO_PLUS

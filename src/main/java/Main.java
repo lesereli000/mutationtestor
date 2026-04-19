@@ -122,13 +122,25 @@ public class Main {
             return;
         }
 
-        mutationTest(
-                projectDirectory,
-                config.sourceCodeDirectory,
-                config.mutatorType,
-                config.compileCommand,
-                config.testCommand,
-                config.mutationStrategy); 
+        if ("ALL".equalsIgnoreCase(config.mutatorType)) {
+            for (Mutator.MutatorType type : PythonMutationScanner.getSupportedTypes()) {
+                mutationTest(
+                        projectDirectory,
+                        config.sourceCodeDirectory,
+                        type.name(),
+                        config.compileCommand,
+                        config.testCommand,
+                        config.mutationStrategy);
+            }
+        } else {
+            mutationTest(
+                    projectDirectory,
+                    config.sourceCodeDirectory,
+                    config.mutatorType,
+                    config.compileCommand,
+                    config.testCommand,
+                    config.mutationStrategy);
+        }
 
         System.out.println("Quitting");
     }
