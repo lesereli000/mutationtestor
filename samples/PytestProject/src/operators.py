@@ -1,5 +1,5 @@
 # operators.py - Comprehensive Python sample for mutation testing
-# Covers: AOR (+,-), ROR (>,>=,<,<=,==,!=), LCR (and,or), TYPE (int,float)
+# Covers: AOR (+,-,*,/,%), BOR (&,|), ROR (>,>=,<,<=,==,!=), LCR (and,or), TYPE (int,float)
 
 
 def add(x, y):
@@ -72,3 +72,11 @@ def typed_add(a: int, b: int) -> int:
 
 def typed_float_add(a: float, b: float) -> float:
     return a + b
+
+
+def bitwise_and(x: int, y: int) -> int:
+    return x & y
+
+
+def bitwise_or(x: int, y: int) -> int:
+    return x | y

@@ -34,6 +34,11 @@ public class PythonMutationScanner {
         return List.of(
                 Mutator.MutatorType.AOR_PLUS_TO_MINUS,
                 Mutator.MutatorType.AOR_MINUS_TO_PLUS,
+                Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE,
+                Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY,
+                Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY,
+                Mutator.MutatorType.BOR_AND_TO_OR,
+                Mutator.MutatorType.BOR_OR_TO_AND,
                 Mutator.MutatorType.ROR_LT_TO_LE,
                 Mutator.MutatorType.ROR_LE_TO_LT,
                 Mutator.MutatorType.ROR_GT_TO_GE,
@@ -49,6 +54,11 @@ public class PythonMutationScanner {
     private static boolean supportsMutation(Mutator.MutatorType type) {
         return type == Mutator.MutatorType.AOR_PLUS_TO_MINUS
                 || type == Mutator.MutatorType.AOR_MINUS_TO_PLUS
+                || type == Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE
+                || type == Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY
+                || type == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY
+                || type == Mutator.MutatorType.BOR_AND_TO_OR
+                || type == Mutator.MutatorType.BOR_OR_TO_AND
                 || type == Mutator.MutatorType.ROR_LT_TO_LE
                 || type == Mutator.MutatorType.ROR_LE_TO_LT
                 || type == Mutator.MutatorType.ROR_GT_TO_GE

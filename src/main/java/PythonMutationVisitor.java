@@ -74,6 +74,16 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
             addMutation(ctx.op, "+", "-");
         } else if (mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS && operator.equals("-")) {
             addMutation(ctx.op, "-", "+");
+        } else if (mutationType == Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE && operator.equals("*")) {
+            addMutation(ctx.op, "*", "/");
+        } else if (mutationType == Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY && operator.equals("/")) {
+            addMutation(ctx.op, "/", "*");
+        } else if (mutationType == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY && operator.equals("%")) {
+            addMutation(ctx.op, "%", "*");
+        } else if (mutationType == Mutator.MutatorType.BOR_AND_TO_OR && operator.equals("&")) {
+            addMutation(ctx.op, "&", "|");
+        } else if (mutationType == Mutator.MutatorType.BOR_OR_TO_AND && operator.equals("|")) {
+            addMutation(ctx.op, "|", "&");
         }
 
         return visitChildren(ctx);
