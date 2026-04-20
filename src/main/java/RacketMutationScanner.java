@@ -1,12 +1,14 @@
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import org.antlr.v4.gui.TreeViewer;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 
 /**
  * Scans Racket (.rkt) source files for mutation points using the ISL ANTLR
@@ -61,7 +63,7 @@ public class RacketMutationScanner {
     // Visitor
     // -------------------------------------------------------------------------
 
-    private static class ISLMutationVisitor extends ISLParserBaseVisitor<Void> {
+    private static class ISLMutationVisitor extends ISLBaseVisitor<Void> {
 
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
