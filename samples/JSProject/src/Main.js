@@ -1,5 +1,4 @@
-const { add1 } = require("./Add1");
-const { add2 } = require("./Add2");
+
 
 function main() {
     const a = 5;
