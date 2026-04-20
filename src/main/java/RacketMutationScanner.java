@@ -36,6 +36,7 @@ public class RacketMutationScanner {
     // Public entry point
     // -------------------------------------------------------------------------
 
+
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         String sourceCode = Files.readString(file.toPath());
 
