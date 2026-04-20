@@ -1,7 +1,9 @@
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +59,10 @@ public class HtmlReportGenerator {
                 "./output/report/all-survivors.html"
         );
 
-        StringBuilder html = new StringBuilder();
+        // Generate AST visualizations
+        generateASTVisualizations(results, "./output/report");
 
+        StringBuilder html = new StringBuilder();
         double mutationScore = report.getMutationScore();
 
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
@@ -133,6 +137,7 @@ public class HtmlReportGenerator {
         html.append("                        <th>Killed</th>\n");
         html.append("                        <th>Survivors</th>\n");
         html.append("                        <th>Score</th>\n");
+        html.append("                        <th>Actions</th>\n");
         html.append("                    </tr>\n");
         html.append("                </thead>\n");
         html.append("                <tbody>\n");
@@ -160,6 +165,18 @@ public class HtmlReportGenerator {
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, killed));
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, survived));
             html.append(String.format("                        <td><a href=\"%s\">%.1f%%</a></td>\n", link, score));
+
+            // Actions column
+            html.append("                        <td>\n");
+            html.append(String.format("                            <a href=\"%s\" style=\"color: #2563eb; text-decoration: none;\">View Details</a>\n", link));
+            
+            if (file.endsWith(".js")) {
+                html.append("                            <span style=\"margin: 0 5px;\">|</span>\n");
+                String astLink = "ast-" + stripExtension(file) + ".html";
+                html.append(String.format("                            <a href=\"%s\" style=\"color: #10b981; text-decoration: none;\" target=\"_blank\">View AST</a>\n", astLink));
+            }
+
+            html.append("                        </td>\n");
             html.append("                    </tr>\n");
         }
 
@@ -190,4 +207,33 @@ public class HtmlReportGenerator {
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
     }
+        private static void generateASTVisualizations(
+                List<MutantResult> results,
+                String outputDir) throws IOException {
+        
+        // Group mutations by file
+        Map<File, List<MutationPoint>> mutationsByFile = new HashMap<>();
+        
+        for (MutantResult result : results) {
+                File file = result.getMutationPoint().getSourceFile();
+                mutationsByFile.putIfAbsent(file, new ArrayList<>());
+                mutationsByFile.get(file).add(result.getMutationPoint());
+        }
+        
+        // Generate AST for each file
+        for (Map.Entry<File, List<MutationPoint>> entry : mutationsByFile.entrySet()) {
+                File sourceFile = entry.getKey();
+                List<MutationPoint> mutations = entry.getValue();
+                
+                // Only generate for JavaScript files
+                if (sourceFile.getName().endsWith(".js")) {
+                String outputPath = outputDir + "/ast-" + 
+                                sourceFile.getName().replace(".js", ".html");
+                
+                ASTVisualizationGenerator.generateJavaScriptAST(
+                        sourceFile, mutations, outputPath
+                );
+                }
+        }
+        }
 }
