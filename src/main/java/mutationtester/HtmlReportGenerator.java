@@ -66,8 +66,6 @@ public class HtmlReportGenerator {
 
         StringBuilder html = new StringBuilder();
 
-        double mutationScore = visibleReport.getMutationScore();
-
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
         html.append("    <meta charset=\"UTF-8\">\n");
         html.append("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
@@ -78,7 +76,7 @@ public class HtmlReportGenerator {
         html.append("        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }\n");
         html.append("        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 30px; }\n");
         html.append("        .header h1 { font-size: 32px; margin-bottom: 8px; }\n");
-        html.append("        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 30px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }\n");
+        html.append("        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; padding: 30px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }\n");
         html.append("        .stat-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }\n");
         html.append("        .stat-card .label { color: #64748b; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }\n");
         html.append("        .stat-card .value { font-size: 36px; font-weight: bold; color: #1e293b; }\n");
@@ -113,7 +111,7 @@ public class HtmlReportGenerator {
         int totalMutants = visibleReport.getTotalMutants();
         int killedCount = visibleReport.getKilled();
         int survivedCount = visibleReport.getSurvived();
-        double initialScore = totalMutants > 0 ? (survivedCount * 100.0 / totalMutants) : 0.0;
+        double initialScore = totalMutants > 0 ? (killedCount * 100.0 / totalMutants) : 0.0;
 
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Mutation Score</div><div id=\"top-mutation-score\" class=\"value mutation-score\">%.1f%%</div></div>\n", initialScore));
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Total Mutants</div><div id=\"top-total-count\" class=\"value\">%d</div></div>\n", totalMutants));
@@ -173,10 +171,14 @@ public class HtmlReportGenerator {
         html.append("                </tbody>\n");
         html.append("            </table>\n");
         html.append("        </div>\n");
-
         html.append("    </div>\n");
 
         html.append("<script>\n");
+        html.append("function hiddenIdMatchesFile(hiddenId, file) {\n");
+        html.append("    if (!hiddenId || !file) return false;\n");
+        html.append("    return hiddenId.startsWith(file + ':') || hiddenId.startsWith('CONTENT|' + file + '|') || hiddenId.startsWith('LEGACY|' + file + '|');\n");
+        html.append("}\n");
+        html.append("\n");
         html.append("async function applyEquivalentFilteringToSummary() {\n");
         html.append("    try {\n");
         html.append("        const res = await fetch('http://localhost:8081/api/equivalent-mutants');\n");
@@ -191,14 +193,9 @@ public class HtmlReportGenerator {
         html.append("            const file = row.dataset.file;\n");
         html.append("            const survivedCount = parseInt(row.dataset.survived || '0', 10);\n");
         html.append("\n");
-        html.append("            if (survivedCount <= 0) {\n");
-        html.append("                row.style.display = '';\n");
-        html.append("                return;\n");
-        html.append("            }\n");
-        html.append("\n");
         html.append("            let hiddenForThisFile = 0;\n");
         html.append("            hiddenIds.forEach(id => {\n");
-        html.append("                if (id.startsWith(file + ':')) {\n");
+        html.append("                if (hiddenIdMatchesFile(id, file)) {\n");
         html.append("                    hiddenForThisFile++;\n");
         html.append("                }\n");
         html.append("            });\n");
@@ -209,7 +206,7 @@ public class HtmlReportGenerator {
         html.append("            const survivedCell = row.querySelector('.survived-cell a');\n");
         html.append("            if (survivedCell) survivedCell.textContent = visibleForThisFile;\n");
         html.append("\n");
-        html.append("            if (visibleForThisFile === 0) {\n");
+        html.append("            if (survivedCount > 0 && visibleForThisFile === 0) {\n");
         html.append("                row.style.display = 'none';\n");
         html.append("            } else {\n");
         html.append("                row.style.display = '';\n");
@@ -219,15 +216,17 @@ public class HtmlReportGenerator {
         html.append("        });\n");
         html.append("\n");
         html.append("        const totalEl = document.getElementById('top-total-count');\n");
+        html.append("        const killedEl = document.getElementById('top-killed-count');\n");
         html.append("        const survivedEl = document.getElementById('top-survived-count');\n");
         html.append("        const equivalentEl = document.getElementById('top-equivalent-count');\n");
         html.append("        const scoreEl = document.getElementById('top-mutation-score');\n");
         html.append("\n");
         html.append("        const total = totalEl ? parseInt(totalEl.textContent || '0', 10) : 0;\n");
-        html.append("        const score = total > 0 ? (visibleSurvivedTotal * 100.0 / total) : 0;\n");
+        html.append("        const score = total > 0 ? ((1.0 - (visibleSurvivedTotal * 1.0 / total)) * 100.0) : 0;\n");
         html.append("\n");
         html.append("        if (survivedEl) survivedEl.textContent = visibleSurvivedTotal;\n");
         html.append("        if (equivalentEl) equivalentEl.textContent = equivalentTotal;\n");
+        html.append("        if (scoreEl) scoreEl.textContent = score.toFixed(1) + '%';\n");
         html.append("        if (scoreEl) scoreEl.textContent = score.toFixed(1) + '%';\n");
         html.append("    } catch (e) {\n");
         html.append("        console.error('Failed to apply equivalent filtering on summary page:', e);\n");
@@ -235,6 +234,7 @@ public class HtmlReportGenerator {
         html.append("}\n");
         html.append("document.addEventListener('DOMContentLoaded', applyEquivalentFilteringToSummary);\n");
         html.append("</script>\n");
+
         html.append("</body>\n</html>");
 
         try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html")) {

@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -74,8 +75,89 @@ public class EquivalentMutantStore {
 
     public static String buildMutantId(MutationPoint point) {
         String fileName = point.getSourceFile() == null ? "<unknown>" : point.getSourceFile().getName();
+        String normalizedLine = normalizeSourceLine(readSourceLine(point));
+        String operator = safe(point.getOperator());
+        String replacement = safe(point.getReplacement());
+
+        if (!normalizedLine.isEmpty()) {
+            return "CONTENT|" + fileName + "|" + normalizedLine + "|" + operator + "|" + replacement;
+        }
+
+        return buildLegacyMutantId(point);
+    }
+
+    public static Set<String> buildCandidateMutantIds(MutantResult result) {
+        return buildCandidateMutantIds(result.getMutationPoint());
+    }
+
+    public static Set<String> buildCandidateMutantIds(MutationPoint point) {
+        Set<String> ids = new LinkedHashSet<>();
+        ids.add(buildMutantId(point));
+        ids.add(buildLegacyMutantId(point));
+        return ids;
+    }
+
+    public static boolean matchesHiddenMutant(Set<String> hiddenIds, MutantResult result) {
+        return matchesHiddenMutant(hiddenIds, result.getMutationPoint());
+    }
+
+    public static boolean matchesHiddenMutant(Set<String> hiddenIds, MutationPoint point) {
+        for (String candidate : buildCandidateMutantIds(point)) {
+            if (hiddenIds.contains(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String buildLegacyMutantId(MutationPoint point) {
+        String fileName = point.getSourceFile() == null ? "<unknown>" : point.getSourceFile().getName();
         String type = point.getType() == null ? "UNKNOWN" : point.getType().name();
-        return fileName + ":" + point.getLineNumber() + ":" + point.getColumnNumber() + ":" + type + ":" + point.getOperator() + ":" + point.getReplacement();
+        return "LEGACY|" + fileName + "|" + point.getLineNumber() + "|" + point.getColumnNumber() + "|" + type + "|" + safe(point.getOperator()) + "|" + safe(point.getReplacement());
+    }
+
+    private static String readSourceLine(MutationPoint point) {
+        if (point == null || point.getSourceFile() == null) {
+            return "";
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(point.getSourceFile().toPath(), StandardCharsets.UTF_8);
+            int index = point.getLineNumber() - 1;
+            if (index >= 0 && index < lines.size()) {
+                return lines.get(index);
+            }
+        } catch (IOException e) {
+            return "";
+        }
+
+        return "";
+    }
+
+    private static String normalizeSourceLine(String line) {
+        if (line == null) {
+            return "";
+        }
+
+        String normalized = line.trim();
+
+        if (normalized.isEmpty()) {
+            return "";
+        }
+
+        normalized = normalized.replaceAll("//.*$", "");
+        normalized = normalized.replaceAll("/\\*.*?\\*/", "");
+        normalized = normalized.trim();
+
+        normalized = normalized.replaceAll("\\s+", "");
+        normalized = normalized.replace("“", "\"").replace("”", "\"");
+        normalized = normalized.replace("‘", "'").replace("’", "'");
+
+        return normalized;
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private static String escapeJson(String value) {
