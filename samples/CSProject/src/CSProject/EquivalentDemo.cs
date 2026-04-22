@@ -4,6 +4,8 @@ namespace samples.CSProject.src
     {
         public static int EquivalentOrToAnd(int x)
         {
+            int i = 1;
+            int j = 2;
             return x | x;
         }
 
