@@ -60,7 +60,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>Main</mainClass>
+                            <mainClass>mutationtester.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -79,11 +79,12 @@
                 <artifactId>antlr4-maven-plugin</artifactId>
                 <version>4.13.2</version> <!-- Match with runtime version -->
                 <configuration>
-                    <outputDirectory>target/generated-sources/antlr4</outputDirectory>
                     <visitor>true</visitor> <!-- Generates visitor classes -->
                     <listener>true</listener> <!-- Generates listener classes (default) -->
-                    <sourceDirectory>${basedir}/src/main/antlr4</sourceDirectory>
-<!--                    <packageName>csse.rose-hulman.src.main.antlr4</packageName>-->
+                    <arguments>
+                        <argument>-package</argument>
+                        <argument>mutationtester</argument>
+                    </arguments>
                 </configuration>
                 <executions>
                     <execution>

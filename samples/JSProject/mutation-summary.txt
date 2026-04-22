@@ -1,0 +1,61 @@
+MUTATION TESTING SUMMARY 
+======================================== 
+Test Date: Mon 04/06/2026 14:57:55.66 
+Test Method: Puppeteer (Chrome Headless Browser) 
+======================================== 
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_INTEGER_TO_FLOAT 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           0 (0.0%)
+Survived:         9 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_INTEGER_TO_EXPONENTIAL 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           0 (0.0%)
+Survived:         9 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_FLOAT_TO_INTEGER 
+---------------------------------------- 
+Total Mutants:    8
+Killed:           5 (62.5%)
+Survived:         3 (37.5%)
+MUTATION SCORE:   62.5%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_FLOAT_TO_EXPONENTIAL 
+---------------------------------------- 
+Total Mutants:    8
+Killed:           0 (0.0%)
+Survived:         8 (100.0%)
+MUTATION SCORE:   0.0%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_EXPONENTIAL_TO_INTEGER 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           3 (33.3%)
+Survived:         6 (66.7%)
+MUTATION SCORE:   33.3%
+ 
+---------------------------------------- 
+MUTATION TYPE: NLT_EXPONENTIAL_TO_FLOAT 
+---------------------------------------- 
+Total Mutants:    9
+Killed:           3 (33.3%)
+Survived:         6 (66.7%)
+MUTATION SCORE:   33.3%
+ 
+ 
+======================================== 
+SUMMARY 
+======================================== 
+All 6 numeric literal type mutations tested 
+See detailed results above 
+======================================== 

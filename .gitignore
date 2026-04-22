@@ -17,7 +17,10 @@
 # OS files
 .DS_Store
 
+# local output folders
 output/
+demo-output/
+
 
 # ===== Maven =====
 /target/
@@ -38,3 +41,5 @@ output/
 /samples/PytestProject/venv/
 /samples/SchemeProject/project/compiled
 /samples/PytestProject/tests/__pycache__
+/samples/PytestProject/src/__pycache__
+/.vscode

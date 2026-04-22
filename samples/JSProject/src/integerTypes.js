@@ -1,32 +1,26 @@
 function addInteger(x) {
-    let result = 42;  // Integer literal - will mutate to 42.0, 4.2e1
+    let result = 42;
     return result + x;
 }
 
 function multiplyInteger(x) {
-    let factor = 10;  // Integer literal
+    let factor = 10;
     return x * factor;
 }
 
 function zeroInteger() {
-    let zero = 0;  // Edge case: zero
+    let zero = 0;
     return zero;
 }
 
 function negativeInteger() {
-    let negative = -42;  // Negative integer
+    let negative = -42;
     return negative;
 }
 
 function largeInteger() {
-    let large = 1000;  // Large integer
+    let large = 1000;
     return large;
 }
 
-module.exports = { 
-    addInteger, 
-    multiplyInteger, 
-    zeroInteger, 
-    negativeInteger,
-    largeInteger 
-};
+module.exports = { addInteger, multiplyInteger, zeroInteger, negativeInteger, largeInteger };
