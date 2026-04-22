@@ -1,8 +1,8 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-//package csse.rose-hulman.src.main.antlr4;
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.TokenStream;
 
 import java.util.List;
 

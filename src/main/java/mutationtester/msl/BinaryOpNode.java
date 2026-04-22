@@ -1,6 +1,5 @@
 package mutationtester.msl;
 
-import mutationtester.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 /**
@@ -21,9 +20,10 @@ public class BinaryOpNode implements MSLExpression {
 
     @Override
     public boolean matches(MSLScannerAdapter scanner, ParseTree ctx) {
-        if (!scanner.isBinaryExpressionFor(ctx, operator)) return false;
+        if (!scanner.isBinaryExpressionFor(ctx, operator))
+            return false;
         return left.matches(scanner, scanner.getLeftOperand(ctx))
-            && right.matches(scanner, scanner.getRightOperand(ctx));
+                && right.matches(scanner, scanner.getRightOperand(ctx));
     }
 
     @Override
@@ -32,5 +32,7 @@ public class BinaryOpNode implements MSLExpression {
     }
 
     /** Returns the MSL operator string this node matches (e.g., "+", ">>"). */
-    public String getOperator() { return operator; }
+    public String getOperator() {
+        return operator;
+    }
 }

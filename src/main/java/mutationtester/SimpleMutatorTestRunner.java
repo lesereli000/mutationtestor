@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 /*
  Simple Test Runne should runs all mutation tests and generates reports.
     java -cp out/classes SimpleMutatorTestRunner

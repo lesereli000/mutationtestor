@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedReader;

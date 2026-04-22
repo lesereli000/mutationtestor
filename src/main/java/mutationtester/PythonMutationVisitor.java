@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;

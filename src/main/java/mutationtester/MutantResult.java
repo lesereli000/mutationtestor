@@ -1,7 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-
 public class MutantResult {
     private MutationPoint mutationPoint;
     private MutantStatus status;

@@ -1,6 +1,8 @@
 package mutationtester;
 
-import mutationtester.msl.*;
+import mutationtester.msl.MSLScannerAdapter;
+import mutationtester.msl.MutationRule;
+import mutationtester.msl.MutationRuleGenerator;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;

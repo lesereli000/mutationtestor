@@ -1,9 +1,10 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
-import java.util.*;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Visitor that identifies and records mutation opportunities in JavaScript code

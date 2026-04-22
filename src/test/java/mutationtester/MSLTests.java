@@ -224,14 +224,14 @@ public class MSLTests {
             () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
     }
 
-    // ── Steps 9: SwapRule ─────────────────────────────────────────────────────
+    // ── Steps 9: ReplacementRule ─────────────────────────────────────────────────────
 
     @Test
     void swapRuleMatchesDelegatesToFromExpr() {
         MSLScannerAdapter adapter = mockBinaryAdapter("+", true, true, true);
         BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
         BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        SwapRule rule = new SwapRule(from, to, "AOR + to -");
+        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
         assertTrue(rule.matches(adapter, null));
     }
 
@@ -240,7 +240,7 @@ public class MSLTests {
         MSLScannerAdapter adapter = mockBinaryAdapter("+", false, true, true);
         BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
         BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        SwapRule rule = new SwapRule(from, to, "AOR + to -");
+        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
         assertFalse(rule.matches(adapter, null));
     }
 
@@ -250,7 +250,7 @@ public class MSLTests {
         File f = new File("Test.java");
         BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
         BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        SwapRule rule = new SwapRule(from, to, "AOR + to -");
+        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
 
         MutationPoint mp = rule.apply(adapter, null, f);
         assertAll(
@@ -267,7 +267,7 @@ public class MSLTests {
     void swapRuleGetLabelReturnsLabel() {
         BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
         BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        assertEquals("my label", new SwapRule(from, to, "my label").getLabel());
+        assertEquals("my label", new ReplacementRule(from, to, "my label").getLabel());
     }
 
     /** Adapter that returns specific line/col for position-extraction test. */
@@ -294,7 +294,7 @@ public class MSLTests {
         BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
         BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
         MutationRule rule = MutationRuleFactory.create("Replace", from, to, "label");
-        assertInstanceOf(SwapRule.class, rule);
+        assertInstanceOf(ReplacementRule.class, rule);
     }
 
     @Test

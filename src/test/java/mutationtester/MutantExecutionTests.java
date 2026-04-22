@@ -1,7 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;

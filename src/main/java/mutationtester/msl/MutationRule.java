@@ -1,6 +1,6 @@
 package mutationtester.msl;
 
-import mutationtester.*;
+import mutationtester.MutationPoint;
 import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.File;
 

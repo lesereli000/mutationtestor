@@ -1,7 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;

@@ -1,7 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-
 public enum PythonVersion {
     Autodetect(0),
     Python2(2),

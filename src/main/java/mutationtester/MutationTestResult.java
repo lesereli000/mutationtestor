@@ -1,7 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
-
 public class MutationTestResult {
     private final String testName;
     private final String mutationType;

@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 import java.util.List;
 import java.util.stream.Collectors;
 

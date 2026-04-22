@@ -1,7 +1,9 @@
 package mutationtester.demo;
 
 import java.util.*;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 
 // Enum example
 enum Status { STARTED, RUNNING, FINISHED }

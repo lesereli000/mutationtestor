@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 import java.io.File;
 
 public class MutationPoint {

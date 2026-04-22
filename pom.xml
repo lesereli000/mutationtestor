@@ -79,14 +79,12 @@
                 <artifactId>antlr4-maven-plugin</artifactId>
                 <version>4.13.2</version> <!-- Match with runtime version -->
                 <configuration>
-                    <outputDirectory>target/generated-sources/antlr4/mutationtester</outputDirectory>
                     <visitor>true</visitor> <!-- Generates visitor classes -->
                     <listener>true</listener> <!-- Generates listener classes (default) -->
                     <arguments>
                         <argument>-package</argument>
                         <argument>mutationtester</argument>
                     </arguments>
-                    <sourceDirectory>${basedir}/src/main/antlr4</sourceDirectory>
                 </configuration>
                 <executions>
                     <execution>

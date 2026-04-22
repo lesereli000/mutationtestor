@@ -1,20 +1,21 @@
 package mutationtester.msl;
 
-import mutationtester.*;
 /**
  * Parses an MSL pattern string into an MSLExpression tree.
  *
  * Supported patterns (case-sensitive, whitespace-normalised):
- *   {quantity}                       → QuantityNode
- *   {quantity} <op> {quantity}       → BinaryOpNode("<op>", QuantityNode, QuantityNode)
+ * {quantity} → QuantityNode
+ * {quantity} <op> {quantity} → BinaryOpNode("<op>", QuantityNode, QuantityNode)
  *
- * Where <op> is any non-empty, non-brace token (e.g. +, -, *, /, %, &, |, ^, <<, >>, >>>).
+ * Where <op> is any non-empty, non-brace token (e.g. +, -, *, /, %, &, |, ^,
+ * <<, >>, >>>).
  *
  * Throws IllegalArgumentException for unrecognised patterns.
  */
 public class MSLExpressionFactory {
 
-    private MSLExpressionFactory() {}
+    private MSLExpressionFactory() {
+    }
 
     public static MSLExpression parse(String pattern) {
         String trimmed = pattern.strip();
@@ -35,7 +36,7 @@ public class MSLExpressionFactory {
         }
 
         throw new IllegalArgumentException(
-            "Unrecognised MSL pattern: \"" + pattern + "\". " +
-            "Expected \"{quantity}\" or \"{quantity} <op> {quantity}\".");
+                "Unrecognised MSL pattern: \"" + pattern + "\". " +
+                        "Expected \"{quantity}\" or \"{quantity} <op> {quantity}\".");
     }
 }

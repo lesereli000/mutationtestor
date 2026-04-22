@@ -1,6 +1,5 @@
 package mutationtester;
 
-import mutationtester.msl.*;
 import org.antlr.v4.runtime.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
