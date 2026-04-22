@@ -77,7 +77,7 @@ public class AllSurvivorsPageGenerator {
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
                     String sourceSnippet = readSourceLine(point.getSourceFile().toPath(), line);
-                    String operatorName = getMutationOperatorName(operator, replacement);
+                    String operatorName = point.getCustomLabel() != null ? point.getCustomLabel() : getMutationOperatorName(operator, replacement);
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                     String mutantId = EquivalentMutantStore.buildMutantId(result);
 
@@ -100,7 +100,11 @@ public class AllSurvivorsPageGenerator {
                 int column = (int) mutant.getClass().getField("column").get(mutant);
                 String operator = (String) mutant.getClass().getField("operator").get(mutant);
                 String replacement = (String) mutant.getClass().getField("replacement").get(mutant);
-                String operatorName = getMutationOperatorName(operator, replacement);
+                String customLabel = null;
+                try {
+                    customLabel = (String) mutant.getClass().getField("customLabel").get(mutant);
+                } catch (Exception e) {}
+                String operatorName = customLabel != null ? customLabel : getMutationOperatorName(operator, replacement);
                 String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                 String mutantId = file + ":" + line + ":" + column + ":UNKNOWN:" + operator + ":" + replacement;
 
