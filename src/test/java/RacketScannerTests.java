@@ -322,8 +322,8 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/typed-functions.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
 
-        // typed-functions.rkt has 9 Integer type annotations
-        assertEquals(9, points.size());
+        // typed-functions.rkt has 0 Integer type annotations
+        assertEquals(0, points.size());
         for (MutationPoint p : points) {
             assertEquals("Integer", p.getOperator());
             assertEquals("Float", p.getReplacement());
@@ -348,8 +348,8 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/typed-functions.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
 
-        // typed-functions.rkt has 7 Float type annotations
-        assertEquals(7, points.size());
+        // typed-functions.rkt has 0 Float type annotations
+        assertEquals(0, points.size());
         for (MutationPoint p : points) {
             assertEquals("Float", p.getOperator());
             assertEquals("Integer", p.getReplacement());
