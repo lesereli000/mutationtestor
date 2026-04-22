@@ -42,3 +42,4 @@ demo-output/
 /samples/SchemeProject/project/compiled
 /samples/PytestProject/tests/__pycache__
 /samples/PytestProject/src/__pycache__
+/.vscode

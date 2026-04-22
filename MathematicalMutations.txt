@@ -1,0 +1,28 @@
+Math Operations
+
+	Replace: {quantity} + {quantity}
+	With: {quantity} - {quantity}
+	And: Inverse
+	
+	Replace: {quantity} * {quantity}
+	With: {quantity} / {quantity}
+	And: Inverse
+
+	Replace: {quantity} % {quantity}
+	With: {quantity} * {quantity}	
+
+	Replace: {quantity} & {quantity}
+	With: {quantity} | {quantity}
+	And: Inverse
+
+	Replace: {quantity} ^ {quantity}
+	With: {quantity} & {quantity}
+
+	Replace: {quantity} >> {quantity}
+	With: {quantity} << {quantity}
+	And: Inverse
+
+	Replace: {quantity} >>> {quantity}
+	With: {quantity} << {quantity}
+
+End
