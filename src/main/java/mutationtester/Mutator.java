@@ -40,6 +40,9 @@ public class Mutator {
         // INC_TO_DEC, // ++ to --
         // DEC_TO_INC， // -- to ++
 
+        CONDITIONAL_TRUE,
+        CONDITIONAL_FALSE,
+
         REMOVE_INCREMENT, // remove-- or ++
 
         // Numeric Literal Type mutations for JavaScript

@@ -20,7 +20,9 @@ public class MutationReport {
         killed = (int) results.stream()
                 .filter(r -> r.getStatus() == MutantResult.MutantStatus.KILLED)
                 .count();
-        survived = totalMutants - killed;
+        survived = (int) results.stream()
+                .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
+                .count();
 
         if (totalMutants > 0) {
             mutationScore = (killed / (double) totalMutants) * 100.0;

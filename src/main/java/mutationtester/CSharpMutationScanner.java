@@ -24,6 +24,9 @@ public class CSharpMutationScanner {
         if (type == Mutator.MutatorType.REMOVE_INCREMENT) {
             return scanRemoveIncrementMutations(file, sourceCode);
         }
+        if (type == Mutator.MutatorType.CONDITIONAL_TRUE || type == Mutator.MutatorType.CONDITIONAL_FALSE) {
+            return scanConditionalMutations(file, sourceCode, type);
+        }
 
         CharStream input = CharStreams.fromString(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
@@ -36,6 +39,132 @@ public class CSharpMutationScanner {
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
+    }
+
+    private static List<MutationPoint> scanConditionalMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        String replacement = type == Mutator.MutatorType.CONDITIONAL_TRUE ? "true" : "false";
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            addParenthesizedCondition(points, file, line, i + 1, type, replacement, "if");
+            addParenthesizedCondition(points, file, line, i + 1, type, replacement, "while");
+        }
+
+        return points;
+    }
+
+    private static void addParenthesizedCondition(List<MutationPoint> points, File file, String line, int lineNumber,
+                                                  Mutator.MutatorType type, String replacement, String keyword) {
+        int searchFrom = 0;
+
+        while (searchFrom < line.length()) {
+            int keywordIndex = findKeywordOutsideStringOrComment(line, keyword, searchFrom);
+            if (keywordIndex < 0) {
+                return;
+            }
+
+            int openParen = line.indexOf('(', keywordIndex + keyword.length());
+            if (openParen < 0 || isInStringOrComment(line, openParen)) {
+                searchFrom = keywordIndex + keyword.length();
+                continue;
+            }
+
+            int closeParen = findMatchingParen(line, openParen);
+            if (closeParen < 0) {
+                searchFrom = openParen + 1;
+                continue;
+            }
+
+            String condition = line.substring(openParen + 1, closeParen).trim();
+            int conditionColumn = line.indexOf(condition, openParen + 1);
+
+            if (isValidConditionText(condition)) {
+                points.add(new MutationPoint(file, lineNumber, conditionColumn, condition, replacement, type));
+            }
+
+            searchFrom = closeParen + 1;
+        }
+    }
+
+    private static int findKeywordOutsideStringOrComment(String line, String keyword, int from) {
+        int index = line.indexOf(keyword, from);
+
+        while (index >= 0) {
+            boolean beforeOk = index == 0 || !isIdentifierChar(line.charAt(index - 1));
+            int afterIndex = index + keyword.length();
+            boolean afterOk = afterIndex >= line.length() || !isIdentifierChar(line.charAt(afterIndex));
+
+            if (beforeOk && afterOk && !isInStringOrComment(line, index)) {
+                return index;
+            }
+
+            index = line.indexOf(keyword, index + keyword.length());
+        }
+
+        return -1;
+    }
+
+    private static int findMatchingParen(String line, int openParen) {
+        int depth = 0;
+
+        for (int i = openParen; i < line.length(); i++) {
+            if (isInStringOrComment(line, i)) {
+                continue;
+            }
+
+            char c = line.charAt(i);
+
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static int findQuestionMarkOutsideStringOrComment(String line) {
+        for (int i = 0; i < line.length(); i++) {
+            if (line.charAt(i) == '?' && !isInStringOrComment(line, i)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static boolean startsWithQuestionMark(String line) {
+        String trimmed = line.trim();
+        return trimmed.startsWith("? ");
+    }
+
+    private static boolean isValidConditionText(String condition) {
+        if (condition == null || condition.isBlank()) {
+            return false;
+        }
+
+        String trimmed = condition.trim();
+
+        if (trimmed.equals("true") || trimmed.equals("false")) {
+            return false;
+        }
+
+        if (trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith("=>")) {
+            return false;
+        }
+
+        if (trimmed.startsWith("?") || trimmed.startsWith(":")) {
+            return false;
+        }
+
+        return true;
     }
 
     private static List<MutationPoint> scanRemoveIncrementMutations(File file, String sourceCode) {
@@ -107,6 +236,10 @@ public class CSharpMutationScanner {
 
         int commentStart = line.indexOf("//");
         return commentStart >= 0 && commentStart < position;
+    }
+
+    private static boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
@@ -508,6 +641,7 @@ public class CSharpMutationScanner {
             return mutationPoints;
         }
     }
+
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
         sourceCode = removeBom(sourceCode);
@@ -520,7 +654,6 @@ public class CSharpMutationScanner {
         return new MSLScannerAdapter() {
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // Common C# binary expressions have 3 children: expr op expr
                 if (ctx.getChildCount() == 3) {
                     return ctx.getChild(1).getText().equals(mslOperator);
                 }
@@ -549,9 +682,9 @@ public class CSharpMutationScanner {
                 if (ctx instanceof TerminalNode tn) {
                     Token symbol = tn.getSymbol();
                     int type = symbol.getType();
-                    return type == CSharpLexer.Integer_Literal || 
-                           type == CSharpLexer.Real_Literal || 
-                           type == CSharpLexer.Simple_Identifier;
+                    return type == CSharpLexer.Integer_Literal ||
+                            type == CSharpLexer.Real_Literal ||
+                            type == CSharpLexer.Simple_Identifier;
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
