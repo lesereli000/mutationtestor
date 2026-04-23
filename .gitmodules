@@ -1,0 +1,3 @@
+[submodule "external/TDD-Kata"]
+	path = external/TDD-Kata
+	url = https://github.com/WolfgangOfner/TDD-Kata.git
