@@ -87,6 +87,46 @@ public class EndToEndMSLTests {
         assertEquals("PyMut: + \u2192 -", points.get(0).getCustomLabel());
         assertEquals("PyMut: * \u2192 /", points.get(1).getCustomLabel());
     }
+
+    @Test
+    void testCustomMutationScanningForRelationalAndLogicalOperatorsInJava() throws Exception {
+        Path javaFile = tempDir.resolve("Test.java");
+        Files.writeString(javaFile,
+            "public class Test {\n" +
+            "    public boolean bigger(int a, int b) {\n" +
+            "        return a > b;\n" +
+            "    }\n" +
+            "    public boolean both(boolean a, boolean b) {\n" +
+            "        return a && b;\n" +
+            "    }\n" +
+            "}\n"
+        );
+
+        Path specFile = tempDir.resolve("spec.txt");
+        Files.writeString(specFile,
+            "Operators\n" +
+            "    Replace: {quantity} > {quantity}\n" +
+            "    With: {quantity} >= {quantity}\n" +
+            "    Replace: {quantity} && {quantity}\n" +
+            "    With: {quantity} || {quantity}\n" +
+            "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+            tempDir,
+            Mutator.MutatorType.CUSTOM,
+            "AUTO",
+            specFile.toString()
+        );
+
+        assertEquals(2, points.size());
+        assertEquals(">", points.get(0).getOperator());
+        assertEquals(">=", points.get(0).getReplacement());
+        assertEquals("Operators: > \u2192 >=", points.get(0).getCustomLabel());
+        assertEquals("&&", points.get(1).getOperator());
+        assertEquals("||", points.get(1).getReplacement());
+        assertEquals("Operators: && \u2192 ||", points.get(1).getCustomLabel());
+    }
 }
 
 /**
