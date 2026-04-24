@@ -42,6 +42,9 @@ public class Mutator {
 
         CONDITIONAL_TRUE,
         CONDITIONAL_FALSE,
+        STATEMENT_MUTATION,
+        STRING_MUTATION_TO_NOT_NULL,
+        STRING_MUTATION_TO_NOT_EMPTY,
 
         REMOVE_INCREMENT, // remove-- or ++
 

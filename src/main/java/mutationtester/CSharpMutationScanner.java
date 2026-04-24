@@ -24,6 +24,13 @@ public class CSharpMutationScanner {
         if (type == Mutator.MutatorType.REMOVE_INCREMENT) {
             return scanRemoveIncrementMutations(file, sourceCode);
         }
+        if (type == Mutator.MutatorType.STATEMENT_MUTATION) {
+            return scanStatementRemovalMutations(file, sourceCode);
+        }
+        if (type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_NULL
+                || type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_EMPTY) {
+            return scanStringIsNullOrEmptyMutations(file, sourceCode, type);
+        }
         if (type == Mutator.MutatorType.CONDITIONAL_TRUE || type == Mutator.MutatorType.CONDITIONAL_FALSE) {
             return scanConditionalMutations(file, sourceCode, type);
         }
@@ -399,6 +406,97 @@ public class CSharpMutationScanner {
 
         return points;
     }
+
+    private static List<MutationPoint> scanStatementRemovalMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        Pattern invocationStatement = Pattern.compile(
+                "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
+        );
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            Matcher matcher = invocationStatement.matcher(line);
+            if (!matcher.matches()) {
+                continue;
+            }
+
+            String statement = line.trim();
+            int column = line.indexOf(statement);
+            if (column < 0) {
+                continue;
+            }
+
+            points.add(new MutationPoint(
+                    file,
+                    i + 1,
+                    column,
+                    statement,
+                    ";",
+                    Mutator.MutatorType.STATEMENT_MUTATION,
+                    "Statement mutation"
+            ));
+        }
+
+        return points;
+    }
+
+    private static List<MutationPoint> scanStringIsNullOrEmptyMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            int searchFrom = 0;
+
+            while (searchFrom < line.length()) {
+                int callIndex = line.indexOf("string.IsNullOrEmpty", searchFrom);
+                if (callIndex < 0) {
+                    break;
+                }
+
+                if (isInStringOrComment(line, callIndex)) {
+                    searchFrom = callIndex + "string.IsNullOrEmpty".length();
+                    continue;
+                }
+
+                int openParen = line.indexOf('(', callIndex + "string.IsNullOrEmpty".length());
+                if (openParen < 0 || isInStringOrComment(line, openParen)) {
+                    searchFrom = callIndex + "string.IsNullOrEmpty".length();
+                    continue;
+                }
+
+                int closeParen = findMatchingParen(line, openParen);
+                if (closeParen < 0) {
+                    searchFrom = openParen + 1;
+                    continue;
+                }
+
+                String fullCall = line.substring(callIndex, closeParen + 1);
+                String argument = line.substring(openParen + 1, closeParen).trim();
+                String replacement = type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_NULL
+                        ? "(" + argument + " != null)"
+                        : "(" + argument + " != \"\")";
+
+                if (!argument.isEmpty()) {
+                    points.add(new MutationPoint(
+                            file,
+                            i + 1,
+                            callIndex,
+                            fullCall,
+                            replacement,
+                            type,
+                            "String mutation"
+                    ));
+                }
+
+                searchFrom = closeParen + 1;
+            }
+        }
+
+        return points;
+    }
+
 
     private static boolean isInStringOrComment(String line, int position) {
         boolean inString = false;

@@ -316,4 +316,78 @@ public class CSharpScannerTests {
         assertEquals(0, points.size());
     }
 
+    @Test
+    public void testStatementRemovalFindsInvocationStatement() throws IOException {
+        Path file = Files.createTempFile("ContributorStatement", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public class Contributor
+                {
+                  public Contributor UpdateName()
+                  {
+                    RegisterDomainEvent(new ContributorNameUpdatedEvent(this));
+                    return this;
+                  }
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.STATEMENT_MUTATION);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 7
+                        && p.getOperator().equals("RegisterDomainEvent(new ContributorNameUpdatedEvent(this));")
+                        && p.getReplacement().equals(";")));
+    }
+
+    @Test
+    public void testStringIsNullOrEmptyToNotNullFindsMutation() throws IOException {
+        Path file = Files.createTempFile("ContributorNameStringNull", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public partial struct ContributorName
+                {
+                  private static Validation Validate(in string name) =>
+                    string.IsNullOrEmpty(name)
+                      ? Validation.Invalid("Name cannot be empty")
+                      : Validation.Ok;
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.STRING_MUTATION_TO_NOT_NULL);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 6
+                        && p.getOperator().equals("string.IsNullOrEmpty(name)")
+                        && p.getReplacement().equals("(name != null)")));
+    }
+
+    @Test
+    public void testStringIsNullOrEmptyToNotEmptyFindsMutation() throws IOException {
+        Path file = Files.createTempFile("ContributorNameStringEmpty", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public partial struct ContributorName
+                {
+                  private static Validation Validate(in string name) =>
+                    string.IsNullOrEmpty(name)
+                      ? Validation.Invalid("Name cannot be empty")
+                      : Validation.Ok;
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.STRING_MUTATION_TO_NOT_EMPTY);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 6
+                        && p.getOperator().equals("string.IsNullOrEmpty(name)")
+                        && p.getReplacement().equals("(name != \"\")")));
+    }
+
 }
