@@ -2,6 +2,10 @@ package mutationtester;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Path;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 public class MainTests {
@@ -86,5 +90,16 @@ public class MainTests {
     void testFalsePositive() {
         assertFalse(Main.hasTestFailures("There are 0 failures."));
         assertFalse(Main.hasTestFailures("No failures here."));
+    }
+
+    @Test
+    void testScanForMutationsRecursesIntoNestedSourceDirectories() {
+        List<MutationPoint> points = Main.scanForMutations(
+                Path.of("samples/CSProject/src"),
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                "AUTO",
+                null);
+
+        assertTrue(points.stream().anyMatch(p -> p.getSourceFile().getName().equals("ConditionalDemo.cs")));
     }
 }

@@ -51,6 +51,7 @@ public class CSharpMutationScanner {
 
             addParenthesizedCondition(points, file, line, i + 1, type, replacement, "if");
             addParenthesizedCondition(points, file, line, i + 1, type, replacement, "while");
+            addTernaryCondition(points, file, lines, i, type, replacement);
         }
 
         return points;
@@ -87,6 +88,97 @@ public class CSharpMutationScanner {
 
             searchFrom = closeParen + 1;
         }
+    }
+
+    private static void addTernaryCondition(List<MutationPoint> points, File file, String[] lines, int lineIndex,
+                                            Mutator.MutatorType type, String replacement) {
+        String line = lines[lineIndex];
+        int questionMark = findQuestionMarkOutsideStringOrComment(line);
+        if (questionMark >= 0) {
+            addConditionPoint(points, file, lineIndex + 1, type, replacement,
+                    extractInlineTernaryCondition(line, questionMark));
+            return;
+        }
+
+        if (lineIndex + 1 < lines.length && startsWithQuestionMark(lines[lineIndex + 1])) {
+            addConditionPoint(points, file, lineIndex + 1, type, replacement,
+                    extractTrailingTernaryCondition(line));
+        }
+    }
+
+    private static void addConditionPoint(List<MutationPoint> points, File file, int lineNumber,
+                                          Mutator.MutatorType type, String replacement, ConditionSpan conditionSpan) {
+        if (conditionSpan == null) {
+            return;
+        }
+
+        String condition = conditionSpan.text().trim();
+        if (isValidConditionText(condition)) {
+            points.add(new MutationPoint(
+                    file,
+                    lineNumber,
+                    conditionSpan.startColumn(),
+                    condition,
+                    replacement,
+                    type
+            ));
+        }
+    }
+
+    private static ConditionSpan extractInlineTernaryCondition(String line, int questionMark) {
+        String prefix = line.substring(0, questionMark);
+        return buildConditionSpan(line, prefix, findConditionStart(prefix));
+    }
+
+    private static ConditionSpan extractTrailingTernaryCondition(String line) {
+        return buildConditionSpan(line, line, findConditionStart(line));
+    }
+
+    private static ConditionSpan buildConditionSpan(String fullLine, String candidateSource, int start) {
+        if (start < 0 || start >= candidateSource.length()) {
+            return null;
+        }
+
+        String candidate = candidateSource.substring(start).trim();
+        if (candidate.isEmpty()) {
+            return null;
+        }
+
+        int column = fullLine.indexOf(candidate, start);
+        if (column < 0) {
+            return null;
+        }
+
+        return new ConditionSpan(candidate, column);
+    }
+
+    private static int findConditionStart(String text) {
+        int start = skipLeadingTrivia(text, 0);
+
+        if (text.startsWith("=>", start)) {
+            return skipLeadingTrivia(text, start + 2);
+        }
+
+        if (start < text.length() && text.charAt(start) == ':') {
+            return skipLeadingTrivia(text, start + 1);
+        }
+
+        if (text.startsWith("return", start)) {
+            int next = start + "return".length();
+            if (next >= text.length() || Character.isWhitespace(text.charAt(next))) {
+                return skipLeadingTrivia(text, next);
+            }
+        }
+
+        return start;
+    }
+
+    private static int skipLeadingTrivia(String text, int start) {
+        int index = start;
+        while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
+            index++;
+        }
+        return index;
     }
 
     private static int findKeywordOutsideStringOrComment(String line, String keyword, int from) {
@@ -132,7 +224,7 @@ public class CSharpMutationScanner {
 
     private static int findQuestionMarkOutsideStringOrComment(String line) {
         for (int i = 0; i < line.length(); i++) {
-            if (line.charAt(i) == '?' && !isInStringOrComment(line, i)) {
+            if (line.charAt(i) == '?' && isTernaryQuestionMark(line, i)) {
                 return i;
             }
         }
@@ -142,7 +234,107 @@ public class CSharpMutationScanner {
 
     private static boolean startsWithQuestionMark(String line) {
         String trimmed = line.trim();
-        return trimmed.startsWith("? ");
+        return trimmed.startsWith("?") && !trimmed.startsWith("??");
+    }
+
+    private static boolean isTernaryQuestionMark(String line, int index) {
+        if (index < 0 || index >= line.length() || line.charAt(index) != '?' || isInStringOrComment(line, index)) {
+            return false;
+        }
+
+        if ((index > 0 && line.charAt(index - 1) == '?')
+                || (index + 1 < line.length() && line.charAt(index + 1) == '?')) {
+            return false;
+        }
+
+        int prev = previousNonWhitespace(line, index - 1);
+        if (prev < 0) {
+            return false;
+        }
+
+        char prevChar = line.charAt(prev);
+        if (!Character.isLetterOrDigit(prevChar)
+                && prevChar != ')'
+                && prevChar != ']'
+                && prevChar != '}'
+                && prevChar != '"'
+                && prevChar != '\''
+                && prevChar != '_') {
+            return false;
+        }
+
+        return findMatchingTernaryColon(line, index) >= 0;
+    }
+
+    private static int findMatchingTernaryColon(String line, int questionMark) {
+        int baseParenDepth = nestingDepth(line, questionMark, '(', ')');
+        int baseBracketDepth = nestingDepth(line, questionMark, '[', ']');
+        int baseBraceDepth = nestingDepth(line, questionMark, '{', '}');
+        int nestedTernaryDepth = 0;
+        int parenDepth = baseParenDepth;
+        int bracketDepth = baseBracketDepth;
+        int braceDepth = baseBraceDepth;
+
+        for (int i = questionMark + 1; i < line.length(); i++) {
+            if (isInStringOrComment(line, i)) {
+                continue;
+            }
+
+            char c = line.charAt(i);
+            if (c == '(') parenDepth++;
+            else if (c == ')') parenDepth--;
+            else if (c == '[') bracketDepth++;
+            else if (c == ']') bracketDepth--;
+            else if (c == '{') braceDepth++;
+            else if (c == '}') braceDepth--;
+
+            if (parenDepth < baseParenDepth || bracketDepth < baseBracketDepth || braceDepth < baseBraceDepth) {
+                return -1;
+            }
+
+            if (parenDepth == baseParenDepth && bracketDepth == baseBracketDepth && braceDepth == baseBraceDepth) {
+                if (c == '?' && isTernaryQuestionMark(line, i)) {
+                    nestedTernaryDepth++;
+                } else if (c == ':') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == ':') {
+                        i++;
+                        continue;
+                    }
+
+                    if (nestedTernaryDepth == 0) {
+                        return i;
+                    }
+                    nestedTernaryDepth--;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static int nestingDepth(String line, int endExclusive, char openChar, char closeChar) {
+        int depth = 0;
+        for (int i = 0; i < endExclusive; i++) {
+            if (isInStringOrComment(line, i)) {
+                continue;
+            }
+
+            char c = line.charAt(i);
+            if (c == openChar) {
+                depth++;
+            } else if (c == closeChar && depth > 0) {
+                depth--;
+            }
+        }
+        return depth;
+    }
+
+    private static int previousNonWhitespace(String line, int index) {
+        int i = index;
+        while (i >= 0 && Character.isWhitespace(line.charAt(i))) {
+            i--;
+        }
+        return i;
     }
 
     private static boolean isValidConditionText(String condition) {
@@ -241,6 +433,8 @@ public class CSharpMutationScanner {
     private static boolean isIdentifierChar(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
     }
+
+    private record ConditionSpan(String text, int startColumn) {}
 
     private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
         return type == Mutator.MutatorType.TYPE_INT_TO_DOUBLE

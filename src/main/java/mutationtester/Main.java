@@ -537,7 +537,7 @@ public class Main {
                 || lower.contains("type mismatch");
     }
 
-    private static List<MutationPoint> scanForMutations(
+    static List<MutationPoint> scanForMutations(
             Path sourceDir,
             Mutator.MutatorType type,
             String mutationStrategy,
@@ -560,8 +560,11 @@ public class Main {
         }
 
         try {
-            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false); it.hasNext();) {
+            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, true); it.hasNext();) {
                 File file = it.next();
+                if (!shouldScanFile(file)) {
+                    continue;
+                }
 
                 List<MutationPoint> filePoints;
                 if (type == Mutator.MutatorType.CUSTOM) {
@@ -577,6 +580,15 @@ public class Main {
         }
 
         return points;
+    }
+
+    private static boolean shouldScanFile(File file) {
+        String normalizedPath = file.getPath().replace('\\', '/');
+        return !normalizedPath.contains("/obj/")
+                && !normalizedPath.contains("/bin/")
+                && !normalizedPath.contains("/.git/")
+                && !normalizedPath.contains("/target/")
+                && !normalizedPath.contains("/node_modules/");
     }
 
     private static List<MutationPoint> findCustomMutationsInFile(File file, List<MutationRule> rules) throws IOException {

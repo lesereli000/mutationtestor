@@ -1,0 +1,3 @@
+[submodule "external/CSharpProject"]
+	path = external/CSharpProject
+	url = https://github.com/EllieJin04/CleanArchitecture.git

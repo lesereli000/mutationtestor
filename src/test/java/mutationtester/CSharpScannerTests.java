@@ -3,6 +3,8 @@ package mutationtester;
 import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -209,6 +211,109 @@ public class CSharpScannerTests {
         MutationPoint p = points.get(0);
         assertEquals("|", p.getOperator());
         assertEquals("&", p.getReplacement());
+    }
+
+    @Test
+    public void testConditionalTrueMutationFindsSingleLineTernaryCondition() throws IOException {
+        Path file = Files.createTempFile("ContributorId", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public readonly partial struct ContributorId
+                {
+                  private static Validation Validate(int value)
+                      => value > 0 ? Validation.Ok : Validation.Invalid("ContributorId must be positive.");
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 6 && p.getOperator().equals("value > 0") && p.getReplacement().equals("true")));
+    }
+
+    @Test
+    public void testConditionalTrueMutationFindsMultilineNestedTernaryConditions() throws IOException {
+        Path file = Files.createTempFile("ContributorName", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public partial struct ContributorName
+                {
+                  private static Validation Validate(in string name) =>
+                    string.IsNullOrEmpty(name)
+                      ? Validation.Invalid("Name cannot be empty")
+                      : name.Length > MaxLength
+                        ? Validation.Invalid($"Name cannot be longer than {MaxLength} characters")
+                        : Validation.Ok;
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 6 && p.getOperator().equals("string.IsNullOrEmpty(name)")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getLineNumber() == 8 && p.getOperator().equals("name.Length > MaxLength")));
+    }
+
+    @Test
+    public void testConditionalTrueMutationIgnoresNullableTypeAnnotationsAndNullCoalescing() throws IOException {
+        Path file = Files.createTempFile("PhoneNumber", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public class PhoneNumber(string countryCode, string number, string? extension)
+                {
+                  public string? Extension { get; private set; } = extension;
+
+                  public override string ToString()
+                  {
+                    return Extension ?? string.Empty;
+                  }
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        assertEquals(0, points.size());
+    }
+
+    @Test
+    public void testConditionalTrueMutationStillFindsRealTernaryWhenNullableTypesExist() throws IOException {
+        Path file = Files.createTempFile("PhoneNumberTernary", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public class PhoneNumber(string? extension)
+                {
+                  public override string ToString()
+                  {
+                    return string.IsNullOrEmpty(extension) ? string.Empty : extension;
+                  }
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getOperator().equals("string.IsNullOrEmpty(extension)") && p.getReplacement().equals("true")));
+    }
+
+    @Test
+    public void testConditionalTrueMutationIgnoresNullablePrimaryConstructorParametersWithBaseTypeClause() throws IOException {
+        Path file = Files.createTempFile("PhoneNumberCtor", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public class PhoneNumber(string countryCode, string number, string? extension) : ValueObject
+                {
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        assertEquals(0, points.size());
     }
 
 }
