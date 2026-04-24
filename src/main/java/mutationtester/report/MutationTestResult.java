@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.report;
 
 public class MutationTestResult {
     private final String testName;
@@ -79,4 +79,3 @@ public class MutationTestResult {
         }
     }
 }
-

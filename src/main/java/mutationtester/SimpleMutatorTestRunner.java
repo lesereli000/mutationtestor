@@ -1,5 +1,8 @@
 package mutationtester;
 
+import mutationtester.report.MutationTestReport;
+import mutationtester.report.MutationTestResult;
+
 /*
  Simple Test Runne should runs all mutation tests and generates reports.
     java -cp out/classes SimpleMutatorTestRunner

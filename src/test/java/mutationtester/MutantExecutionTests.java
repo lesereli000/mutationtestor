@@ -67,7 +67,7 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedCSProject() {
         Path directory = Path.of("samples/CSProject");
-        String testCommand = "dotnet test tests/CSProject.Tests.CSProject.Tests.csproj";
+        String testCommand = "dotnet test tests/CSProject.Tests/CSProject.Tests.csproj";
 
         testOutput(testCommand, directory, directory, false);
     }

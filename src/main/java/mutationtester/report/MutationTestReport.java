@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.report;
 
 import java.util.ArrayList;
 import java.util.List;

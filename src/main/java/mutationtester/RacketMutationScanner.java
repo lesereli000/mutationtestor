@@ -4,12 +4,10 @@ import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.antlr.v4.gui.TreeViewer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -50,10 +48,6 @@ public class RacketMutationScanner {
 
         ParseTree tree = parser.program();
 
-
-        // ANTLR tree viewer — mirrors JavaMutationScanner
-        TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
-        viewer.open();
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type);
         visitor.visit(tree);

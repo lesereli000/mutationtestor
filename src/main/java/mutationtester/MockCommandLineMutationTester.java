@@ -1,5 +1,8 @@
 package mutationtester;
 
+import mutationtester.report.AllSurvivorsPageGenerator;
+import mutationtester.report.PitStyleReportGenerator;
+
 import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedReader;

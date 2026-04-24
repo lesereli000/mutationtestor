@@ -1,5 +1,6 @@
-package mutationtester;
+package mutationtester.report;
 
+import mutationtester.MutantResult;
 import mutationtester.equivalent.EquivalentMutantStore;
 
 import java.io.FileWriter;

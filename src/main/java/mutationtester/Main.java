@@ -3,6 +3,8 @@ package mutationtester;
 import mutationtester.msl.MSLScannerAdapter;
 import mutationtester.msl.MutationRule;
 import mutationtester.msl.MutationRuleGenerator;
+import mutationtester.report.HtmlReportGenerator;
+import mutationtester.report.MutationReport;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
