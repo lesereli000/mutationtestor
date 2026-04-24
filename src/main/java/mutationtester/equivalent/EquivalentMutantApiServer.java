@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.equivalent;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;

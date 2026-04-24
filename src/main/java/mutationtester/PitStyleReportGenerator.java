@@ -1,5 +1,7 @@
 package mutationtester;
 
+import mutationtester.equivalent.EquivalentMutantStore;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
