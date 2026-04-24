@@ -80,15 +80,20 @@ public class Main {
             Future<Integer> future = executor.submit(() -> process.waitFor());
             try {
                 int exitCode = future.get(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+                if (exitCode != 0) {
+                    output.append("PROCESS_EXIT_CODE: ").append(exitCode).append(System.lineSeparator());
+                }
             } catch (TimeoutException e) {
                 process.destroyForcibly();
                 System.out.println("Process " + commandList.get(0) + " timed out.");
-                return "";
+                output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
+                return output.toString();
             } catch (ExecutionException | InterruptedException e) {
                 process.destroyForcibly();
                 System.out.println("Error running command " + command + ": " + e.getMessage());
                 e.printStackTrace();
-                return "";
+                output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
+                return output.toString();
             }
             executor.shutdown();
 
@@ -443,7 +448,7 @@ public class Main {
 
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
-                line.substring(point.getColumnNumber() + point.getOperator().length());
+                line.substring(Math.min(point.getColumnNumber() + point.getOperator().length(), line.length()));
 
         lines[lineIndex] = newLine;
 
@@ -533,6 +538,12 @@ public class Main {
                 || lower.contains("build failed")
                 || lower.contains("build failure")
                 || lower.contains("test run failed")
+                || lower.contains("test run aborted")
+                || lower.contains("socketexception")
+                || lower.contains("permission denied")
+                || lower.contains("process_exit_code:")
+                || lower.contains("process_timeout")
+                || lower.contains("process_execution_error")
                 || lower.contains("type checker:")
                 || lower.contains("type mismatch");
     }

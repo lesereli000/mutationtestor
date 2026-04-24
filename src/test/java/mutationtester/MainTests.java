@@ -81,6 +81,21 @@ public class MainTests {
     }
 
     @Test
+    void testTestRunAbortedKeyword() {
+        assertTrue(Main.hasTestFailures("Test Run Aborted."));
+    }
+
+    @Test
+    void testPermissionDeniedDuringDotnetRun() {
+        assertTrue(Main.hasTestFailures("System.Net.Sockets.SocketException (13): Permission denied"));
+    }
+
+    @Test
+    void testNonZeroProcessExitCode() {
+        assertTrue(Main.hasTestFailures("PROCESS_EXIT_CODE: 1"));
+    }
+
+    @Test
     void testEmptyOutput() {
         assertFalse(Main.hasTestFailures(""));
         assertFalse(Main.hasTestFailures(null));

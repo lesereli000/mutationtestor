@@ -937,6 +937,7 @@ public class CSharpMutationScanner {
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
         sourceCode = removeBom(sourceCode);
+        final String sourceText = sourceCode;
         CharStream input = CharStreams.fromString(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -944,6 +945,10 @@ public class CSharpMutationScanner {
         ParseTree tree = parser.prog();
 
         return new MSLScannerAdapter() {
+            private final Pattern invocationStatement = Pattern.compile(
+                    "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
+            );
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 if (ctx.getChildCount() == 3) {
@@ -983,7 +988,55 @@ public class CSharpMutationScanner {
             }
 
             @Override
+            public String getSingleArgumentText(ParseTree ctx, String functionName) {
+                String text = getNodeText(ctx);
+                String prefix = functionName + "(";
+                if (!text.startsWith(prefix) || !text.endsWith(")")) {
+                    return null;
+                }
+
+                String inner = text.substring(prefix.length(), text.length() - 1).trim();
+                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                    return null;
+                }
+
+                return inner;
+            }
+
+            @Override
+            public boolean isInvocationStatement(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null && start.getLine() != stop.getLine()) {
+                        return false;
+                    }
+                }
+
+                String text = getNodeText(ctx);
+                if (text == null || text.isBlank()) {
+                    return false;
+                }
+                String trimmed = text.stripLeading();
+                if (trimmed.startsWith("return") || trimmed.startsWith("yieldreturn")
+                        || trimmed.startsWith("yield return")) {
+                    return false;
+                }
+                return invocationStatement.matcher(text).matches();
+            }
+
+            @Override
             public String getNodeText(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceText.length()) {
+                        return sourceText.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
                 return ctx.getText();
             }
 
@@ -995,7 +1048,15 @@ public class CSharpMutationScanner {
                 }
                 if (ctx instanceof ParserRuleContext prc) {
                     Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
+                    if (s != null) {
+                        return new int[]{s.getLine(), s.getCharPositionInLine()};
+                    }
+                    for (int i = 0; i < prc.getChildCount(); i++) {
+                        int[] childPos = getTokenPosition(prc.getChild(i));
+                        if (childPos[0] != 0 || childPos[1] != 0) {
+                            return childPos;
+                        }
+                    }
                 }
                 return new int[]{0, 0};
             }
@@ -1005,5 +1066,52 @@ public class CSharpMutationScanner {
                 return tree;
             }
         };
+    }
+
+    private static boolean hasTopLevelComma(String text) {
+        int parenDepth = 0;
+        int bracketDepth = 0;
+        int braceDepth = 0;
+        boolean inString = false;
+        char stringDelimiter = '\0';
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (i > 0 && text.charAt(i - 1) == '\\') {
+                continue;
+            }
+
+            if (inString) {
+                if (c == stringDelimiter) {
+                    inString = false;
+                    stringDelimiter = '\0';
+                }
+                continue;
+            }
+
+            if (c == '"' || c == '\'') {
+                inString = true;
+                stringDelimiter = c;
+                continue;
+            }
+
+            switch (c) {
+                case '(' -> parenDepth++;
+                case ')' -> parenDepth--;
+                case '[' -> bracketDepth++;
+                case ']' -> bracketDepth--;
+                case '{' -> braceDepth++;
+                case '}' -> braceDepth--;
+                case ',' -> {
+                    if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+                        return true;
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+
+        return false;
     }
 }

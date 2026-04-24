@@ -335,9 +335,9 @@ public class MSLTests {
 
     @Test
     void ruleGeneratorParsesAllRulesFromRealSpec() throws Exception {
-        // The real MathematicalMutations.txt: 11 Replace blocks, 8 with And: Inverse -> 19 total
+        // The real OperatorMutations.txt: 11 Replace blocks, 8 with And: Inverse -> 19 total
         java.io.File spec = new java.io.File(
-            "MathematicalMutations.txt");
+            "OperatorMutations.txt");
         java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
         assertEquals(19, rules.size());
     }

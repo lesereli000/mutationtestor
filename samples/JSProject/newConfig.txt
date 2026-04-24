@@ -1,5 +1,5 @@
 source_code_directory=src
 mutator_type=CUSTOM
-custom_mutation_spec=MathematicalMutations.txt
+custom_mutation_spec=OperatorMutations.txt
 compile_command=echo "No compilation needed"
 test_command=cd browser-tests && node run-with-puppeteer.js
