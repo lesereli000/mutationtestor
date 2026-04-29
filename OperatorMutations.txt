@@ -1,4 +1,4 @@
-Operators
+Math Operators:
 
 	Replace: {quantity} + {quantity}
 	With: {quantity} - {quantity}
@@ -25,6 +25,10 @@ Operators
 	Replace: {quantity} >>> {quantity}
 	With: {quantity} << {quantity}
 
+End
+
+Conditionals Boundary:
+
 	Replace: {quantity} > {quantity}
 	With: {quantity} >= {quantity}
 	And: Inverse
@@ -33,9 +37,25 @@ Operators
 	With: {quantity} <= {quantity}
 	And: Inverse
 
+End
+
+Negate Conditionals:
+
+	Replace: {quantity} > {quantity}
+    With: {quantity} <= {quantity}
+    And: Inverse
+
+	Replace: {quantity} < {quantity}
+    With: {quantity} >= {quantity}
+    And: Inverse
+
 	Replace: {quantity} == {quantity}
 	With: {quantity} != {quantity}
 	And: Inverse
+
+End
+
+Logical Operators:
 
 	Replace: {quantity} && {quantity}
 	With: {quantity} || {quantity}
