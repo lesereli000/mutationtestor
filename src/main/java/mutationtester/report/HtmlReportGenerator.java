@@ -80,13 +80,14 @@ public class HtmlReportGenerator {
         html.append("    <style>\n");
         html.append("        * { margin: 0; padding: 0; box-sizing: border-box; }\n");
         html.append("        body { font-family: Arial, sans-serif; background-color: #f8fafc; padding: 20px; }\n");
-        html.append("        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }\n");
+        html.append("        .container { max-width: 1600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }\n");
         html.append("        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 30px; }\n");
         html.append("        .header h1 { font-size: 32px; margin-bottom: 8px; }\n");
-        html.append("        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; padding: 30px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }\n");
-        html.append("        .stat-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }\n");
-        html.append("        .stat-card .label { color: #64748b; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }\n");
+        html.append("        .summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px; padding: 30px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }\n");
+        html.append("        .stat-card { min-width: 0; background: white; padding: 20px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }\n");
+        html.append("        .stat-card .label { color: #64748b; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }\n");
         html.append("        .stat-card .value { font-size: 36px; font-weight: bold; color: #1e293b; }\n");
+        html.append("        @media (max-width: 1100px) { .summary { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } .stat-card .label { white-space: normal; } }\n");
         html.append("        .mutation-score { color: #10b981; }\n");
         html.append("        .killed { color: #10b981; }\n");
         html.append("        .survived { color: #ef4444; }\n");
