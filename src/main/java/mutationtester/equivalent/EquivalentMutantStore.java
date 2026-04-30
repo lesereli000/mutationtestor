@@ -1,7 +1,7 @@
 package mutationtester.equivalent;
 
-import mutationtester.MutantResult;
-import mutationtester.MutationPoint;
+import mutationtester.model.MutantResult;
+import mutationtester.model.MutationPoint;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

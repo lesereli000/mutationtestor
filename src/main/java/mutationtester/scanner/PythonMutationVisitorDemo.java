@@ -1,4 +1,9 @@
-package mutationtester;
+package mutationtester.scanner;
+
+import mutationtester.*;
+import mutationtester.model.Mutation;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;

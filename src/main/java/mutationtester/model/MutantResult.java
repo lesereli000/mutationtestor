@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.model;
 
 public class MutantResult {
     private MutationPoint mutationPoint;

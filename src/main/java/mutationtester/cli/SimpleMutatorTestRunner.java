@@ -1,5 +1,7 @@
-package mutationtester;
+package mutationtester.cli;
 
+import mutationtester.core.Language;
+import mutationtester.model.Mutator;
 import mutationtester.report.MutationTestReport;
 import mutationtester.report.MutationTestResult;
 

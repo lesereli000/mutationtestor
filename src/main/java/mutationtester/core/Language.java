@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.core;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

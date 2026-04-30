@@ -1,4 +1,6 @@
-package mutationtester;
+package mutationtester.model;
+
+import mutationtester.core.Language;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -84,7 +86,7 @@ public class Mutator {
         return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
     }
 
-    static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language,
+    public static String mutateOutsideStringsAndComments(String code, MutatorType type, int maxEdits, Language language,
             boolean isRacket) {
         StringBuilder out = new StringBuilder(code.length());
         State state = State.CODE;

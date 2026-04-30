@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.cli;
 
 import mutationtester.report.AllSurvivorsPageGenerator;
 import mutationtester.report.PitStyleReportGenerator;

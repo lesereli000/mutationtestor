@@ -1,6 +1,6 @@
 package mutationtester.report;
 
-import mutationtester.MutantResult;
+import mutationtester.model.MutantResult;
 import mutationtester.equivalent.EquivalentMutantStore;
 
 import java.io.FileWriter;

@@ -1,6 +1,6 @@
-package mutationtester;
+package mutationtester.model;
 
-class Mutation {
+public class Mutation {
     private String operatorName;  // e.g., "AOR_PLUS_TO_MINUS"
     private int line;
     private int column;

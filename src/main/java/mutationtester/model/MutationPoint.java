@@ -1,4 +1,4 @@
-package mutationtester;
+package mutationtester.model;
 
 import java.io.File;
 

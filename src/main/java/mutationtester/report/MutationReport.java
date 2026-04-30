@@ -1,7 +1,7 @@
 package mutationtester.report;
 
-import mutationtester.MutantResult;
-import mutationtester.MutationPoint;
+import mutationtester.model.MutantResult;
+import mutationtester.model.MutationPoint;
 
 import java.util.List;
 import java.util.stream.Collectors;
