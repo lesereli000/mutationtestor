@@ -29,6 +29,7 @@ public class AllSurvivorsPageGenerator {
         String operatorName;
         String targetLink;
         String mutantId;
+        Set<String> candidateMutantIds;
 
         SurvivorEntry(
                 String file,
@@ -39,7 +40,8 @@ public class AllSurvivorsPageGenerator {
                 String sourceCodeSnippet,
                 String operatorName,
                 String targetLink,
-                String mutantId) {
+                String mutantId,
+                Set<String> candidateMutantIds) {
             this.file = file;
             this.line = line;
             this.column = column;
@@ -49,6 +51,7 @@ public class AllSurvivorsPageGenerator {
             this.operatorName = operatorName;
             this.targetLink = targetLink;
             this.mutantId = mutantId;
+            this.candidateMutantIds = candidateMutantIds;
         }
     }
 
@@ -87,6 +90,7 @@ public class AllSurvivorsPageGenerator {
                             : getMutationOperatorName(operator, replacement);
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                     String mutantId = EquivalentMutantStore.buildMutantId(result);
+                    Set<String> candidateMutantIds = EquivalentMutantStore.buildCandidateMutantIds(result);
 
                     entries.add(new SurvivorEntry(
                             file,
@@ -97,7 +101,8 @@ public class AllSurvivorsPageGenerator {
                             sourceSnippet,
                             operatorName,
                             targetLink,
-                            mutantId));
+                            mutantId,
+                            candidateMutantIds));
                     continue;
                 }
 
@@ -132,7 +137,8 @@ public class AllSurvivorsPageGenerator {
                         sourceSnippet,
                         operatorName,
                         targetLink,
-                        mutantId));
+                        mutantId,
+                        Set.of(mutantId)));
             } catch (Exception e) {
                 System.err.println("Error converting mutant: " + e.getMessage());
             }
@@ -302,6 +308,7 @@ public class AllSurvivorsPageGenerator {
             sb.append("data-operator=\"").append(escapeHtml(s.operatorName)).append("\" ");
             sb.append("data-replacement=\"").append(escapeHtml(s.replacement)).append("\" ");
             sb.append("data-mutant-id=\"").append(escapeHtml(s.mutantId)).append("\" ");
+            sb.append("data-mutant-ids=\"").append(escapeHtml(toJsonArray(s.candidateMutantIds))).append("\" ");
             sb.append("onclick=\"window.location.href='").append(escapeHtml(s.targetLink)).append("'\">\n");
 
             sb.append("                <td>").append(i + 1).append("</td>\n");
@@ -507,6 +514,19 @@ public class AllSurvivorsPageGenerator {
         sb.append("        this.initPromise = this.init();\n");
         sb.append("    }\n");
 
+        sb.append("    getMutantIds(row) {\n");
+        sb.append("        try {\n");
+        sb.append("            const ids = JSON.parse(row.dataset.mutantIds || '[]');\n");
+        sb.append("            return ids.length ? ids : [row.dataset.mutantId].filter(Boolean);\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            return [row.dataset.mutantId].filter(Boolean);\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
+
+        sb.append("    findEquivalentId(row) {\n");
+        sb.append("        return this.getMutantIds(row).find(id => this.equivalentMutants.has(id)) || null;\n");
+        sb.append("    }\n");
+
         sb.append("    async load() {\n");
         sb.append("        try {\n");
         sb.append("            const res = await fetch(this.apiUrl);\n");
@@ -558,8 +578,7 @@ public class AllSurvivorsPageGenerator {
         sb.append("    updateUI() {\n");
         sb.append("        let pageEquivalentCount = 0;\n");
         sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
-        sb.append("            const mutantId = row.dataset.mutantId;\n");
-        sb.append("            const isEq = mutantId && this.equivalentMutants.has(mutantId);\n");
+        sb.append("            const isEq = this.findEquivalentId(row) !== null;\n");
         sb.append("            row.classList.toggle('equivalent', isEq);\n");
         sb.append("            if (isEq) pageEquivalentCount++;\n");
         sb.append("            const btn = row.querySelector('.mark-equivalent-btn');\n");
@@ -589,8 +608,9 @@ public class AllSurvivorsPageGenerator {
         sb.append("                    e.preventDefault();\n");
         sb.append("                    e.stopPropagation();\n");
         sb.append("                    if (!mutantId) return;\n");
-        sb.append("                    if (this.equivalentMutants.has(mutantId)) {\n");
-        sb.append("                        await this.unmarkAsEquivalent(mutantId);\n");
+        sb.append("                    const existingId = this.findEquivalentId(row);\n");
+        sb.append("                    if (existingId) {\n");
+        sb.append("                        await this.unmarkAsEquivalent(existingId);\n");
         sb.append("                    } else {\n");
         sb.append("                        await this.markAsEquivalent(mutantId);\n");
         sb.append("                    }\n");
@@ -669,5 +689,27 @@ public class AllSurvivorsPageGenerator {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private static String toJsonArray(Set<String> values) {
+        StringBuilder json = new StringBuilder("[");
+        int index = 0;
+        for (String value : values) {
+            if (index++ > 0) {
+                json.append(",");
+            }
+            json.append("\"").append(escapeJson(value)).append("\"");
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    private static String escapeJson(String value) {
+        return (value == null ? "" : value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 }

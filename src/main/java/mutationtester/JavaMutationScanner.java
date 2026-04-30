@@ -84,7 +84,9 @@ public class JavaMutationScanner {
                         // AOR_PLUS_TO_MINUS: mutate + to -
                         case "+":
                             if (mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                                addMutation(token, "+", "-");
+                                if (!containsStringLiteral(ctx)) {
+                                    addMutation(token, "+", "-");
+                                }
                             }
                             break;
 
@@ -190,6 +192,20 @@ public class JavaMutationScanner {
                     replacement,
                     mutationType);
             mutationPoints.add(point);
+        }
+
+        private boolean containsStringLiteral(ParseTree tree) {
+            if (tree instanceof TerminalNode terminalNode) {
+                int tokenType = terminalNode.getSymbol().getType();
+                return tokenType == JavaLexer.STRING_LITERAL || tokenType == JavaLexer.TEXT_BLOCK;
+            }
+
+            for (int i = 0; i < tree.getChildCount(); i++) {
+                if (containsStringLiteral(tree.getChild(i))) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public List<MutationPoint> getMutationPoints() {

@@ -45,6 +45,36 @@ public class CSharpScannerTests {
     }
 
     @Test
+    public void testPlusToMinusSkipsStringConcatenation() throws IOException {
+        Path file = Files.createTempFile("StringConcatDemo", ".cs");
+        Files.writeString(file, """
+                namespace Demo
+                {
+                    public static class StringConcatDemo
+                    {
+                        public static int Add(int x)
+                        {
+                            return x + 1;
+                        }
+
+                        public static void Main()
+                        {
+                            System.Console.WriteLine("Pipeline: " + Add(1));
+                        }
+                    }
+                }
+                """);
+
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file.toFile(), Mutator.MutatorType.AOR_PLUS_TO_MINUS);
+
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals(7, p.getLineNumber());
+        assertEquals("+", p.getOperator());
+        assertEquals("-", p.getReplacement());
+    }
+
+    @Test
     public void testMinusToPlusMutation() throws IOException {
         File file = new File("samples/CSProject/src/CSProject/Add3.cs");
         List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);

@@ -197,6 +197,7 @@ public class MockCommandLineMutationTester {
                 mutantsMade - buildFailures,
                 killed,
                 survived,
+                0,
                 mutationScore
             );
             System.out.println("\nPIT-style source code report generated: pit-style-report.html");

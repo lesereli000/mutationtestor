@@ -46,6 +46,9 @@ public class HtmlReportGenerator {
             int survived = (int) fileResults.stream()
                     .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
                     .count();
+            int noCoverage = (int) fileResults.stream()
+                    .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
+                    .count();
 
             double score = total > 0 ? ((double) killed / total) * 100.0 : 0.0;
 
@@ -58,6 +61,7 @@ public class HtmlReportGenerator {
                     total,
                     killed,
                     survived,
+                    noCoverage,
                     score
             );
         }
@@ -86,6 +90,7 @@ public class HtmlReportGenerator {
         html.append("        .mutation-score { color: #10b981; }\n");
         html.append("        .killed { color: #10b981; }\n");
         html.append("        .survived { color: #ef4444; }\n");
+        html.append("        .no-coverage { color: #f59e0b; }\n");
         html.append("        .equivalent { color: #8e44ad; }\n");
         html.append("        .survivors-section { padding: 30px; }\n");
         html.append("        .survivors-section h2 { font-size: 24px; color: #1e293b; margin-bottom: 20px; }\n");
@@ -114,12 +119,14 @@ public class HtmlReportGenerator {
         int totalMutants = visibleReport.getTotalMutants();
         int killedCount = visibleReport.getKilled();
         int survivedCount = visibleReport.getSurvived();
+        int noCoverageCount = visibleReport.getNoCoverage();
         double initialScore = totalMutants > 0 ? (killedCount * 100.0 / totalMutants) : 0.0;
 
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Mutation Score</div><div id=\"top-mutation-score\" class=\"value mutation-score\">%.1f%%</div></div>\n", initialScore));
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Total Mutants</div><div id=\"top-total-count\" class=\"value\">%d</div></div>\n", totalMutants));
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Killed</div><div id=\"top-killed-count\" class=\"value killed\">%d</div></div>\n", killedCount));
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Survived</div><div id=\"top-survived-count\" class=\"value survived\">%d</div></div>\n", survivedCount));
+        html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">No Coverage</div><div id=\"top-no-coverage-count\" class=\"value no-coverage\">%d</div></div>\n", noCoverageCount));
         html.append("            <div class=\"stat-card\"><div class=\"label\">Equivalent</div><div id=\"top-equivalent-count\" class=\"value equivalent\">0</div></div>\n");
         html.append("        </div>\n");
 
@@ -137,6 +144,7 @@ public class HtmlReportGenerator {
         html.append("                        <th>Total</th>\n");
         html.append("                        <th>Killed</th>\n");
         html.append("                        <th>Survivors</th>\n");
+        html.append("                        <th>No Coverage</th>\n");
         html.append("                        <th>Score</th>\n");
         html.append("                    </tr>\n");
         html.append("                </thead>\n");
@@ -154,20 +162,31 @@ public class HtmlReportGenerator {
             int survived = (int) fileResults.stream()
                     .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
                     .count();
+            int noCoverage = (int) fileResults.stream()
+                    .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
+                    .count();
             double score = total > 0 ? ((double) killed / total) * 100.0 : 0.0;
 
             String link = "allFiles/" + stripExtension(file) + ".html";
 
             html.append(String.format(
-                    "                    <tr class=\"summary-row\" data-file=\"%s\" data-survived=\"%d\">\n",
-                    escapeHtml(file), survived
+                    "                    <tr class=\"summary-row\" data-file=\"%s\" data-total=\"%d\" data-killed=\"%d\" data-survived=\"%d\" data-no-coverage=\"%d\" data-killed-ids=\"%s\" data-survived-ids=\"%s\" data-no-coverage-ids=\"%s\">\n",
+                    escapeHtml(file),
+                    total,
+                    killed,
+                    survived,
+                    noCoverage,
+                    escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.KILLED))),
+                    escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.SURVIVED))),
+                    escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.NO_COVERAGE)))
             ));
             html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, index++));
             html.append(String.format("                        <td><a href=\"%s\"><span class=\"file-badge\">%s</span></a></td>\n", link, escapeHtml(file)));
-            html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, total));
-            html.append(String.format("                        <td><a href=\"%s\">%d</a></td>\n", link, killed));
+            html.append(String.format("                        <td class=\"total-cell\"><a href=\"%s\">%d</a></td>\n", link, total));
+            html.append(String.format("                        <td class=\"killed-cell\"><a href=\"%s\">%d</a></td>\n", link, killed));
             html.append(String.format("                        <td class=\"survived-cell\"><a href=\"%s\">%d</a></td>\n", link, survived));
-            html.append(String.format("                        <td><a href=\"%s\">%.1f%%</a></td>\n", link, score));
+            html.append(String.format("                        <td class=\"no-coverage-cell\"><a href=\"%s\">%d</a></td>\n", link, noCoverage));
+            html.append(String.format("                        <td class=\"score-cell\"><a href=\"%s\">%.1f%%</a></td>\n", link, score));
             html.append("                    </tr>\n");
         }
 
@@ -177,9 +196,11 @@ public class HtmlReportGenerator {
         html.append("    </div>\n");
 
         html.append("<script>\n");
-        html.append("function hiddenIdMatchesFile(hiddenId, file) {\n");
-        html.append("    if (!hiddenId || !file) return false;\n");
-        html.append("    return hiddenId.startsWith(file + ':') || hiddenId.startsWith('CONTENT|' + file + '|') || hiddenId.startsWith('LEGACY|' + file + '|');\n");
+        html.append("function parseIds(row, name) {\n");
+        html.append("    try { return JSON.parse(row.dataset[name] || '[]'); } catch (e) { return []; }\n");
+        html.append("}\n");
+        html.append("function hiddenCount(ids, hiddenIds) {\n");
+        html.append("    return ids.filter(idGroup => idGroup.some(id => hiddenIds.has(id))).length;\n");
         html.append("}\n");
         html.append("\n");
         html.append("async function applyEquivalentFilteringToSummary() {\n");
@@ -190,46 +211,65 @@ public class HtmlReportGenerator {
         html.append("        const hiddenIds = new Set(data.hiddenMutantIds || []);\n");
         html.append("\n");
         html.append("        let visibleSurvivedTotal = 0;\n");
+        html.append("        let visibleTotal = 0;\n");
+        html.append("        let visibleKilledTotal = 0;\n");
+        html.append("        let visibleNoCoverageTotal = 0;\n");
         html.append("        let equivalentTotal = 0;\n");
         html.append("\n");
         html.append("        document.querySelectorAll('.summary-row').forEach(row => {\n");
-        html.append("            const file = row.dataset.file;\n");
+        html.append("            const totalCount = parseInt(row.dataset.total || '0', 10);\n");
+        html.append("            const killedCount = parseInt(row.dataset.killed || '0', 10);\n");
         html.append("            const survivedCount = parseInt(row.dataset.survived || '0', 10);\n");
+        html.append("            const noCoverageCount = parseInt(row.dataset.noCoverage || '0', 10);\n");
         html.append("\n");
-        html.append("            let hiddenForThisFile = 0;\n");
-        html.append("            hiddenIds.forEach(id => {\n");
-        html.append("                if (hiddenIdMatchesFile(id, file)) {\n");
-        html.append("                    hiddenForThisFile++;\n");
-        html.append("                }\n");
-        html.append("            });\n");
+        html.append("            const hiddenKilled = hiddenCount(parseIds(row, 'killedIds'), hiddenIds);\n");
+        html.append("            const hiddenSurvived = hiddenCount(parseIds(row, 'survivedIds'), hiddenIds);\n");
+        html.append("            const hiddenNoCoverage = hiddenCount(parseIds(row, 'noCoverageIds'), hiddenIds);\n");
+        html.append("            const hiddenForThisFile = hiddenKilled + hiddenSurvived + hiddenNoCoverage;\n");
         html.append("\n");
-        html.append("            const visibleForThisFile = Math.max(0, survivedCount - hiddenForThisFile);\n");
+        html.append("            const visibleTotalForThisFile = Math.max(0, totalCount - hiddenForThisFile);\n");
+        html.append("            const visibleKilledForThisFile = Math.max(0, killedCount - hiddenKilled);\n");
+        html.append("            const visibleSurvivedForThisFile = Math.max(0, survivedCount - hiddenSurvived);\n");
+        html.append("            const visibleNoCoverageForThisFile = Math.max(0, noCoverageCount - hiddenNoCoverage);\n");
         html.append("            equivalentTotal += hiddenForThisFile;\n");
         html.append("\n");
+        html.append("            const totalCell = row.querySelector('.total-cell a');\n");
+        html.append("            const killedCell = row.querySelector('.killed-cell a');\n");
         html.append("            const survivedCell = row.querySelector('.survived-cell a');\n");
-        html.append("            if (survivedCell) survivedCell.textContent = visibleForThisFile;\n");
+        html.append("            const noCoverageCell = row.querySelector('.no-coverage-cell a');\n");
+        html.append("            const scoreCell = row.querySelector('.score-cell a');\n");
+        html.append("            if (totalCell) totalCell.textContent = visibleTotalForThisFile;\n");
+        html.append("            if (killedCell) killedCell.textContent = visibleKilledForThisFile;\n");
+        html.append("            if (survivedCell) survivedCell.textContent = visibleSurvivedForThisFile;\n");
+        html.append("            if (noCoverageCell) noCoverageCell.textContent = visibleNoCoverageForThisFile;\n");
+        html.append("            if (scoreCell) scoreCell.textContent = (visibleTotalForThisFile > 0 ? (visibleKilledForThisFile * 100.0 / visibleTotalForThisFile) : 0).toFixed(1) + '%';\n");
         html.append("\n");
-        html.append("            if (survivedCount > 0 && visibleForThisFile === 0) {\n");
+        html.append("            if (totalCount > 0 && visibleTotalForThisFile === 0) {\n");
         html.append("                row.style.display = 'none';\n");
         html.append("            } else {\n");
         html.append("                row.style.display = '';\n");
         html.append("            }\n");
         html.append("\n");
-        html.append("            visibleSurvivedTotal += visibleForThisFile;\n");
+        html.append("            visibleTotal += visibleTotalForThisFile;\n");
+        html.append("            visibleKilledTotal += visibleKilledForThisFile;\n");
+        html.append("            visibleSurvivedTotal += visibleSurvivedForThisFile;\n");
+        html.append("            visibleNoCoverageTotal += visibleNoCoverageForThisFile;\n");
         html.append("        });\n");
         html.append("\n");
         html.append("        const totalEl = document.getElementById('top-total-count');\n");
         html.append("        const killedEl = document.getElementById('top-killed-count');\n");
         html.append("        const survivedEl = document.getElementById('top-survived-count');\n");
+        html.append("        const noCoverageEl = document.getElementById('top-no-coverage-count');\n");
         html.append("        const equivalentEl = document.getElementById('top-equivalent-count');\n");
         html.append("        const scoreEl = document.getElementById('top-mutation-score');\n");
         html.append("\n");
-        html.append("        const total = totalEl ? parseInt(totalEl.textContent || '0', 10) : 0;\n");
-        html.append("        const score = total > 0 ? ((1.0 - (visibleSurvivedTotal * 1.0 / total)) * 100.0) : 0;\n");
+        html.append("        const score = visibleTotal > 0 ? (visibleKilledTotal * 100.0 / visibleTotal) : 0;\n");
         html.append("\n");
+        html.append("        if (totalEl) totalEl.textContent = visibleTotal;\n");
+        html.append("        if (killedEl) killedEl.textContent = visibleKilledTotal;\n");
         html.append("        if (survivedEl) survivedEl.textContent = visibleSurvivedTotal;\n");
+        html.append("        if (noCoverageEl) noCoverageEl.textContent = visibleNoCoverageTotal;\n");
         html.append("        if (equivalentEl) equivalentEl.textContent = equivalentTotal;\n");
-        html.append("        if (scoreEl) scoreEl.textContent = score.toFixed(1) + '%';\n");
         html.append("        if (scoreEl) scoreEl.textContent = score.toFixed(1) + '%';\n");
         html.append("    } catch (e) {\n");
         html.append("        console.error('Failed to apply equivalent filtering on summary page:', e);\n");
@@ -251,6 +291,42 @@ public class HtmlReportGenerator {
             return fileName;
         }
         return fileName.substring(0, dot);
+    }
+
+    private static List<Set<String>> mutantIdsForStatus(List<MutantResult> results, MutantResult.MutantStatus status) {
+        return results.stream()
+                .filter(result -> result.getStatus() == status)
+                .map(EquivalentMutantStore::buildCandidateMutantIds)
+                .toList();
+    }
+
+    private static String toJsonArray(List<Set<String>> idGroups) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < idGroups.size(); i++) {
+            if (i > 0) {
+                json.append(",");
+            }
+            json.append("[");
+            int index = 0;
+            for (String id : idGroups.get(i)) {
+                if (index++ > 0) {
+                    json.append(",");
+                }
+                json.append("\"").append(escapeJson(id)).append("\"");
+            }
+            json.append("]");
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    private static String escapeJson(String value) {
+        return (value == null ? "" : value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     private static String escapeHtml(String text) {

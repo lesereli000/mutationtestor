@@ -9,6 +9,7 @@ public class MutantResult {
     public enum MutantStatus {
         KILLED,         // Tests failed 
         SURVIVED,       // Tests passed 
+        NO_COVERAGE,    // Tests passed and the mutated line was not covered
         COMPILE_ERROR,
         TIMEOUT
     }

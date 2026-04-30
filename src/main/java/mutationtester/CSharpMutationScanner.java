@@ -656,6 +656,9 @@ public class CSharpMutationScanner {
                     Token token = ((TerminalNode) child).getSymbol();
 
                     if (operator.equals("+") && mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
+                        if (isStringConcatenationExpression(ctx)) {
+                            continue;
+                        }
                         mutationPoints.add(new MutationPoint(
                                 sourceFile,
                                 token.getLine(),
@@ -678,6 +681,10 @@ public class CSharpMutationScanner {
             }
 
             return visitChildren(ctx);
+        }
+
+        private boolean isStringConcatenationExpression(CSharpParser.Additive_expressionContext ctx) {
+            return ctx.getText().contains("\"");
         }
 
         @Override

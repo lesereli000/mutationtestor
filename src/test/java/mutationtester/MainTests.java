@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -116,5 +117,23 @@ public class MainTests {
                 null);
 
         assertTrue(points.stream().anyMatch(p -> p.getSourceFile().getName().equals("ConditionalDemo.cs")));
+    }
+
+    @Test
+    void testReadConfigAcceptsCoverageSettings() throws Exception {
+        Path config = Files.createTempFile("mutation-config", ".txt");
+        Files.writeString(config, """
+                source_code_directory=src
+                mutator_type=AOR_PLUS_TO_MINUS
+                compile_command=
+                test_command=mvn test
+                coverage_command=mvn test jacoco:report
+                coverage_report=target/site/jacoco/jacoco.xml
+                """);
+
+        Main.Config parsed = Main.readConfig(config.toFile());
+
+        assertTrue(parsed.coverageCommand.equals("mvn test jacoco:report"));
+        assertTrue(parsed.coverageReport.equals("target/site/jacoco/jacoco.xml"));
     }
 }

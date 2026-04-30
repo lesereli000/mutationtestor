@@ -9,15 +9,12 @@ namespace samples.CSProject.src
 
         public static int RunMinusPipeline(int x)
         {
-            return Minus1.minus1(x)
-                 + Minus2.minus2(x)
-                 + Minus3.minus3(x);
+            return Minus1.minus1(x) + Minus2.minus2(x) + Minus3.minus3(x);
         }
 
         public static int RunEqualityPipeline(int x)
         {
-            return EqualsDemo.isEqual(x)
-                 + NotEqualsDemo.isNotEqual(x);
+            return EqualsDemo.isEqual(x) + NotEqualsDemo.isNotEqual(x);
         }
 
         public static int RunRelationalPipeline(int x)
@@ -30,8 +27,7 @@ namespace samples.CSProject.src
 
         public static int RunIncrementPipeline()
         {
-            return IncrementKilledDemo.test()
-                 + IncrementSurviveDemo.test();
+            return IncrementKilledDemo.test() + IncrementSurviveDemo.test();
         }
 
         public static void Main(string[] args)
@@ -41,7 +37,6 @@ namespace samples.CSProject.src
             System.Console.WriteLine("EqualityPipeline: " + RunEqualityPipeline(5));
             System.Console.WriteLine("RelationalPipeline: " + RunRelationalPipeline(5));
             System.Console.WriteLine("IncrementPipeline: " + RunIncrementPipeline());
-
             System.Console.WriteLine("UseInt: " + TypeMutationDemo.UseInt());
             System.Console.WriteLine("UseDouble: " + TypeMutationDemo.UseDouble());
             System.Console.WriteLine("UseFloat: " + TypeMutationDemo.UseFloat());

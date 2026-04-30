@@ -11,6 +11,7 @@ public class MutationReport {
     private int totalMutants;
     private int killed;
     private int survived;
+    private int noCoverage;
     private double mutationScore;
 
     public MutationReport(List<MutantResult> results) {
@@ -25,6 +26,9 @@ public class MutationReport {
                 .count();
         survived = (int) results.stream()
                 .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
+                .count();
+        noCoverage = (int) results.stream()
+                .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
                 .count();
 
         if (totalMutants > 0) {
@@ -43,6 +47,8 @@ public class MutationReport {
                 killed, totalMutants > 0 ? (killed / (double) totalMutants) * 100 : 0.0);
         System.out.printf("Survived:         %d (%.1f%%)\n",
                 survived, totalMutants > 0 ? (survived / (double) totalMutants) * 100 : 0.0);
+        System.out.printf("No Coverage:      %d (%.1f%%)\n",
+                noCoverage, totalMutants > 0 ? (noCoverage / (double) totalMutants) * 100 : 0.0);
         System.out.println("-".repeat(80));
         System.out.printf("MUTATION SCORE:   %.1f%%\n", mutationScore);
         System.out.println("=".repeat(80));
@@ -74,6 +80,32 @@ public class MutationReport {
             System.out.println("-".repeat(80));
             System.out.println("These mutations were NOT caught by tests!");
             System.out.println("Consider adding tests to cover these cases.");
+        }
+
+        if (noCoverage > 0) {
+            System.out.println("\nNO COVERAGE MUTANTS:");
+            System.out.println("-".repeat(80));
+
+            List<MutantResult> noCoverageList = results.stream()
+                    .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
+                    .collect(Collectors.toList());
+
+            for (int i = 0; i < noCoverageList.size(); i++) {
+                MutantResult r = noCoverageList.get(i);
+                MutationPoint p = r.getMutationPoint();
+                String label = p.getCustomLabel() != null ? " [" + p.getCustomLabel() + "]" : "";
+                System.out.printf("[%d] %s:%d:%d - %s -> %s %s\n",
+                        i + 1,
+                        p.getSourceFile().getName(),
+                        p.getLineNumber(),
+                        p.getColumnNumber(),
+                        p.getOperator(),
+                        p.getReplacement(),
+                        label);
+            }
+
+            System.out.println("-".repeat(80));
+            System.out.println("These mutations are on lines not executed by the test suite.");
         }
 
         // Show killed mutants summary
@@ -121,5 +153,9 @@ public class MutationReport {
 
     public int getSurvived() {
         return survived;
+    }
+
+    public int getNoCoverage() {
+        return noCoverage;
     }
 }

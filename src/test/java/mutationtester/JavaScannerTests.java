@@ -3,6 +3,8 @@ package mutationtester;
 import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -49,13 +51,37 @@ public class JavaScannerTests {
     }
 
     @Test
+    public void testPlusToMinusSkipsStringConcatenation() throws IOException {
+        Path file = Files.createTempFile("StringConcatDemo", ".java");
+        Files.writeString(file, """
+                class StringConcatDemo {
+                    int numeric(int a, int b) {
+                        return a + b;
+                    }
+
+                    void log(int i) {
+                        System.out.println("For loop " + i);
+                    }
+                }
+                """);
+
+        List<MutationPoint> points = JavaMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.AOR_PLUS_TO_MINUS,
+                false);
+
+        assertEquals(1, points.size());
+        assertEquals(3, points.get(0).getLineNumber());
+    }
+
+    @Test
     public void testPrototypeSample() throws IOException {
         File file = new File("samples/MavenProject/src/main/java/prototypeSample.java");
 
         // AOR_PLUS_TO_MINUS
         List<MutationPoint> plusPoints = JavaMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS,
                 false);
-        assertEquals(8, plusPoints.size());
+        assertEquals(1, plusPoints.size());
 
         // AOR_MINUS_TO_PLUS
         List<MutationPoint> minusPoints = JavaMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS,
