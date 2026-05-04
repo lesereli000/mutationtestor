@@ -39,7 +39,11 @@
     (check-equal? (check-logic 0 0) "neither-positive")
     (check-equal? (check-logic -1 2) "one-positive")
     (check-equal? (check-logic -1 -2) "neither-positive")
-    (check-equal? (check-floats) '(5 3.14 10))))
+    (check-equal? (check-floats) '(5 3.14 10))
+    (check-equal? (multiply 3 4) 12)
+    (check-equal? (multiply 2 5) 10)
+    (check-equal? (divide 10 2) 5)
+    (check-equal? (divide 9 3) 3)))
 
 (define typed-functions-suite
   (test-suite "Test typed-functions"
