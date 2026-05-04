@@ -371,4 +371,36 @@ public class RacketScannerTests {
         // operators.rkt has no type annotations (not Typed Racket)
         assertEquals(0, points.size());
     }
+
+
+    // -------------------------------------------------------------------------
+// AOR_MULTIPLY_TO_DIVIDE
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsMultiplyToDivide() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
+
+
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("*", p.getOperator());
+        assertEquals("/", p.getReplacement());
+    }
+
+// -------------------------------------------------------------------------
+// AOR_DIVIDE_TO_MULTIPLY
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsDivideToMultiply() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
+
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("/", p.getOperator());
+        assertEquals("*", p.getReplacement());
+    }
 }
