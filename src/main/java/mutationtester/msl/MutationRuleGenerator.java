@@ -113,10 +113,10 @@ public class MutationRuleGenerator {
             }
         }
 
-        BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);
-        BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
-        String label = groupLabel + ": " + fromExpr.getOperator()
-                + " \u2192 " + toExpr.getOperator();
+        MSLNode fromExpr = MSLPatternFactory.parse(fromPattern);
+        MSLNode toExpr = MSLPatternFactory.parse(toPattern);
+        String label = groupLabel + ": " + fromExpr.getText()
+                + " \u2192 " + toExpr.getText();
         return MutationRuleFactory.create("Replace", fromExpr, toExpr, label);
     }
 }

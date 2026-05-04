@@ -1,11 +1,10 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
+
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
-import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.gui.TreeViewer;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -217,107 +216,5 @@ public class JavaMutationScanner {
             // System.out.println(mutationPoints);
             return mutationPoints;
         }
-    }
-    public static MSLScannerAdapter createAdapter(File file) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
-        JavaLexer lexer = new JavaLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        JavaParser parser = new JavaParser(tokens);
-        ParseTree tree = parser.compilationUnit();
-
-        return new MSLScannerAdapter() {
-            @Override
-            public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                if (!(ctx instanceof JavaParser.BinaryOperatorExpressionContext binCtx)) return false;
-                
-                // Case 1: Operator is a single token (bop is set)
-                if (binCtx.bop != null) {
-                    return binCtx.bop.getText().equals(mslOperator);
-                }
-                
-                // Case 2: Operator is multiple tokens (e.g., >>, >>>, <<)
-                // We reconstruct the operator text from the middle children
-                StringBuilder sb = new StringBuilder();
-                for (int i = 1; i < binCtx.getChildCount() - 1; i++) {
-                    sb.append(binCtx.getChild(i).getText());
-                }
-                return sb.toString().equals(mslOperator);
-            }
-
-            @Override
-            public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(0);
-            }
-
-            @Override
-            public ParseTree getRightOperand(ParseTree ctx) {
-                // Right operand is always the last child
-                return ctx.getChild(ctx.getChildCount() - 1);
-            }
-
-            @Override
-            public ParseTree getOperatorToken(ParseTree ctx) {
-                // For multi-token operators, we return the first token as the "point"
-                if (ctx.getChildCount() >= 3) {
-                    return ctx.getChild(1);
-                }
-                return null;
-            }
-
-            @Override
-            public boolean isQuantity(ParseTree ctx) {
-                if (ctx == null) return false;
-                
-                // If it's a TerminalNode, check if it's a literal or identifier
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == JavaLexer.DECIMAL_LITERAL || 
-                           type == JavaLexer.FLOAT_LITERAL ||
-                           type == JavaLexer.HEX_LITERAL ||
-                           type == JavaLexer.OCT_LITERAL ||
-                           type == JavaLexer.BINARY_LITERAL ||
-                           type == JavaLexer.IDENTIFIER;
-                }
-                
-                // Handle wrapper contexts: if it has 1 child, recurse
-                if (ctx instanceof ParserRuleContext prc) {
-                    if (prc.getChildCount() == 1) return isQuantity(prc.getChild(0));
-                    
-                    // ( expression )
-                    if (prc.getChildCount() == 3 && 
-                        prc.getChild(0).getText().equals("(") && 
-                        prc.getChild(2).getText().equals(")")) {
-                        return true; // Parenthesized expression is a quantity
-                    }
-                }
-                
-                return false;
-            }
-
-            @Override
-            public String getNodeText(ParseTree ctx) {
-                return ctx.getText();
-            }
-
-            @Override
-            public int[] getTokenPosition(ParseTree ctx) {
-                if (ctx instanceof TerminalNode tn) {
-                    Token s = tn.getSymbol();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                return new int[]{0, 0};
-            }
-
-            @Override
-            public ParseTree getRootContext() {
-                return tree;
-            }
-        };
     }
 }

@@ -1,38 +1,38 @@
 package mutationtester.msl;
 
+import java.util.List;
+
 /**
- * Parses an MSL pattern string into an MSLExpression tree.
+ * Parses an MSL pattern string into an MSLNode Dummy Pattern tree.
  *
  * Supported patterns (case-sensitive, whitespace-normalised):
- * {quantity} → QuantityNode
- * {quantity} <op> {quantity} → BinaryOpNode("<op>", QuantityNode, QuantityNode)
- *
- * Where <op> is any non-empty, non-brace token (e.g. +, -, *, /, %, &, |, ^,
- * <<, >>, >>>).
- *
- * Throws IllegalArgumentException for unrecognised patterns.
+ * {quantity} → Quantity Wildcard Node
+ * {quantity} <op> {quantity} → BinaryExpr Exact Node(Wildcard, Wildcard)
  */
-public class MSLExpressionFactory {
+public class MSLPatternFactory {
 
-    private MSLExpressionFactory() {
+    private MSLPatternFactory() {
     }
 
-    public static MSLExpression parse(String pattern) {
+    private static int captureCounter = 0;
+
+    public static MSLNode parse(String pattern) {
         String trimmed = pattern.strip();
 
         // Single quantity
         if (trimmed.equals("{quantity}")) {
-            return new QuantityNode();
+            return new MSLNode("Quantity", "quant_" + (++captureCounter));
         }
 
         // Binary: {quantity} <op> {quantity}
-        // Split on whitespace; tokens must be exactly 3
         String[] parts = trimmed.split("\\s+");
         if (parts.length == 3
                 && parts[0].equals("{quantity}")
                 && parts[2].equals("{quantity}")) {
             String op = parts[1];
-            return new BinaryOpNode(op, new QuantityNode(), new QuantityNode());
+            MSLNode left = new MSLNode("Quantity", "quant_" + (++captureCounter));
+            MSLNode right = new MSLNode("Quantity", "quant_" + (++captureCounter));
+            return new MSLNode("BinaryExpr", op, List.of(left, right));
         }
 
         throw new IllegalArgumentException(

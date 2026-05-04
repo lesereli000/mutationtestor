@@ -2,7 +2,7 @@ package mutationtester.msl;
 
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-import org.antlr.v4.runtime.tree.ParseTree;
+
 
 import java.io.File;
 
@@ -22,30 +22,25 @@ public class StringCallReplacementRule implements MutationRule {
     }
 
     @Override
-    public boolean matches(MSLScannerAdapter scanner, ParseTree ctx) {
-        String argument = scanner.getSingleArgumentText(ctx, functionName);
-        if (argument == null || argument.isBlank()) {
-            return false;
+    public MutationPoint evaluate(MSLNode dataNode, File sourceFile) {
+        if ("StringCall".equals(dataNode.getType()) && dataNode.getText().equals(functionName)) {
+            // Assume the first child is the argument
+            if (!dataNode.getChildren().isEmpty()) {
+                MSLNode argNode = dataNode.getChildren().get(0);
+                String argument = argNode.getText();
+                String replacement = "(" + argument + " " + replacementSuffix + ")";
+                return new MutationPoint(
+                        sourceFile,
+                        dataNode.getLine(),
+                        dataNode.getColumn(),
+                        dataNode.getText() + "(" + argument + ")", // Reconstruct original
+                        replacement,
+                        Mutator.MutatorType.CUSTOM,
+                        label
+                );
+            }
         }
-        ParseTree parent = ctx.getParent();
-        return parent == null || scanner.getSingleArgumentText(parent, functionName) == null;
-    }
-
-    @Override
-    public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
-        int[] pos = scanner.getTokenPosition(ctx);
-        String original = scanner.getNodeText(ctx);
-        String argument = scanner.getSingleArgumentText(ctx, functionName);
-        String replacement = "(" + argument + " " + replacementSuffix + ")";
-        return new MutationPoint(
-                sourceFile,
-                pos[0],
-                pos[1],
-                original,
-                replacement,
-                Mutator.MutatorType.CUSTOM,
-                label
-        );
+        return null;
     }
 
     @Override

@@ -1,11 +1,10 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
+
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
-import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -227,82 +226,5 @@ public class RacketMutationScanner {
             }
             return null;
         }
-    }
-    public static MSLScannerAdapter createAdapter(File file) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
-        ISLLexer lexer = new ISLLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        ISLParser parser = new ISLParser(tokens);
-        ParseTree tree = parser.program();
-
-        return new MSLScannerAdapter() {
-            @Override
-            public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // Racket function application: ( op arg1 arg2 )
-                // Note: ISL grammar might have extra children for whitespaces depending on hidden channels,
-                // but usually ANTLR tokens on the default channel are just the meaningful ones.
-                // Based on visitor logic: ctx.getChild(1) is the head.
-                if (ctx instanceof ISLParser.ExprContext && ctx.getChildCount() >= 4) {
-                    if (ctx.getChild(0).getText().equals("(")) {
-                        return ctx.getChild(1).getText().equals(mslOperator);
-                    }
-                }
-                return false;
-            }
-
-            @Override
-            public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(2);
-            }
-
-            @Override
-            public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(3);
-            }
-
-            @Override
-            public ParseTree getOperatorToken(ParseTree ctx) {
-                return ctx.getChild(1);
-            }
-
-            @Override
-            public boolean isQuantity(ParseTree ctx) {
-                if (ctx == null) return false;
-                String text = ctx.getText();
-                // Racket numbers or names
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    // We'd check ISLLexer.NUMBER etc if we had constants, 
-                    // but we can check if it's numeric or alphanumeric
-                    return text.matches("-?\\d+(\\.\\d+)?") || text.matches("[a-zA-Z][a-zA-Z0-9-]*");
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
-            }
-
-            @Override
-            public String getNodeText(ParseTree ctx) {
-                return ctx.getText();
-            }
-
-            @Override
-            public int[] getTokenPosition(ParseTree ctx) {
-                if (ctx instanceof TerminalNode tn) {
-                    Token s = tn.getSymbol();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                return new int[]{0, 0};
-            }
-
-            @Override
-            public ParseTree getRootContext() {
-                return tree;
-            }
-        };
     }
 }

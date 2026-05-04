@@ -1,9 +1,9 @@
 package mutationtester;
 
 import mutationtester.coverage.*;
-import mutationtester.core.*;
-import mutationtester.model.*;
-import mutationtester.scanner.*;
+
+
+
 
 import org.junit.jupiter.api.Test;
 

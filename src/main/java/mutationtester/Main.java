@@ -10,7 +10,6 @@ import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
 import mutationtester.scanner.RacketMutationScanner;
 
-import mutationtester.msl.MSLScannerAdapter;
 import mutationtester.msl.MutationRule;
 import mutationtester.msl.MutationRuleGenerator;
 import mutationtester.report.HtmlReportGenerator;
@@ -25,7 +24,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Collections;
+
 import java.util.concurrent.*;
 import java.util.Iterator;
 import java.util.HashMap;
@@ -685,29 +684,49 @@ public class Main {
 
     private static List<MutationPoint> findCustomMutationsInFile(File file, List<MutationRule> rules) throws IOException {
         String fileName = file.getName();
-        MSLScannerAdapter adapter = null;
+        String sourceCode = Files.readString(file.toPath());
+        org.antlr.v4.runtime.CharStream input = org.antlr.v4.runtime.CharStreams.fromString(sourceCode);
+        
+        List<mutationtester.msl.MSLNode> dataNodes = new ArrayList<>();
 
         if (fileName.endsWith(".java")) {
-            adapter = JavaMutationScanner.createAdapter(file);
+            mutationtester.JavaLexer lexer = new mutationtester.JavaLexer(input);
+            org.antlr.v4.runtime.CommonTokenStream tokens = new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            mutationtester.JavaParser parser = new mutationtester.JavaParser(tokens);
+            mutationtester.scanner.JavaMSLTreeBuilder builder = new mutationtester.scanner.JavaMSLTreeBuilder();
+            builder.visit(parser.compilationUnit());
+            dataNodes = builder.getFragments();
         } else if (fileName.endsWith(".py")) {
-            adapter = PythonMutationScanner.createAdapter(file);
+            mutationtester.PythonLexer lexer = new mutationtester.PythonLexer(input);
+            org.antlr.v4.runtime.CommonTokenStream tokens = new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            mutationtester.PythonParser parser = new mutationtester.PythonParser(tokens);
+            mutationtester.scanner.PythonMSLTreeBuilder builder = new mutationtester.scanner.PythonMSLTreeBuilder();
+            builder.visit(parser.root());
+            dataNodes = builder.getFragments();
         } else if (fileName.endsWith(".js")) {
-            adapter = JavaScriptMutationScanner.createAdapter(file);
+            mutationtester.JavaScriptLexer lexer = new mutationtester.JavaScriptLexer(input);
+            org.antlr.v4.runtime.CommonTokenStream tokens = new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            mutationtester.JavaScriptParser parser = new mutationtester.JavaScriptParser(tokens);
+            mutationtester.scanner.JavaScriptMSLTreeBuilder builder = new mutationtester.scanner.JavaScriptMSLTreeBuilder();
+            builder.visit(parser.program());
+            dataNodes = builder.getFragments();
         } else if (fileName.endsWith(".cs")) {
-            adapter = CSharpMutationScanner.createAdapter(file);
+            mutationtester.CSharpLexer lexer = new mutationtester.CSharpLexer(input);
+            org.antlr.v4.runtime.CommonTokenStream tokens = new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            mutationtester.CSharpParser parser = new mutationtester.CSharpParser(tokens);
+            mutationtester.scanner.CSharpMSLTreeBuilder builder = new mutationtester.scanner.CSharpMSLTreeBuilder();
+            builder.visit(parser.prog());
+            dataNodes = builder.getFragments();
         } else if (fileName.endsWith(".rkt")) {
-            adapter = RacketMutationScanner.createAdapter(file);
+            mutationtester.ISLLexer lexer = new mutationtester.ISLLexer(input);
+            org.antlr.v4.runtime.CommonTokenStream tokens = new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            mutationtester.ISLParser parser = new mutationtester.ISLParser(tokens);
+            mutationtester.scanner.RacketMSLTreeBuilder builder = new mutationtester.scanner.RacketMSLTreeBuilder();
+            builder.visit(parser.program());
+            dataNodes = builder.getFragments();
         }
 
-        if (adapter == null) {
-            return Collections.emptyList();
-        }
-
-        List<MutationPoint> points = new ArrayList<>();
-        for (MutationRule rule : rules) {
-            points.addAll(rule.findMutationPoints(adapter, file));
-        }
-        return points;
+        return mutationtester.msl.MSLRuleEngine.evaluate(dataNodes, rules, file);
     }
 
     private static List<MutationPoint> findMutationsInFile(

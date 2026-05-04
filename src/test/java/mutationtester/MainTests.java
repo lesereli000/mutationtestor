@@ -1,9 +1,9 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
+
+
 import mutationtester.model.*;
-import mutationtester.scanner.*;
+
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

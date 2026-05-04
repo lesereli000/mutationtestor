@@ -1,9 +1,9 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
+
+
 import mutationtester.model.*;
-import mutationtester.scanner.*;
+
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
@@ -160,7 +160,7 @@ public class EndToEndMSLTests {
         );
 
         assertEquals(1, points.size());
-        assertEquals("RegisterDomainEvent(new ContributorNameUpdatedEvent(this));", points.get(0).getOperator());
+        assertEquals("RegisterDomainEvent(newContributorNameUpdatedEvent(this));", points.get(0).getOperator());
         assertEquals(";", points.get(0).getReplacement());
         assertEquals("CSharp Custom Mutations: statement \u2192 ;", points.get(0).getCustomLabel());
     }

@@ -17,8 +17,8 @@ public class MutationRuleFactory {
      * @param label   Human-readable label for reports
      */
     public static MutationRule create(String keyword,
-            BinaryOpNode from,
-            BinaryOpNode to,
+            MSLNode from,
+            MSLNode to,
             String label) {
         return switch (keyword.trim()) {
             case "Replace" -> new ReplacementRule(from, to, label);

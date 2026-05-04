@@ -1,11 +1,10 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
+
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
-import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -282,81 +281,5 @@ public class JavaScriptMutationScanner {
         INTEGER,
         FLOAT,
         EXPONENTIAL
-    }
-    public static MSLScannerAdapter createAdapter(File file) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
-        JavaScriptLexer lexer = new JavaScriptLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        JavaScriptParser parser = new JavaScriptParser(tokens);
-        ParseTree tree = parser.program();
-
-        return new MSLScannerAdapter() {
-            @Override
-            public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // In JavaScript grammar, many binary expressions follow the same pattern:
-                // leftExpr op rightExpr
-                if (ctx.getChildCount() == 3) {
-                    return ctx.getChild(1).getText().equals(mslOperator);
-                }
-                return false;
-            }
-
-            @Override
-            public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(0);
-            }
-
-            @Override
-            public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(2);
-            }
-
-            @Override
-            public ParseTree getOperatorToken(ParseTree ctx) {
-                if (ctx.getChildCount() >= 3) return ctx.getChild(1);
-                return null;
-            }
-
-            @Override
-            public boolean isQuantity(ParseTree ctx) {
-                if (ctx == null) return false;
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == JavaScriptLexer.DecimalLiteral || 
-                           type == JavaScriptLexer.HexIntegerLiteral ||
-                           type == JavaScriptLexer.OctalIntegerLiteral ||
-                           type == JavaScriptLexer.BinaryIntegerLiteral ||
-                           type == JavaScriptLexer.Identifier;
-                }
-                // Check if it's a literal or primary expression
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
-            }
-
-            @Override
-            public String getNodeText(ParseTree ctx) {
-                return ctx.getText();
-            }
-
-            @Override
-            public int[] getTokenPosition(ParseTree ctx) {
-                if (ctx instanceof TerminalNode tn) {
-                    Token s = tn.getSymbol();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                return new int[]{0, 0};
-            }
-
-            @Override
-            public ParseTree getRootContext() {
-                return tree;
-            }
-        };
     }
 }

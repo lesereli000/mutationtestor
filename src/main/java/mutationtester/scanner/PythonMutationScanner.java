@@ -1,14 +1,13 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
+
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
-import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -74,91 +73,5 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.LOGICAL_OR_TO_AND
                 || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
                 || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT;
-    }
-    public static MSLScannerAdapter createAdapter(File file) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
-        PythonLexer lexer = new PythonLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        PythonParser parser = new PythonParser(tokens);
-        ParseTree tree = parser.root();
-
-        return new MSLScannerAdapter() {
-            @Override
-            public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // Handle ExprContext (arithmetic, bitwise)
-                if (ctx instanceof PythonParser.ExprContext exprCtx) {
-                    return exprCtx.op != null && exprCtx.op.getText().equals(mslOperator);
-                }
-                // Handle ComparisonContext
-                if (ctx instanceof PythonParser.ComparisonContext compCtx) {
-                    // Comparison can have multiple operators, but for MSL we likely want simple ones
-                    if (compCtx.getChildCount() == 3) {
-                        return compCtx.getChild(1).getText().equals(mslOperator);
-                    }
-                }
-                // Handle logical_test
-                if (ctx instanceof PythonParser.Logical_testContext logCtx) {
-                    return logCtx.op != null && logCtx.op.getText().equals(mslOperator);
-                }
-                return false;
-            }
-
-            @Override
-            public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(0);
-            }
-
-            @Override
-            public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(ctx.getChildCount() - 1);
-            }
-
-            @Override
-            public ParseTree getOperatorToken(ParseTree ctx) {
-                if (ctx.getChildCount() >= 3) return ctx.getChild(1);
-                return null;
-            }
-
-            @Override
-            public boolean isQuantity(ParseTree ctx) {
-                if (ctx == null) return false;
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == PythonLexer.DECIMAL_INTEGER || 
-                           type == PythonLexer.FLOAT_NUMBER ||
-                           type == PythonLexer.OCT_INTEGER ||
-                           type == PythonLexer.HEX_INTEGER ||
-                           type == PythonLexer.BIN_INTEGER ||
-                           type == PythonLexer.NAME;
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
-            }
-
-            @Override
-            public String getNodeText(ParseTree ctx) {
-                return ctx.getText();
-            }
-
-            @Override
-            public int[] getTokenPosition(ParseTree ctx) {
-                if (ctx instanceof TerminalNode tn) {
-                    Token s = tn.getSymbol();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                if (ctx instanceof org.antlr.v4.runtime.ParserRuleContext prc) {
-                    Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
-                }
-                return new int[]{0, 0};
-            }
-
-            @Override
-            public ParseTree getRootContext() {
-                return tree;
-            }
-        };
     }
 }

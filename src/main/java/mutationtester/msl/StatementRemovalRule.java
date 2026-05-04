@@ -2,7 +2,7 @@ package mutationtester.msl;
 
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-import org.antlr.v4.runtime.tree.ParseTree;
+
 
 import java.io.File;
 
@@ -19,27 +19,19 @@ public class StatementRemovalRule implements MutationRule {
     }
 
     @Override
-    public boolean matches(MSLScannerAdapter scanner, ParseTree ctx) {
-        if (!scanner.isInvocationStatement(ctx)) {
-            return false;
+    public MutationPoint evaluate(MSLNode dataNode, File sourceFile) {
+        if ("InvocationStatement".equals(dataNode.getType())) {
+            return new MutationPoint(
+                    sourceFile,
+                    dataNode.getLine(),
+                    dataNode.getColumn(),
+                    dataNode.getText(),
+                    ";",
+                    Mutator.MutatorType.CUSTOM,
+                    label
+            );
         }
-        ParseTree parent = ctx.getParent();
-        return parent == null || !scanner.isInvocationStatement(parent);
-    }
-
-    @Override
-    public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
-        int[] pos = scanner.getTokenPosition(ctx);
-        String statement = scanner.getNodeText(ctx);
-        return new MutationPoint(
-                sourceFile,
-                pos[0],
-                pos[1],
-                statement,
-                ";",
-                Mutator.MutatorType.CUSTOM,
-                label
-        );
+        return null;
     }
 
     @Override

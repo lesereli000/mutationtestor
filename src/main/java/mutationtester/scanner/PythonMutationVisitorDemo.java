@@ -1,7 +1,7 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
+
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
