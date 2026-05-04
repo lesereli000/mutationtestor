@@ -1,4 +1,6 @@
 package mutationtester;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
