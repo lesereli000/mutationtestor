@@ -18,6 +18,7 @@ public class HtmlReportGenerator {
 
     public static void generateHtmlReport(MutationReport report, List<MutantResult> results) throws IOException {
         FileUtils.createParentDirectories(Path.of("./output/report/mutation-report-demo.html").toFile());
+        FileUtils.deleteDirectory(Path.of("./output/report/allFiles").toFile());
         FileUtils.forceMkdir(Path.of("./output/report/allFiles").toFile());
 
         Set<String> hiddenMutantIds = EquivalentMutantStore.loadHiddenMutantIds();

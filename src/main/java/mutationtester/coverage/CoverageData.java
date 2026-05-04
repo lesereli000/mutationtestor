@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 public class CoverageData {
     private final Map<String, Set<Integer>> coveredLinesByPath = new HashMap<>();
+    private final Set<String> knownCoveragePaths = new HashSet<>();
 
     public static CoverageData empty() {
         return new CoverageData();
@@ -48,7 +49,7 @@ public class CoverageData {
     }
 
     public boolean hasCoverage() {
-        return !coveredLinesByPath.isEmpty();
+        return !knownCoveragePaths.isEmpty();
     }
 
     public boolean isLineCovered(Path sourceFile, int lineNumber) {
@@ -66,11 +67,34 @@ public class CoverageData {
         return false;
     }
 
+    public boolean hasCoverageForFile(Path sourceFile) {
+        if (sourceFile == null) {
+            return false;
+        }
+
+        String normalizedSource = normalizePath(sourceFile);
+        return knownCoveragePaths.stream()
+                .anyMatch(reportPath -> pathsMatch(normalizedSource, reportPath));
+    }
+
+    public void includeSourceFiles(Path sourceRoot) throws IOException {
+        if (sourceRoot == null || !Files.exists(sourceRoot)) {
+            return;
+        }
+
+        try (Stream<Path> paths = Files.walk(sourceRoot)) {
+            paths.filter(Files::isRegularFile)
+                    .map(CoverageData::normalizePath)
+                    .forEach(this::addKnownFile);
+        }
+    }
+
     private void loadLcov(Path reportPath) throws IOException {
         String currentFile = null;
         for (String line : Files.readAllLines(reportPath, StandardCharsets.UTF_8)) {
             if (line.startsWith("SF:")) {
                 currentFile = normalizePath(Path.of(line.substring(3).trim()));
+                addKnownFile(currentFile);
             } else if (line.startsWith("DA:") && currentFile != null) {
                 String[] parts = line.substring(3).split(",");
                 if (parts.length >= 2 && parseInt(parts[1]) > 0) {
@@ -97,6 +121,7 @@ public class CoverageData {
                 .replace('\\', '/')
                 .replaceAll("\\.cover$", "");
         String sourceFile = normalizePath(Path.of(relativeName.replace('.', '/') + ".py"));
+        addKnownFile(sourceFile);
         Pattern coveredLinePattern = Pattern.compile("^\\s*(\\d+):");
 
         int lineNumber = 0;
@@ -140,6 +165,7 @@ public class CoverageData {
             }
 
             String file = normalizePath(Path.of(classElement.getAttribute("filename")));
+            addKnownFile(file);
             NodeList lines = classElement.getElementsByTagName("line");
             for (int j = 0; j < lines.getLength(); j++) {
                 Node lineNode = lines.item(j);
@@ -176,6 +202,7 @@ public class CoverageData {
                         ? sourceElement.getAttribute("name")
                         : packageName + "/" + sourceElement.getAttribute("name");
                 file = normalizePath(Path.of(file));
+                addKnownFile(file);
 
                 NodeList lines = sourceElement.getElementsByTagName("line");
                 for (int k = 0; k < lines.getLength(); k++) {
@@ -196,13 +223,39 @@ public class CoverageData {
     }
 
     private void addCoveredLine(String file, int lineNumber) {
+        addKnownFile(file);
         coveredLinesByPath.computeIfAbsent(file, ignored -> new HashSet<>()).add(lineNumber);
+    }
+
+    private void addKnownFile(String file) {
+        if (file != null && !file.isBlank()) {
+            knownCoveragePaths.add(file);
+        }
     }
 
     private static boolean pathsMatch(String sourcePath, String reportPath) {
         return sourcePath.equals(reportPath)
                 || sourcePath.endsWith("/" + reportPath)
-                || reportPath.endsWith("/" + sourcePath);
+                || reportPath.endsWith("/" + sourcePath)
+                || hasMeaningfulCommonSuffix(sourcePath, reportPath);
+    }
+
+    private static boolean hasMeaningfulCommonSuffix(String sourcePath, String reportPath) {
+        String[] sourceParts = sourcePath.split("/");
+        String[] reportParts = reportPath.split("/");
+        int sourceIndex = sourceParts.length - 1;
+        int reportIndex = reportParts.length - 1;
+        int matchingParts = 0;
+
+        while (sourceIndex >= 0
+                && reportIndex >= 0
+                && sourceParts[sourceIndex].equals(reportParts[reportIndex])) {
+            matchingParts++;
+            sourceIndex--;
+            reportIndex--;
+        }
+
+        return matchingParts >= 2;
     }
 
     private static String normalizePath(Path path) {

@@ -272,12 +272,12 @@ public class Main {
         }
         System.out.println("Baseline tests pass");
 
-        CoverageData coverageData = loadCoverageData(mutantPath, coverageCommand, coverageReport);
+        Path sourceDir = mutantPath.resolve(sourcePath);
+        CoverageData coverageData = loadCoverageData(mutantPath, sourceDir, coverageCommand, coverageReport);
 
         System.out.println("\nScanning for mutations...");
         System.out.println("Mutation strategy: " + mutationStrategy); 
 
-        Path sourceDir = mutantPath.resolve(sourcePath);
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,
                 Mutator.MutatorType.valueOf(mutatorType),
@@ -368,7 +368,11 @@ public class Main {
         }
     }
 
-    private static CoverageData loadCoverageData(Path mutantPath, String coverageCommand, String coverageReport) {
+    private static CoverageData loadCoverageData(
+            Path mutantPath,
+            Path sourceDir,
+            String coverageCommand,
+            String coverageReport) {
         if (coverageReport == null || coverageReport.isBlank()) {
             return CoverageData.empty();
         }
@@ -385,6 +389,9 @@ public class Main {
         Path coveragePath = findCoverageReport(mutantPath, coverageReport);
         try {
             CoverageData coverageData = CoverageData.load(coveragePath);
+            if (Files.exists(coveragePath)) {
+                coverageData.includeSourceFiles(sourceDir);
+            }
             if (coverageData.hasCoverage()) {
                 System.out.println("Coverage report loaded: " + coveragePath);
             } else {
@@ -420,7 +427,7 @@ public class Main {
         }
     }
 
-    private static MutantResult testSingleMutant(
+    static MutantResult testSingleMutant(
             MutationPoint point,
             Path workingDir,
             String compileCommand,
@@ -430,6 +437,14 @@ public class Main {
         String originalContent = null;
 
         try {
+            if (isNoCoverageMutant(point, coverageData)) {
+                return new MutantResult(
+                        point,
+                        MutantResult.MutantStatus.NO_COVERAGE,
+                        "Skipped mutation execution: line was not covered by baseline coverage.",
+                        true);
+            }
+
             originalContent = Files.readString(originalFile.toPath());
 
             String mutatedContent = applyMutation(originalContent, point);
@@ -453,10 +468,7 @@ public class Main {
 
             MutantResult.MutantStatus status;
             if (testsPass) {
-                boolean noCoverage = coverageData != null
-                        && coverageData.hasCoverage()
-                        && !coverageData.isLineCovered(originalFile.toPath(), point.getLineNumber());
-                status = noCoverage ? MutantResult.MutantStatus.NO_COVERAGE : MutantResult.MutantStatus.SURVIVED;
+                status = MutantResult.MutantStatus.SURVIVED;
             } else {
                 status = MutantResult.MutantStatus.KILLED;
             }
@@ -478,6 +490,16 @@ public class Main {
                 }
             }
         }
+    }
+
+    private static boolean isNoCoverageMutant(MutationPoint point, CoverageData coverageData) {
+        if (point == null || coverageData == null || !coverageData.hasCoverage()) {
+            return false;
+        }
+
+        Path sourceFile = point.getSourceFile().toPath();
+        return coverageData.hasCoverageForFile(sourceFile)
+                && !coverageData.isLineCovered(sourceFile, point.getLineNumber());
     }
 
     private static String applyMutation(String content, MutationPoint point) {
