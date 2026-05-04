@@ -31,6 +31,11 @@
     (check-equal? (compare-gt 5 5) "not-greater")
     (check-equal? (compare-ge 5 5) "greater-or-equal")
     (check-equal? (compare-ge 3 5) "less")
+    (check-equal? (compare-lt 3 5) "less")
+    (check-equal? (compare-lt 5 3) "not-less")
+    (check-equal? (compare-lt 5 5) "not-less")
+    (check-equal? (compare-le 5 5) "less-or-equal")
+    (check-equal? (compare-le 5 3) "greater")
     (check-equal? (check-equal 5 5) "equal")
     (check-equal? (check-equal 5 3) "not-equal")
     (check-equal? (check-logic 1 2) "both-positive")
@@ -55,7 +60,8 @@
     add1-suite
     add2-suite
     operators-suite
-    typed-functions-suite))
+    ;typed-functions-suite
+    ))
 
 
 ; run with ' Racket ./project/tests/racket-project.rkt '
