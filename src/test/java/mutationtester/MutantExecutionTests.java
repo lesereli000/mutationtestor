@@ -1,5 +1,10 @@
 package mutationtester;
 
+import mutationtester.coverage.*;
+import mutationtester.core.*;
+import mutationtester.model.*;
+import mutationtester.scanner.*;
+
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -67,7 +72,7 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedCSProject() {
         Path directory = Path.of("samples/CSProject");
-        String testCommand = "dotnet test tests/CSProject.Tests.CSProject.Tests.csproj";
+        String testCommand = "dotnet test tests/CSProject.Tests/CSProject.Tests.csproj";
 
         testOutput(testCommand, directory, directory, false);
     }

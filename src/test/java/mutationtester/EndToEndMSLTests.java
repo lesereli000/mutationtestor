@@ -1,5 +1,10 @@
 package mutationtester;
 
+import mutationtester.coverage.*;
+import mutationtester.core.*;
+import mutationtester.model.*;
+import mutationtester.scanner.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -86,6 +91,116 @@ public class EndToEndMSLTests {
         assertEquals(2, points.size());
         assertEquals("PyMut: + \u2192 -", points.get(0).getCustomLabel());
         assertEquals("PyMut: * \u2192 /", points.get(1).getCustomLabel());
+    }
+
+    @Test
+    void testCustomMutationScanningForRelationalAndLogicalOperatorsInJava() throws Exception {
+        Path javaFile = tempDir.resolve("Test.java");
+        Files.writeString(javaFile,
+            "public class Test {\n" +
+            "    public boolean bigger(int a, int b) {\n" +
+            "        return a > b;\n" +
+            "    }\n" +
+            "    public boolean both(boolean a, boolean b) {\n" +
+            "        return a && b;\n" +
+            "    }\n" +
+            "}\n"
+        );
+
+        Path specFile = tempDir.resolve("spec.txt");
+        Files.writeString(specFile,
+            "Operators\n" +
+            "    Replace: {quantity} > {quantity}\n" +
+            "    With: {quantity} >= {quantity}\n" +
+            "    Replace: {quantity} && {quantity}\n" +
+            "    With: {quantity} || {quantity}\n" +
+            "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+            tempDir,
+            Mutator.MutatorType.CUSTOM,
+            "AUTO",
+            specFile.toString()
+        );
+
+        assertEquals(2, points.size());
+        assertEquals(">", points.get(0).getOperator());
+        assertEquals(">=", points.get(0).getReplacement());
+        assertEquals("Operators: > \u2192 >=", points.get(0).getCustomLabel());
+        assertEquals("&&", points.get(1).getOperator());
+        assertEquals("||", points.get(1).getReplacement());
+        assertEquals("Operators: && \u2192 ||", points.get(1).getCustomLabel());
+    }
+
+    @Test
+    void testCustomMutationScanningForStatementMutationInCSharp() throws Exception {
+        Path csFile = tempDir.resolve("Demo.cs");
+        Files.writeString(csFile,
+            "public class Demo {\n" +
+            "    public void Run() {\n" +
+            "        RegisterDomainEvent(new ContributorNameUpdatedEvent(this));\n" +
+            "    }\n" +
+            "}\n"
+        );
+
+        Path specFile = tempDir.resolve("csharp-spec.txt");
+        Files.writeString(specFile,
+            "CSharp Custom Mutations\n" +
+            "    Replace: {invocation_statement}\n" +
+            "    With: ;\n" +
+            "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+            tempDir,
+            Mutator.MutatorType.CUSTOM,
+            "AUTO",
+            specFile.toString()
+        );
+
+        assertEquals(1, points.size());
+        assertEquals("RegisterDomainEvent(new ContributorNameUpdatedEvent(this));", points.get(0).getOperator());
+        assertEquals(";", points.get(0).getReplacement());
+        assertEquals("CSharp Custom Mutations: statement \u2192 ;", points.get(0).getCustomLabel());
+    }
+
+    @Test
+    void testCustomMutationScanningForStringMutationsInCSharp() throws Exception {
+        Path csFile = tempDir.resolve("Demo.cs");
+        Files.writeString(csFile,
+            "public class Demo {\n" +
+            "    public bool Check(string name) {\n" +
+            "        return string.IsNullOrEmpty(name);\n" +
+            "    }\n" +
+            "}\n"
+        );
+
+        Path specFile = tempDir.resolve("csharp-spec.txt");
+        Files.writeString(specFile,
+            "CSharp Custom Mutations\n" +
+            "    Replace: string.IsNullOrEmpty({quantity})\n" +
+            "    With: {quantity} != null\n" +
+            "\n" +
+            "    Replace: string.IsNullOrEmpty({quantity})\n" +
+            "    With: {quantity} != \"\"\n" +
+            "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+            tempDir,
+            Mutator.MutatorType.CUSTOM,
+            "AUTO",
+            specFile.toString()
+        );
+
+        assertEquals(2, points.size());
+        assertEquals("string.IsNullOrEmpty(name)", points.get(0).getOperator());
+        assertEquals("(name != null)", points.get(0).getReplacement());
+        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not null", points.get(0).getCustomLabel());
+        assertEquals("string.IsNullOrEmpty(name)", points.get(1).getOperator());
+        assertEquals("(name != \"\")", points.get(1).getReplacement());
+        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not empty", points.get(1).getCustomLabel());
     }
 }
 

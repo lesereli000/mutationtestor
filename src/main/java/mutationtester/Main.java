@@ -1,8 +1,20 @@
 package mutationtester;
 
+import mutationtester.coverage.CoverageData;
+import mutationtester.model.MutantResult;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.scanner.CSharpMutationScanner;
+import mutationtester.scanner.JavaMutationScanner;
+import mutationtester.scanner.JavaScriptMutationScanner;
+import mutationtester.scanner.PythonMutationScanner;
+import mutationtester.scanner.RacketMutationScanner;
+
 import mutationtester.msl.MSLScannerAdapter;
 import mutationtester.msl.MutationRule;
 import mutationtester.msl.MutationRuleGenerator;
+import mutationtester.report.HtmlReportGenerator;
+import mutationtester.report.MutationReport;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -34,6 +46,8 @@ public class Main {
         String mutationStrategy;  // AST or DICTIONARY, or AUTO
         String testMode;          // BROWSER, CLI, or AUTO
         String customMutationSpec; // path to .spec file when mutatorType=CUSTOM; null otherwise
+        String coverageCommand;   // optional command that writes a coverage report
+        String coverageReport;    // optional lcov/cobertura/jacoco report path, relative to project dir
     }
 
     static String runCommand(String command, String directory) {
@@ -80,15 +94,20 @@ public class Main {
             Future<Integer> future = executor.submit(() -> process.waitFor());
             try {
                 int exitCode = future.get(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+                if (exitCode != 0) {
+                    output.append("PROCESS_EXIT_CODE: ").append(exitCode).append(System.lineSeparator());
+                }
             } catch (TimeoutException e) {
                 process.destroyForcibly();
                 System.out.println("Process " + commandList.get(0) + " timed out.");
-                return "";
+                output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
+                return output.toString();
             } catch (ExecutionException | InterruptedException e) {
                 process.destroyForcibly();
                 System.out.println("Error running command " + command + ": " + e.getMessage());
                 e.printStackTrace();
-                return "";
+                output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
+                return output.toString();
             }
             executor.shutdown();
 
@@ -138,7 +157,9 @@ public class Main {
                         config.compileCommand,
                         config.testCommand,
                         config.mutationStrategy,
-                        config.customMutationSpec);
+                        config.customMutationSpec,
+                        config.coverageCommand,
+                        config.coverageReport);
             }
         } else {
             mutationTest(
@@ -148,7 +169,9 @@ public class Main {
                     config.compileCommand,
                     config.testCommand,
                     config.mutationStrategy,
-                    config.customMutationSpec);
+                    config.customMutationSpec,
+                    config.coverageCommand,
+                    config.coverageReport);
         }
 
         System.out.println("Quitting");
@@ -198,6 +221,8 @@ public class Main {
         config.mutationStrategy = values.getOrDefault("mutation_strategy", "AUTO");
         config.testMode = values.getOrDefault("test_mode", "AUTO");
         config.customMutationSpec = values.getOrDefault("custom_mutation_spec", null);
+        config.coverageCommand = values.getOrDefault("coverage_command", "");
+        config.coverageReport = values.getOrDefault("coverage_report", "");
 
         if (config.sourceCodeDirectory == null || config.sourceCodeDirectory.isEmpty()) {
             throw new IOException("Missing source_code_directory in config file");
@@ -215,7 +240,8 @@ public class Main {
     }
 
     private static void mutationTest(String projectDir, String sourceCode, String mutatorType, String command1,
-        String command2, String mutationStrategy, String customMutationSpec) {
+        String command2, String mutationStrategy, String customMutationSpec,
+        String coverageCommand, String coverageReport) {
         Path projectPath = Path.of(projectDir);
         Path sourcePath = Path.of(sourceCode);
         Path outputRoot = Path.of(OUTPUT_ROOT);
@@ -246,6 +272,8 @@ public class Main {
         }
         System.out.println("Baseline tests pass");
 
+        CoverageData coverageData = loadCoverageData(mutantPath, coverageCommand, coverageReport);
+
         System.out.println("\nScanning for mutations...");
         System.out.println("Mutation strategy: " + mutationStrategy); 
 
@@ -272,13 +300,15 @@ public class Main {
                     point.getSourceFile().getName() + ":" + point.getLineNumber() + ":" + point.getColumnNumber() +
                     " (" + point.getOperator() + " \u2192 " + point.getReplacement() + ")" + labelInfo + "... ");
 
-            MutantResult result = testSingleMutant(point, mutantPath, command1, command2);
+            MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
             results.add(result);
 
             if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
                 System.out.println("KILLED");
             } else if (result.getStatus() == MutantResult.MutantStatus.SURVIVED) {
                 System.out.println("SURVIVED");
+            } else if (result.getStatus() == MutantResult.MutantStatus.NO_COVERAGE) {
+                System.out.println("NO COVERAGE");
             } else if (result.getStatus() == MutantResult.MutantStatus.COMPILE_ERROR) {
                 System.out.println("COMPILE ERROR");
             } else {
@@ -338,11 +368,64 @@ public class Main {
         }
     }
 
+    private static CoverageData loadCoverageData(Path mutantPath, String coverageCommand, String coverageReport) {
+        if (coverageReport == null || coverageReport.isBlank()) {
+            return CoverageData.empty();
+        }
+
+        if (coverageCommand != null && !coverageCommand.isBlank()) {
+            System.out.println("\nRunning coverage command");
+            String coverageOutput = runCommand(coverageCommand, mutantPath.toString());
+            if (hasTestFailures(coverageOutput)) {
+                System.err.println("WARNING: Coverage command reported a failure; no-coverage classification disabled.");
+                return CoverageData.empty();
+            }
+        }
+
+        Path coveragePath = findCoverageReport(mutantPath, coverageReport);
+        try {
+            CoverageData coverageData = CoverageData.load(coveragePath);
+            if (coverageData.hasCoverage()) {
+                System.out.println("Coverage report loaded: " + coveragePath);
+            } else {
+                System.err.println("WARNING: Coverage report had no line coverage data: " + coveragePath);
+            }
+            return coverageData;
+        } catch (IOException e) {
+            System.err.println("WARNING: Failed to load coverage report " + coveragePath + ": " + e.getMessage());
+            return CoverageData.empty();
+        }
+    }
+
+    private static Path findCoverageReport(Path mutantPath, String coverageReport) {
+        Path configuredPath = mutantPath.resolve(coverageReport).normalize();
+        if (Files.exists(configuredPath)) {
+            return configuredPath;
+        }
+
+        Path parent = configuredPath.getParent();
+        Path fileName = configuredPath.getFileName();
+        if (parent == null || fileName == null || !Files.exists(parent)) {
+            return configuredPath;
+        }
+
+        try (java.util.stream.Stream<Path> paths = Files.walk(parent)) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().equals(fileName))
+                    .findFirst()
+                    .orElse(configuredPath);
+        } catch (IOException e) {
+            return configuredPath;
+        }
+    }
+
     private static MutantResult testSingleMutant(
             MutationPoint point,
             Path workingDir,
             String compileCommand,
-            String testCommand) {
+            String testCommand,
+            CoverageData coverageData) {
         File originalFile = point.getSourceFile();
         String originalContent = null;
 
@@ -370,7 +453,10 @@ public class Main {
 
             MutantResult.MutantStatus status;
             if (testsPass) {
-                status = MutantResult.MutantStatus.SURVIVED;
+                boolean noCoverage = coverageData != null
+                        && coverageData.hasCoverage()
+                        && !coverageData.isLineCovered(originalFile.toPath(), point.getLineNumber());
+                status = noCoverage ? MutantResult.MutantStatus.NO_COVERAGE : MutantResult.MutantStatus.SURVIVED;
             } else {
                 status = MutantResult.MutantStatus.KILLED;
             }
@@ -443,7 +529,7 @@ public class Main {
 
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
-                line.substring(point.getColumnNumber() + point.getOperator().length());
+                line.substring(Math.min(point.getColumnNumber() + point.getOperator().length(), line.length()));
 
         lines[lineIndex] = newLine;
 
@@ -533,11 +619,17 @@ public class Main {
                 || lower.contains("build failed")
                 || lower.contains("build failure")
                 || lower.contains("test run failed")
+                || lower.contains("test run aborted")
+                || lower.contains("socketexception")
+                || lower.contains("permission denied")
+                || lower.contains("process_exit_code:")
+                || lower.contains("process_timeout")
+                || lower.contains("process_execution_error")
                 || lower.contains("type checker:")
                 || lower.contains("type mismatch");
     }
 
-    private static List<MutationPoint> scanForMutations(
+    static List<MutationPoint> scanForMutations(
             Path sourceDir,
             Mutator.MutatorType type,
             String mutationStrategy,
@@ -560,8 +652,11 @@ public class Main {
         }
 
         try {
-            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, false); it.hasNext();) {
+            for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, true); it.hasNext();) {
                 File file = it.next();
+                if (!shouldScanFile(file)) {
+                    continue;
+                }
 
                 List<MutationPoint> filePoints;
                 if (type == Mutator.MutatorType.CUSTOM) {
@@ -577,6 +672,15 @@ public class Main {
         }
 
         return points;
+    }
+
+    private static boolean shouldScanFile(File file) {
+        String normalizedPath = file.getPath().replace('\\', '/');
+        return !normalizedPath.contains("/obj/")
+                && !normalizedPath.contains("/bin/")
+                && !normalizedPath.contains("/.git/")
+                && !normalizedPath.contains("/target/")
+                && !normalizedPath.contains("/node_modules/");
     }
 
     private static List<MutationPoint> findCustomMutationsInFile(File file, List<MutationRule> rules) throws IOException {

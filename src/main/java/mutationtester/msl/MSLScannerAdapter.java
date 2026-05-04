@@ -23,6 +23,16 @@ public interface MSLScannerAdapter {
 
     boolean isQuantity(ParseTree ctx);
 
+    // ── Optional language-specific helpers ────────────────────────────────
+
+    default String getSingleArgumentText(ParseTree ctx, String functionName) {
+        return null;
+    }
+
+    default boolean isInvocationStatement(ParseTree ctx) {
+        return false;
+    }
+
     // ── Utility ───────────────────────────────────────────────────────────
 
     String getNodeText(ParseTree ctx);

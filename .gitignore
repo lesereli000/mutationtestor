@@ -43,3 +43,6 @@ demo-output/
 /samples/PytestProject/tests/__pycache__
 /samples/PytestProject/src/__pycache__
 /.vscode
+
+# External local projects / submodules
+/external/

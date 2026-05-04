@@ -1,7 +1,17 @@
 package mutationtester;
 
+import mutationtester.coverage.*;
+import mutationtester.core.*;
+import mutationtester.model.*;
+import mutationtester.scanner.*;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 public class MainTests {
@@ -77,6 +87,21 @@ public class MainTests {
     }
 
     @Test
+    void testTestRunAbortedKeyword() {
+        assertTrue(Main.hasTestFailures("Test Run Aborted."));
+    }
+
+    @Test
+    void testPermissionDeniedDuringDotnetRun() {
+        assertTrue(Main.hasTestFailures("System.Net.Sockets.SocketException (13): Permission denied"));
+    }
+
+    @Test
+    void testNonZeroProcessExitCode() {
+        assertTrue(Main.hasTestFailures("PROCESS_EXIT_CODE: 1"));
+    }
+
+    @Test
     void testEmptyOutput() {
         assertFalse(Main.hasTestFailures(""));
         assertFalse(Main.hasTestFailures(null));
@@ -86,5 +111,34 @@ public class MainTests {
     void testFalsePositive() {
         assertFalse(Main.hasTestFailures("There are 0 failures."));
         assertFalse(Main.hasTestFailures("No failures here."));
+    }
+
+    @Test
+    void testScanForMutationsRecursesIntoNestedSourceDirectories() {
+        List<MutationPoint> points = Main.scanForMutations(
+                Path.of("samples/CSProject/src"),
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                "AUTO",
+                null);
+
+        assertTrue(points.stream().anyMatch(p -> p.getSourceFile().getName().equals("ConditionalDemo.cs")));
+    }
+
+    @Test
+    void testReadConfigAcceptsCoverageSettings() throws Exception {
+        Path config = Files.createTempFile("mutation-config", ".txt");
+        Files.writeString(config, """
+                source_code_directory=src
+                mutator_type=AOR_PLUS_TO_MINUS
+                compile_command=
+                test_command=mvn test
+                coverage_command=mvn test jacoco:report
+                coverage_report=target/site/jacoco/jacoco.xml
+                """);
+
+        Main.Config parsed = Main.readConfig(config.toFile());
+
+        assertTrue(parsed.coverageCommand.equals("mvn test jacoco:report"));
+        assertTrue(parsed.coverageReport.equals("target/site/jacoco/jacoco.xml"));
     }
 }

@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Parses a .spec file into a list of MutationRule objects.
  *
- * Expected format (verbatim from MathematicalMutations.txt):
+ * Expected format (verbatim from OperatorMutations.txt):
  *
  * <Group Name>
  *
@@ -76,18 +76,12 @@ public class MutationRuleGenerator {
                     i++;
                 }
 
-                // Build the rule
-                BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);
-                BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
-
-                String label = groupLabel + ": " + fromExpr.getOperator()
-                        + " \u2192 " + toExpr.getOperator();
-                rules.add(MutationRuleFactory.create("Replace", fromExpr, toExpr, label));
+                MutationRule rule = createRule(fromPattern, toPattern, groupLabel);
+                rules.add(rule);
 
                 if (inverse) {
-                    String inverseLabel = groupLabel + ": " + toExpr.getOperator()
-                            + " \u2192 " + fromExpr.getOperator();
-                    rules.add(MutationRuleFactory.create("Replace", toExpr, fromExpr, inverseLabel));
+                    MutationRule inverseRule = createRule(toPattern, fromPattern, groupLabel);
+                    rules.add(inverseRule);
                 }
                 continue;
             }
@@ -97,5 +91,32 @@ public class MutationRuleGenerator {
         }
 
         return rules;
+    }
+
+    private static MutationRule createRule(String fromPattern, String toPattern, String groupLabel) {
+        if (fromPattern.equals("{invocation_statement}") && toPattern.equals(";")) {
+            return new StatementRemovalRule(groupLabel + ": statement \u2192 ;");
+        }
+
+        if (fromPattern.equals("string.IsNullOrEmpty({quantity})")) {
+            if (toPattern.equals("{quantity} != null")) {
+                return new StringCallReplacementRule(
+                        "string.IsNullOrEmpty",
+                        "!= null",
+                        groupLabel + ": string.IsNullOrEmpty \u2192 not null");
+            }
+            if (toPattern.equals("{quantity} != \"\"")) {
+                return new StringCallReplacementRule(
+                        "string.IsNullOrEmpty",
+                        "!= \"\"",
+                        groupLabel + ": string.IsNullOrEmpty \u2192 not empty");
+            }
+        }
+
+        BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);
+        BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
+        String label = groupLabel + ": " + fromExpr.getOperator()
+                + " \u2192 " + toExpr.getOperator();
+        return MutationRuleFactory.create("Replace", fromExpr, toExpr, label);
     }
 }

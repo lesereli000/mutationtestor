@@ -41,52 +41,52 @@ mkdir "%DEMO_DIR%"
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [1/5] JAVA (Maven Project) - AOR_PLUS_TO_MINUS
+echo   [1/5] JAVA (Maven Project) - MSL Operators
 echo ============================================================================
 echo.
-java -jar %JAR% samples/MavenProject maven.config
+java -jar %JAR% samples/MavenProject newMaven.config
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\java\" >nul 2>&1
 
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [2/5] JAVASCRIPT (Browser-Based) - NLT_EXPONENTIAL_TO_FLOAT
+echo   [2/5] JAVASCRIPT (Browser-Based) - MSL Operators
 echo ============================================================================
 echo.
-java -jar %JAR% samples/JSProject samples/JSProject/config.txt
+java -jar %JAR% samples/JSProject samples/JSProject/newConfig.txt
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\javascript\" >nul 2>&1
 
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [3/5] C# (.NET Project) - REMOVE_INCREMENT
+echo   [3/5] C# (.NET Project) - MSL Operators
 echo ============================================================================
 echo.
-java -jar %JAR% samples/CSProject cs.config
+java -jar %JAR% samples/CSProject newCS.config
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\csharp\" >nul 2>&1
 
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [4/5] PYTHON (Pytest Project) - AOR_PLUS_TO_MINUS
+echo   [4/5] PYTHON (Pytest Project) - MSL Operators
 echo ============================================================================
 echo.
-java -jar %JAR% samples/PytestProject python.config
+java -jar %JAR% samples/PytestProject newPython.config
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\python\" >nul 2>&1
 
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [5/5] SCHEME/RACKET - TYPE_INT_TO_DOUBLE
+echo   [5/5] RACKET - MSL Operators
 echo ============================================================================
 echo.
-java -jar %JAR% samples/SchemeProject scheme.config
+java -jar %JAR% samples/RacketProject newRacket.config
 if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
-if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\scheme\" >nul 2>&1
+if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\racket\" >nul 2>&1
 
 REM --------------------------------------------------------------------------
 echo.
@@ -97,7 +97,7 @@ echo   Projects passed: %PASS% / 5
 if %FAIL% gtr 0 (
     echo   Projects failed: %FAIL% / 5
     echo   NOTE: Some failures may be due to missing runtimes
-    echo         (e.g. dotnet, racket, pytest, node/npm)
+    echo         (e.g. maven, dotnet, racket, pytest, node/npm)
 )
 echo.
 echo   All reports saved to: %DEMO_DIR%\
@@ -105,7 +105,7 @@ echo     demo-output\java\          - mutation-report-demo.html
 echo     demo-output\javascript\    - mutation-report-demo.html
 echo     demo-output\csharp\        - mutation-report-demo.html
 echo     demo-output\python\        - mutation-report-demo.html
-echo     demo-output\scheme\        - mutation-report-demo.html
+echo     demo-output\racket\        - mutation-report-demo.html
 echo ============================================================================
 echo.
 

@@ -40,10 +40,10 @@ mkdir -p "$DEMO_DIR"
 # --------------------------------------------------------------------------
 echo
 echo "============================================================================"
-echo "  [1/5] JAVA (Maven Project) - AOR_PLUS_TO_MINUS"
+echo "  [1/5] JAVA (Maven Project) - MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/MavenProject maven.config
+java -jar "$JAR" samples/MavenProject newMaven.config
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/java/"
@@ -52,10 +52,10 @@ fi
 # --------------------------------------------------------------------------
 echo
 echo "============================================================================"
-echo "  [2/5] JAVASCRIPT (Jest Project) - NLT_INTEGER_TO_EXPONENTIAL"
+echo "  [2/5] JAVASCRIPT (Jest Project) - MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/JSProject js.config
+java -jar "$JAR" samples/JSProject samples/JSProject/newConfig.txt
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/javascript/"
@@ -64,10 +64,10 @@ fi
 # --------------------------------------------------------------------------
 echo
 echo "============================================================================"
-echo "  [3/5] C# (.NET Project) - REMOVE_INCREMENT"
+echo "  [3/5] C# (.NET Project) -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/CSProject cs.config
+java -jar "$JAR" samples/CSProject newCS.config
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/csharp/"
@@ -76,10 +76,10 @@ fi
 # --------------------------------------------------------------------------
 echo
 echo "============================================================================"
-echo "  [4/5] PYTHON (Pytest Project) - AOR_PLUS_TO_MINUS"
+echo "  [4/5] PYTHON (Pytest Project) -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/PytestProject python.config
+java -jar "$JAR" samples/PytestProject newPython.config
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/python/"
@@ -88,13 +88,13 @@ fi
 # --------------------------------------------------------------------------
 echo
 echo "============================================================================"
-echo "  [5/5] SCHEME/RACKET - TYPE_INT_TO_DOUBLE"
+echo "  [5/5] RACKET -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/SchemeProject scheme.config
+java -jar "$JAR" samples/RacketProject newRacket.config
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
-    cp -r output/report/. "$DEMO_DIR/scheme/"
+    cp -r output/report/. "$DEMO_DIR/racket/"
 fi
 
 # --------------------------------------------------------------------------
@@ -114,6 +114,6 @@ echo "    demo-output/java/          - mutation-report-demo.html"
 echo "    demo-output/javascript/    - mutation-report-demo.html"
 echo "    demo-output/csharp/        - mutation-report-demo.html"
 echo "    demo-output/python/        - mutation-report-demo.html"
-echo "    demo-output/scheme/        - mutation-report-demo.html"
+echo "    demo-output/racket/        - mutation-report-demo.html"
 echo "============================================================================"
 echo

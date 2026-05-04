@@ -1,5 +1,10 @@
 package mutationtester;
 
+import mutationtester.coverage.*;
+import mutationtester.core.*;
+import mutationtester.model.*;
+import mutationtester.scanner.*;
+
 import mutationtester.msl.*;
 
 import org.junit.jupiter.api.Test;
@@ -219,6 +224,24 @@ public class MSLTests {
     }
 
     @Test
+    void expressionFactoryParsesGreaterThan() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} > {quantity}");
+        assertEquals(">", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryParsesEquality() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} == {quantity}");
+        assertEquals("==", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryParsesLogicalAnd() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} && {quantity}");
+        assertEquals("&&", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
     void expressionFactoryThrowsOnUnknownPattern() {
         assertThrows(IllegalArgumentException.class,
             () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
@@ -317,11 +340,11 @@ public class MSLTests {
 
     @Test
     void ruleGeneratorParsesAllRulesFromRealSpec() throws Exception {
-        // The real MathematicalMutations.txt: 7 Replace blocks, 4 with And: Inverse → 11 total
+        // The real OperatorMutations.txt: 11 Replace blocks, 8 with And: Inverse -> 19 total
         java.io.File spec = new java.io.File(
-            "MathematicalMutations.txt");
+            "OperatorMutations.txt");
         java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
-        assertEquals(11, rules.size());
+        assertEquals(23, rules.size());
     }
 
     @Test
@@ -424,6 +447,45 @@ public class MSLTests {
 
         assertTrue(treeContainsMatch(adapter, root, ">>"),
             "Should find '1 >> 2' as a >> binary expression");
+    }
+
+    @Test
+    void javaAdapterHandlesRelationalOperator(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src, "class A { boolean x = 1 > 2; }");
+
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
+        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
+
+        assertTrue(treeContainsMatch(adapter, root, ">"),
+            "Should find '1 > 2' as a > binary expression");
+    }
+
+    @Test
+    void javaAdapterHandlesEqualityOperator(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src, "class A { boolean x = 1 == 2; }");
+
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
+        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
+
+        assertTrue(treeContainsMatch(adapter, root, "=="),
+            "Should find '1 == 2' as a == binary expression");
+    }
+
+    @Test
+    void javaAdapterHandlesLogicalAndOperator(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src, "class A { boolean x = a && b; }");
+
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
+        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
+
+        assertTrue(treeContainsMatch(adapter, root, "&&"),
+            "Should find 'a && b' as a && binary expression");
     }
 
     // ── Tree-walking helpers for adapter tests ────────────────────────────────
