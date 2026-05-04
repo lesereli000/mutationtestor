@@ -4,7 +4,8 @@
          rackunit/text-ui
          "../src/add1.rkt"
          "../src/add2.rkt"
-         "../src/operators.rkt")
+         "../src/operators.rkt"
+         "../src/typed-functions.rkt")
 
 (define add1-suite
   (test-suite "Test add1"
@@ -38,13 +39,23 @@
     (check-equal? (check-logic 0 0) "neither-positive")
     (check-equal? (check-logic -1 2) "one-positive")
     (check-equal? (check-logic -1 -2) "neither-positive")
-    (check-equal? (check-floats) '(5 3.14 10))))
+    (check-equal? (check-floats) '(5 3.14 10))
+    (check-equal? (multiply 3 4) 12)
+    (check-equal? (multiply 2 5) 10)
+    (check-equal? (divide 10 2) 5)
+    (check-equal? (divide 9 3) 3)))
+
+(define typed-functions-suite
+  (test-suite "Test typed-functions"
+    (check-equal? (typed-add 2 3) 6)   ; 2+3+1=6, mutant gives 2-3+1=0 → fail
+    (check-equal? (mixed-types 2 3 4 5) 29)))  ; (2*3)+(4*5)+3=29
 
 (define all-tests
   (test-suite "All Tests"
     add1-suite
     add2-suite
-    operators-suite))
+    operators-suite
+    typed-functions-suite))
 
 
 ; run with ' Racket ./project/tests/racket-project.rkt '

@@ -183,6 +183,14 @@ public class RacketMutationScanner {
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
                 }
+                case AOR_MULTIPLY_TO_DIVIDE -> {
+                    if (text.equals("*"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "*", "/", mutationType));
+                }
+                case AOR_DIVIDE_TO_MULTIPLY -> {
+                    if (text.equals("/"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "/", "*", mutationType));
+                }
                 default -> { }
             }
         }

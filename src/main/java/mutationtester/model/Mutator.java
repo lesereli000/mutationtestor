@@ -26,6 +26,17 @@ public class Mutator {
         ROR_GT_TO_GE,
         ROR_GE_TO_GT,
 
+        ROR_GT_TO_LT,
+        ROR_GT_TO_GTE,
+        ROR_LT_TO_GT,
+        ROR_LT_TO_LTE,
+        ROR_EQ_TO_NE,
+        ROR_NE_TO_EQ,
+
+        // Logical Connector Replacement
+        LCR_AND_TO_OR,          // && to ||
+        LCR_OR_TO_AND,          // || to &&
+
         EQ_NEGATE, // switch between == and !=
         LOGICAL_AND_TO_OR, // && to || (or language equivalents)
         LOGICAL_OR_TO_AND, // || to && (or language equivalents)
@@ -58,7 +69,10 @@ public class Mutator {
         NLT_EXPONENTIAL_TO_INTEGER, // 1e10 → 10000000000
         NLT_EXPONENTIAL_TO_FLOAT, // 1e10 → 10000000000.0
 
+
+
         CUSTOM  // spec-driven branch; config must also set custom_mutation_spec=<path>
+
     }
 
     // State machine states
