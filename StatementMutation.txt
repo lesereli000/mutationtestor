@@ -1,0 +1,6 @@
+Statement Mutations
+
+	Replace: {invocation_statement}
+	With: ;
+
+End
