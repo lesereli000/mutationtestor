@@ -53,6 +53,13 @@
   (define c 10)
   (list a b c))
 
+; AOR: * and /
+(define (multiply x y)
+  (* x y))
+
+(define (divide x y)
+  (/ x y))
+
 
 
 
