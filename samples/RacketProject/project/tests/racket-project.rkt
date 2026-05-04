@@ -47,7 +47,7 @@
     operators-suite))
 
 
-; run with ' Racket ./project/tests/scheme-project.rkt '
+; run with ' Racket ./project/tests/racket-project.rkt '
 (module+ main
   (void
    (run-tests all-tests)))

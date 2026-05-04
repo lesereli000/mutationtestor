@@ -51,6 +51,11 @@ public class RacketMutationScanner {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         ISLParser parser = new ISLParser(tokens);
 
+        lexer.removeErrorListeners();
+        lexer.addErrorListener(QuietAntlrErrorListener.INSTANCE);
+        parser.removeErrorListeners();
+        parser.addErrorListener(QuietAntlrErrorListener.INSTANCE);
+
         ParseTree tree = parser.program();
 
 
