@@ -31,12 +31,13 @@ public class StatementRemovalRule implements MutationRule {
     public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
         int[] pos = scanner.getTokenPosition(ctx);
         String statement = scanner.getNodeText(ctx);
+        String replacement = sourceFile.getName().endsWith(".py") ? "pass" : ";";
         return new MutationPoint(
                 sourceFile,
                 pos[0],
                 pos[1],
                 statement,
-                ";",
+                replacement,
                 Mutator.MutatorType.CUSTOM,
                 label
         );

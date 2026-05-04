@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class PythonMutationScanner {
 
@@ -84,6 +85,11 @@ public class PythonMutationScanner {
         ParseTree tree = parser.root();
 
         return new MSLScannerAdapter() {
+            private final Pattern invocationPattern = Pattern.compile(
+                    "(await\\s+)?[A-Za-z_][A-Za-z0-9_.]*\\s*\\(.*\\)$",
+                    Pattern.DOTALL
+            );
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 // Handle ExprContext (arithmetic, bitwise)
@@ -126,7 +132,7 @@ public class PythonMutationScanner {
                 if (ctx instanceof TerminalNode tn) {
                     Token symbol = tn.getSymbol();
                     int type = symbol.getType();
-                    return type == PythonLexer.DECIMAL_INTEGER || 
+                    return type == PythonLexer.DECIMAL_INTEGER ||
                            type == PythonLexer.FLOAT_NUMBER ||
                            type == PythonLexer.OCT_INTEGER ||
                            type == PythonLexer.HEX_INTEGER ||
@@ -138,7 +144,53 @@ public class PythonMutationScanner {
             }
 
             @Override
+            public boolean isInvocationStatement(ParseTree ctx) {
+                if (!(ctx instanceof PythonParser.Expr_stmtContext exprStmt)) {
+                    return false;
+                }
+                // Assignments are not invocation statements
+                if (exprStmt.assign_part() != null) {
+                    return false;
+                }
+                // Skip multi-line calls
+                if (exprStmt.getStart() != null && exprStmt.getStop() != null
+                        && exprStmt.getStart().getLine() != exprStmt.getStop().getLine()) {
+                    return false;
+                }
+                String text = getNodeText(ctx);
+                if (text == null || text.isBlank()) {
+                    return false;
+                }
+                return invocationPattern.matcher(text.strip()).matches();
+            }
+
+            @Override
+            public String getSingleArgumentText(ParseTree ctx, String functionName) {
+                String text = getNodeText(ctx);
+                if (text == null) return null;
+                String prefix = functionName + "(";
+                if (!text.startsWith(prefix) || !text.endsWith(")")) {
+                    return null;
+                }
+                String inner = text.substring(prefix.length(), text.length() - 1).trim();
+                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                    return null;
+                }
+                return inner;
+            }
+
+            @Override
             public String getNodeText(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceCode.length()) {
+                        return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
                 return ctx.getText();
             }
 
@@ -148,9 +200,11 @@ public class PythonMutationScanner {
                     Token s = tn.getSymbol();
                     return new int[]{s.getLine(), s.getCharPositionInLine()};
                 }
-                if (ctx instanceof org.antlr.v4.runtime.ParserRuleContext prc) {
+                if (ctx instanceof ParserRuleContext prc) {
                     Token s = prc.getStart();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
+                    if (s != null) {
+                        return new int[]{s.getLine(), s.getCharPositionInLine()};
+                    }
                 }
                 return new int[]{0, 0};
             }
@@ -158,6 +212,49 @@ public class PythonMutationScanner {
             @Override
             public ParseTree getRootContext() {
                 return tree;
+            }
+
+            private boolean hasTopLevelComma(String text) {
+                int parenDepth = 0;
+                int bracketDepth = 0;
+                int braceDepth = 0;
+                boolean inString = false;
+                char stringDelimiter = '\0';
+
+                for (int i = 0; i < text.length(); i++) {
+                    char c = text.charAt(i);
+                    if (i > 0 && text.charAt(i - 1) == '\\') {
+                        continue;
+                    }
+                    if (inString) {
+                        if (c == stringDelimiter) {
+                            inString = false;
+                            stringDelimiter = '\0';
+                        }
+                        continue;
+                    }
+                    if (c == '"' || c == '\'') {
+                        inString = true;
+                        stringDelimiter = c;
+                        continue;
+                    }
+                    switch (c) {
+                        case '(' -> parenDepth++;
+                        case ')' -> parenDepth--;
+                        case '[' -> bracketDepth++;
+                        case ']' -> bracketDepth--;
+                        case '{' -> braceDepth++;
+                        case '}' -> braceDepth--;
+                        case ',' -> {
+                            if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+                                return true;
+                            }
+                        }
+                        default -> {
+                        }
+                    }
+                }
+                return false;
             }
         };
     }
