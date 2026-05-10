@@ -5,6 +5,7 @@ import mutationtester.model.MutantResult;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import mutationtester.scanner.CSharpMutationScanner;
+import mutationtester.scanner.DictionaryMutationScanner;
 import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
@@ -798,107 +799,10 @@ public class Main {
 
 
     /**
-     * Dictionary-based mutation scanning using regex patterns
-     * This is the original approach - works for AOR, ROR, LOR mutations
+     * Dictionary-based mutation scanning using regex patterns.
+     * Delegates to {@link mutationtester.scanner.DictionaryMutationScanner}.
      */
     private static List<MutationPoint> scanWithDictionary(File file, Mutator.MutatorType type) throws IOException {
-        List<MutationPoint> points = new ArrayList<>();
-        String content = Files.readString(file.toPath());
-        String[] lines = content.split("\n", -1);
-
-        for (int lineNum = 0; lineNum < lines.length; lineNum++) {
-            String line = lines[lineNum];
-
-            // AOR: Arithmetic Operator Replacement
-            if (type == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                for (int col = 0; col < line.length(); col++) {
-                    if (line.charAt(col) == '+' && !isInStringOrComment(line, col)) {
-                        // Skip ++ increment operators
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '+') {
-                            continue;
-                        }
-                        if (col > 0 && line.charAt(col - 1) == '+') {
-                            continue;
-                        }
-
-                        MutationPoint point = new MutationPoint(
-                                file,
-                                lineNum + 1,
-                                col,
-                                "+",
-                                "-",
-                                type);
-                        points.add(point);
-                    }
-                }
-            }
-
-            if (type == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                for (int col = 0; col < line.length(); col++) {
-                    if (line.charAt(col) == '-' && !isInStringOrComment(line, col)) {
-                        // Skip -- decrement operators
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '-') {
-                            continue;
-                        }
-                        if (col > 0 && line.charAt(col - 1) == '-') {
-                            continue;
-                        }
-                        // Skip -> (arrow operator in some languages)
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '>') {
-                            continue;
-                        }
-
-                        MutationPoint point = new MutationPoint(
-                                file,
-                                lineNum + 1,
-                                col,
-                                "-",
-                                "+",
-                                type);
-                        points.add(point);
-                    }
-                }
-            }
-
-            // Add more dictionary-based mutations here as needed
-            // ROR: Relational Operator Replacement
-            // LOR: Logical Operator Replacement
-            // etc.
-        }
-
-        return points;
-    }
-
-    private static boolean isInStringOrComment(String line, int position) {
-        boolean inString = false;
-        char stringDelimiter = '\0';
-
-        for (int i = 0; i < position; i++) {
-            char c = line.charAt(i);
-
-            if (i > 0 && line.charAt(i - 1) == '\\') {
-                continue;
-            }
-
-            if (c == '"' || c == '\'') {
-                if (!inString) {
-                    inString = true;
-                    stringDelimiter = c;
-                } else if (c == stringDelimiter) {
-                    inString = false;
-                    stringDelimiter = '\0';
-                }
-            }
-        }
-
-        if (inString) {
-            return true;
-        }
-
-        int commentStart = line.indexOf("//");
-        if (commentStart >= 0 && commentStart < position) {
-            return true;
-        }
-        return false;
+        return DictionaryMutationScanner.scanFile(file, type);
     }
 }

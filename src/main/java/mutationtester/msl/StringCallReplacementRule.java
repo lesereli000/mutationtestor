@@ -36,7 +36,10 @@ public class StringCallReplacementRule implements MutationRule {
         int[] pos = scanner.getTokenPosition(ctx);
         String original = scanner.getNodeText(ctx);
         String argument = scanner.getSingleArgumentText(ctx, functionName);
-        String replacement = "(" + argument + " " + replacementSuffix + ")";
+        // Empty suffix means pure removal: str(x) → x
+        String replacement = replacementSuffix.isEmpty()
+                ? argument
+                : "(" + argument + " " + replacementSuffix + ")";
         return new MutationPoint(
                 sourceFile,
                 pos[0],
