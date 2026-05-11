@@ -135,8 +135,13 @@ download_python_dependencies() {
     return
   fi
 
-  info "Installing Python test dependency"
-  python3 -m pip install --user pytest
+  local venv_dir="$ROOT_DIR/samples/PytestProject/.venv"
+    if [[ ! -d "$venv_dir" ]]; then
+      info "Creating Python virtual environment"
+      python3 -m venv "$venv_dir"
+    fi
+    info "Installing pytest into virtual environment"
+    "$venv_dir/bin/python" -m pip install --quiet pytest
 }
 
 download_dotnet_dependencies() {
