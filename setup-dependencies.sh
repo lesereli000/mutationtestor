@@ -130,18 +130,31 @@ download_javascript_dependencies() {
 }
 
 download_python_dependencies() {
-  if ! have python3; then
-    warn "Skipping Python dependencies because python3 is missing."
+  local py=""
+  if have python3; then
+    py="python3"
+  elif have python; then
+    py="python"
+  else
+    warn "Skipping Python dependencies because python3/python is missing."
     return
   fi
 
   local venv_dir="$ROOT_DIR/samples/PytestProject/.venv"
-    if [[ ! -d "$venv_dir" ]]; then
-      info "Creating Python virtual environment"
-      python3 -m venv "$venv_dir"
-    fi
-    info "Installing pytest into virtual environment"
-    "$venv_dir/bin/python" -m pip install --quiet pytest
+
+  # Remove stale venv if its interpreter is broken (e.g., cross-platform or version mismatch)
+  if [[ -d "$venv_dir" ]] && ! "$venv_dir/bin/python" --version >/dev/null 2>&1; then
+    info "Removing stale Python virtual environment (interpreter not found)..."
+    rm -rf "$venv_dir"
+  fi
+
+  if [[ ! -d "$venv_dir" ]]; then
+    info "Creating Python virtual environment..."
+    "$py" -m venv "$venv_dir"
+  fi
+
+  info "Installing pytest into virtual environment..."
+  "$venv_dir/bin/python" -m pip install --quiet pytest
 }
 
 download_dotnet_dependencies() {

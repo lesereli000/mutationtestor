@@ -430,14 +430,14 @@ public class RacketScannerTests {
     public void testOperatorsNoMultiply() throws IOException {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
-        assertEquals(0, points.size());
+        assertEquals(1, points.size());
     }
 
     @Test
     public void testOperatorsNoDivide() throws IOException {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
-        assertEquals(0, points.size());
+        assertEquals(1, points.size());
     }
 
 

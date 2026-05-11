@@ -154,12 +154,20 @@ function Download-Python {
         return
     }
     $venvDir = "$RootDir\samples\PytestProject\.venv"
+    $venvPython = "$venvDir\Scripts\python.exe"
+
+    # Remove stale venv if its interpreter is missing (e.g., after Python version change)
+    if ((Test-Path $venvDir) -and -not (Test-Path $venvPython)) {
+        Info "Removing stale Python virtual environment (interpreter not found)..."
+        Remove-Item -Recurse -Force $venvDir
+    }
+
     if (-not (Test-Path $venvDir)) {
         Info "Creating Python virtual environment..."
         & $py -m venv $venvDir
     }
     Info "Installing pytest into virtual environment..."
-    & "$venvDir\Scripts\python.exe" -m pip install --quiet pytest
+    & $venvPython -m pip install --quiet pytest
 }
 
 function Download-DotNet {
