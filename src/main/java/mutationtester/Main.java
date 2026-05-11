@@ -277,7 +277,8 @@ public class Main {
         CoverageData coverageData = loadCoverageData(mutantPath, sourceDir, coverageCommand, coverageReport);
 
         System.out.println("\nScanning for mutations...");
-        System.out.println("Mutation strategy: " + mutationStrategy); 
+        MutationStrategy strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
+        StrategySelector.printStrategyDetails(strategy);
 
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,

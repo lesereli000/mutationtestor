@@ -208,4 +208,47 @@ public class MutantExecutionTests {
             fail("Final tear down failed: " + e.getMessage());
         }
     }
+
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorMultiplyMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_Multiply");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
+    }
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorNegateConditionalsMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_NegateConditionals");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.NEGATE_CONDITIONALS;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
+    }
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorDivideMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_Divide");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
+    }
 }
