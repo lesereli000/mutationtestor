@@ -5,6 +5,7 @@ import mutationtester.model.MutantResult;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import mutationtester.scanner.CSharpMutationScanner;
+import mutationtester.scanner.DictionaryMutationScanner;
 import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
@@ -272,12 +273,13 @@ public class Main {
         }
         System.out.println("Baseline tests pass");
 
-        CoverageData coverageData = loadCoverageData(mutantPath, coverageCommand, coverageReport);
+        Path sourceDir = mutantPath.resolve(sourcePath);
+        CoverageData coverageData = loadCoverageData(mutantPath, sourceDir, coverageCommand, coverageReport);
 
         System.out.println("\nScanning for mutations...");
-        System.out.println("Mutation strategy: " + mutationStrategy); 
+        MutationStrategy strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
+        StrategySelector.printStrategyDetails(strategy);
 
-        Path sourceDir = mutantPath.resolve(sourcePath);
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,
                 Mutator.MutatorType.valueOf(mutatorType),
@@ -368,7 +370,11 @@ public class Main {
         }
     }
 
-    private static CoverageData loadCoverageData(Path mutantPath, String coverageCommand, String coverageReport) {
+    private static CoverageData loadCoverageData(
+            Path mutantPath,
+            Path sourceDir,
+            String coverageCommand,
+            String coverageReport) {
         if (coverageReport == null || coverageReport.isBlank()) {
             return CoverageData.empty();
         }
@@ -385,6 +391,9 @@ public class Main {
         Path coveragePath = findCoverageReport(mutantPath, coverageReport);
         try {
             CoverageData coverageData = CoverageData.load(coveragePath);
+            if (Files.exists(coveragePath)) {
+                coverageData.includeSourceFiles(sourceDir);
+            }
             if (coverageData.hasCoverage()) {
                 System.out.println("Coverage report loaded: " + coveragePath);
             } else {
@@ -420,7 +429,7 @@ public class Main {
         }
     }
 
-    private static MutantResult testSingleMutant(
+    static MutantResult testSingleMutant(
             MutationPoint point,
             Path workingDir,
             String compileCommand,
@@ -430,6 +439,14 @@ public class Main {
         String originalContent = null;
 
         try {
+            if (isNoCoverageMutant(point, coverageData)) {
+                return new MutantResult(
+                        point,
+                        MutantResult.MutantStatus.NO_COVERAGE,
+                        "Skipped mutation execution: line was not covered by baseline coverage.",
+                        true);
+            }
+
             originalContent = Files.readString(originalFile.toPath());
 
             String mutatedContent = applyMutation(originalContent, point);
@@ -453,10 +470,7 @@ public class Main {
 
             MutantResult.MutantStatus status;
             if (testsPass) {
-                boolean noCoverage = coverageData != null
-                        && coverageData.hasCoverage()
-                        && !coverageData.isLineCovered(originalFile.toPath(), point.getLineNumber());
-                status = noCoverage ? MutantResult.MutantStatus.NO_COVERAGE : MutantResult.MutantStatus.SURVIVED;
+                status = MutantResult.MutantStatus.SURVIVED;
             } else {
                 status = MutantResult.MutantStatus.KILLED;
             }
@@ -478,6 +492,16 @@ public class Main {
                 }
             }
         }
+    }
+
+    private static boolean isNoCoverageMutant(MutationPoint point, CoverageData coverageData) {
+        if (point == null || coverageData == null || !coverageData.hasCoverage()) {
+            return false;
+        }
+
+        Path sourceFile = point.getSourceFile().toPath();
+        return coverageData.hasCoverageForFile(sourceFile)
+                && !coverageData.isLineCovered(sourceFile, point.getLineNumber());
     }
 
     private static String applyMutation(String content, MutationPoint point) {
@@ -776,107 +800,10 @@ public class Main {
 
 
     /**
-     * Dictionary-based mutation scanning using regex patterns
-     * This is the original approach - works for AOR, ROR, LOR mutations
+     * Dictionary-based mutation scanning using regex patterns.
+     * Delegates to {@link mutationtester.scanner.DictionaryMutationScanner}.
      */
     private static List<MutationPoint> scanWithDictionary(File file, Mutator.MutatorType type) throws IOException {
-        List<MutationPoint> points = new ArrayList<>();
-        String content = Files.readString(file.toPath());
-        String[] lines = content.split("\n", -1);
-
-        for (int lineNum = 0; lineNum < lines.length; lineNum++) {
-            String line = lines[lineNum];
-
-            // AOR: Arithmetic Operator Replacement
-            if (type == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                for (int col = 0; col < line.length(); col++) {
-                    if (line.charAt(col) == '+' && !isInStringOrComment(line, col)) {
-                        // Skip ++ increment operators
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '+') {
-                            continue;
-                        }
-                        if (col > 0 && line.charAt(col - 1) == '+') {
-                            continue;
-                        }
-
-                        MutationPoint point = new MutationPoint(
-                                file,
-                                lineNum + 1,
-                                col,
-                                "+",
-                                "-",
-                                type);
-                        points.add(point);
-                    }
-                }
-            }
-
-            if (type == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                for (int col = 0; col < line.length(); col++) {
-                    if (line.charAt(col) == '-' && !isInStringOrComment(line, col)) {
-                        // Skip -- decrement operators
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '-') {
-                            continue;
-                        }
-                        if (col > 0 && line.charAt(col - 1) == '-') {
-                            continue;
-                        }
-                        // Skip -> (arrow operator in some languages)
-                        if (col + 1 < line.length() && line.charAt(col + 1) == '>') {
-                            continue;
-                        }
-
-                        MutationPoint point = new MutationPoint(
-                                file,
-                                lineNum + 1,
-                                col,
-                                "-",
-                                "+",
-                                type);
-                        points.add(point);
-                    }
-                }
-            }
-
-            // Add more dictionary-based mutations here as needed
-            // ROR: Relational Operator Replacement
-            // LOR: Logical Operator Replacement
-            // etc.
-        }
-
-        return points;
-    }
-
-    private static boolean isInStringOrComment(String line, int position) {
-        boolean inString = false;
-        char stringDelimiter = '\0';
-
-        for (int i = 0; i < position; i++) {
-            char c = line.charAt(i);
-
-            if (i > 0 && line.charAt(i - 1) == '\\') {
-                continue;
-            }
-
-            if (c == '"' || c == '\'') {
-                if (!inString) {
-                    inString = true;
-                    stringDelimiter = c;
-                } else if (c == stringDelimiter) {
-                    inString = false;
-                    stringDelimiter = '\0';
-                }
-            }
-        }
-
-        if (inString) {
-            return true;
-        }
-
-        int commentStart = line.indexOf("//");
-        if (commentStart >= 0 && commentStart < position) {
-            return true;
-        }
-        return false;
+        return DictionaryMutationScanner.scanFile(file, type);
     }
 }

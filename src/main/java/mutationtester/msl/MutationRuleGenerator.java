@@ -93,6 +93,9 @@ public class MutationRuleGenerator {
         return rules;
     }
 
+    private static final java.util.regex.Pattern FUNC_CALL_PATTERN =
+            java.util.regex.Pattern.compile("^([A-Za-z_][A-Za-z0-9_.]*)\\(\\{quantity\\}\\)$");
+
     private static MutationRule createRule(String fromPattern, String toPattern, String groupLabel) {
         if (fromPattern.equals("{invocation_statement}") && toPattern.equals(";")) {
             return new StatementRemovalRule(groupLabel + ": statement \u2192 ;");
@@ -111,6 +114,21 @@ public class MutationRuleGenerator {
                         "!= \"\"",
                         groupLabel + ": string.IsNullOrEmpty \u2192 not empty");
             }
+        }
+
+        // Generic function call pattern: funcname({quantity}) → replacement
+        // Supports Python-style patterns like str({quantity}) → {quantity}
+        java.util.regex.Matcher m = FUNC_CALL_PATTERN.matcher(fromPattern);
+        if (m.matches()) {
+            String funcName = m.group(1);
+            String suffix;
+            if (toPattern.startsWith("{quantity}")) {
+                suffix = toPattern.substring("{quantity}".length()).strip();
+            } else {
+                suffix = toPattern;
+            }
+            String label = groupLabel + ": " + funcName + "({quantity}) \u2192 " + toPattern;
+            return new StringCallReplacementRule(funcName, suffix, label);
         }
 
         BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);

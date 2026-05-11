@@ -42,6 +42,10 @@ demo-output/
 /samples/SchemeProject/project/compiled
 /samples/PytestProject/tests/__pycache__
 /samples/PytestProject/src/__pycache__
+/samples/PytestProject/coverage/
+/samples/JSProject/coverage/
+/samples/RacketProject/.mutation-racket-coverage.tmp
+/samples/RacketProject/racket-coverage.info
 /.vscode
 
 # External local projects / submodules

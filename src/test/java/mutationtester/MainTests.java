@@ -141,4 +141,44 @@ public class MainTests {
         assertTrue(parsed.coverageCommand.equals("mvn test jacoco:report"));
         assertTrue(parsed.coverageReport.equals("target/site/jacoco/jacoco.xml"));
     }
+
+    @Test
+    void testSingleMutantSkipsExecutionWhenLineHasNoCoverage() throws Exception {
+        Path projectDir = Files.createTempDirectory("mutation-no-coverage-skip");
+        Path sourceFile = projectDir.resolve("Demo.java");
+        Files.writeString(sourceFile, """
+                class Demo {
+                    int add(int x) {
+                        return x + 1;
+                    }
+                }
+                """);
+        Path coverageReport = projectDir.resolve("coverage.info");
+        Files.writeString(coverageReport, """
+                TN:
+                SF:%s
+                DA:3,0
+                end_of_record
+                """.formatted(sourceFile));
+
+        CoverageData coverageData = CoverageData.load(coverageReport);
+        MutationPoint point = new MutationPoint(
+                sourceFile.toFile(),
+                3,
+                17,
+                "+",
+                "-",
+                Mutator.MutatorType.AOR_PLUS_TO_MINUS);
+
+        MutantResult result = Main.testSingleMutant(
+                point,
+                projectDir,
+                "definitely-not-a-real-compile-command",
+                "definitely-not-a-real-test-command",
+                coverageData);
+
+        assertTrue(result.getStatus() == MutantResult.MutantStatus.NO_COVERAGE);
+        assertTrue(Files.readString(sourceFile).contains("return x + 1;"));
+        assertTrue(result.getTestOutput().contains("Skipped mutation execution"));
+    }
 }
