@@ -15,6 +15,10 @@ public class Mutator {
         AOR_MULTIPLY_TO_DIVIDE,
         AOR_DIVIDE_TO_MULTIPLY,
         AOR_MODULO_TO_MULTIPLY,
+        AOR_FLOOR_DIV_TO_DIV,   // Python: floor division // → regular division /
+        AOR_POWER_TO_MULTIPLY,  // Python: exponentiation ** → multiply *
+        INVERT_NEGS,            // Python: logical not x → x (removes `not`)
+        NULL_RETURNS,           // Python: return <expr> → return None
 
         //Bitwise Operator Replacement
         BOR_AND_TO_OR,

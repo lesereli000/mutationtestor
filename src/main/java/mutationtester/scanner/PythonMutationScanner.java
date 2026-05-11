@@ -44,6 +44,10 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE,
                 Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY,
                 Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY,
+                Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV,
+                Mutator.MutatorType.AOR_POWER_TO_MULTIPLY,
+                Mutator.MutatorType.INVERT_NEGS,
+                Mutator.MutatorType.NULL_RETURNS,
                 Mutator.MutatorType.BOR_AND_TO_OR,
                 Mutator.MutatorType.BOR_OR_TO_AND,
                 Mutator.MutatorType.ROR_LT_TO_LE,
@@ -64,6 +68,10 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE
                 || type == Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY
                 || type == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY
+                || type == Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV
+                || type == Mutator.MutatorType.AOR_POWER_TO_MULTIPLY
+                || type == Mutator.MutatorType.INVERT_NEGS
+                || type == Mutator.MutatorType.NULL_RETURNS
                 || type == Mutator.MutatorType.BOR_AND_TO_OR
                 || type == Mutator.MutatorType.BOR_OR_TO_AND
                 || type == Mutator.MutatorType.ROR_LT_TO_LE

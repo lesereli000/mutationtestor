@@ -82,6 +82,30 @@ public class DictionaryMutationScanner {
                 }
             }
 
+            // Python-only: floor division // → regular division /
+            if (type == Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV && isPython) {
+                for (int col = 0; col + 1 < line.length(); col++) {
+                    if (line.charAt(col) != '/' || line.charAt(col + 1) != '/') continue;
+                    if (inProtected(line, col, true)) continue;
+                    // Skip //= (floor-div assignment)
+                    if (col + 2 < line.length() && line.charAt(col + 2) == '=') continue;
+                    points.add(new MutationPoint(file, lineNum + 1, col, "//", "/", type));
+                    col++; // skip past second '/' so we don't re-examine it
+                }
+            }
+
+            // Python-only: exponentiation ** → multiply *
+            if (type == Mutator.MutatorType.AOR_POWER_TO_MULTIPLY && isPython) {
+                for (int col = 0; col + 1 < line.length(); col++) {
+                    if (line.charAt(col) != '*' || line.charAt(col + 1) != '*') continue;
+                    if (inProtected(line, col, true)) continue;
+                    // Skip **= (power-assign)
+                    if (col + 2 < line.length() && line.charAt(col + 2) == '=') continue;
+                    points.add(new MutationPoint(file, lineNum + 1, col, "**", "*", type));
+                    col++; // skip past second '*'
+                }
+            }
+
             // ── BOR: Bitwise Operator Replacement ─────────────────────────────
 
             if (type == Mutator.MutatorType.BOR_AND_TO_OR) {
@@ -184,6 +208,20 @@ public class DictionaryMutationScanner {
                         if (!inProtected(line, idx, false))
                             points.add(new MutationPoint(file, lineNum + 1, idx, "||", "&&", type));
                     }
+                }
+            }
+
+            // Python-only: remove logical `not` (not x → x)
+            if (type == Mutator.MutatorType.INVERT_NEGS && isPython) {
+                for (int idx = 0; (idx = line.indexOf("not", idx)) >= 0; ) {
+                    int end = idx + 3; // length of "not"
+                    // must be followed by a space (not x), not "not=" or "note" etc.
+                    if (end < line.length() && line.charAt(end) == ' '
+                            && isKeywordAt(line, idx, 3)
+                            && !inProtected(line, idx, true)) {
+                        points.add(new MutationPoint(file, lineNum + 1, idx, "not ", "", type));
+                    }
+                    idx = end;
                 }
             }
         }

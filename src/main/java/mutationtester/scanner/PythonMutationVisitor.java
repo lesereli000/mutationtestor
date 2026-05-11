@@ -87,6 +87,10 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
             addMutation(ctx.op, "/", "*");
         } else if (mutationType == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY && operator.equals("%")) {
             addMutation(ctx.op, "%", "*");
+        } else if (mutationType == Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV && operator.equals("//")) {
+            addMutation(ctx.op, "//", "/");
+        } else if (mutationType == Mutator.MutatorType.AOR_POWER_TO_MULTIPLY && operator.equals("**")) {
+            addMutation(ctx.op, "**", "*");
         } else if (mutationType == Mutator.MutatorType.BOR_AND_TO_OR && operator.equals("&")) {
             addMutation(ctx.op, "&", "|");
         } else if (mutationType == Mutator.MutatorType.BOR_OR_TO_AND && operator.equals("|")) {
@@ -97,7 +101,35 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
     }
 
     @Override
+    public Void visitReturn_stmt(PythonParser.Return_stmtContext ctx) {
+        if (mutationType == Mutator.MutatorType.NULL_RETURNS && ctx.testlist() != null) {
+            Token startTok = ctx.testlist().getStart();
+            Token stopTok  = ctx.testlist().getStop();
+            // Extract actual source text (preserves whitespace, unlike getText())
+            String[] lines = sourceCode.split("\n", -1);
+            int lineIdx = startTok.getLine() - 1;
+            if (lineIdx >= 0 && lineIdx < lines.length) {
+                String srcLine = lines[lineIdx];
+                int colStart = startTok.getCharPositionInLine();
+                int colStop  = stopTok.getCharPositionInLine() + stopTok.getText().length();
+                colStop = Math.min(colStop, srcLine.length());
+                String exprText = srcLine.substring(colStart, colStop);
+                if (!exprText.equals("None")) {
+                    addMutation(startTok, exprText, "None");
+                }
+            }
+        }
+        return visitChildren(ctx);
+    }
+
+    @Override
     public Void visitLogical_test(PythonParser.Logical_testContext ctx) {
+        if (mutationType == Mutator.MutatorType.INVERT_NEGS && ctx.NOT() != null) {
+            Token notToken = ctx.NOT().getSymbol();
+            addMutation(notToken, "not ", "");
+            return visitChildren(ctx);
+        }
+
         if (ctx.op == null) {
             return visitChildren(ctx);
         }

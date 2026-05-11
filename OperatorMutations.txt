@@ -9,7 +9,13 @@ Math Operators:
 	And: Inverse
 
 	Replace: {quantity} % {quantity}
-	With: {quantity} * {quantity}	
+	With: {quantity} * {quantity}
+
+	Replace: {quantity} // {quantity}
+	With: {quantity} / {quantity}
+
+	Replace: {quantity} ** {quantity}
+	With: {quantity} * {quantity}
 
 	Replace: {quantity} & {quantity}
 	With: {quantity} | {quantity}

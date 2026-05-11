@@ -107,6 +107,46 @@ public class PythonScannerTests {
     }
 
     @Test
+    public void testFloorDivToDivMutation() throws IOException {
+        File file = writeTempPythonFile("def floor_divide(a, b):\n    return a // b\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
+
+        assertEquals(1, points.size());
+        assertEquals("//", points.get(0).getOperator());
+        assertEquals("/", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testFloorDivDoesNotFireOnRegularDiv() throws IOException {
+        File file = writeTempPythonFile("def divide(a, b):\n    return a / b\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
+
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
+    public void testPowerToMultiplyMutation() throws IOException {
+        File file = writeTempPythonFile("def power(a, b):\n    return a ** b\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
+
+        assertEquals(1, points.size());
+        assertEquals("**", points.get(0).getOperator());
+        assertEquals("*", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testPowerToMultiplyDoesNotFireOnSingleStar() throws IOException {
+        File file = writeTempPythonFile("def multiply(a, b):\n    return a * b\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
+
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
     public void testBitwiseAndToOr() throws IOException {
         File file = writeTempPythonFile("def bitwise_and(x, y):\n    return x & y\n");
 
@@ -199,6 +239,55 @@ public class PythonScannerTests {
         File file = writeTempPythonFile("x: int = 5\n");
 
         List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_DOUBLE);
+
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
+    public void testInvertNegsRemovesNot() throws IOException {
+        File file = writeTempPythonFile("def is_nonzero(x):\n    return not x == 0\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.INVERT_NEGS);
+
+        assertEquals(1, points.size());
+        assertEquals("not ", points.get(0).getOperator());
+        assertEquals("", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testInvertNegsDoesNotFireInsideString() throws IOException {
+        File file = writeTempPythonFile("def example():\n    return \"not x\"\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.INVERT_NEGS);
+
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
+    public void testNullReturnsReplacesExpression() throws IOException {
+        File file = writeTempPythonFile("def add(a, b):\n    return a + b\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
+
+        assertEquals(1, points.size());
+        assertEquals("a + b", points.get(0).getOperator());
+        assertEquals("None", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testNullReturnsSkipsReturnNone() throws IOException {
+        File file = writeTempPythonFile("def nothing():\n    return None\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
+
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
+    public void testNullReturnsSkipsBareReturn() throws IOException {
+        File file = writeTempPythonFile("def nothing():\n    return\n");
+
+        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
 
         assertTrue(points.isEmpty());
     }
