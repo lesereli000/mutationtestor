@@ -1,5 +1,6 @@
 package mutationtester.scanner;
 
+import mutationtester.*;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import org.antlr.v4.runtime.tree.TerminalNode;

@@ -1,5 +1,6 @@
 package mutationtester.scanner;
 
+import mutationtester.*;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -57,7 +58,7 @@ public class JavaScriptLCRVisitor extends JavaScriptParserBaseVisitor<Void> {
     }
     
     @Override
-    public Void visitLogicalORExpression(JavaScriptParser.LogicalORExpressionContext ctx) {
+    public Void visitLogicalOrExpression(JavaScriptParser.LogicalOrExpressionContext ctx) {
         // Find || operator
         for (int i = 0; i < ctx.getChildCount(); i++) {
             ParseTree child = ctx.getChild(i);
