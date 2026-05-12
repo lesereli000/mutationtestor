@@ -41,13 +41,6 @@ public class Mutator {
         ROR_EQ_TO_NE,
         ROR_NE_TO_EQ,
 
-
-        // Additional ROR variants
-        ROR_GTE_TO_GT,
-        ROR_GTE_TO_LT,
-        ROR_LTE_TO_LT,
-        ROR_LTE_TO_GT,
-
         // Return Value Mutations
         RVM_TRUE_TO_FALSE,
         RVM_FALSE_TO_TRUE,
@@ -90,14 +83,6 @@ public class Mutator {
         NLT_FLOAT_TO_EXPONENTIAL, // 3.14 → 3.14e0
         NLT_EXPONENTIAL_TO_INTEGER, // 1e10 → 10000000000
         NLT_EXPONENTIAL_TO_FLOAT, // 1e10 → 10000000000.0
-
-        // Return Value Mutations for JavaScript
-        RVM_TRUE_TO_FALSE,
-        RVM_FALSE_TO_TRUE,
-        RVM_ZERO_TO_ONE,
-        RVM_NONZERO_TO_ZERO,
-
-
 
         CUSTOM  // spec-driven branch; config must also set custom_mutation_spec=<path>
 
