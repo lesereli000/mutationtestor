@@ -41,6 +41,19 @@ public class Mutator {
         ROR_EQ_TO_NE,
         ROR_NE_TO_EQ,
 
+
+        // Additional ROR variants
+        ROR_GTE_TO_GT,
+        ROR_GTE_TO_LT,
+        ROR_LTE_TO_LT,
+        ROR_LTE_TO_GT,
+
+        // Return Value Mutations
+        RVM_TRUE_TO_FALSE,
+        RVM_FALSE_TO_TRUE,
+        RVM_ZERO_TO_ONE,
+        RVM_NONZERO_TO_ZERO,
+
         // Logical Connector Replacement
         LCR_AND_TO_OR,          // && to ||
         LCR_OR_TO_AND,          // || to &&
