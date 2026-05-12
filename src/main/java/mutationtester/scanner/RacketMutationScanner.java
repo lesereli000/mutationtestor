@@ -36,6 +36,9 @@ import java.util.List;
  *   LOGICAL_OR_TO_AND      : (or p q) → (and p q)
  *   NLT_INTEGER_TO_FLOAT   : 5 → 5.0
  *   NLT_FLOAT_TO_INTEGER   : 5.0 → 5
+ *   AOR_MULTIPLY_TO_DIVIDE : (* a b) → (/ a b)
+ *   AOR_DIVIDE_TO_MULTIPLY : (/ a b) → (* a b)
+ *   NEGATE_CONDITIONALS    : (if cond ...) → (if (not cond) ...)
  */
 public class RacketMutationScanner {
 
@@ -190,6 +193,10 @@ public class RacketMutationScanner {
                 case AOR_DIVIDE_TO_MULTIPLY -> {
                     if (text.equals("/"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "/", "*", mutationType));
+                }
+                case NEGATE_CONDITIONALS -> {
+                    if (text.equals("if"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "if", "(not if)", mutationType));
                 }
                 default -> { }
             }

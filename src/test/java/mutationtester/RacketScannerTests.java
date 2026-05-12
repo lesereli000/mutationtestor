@@ -403,4 +403,66 @@ public class RacketScannerTests {
         assertEquals("/", p.getOperator());
         assertEquals("*", p.getReplacement());
     }
+
+
+    @Test
+    public void testArithmeticMultiplyToDivide() throws IOException {
+        File file = new File("samples/RacketCalculator/calculator/src/arithmetic.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
+        assertEquals(2, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("*", p.getOperator());
+            assertEquals("/", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testArithmeticDivideToMultiply() throws IOException {
+        File file = new File("samples/RacketCalculator/calculator/src/arithmetic.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("/", p.getOperator());
+        assertEquals("*", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsNoMultiply() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
+        assertEquals(1, points.size());
+    }
+
+    @Test
+    public void testOperatorsNoDivide() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
+        assertEquals(1, points.size());
+    }
+
+
+    // -------------------------------------------------------------------------
+    // NEGATE_CONDITIONALS: (if cond ...) → (if (not cond) ...)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testArithmeticNegateConditionals() throws IOException {
+        File file = new File("samples/RacketCalculator/calculator/src/arithmetic.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS);
+        // arithmetic.rkt has exactly one (if ...) form in divide
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("if", p.getOperator());
+    }
+
+    @Test
+    public void testOperatorsNegateConditionals() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS);
+        // operators.rkt has 7 (if ...) forms
+        assertEquals(7, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("if", p.getOperator());
+        }
+    }
 }

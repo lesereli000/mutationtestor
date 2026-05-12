@@ -1,5 +1,5 @@
 package mutationtester.scanner;
- 
+
 import mutationtester.JavaScriptParser;
 import mutationtester.JavaScriptParserBaseVisitor;
 import mutationtester.model.MutationPoint;

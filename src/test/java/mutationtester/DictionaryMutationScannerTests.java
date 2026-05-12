@@ -73,6 +73,52 @@ public class DictionaryMutationScannerTests {
     }
 
     @Test
+    void python_floorDivToDiv() throws IOException {
+        File f = py("return a // b");
+        var pts = scan(f, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
+        assertEquals(1, pts.size());
+        assertEquals("//", pts.get(0).getOperator());
+        assertEquals("/", pts.get(0).getReplacement());
+    }
+
+    @Test
+    void python_floorDivAssignIsSkipped() throws IOException {
+        File f = py("x //= 2");
+        var pts = scan(f, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
+    void python_floorDivAfterHashCommentIsSkipped() throws IOException {
+        File f = py("# return a // b");
+        var pts = scan(f, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
+    void python_powerToMultiply() throws IOException {
+        File f = py("return a ** b");
+        var pts = scan(f, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
+        assertEquals(1, pts.size());
+        assertEquals("**", pts.get(0).getOperator());
+        assertEquals("*", pts.get(0).getReplacement());
+    }
+
+    @Test
+    void python_powerAssignIsSkipped() throws IOException {
+        File f = py("x **= 2");
+        var pts = scan(f, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
+    void python_singleStarNotDetectedAsPower() throws IOException {
+        File f = py("return a * b");
+        var pts = scan(f, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
     void python_bitwiseAndToOr() throws IOException {
         File f = py("return x & y");
         var pts = scan(f, Mutator.MutatorType.BOR_AND_TO_OR);
@@ -185,6 +231,37 @@ public class DictionaryMutationScannerTests {
         File f = py("tag = \"#tag\"\nreturn a + b");
         var pts = scan(f, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
         assertEquals(1, pts.size()); // the + on line 2 must still be found
+    }
+
+    @Test
+    void python_invertNegsDetectsNot() throws IOException {
+        File f = py("return not x");
+        var pts = scan(f, Mutator.MutatorType.INVERT_NEGS);
+        assertEquals(1, pts.size());
+        assertEquals("not ", pts.get(0).getOperator());
+        assertEquals("", pts.get(0).getReplacement());
+    }
+
+    @Test
+    void python_invertNegsSkipsNotInHashComment() throws IOException {
+        File f = py("# return not x");
+        var pts = scan(f, Mutator.MutatorType.INVERT_NEGS);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
+    void python_invertNegsSkipsNotInsideString() throws IOException {
+        File f = py("return \"not x\"");
+        var pts = scan(f, Mutator.MutatorType.INVERT_NEGS);
+        assertTrue(pts.isEmpty());
+    }
+
+    @Test
+    void python_invertNegsDoesNotMatchNoteOrNothing() throws IOException {
+        // "note" or "nothing" must not match
+        File f = py("note = nothing");
+        var pts = scan(f, Mutator.MutatorType.INVERT_NEGS);
+        assertTrue(pts.isEmpty());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

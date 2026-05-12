@@ -46,7 +46,9 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedPytestProject() {
         Path directory = Path.of("samples/PytestProject");
-        String testCommand = "pytest ./tests/TestAdd.py";
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String pyExec = isWindows ? ".venv\\Scripts\\python.exe" : ".venv/bin/python";
+        String testCommand = pyExec + " -m pytest ./tests/TestAdd.py";
         testOutput(testCommand, directory, directory, false);
     }
 
@@ -207,5 +209,48 @@ public class MutantExecutionTests {
         } catch (Exception e) {
             fail("Final tear down failed: " + e.getMessage());
         }
+    }
+
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorMultiplyMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_Multiply");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
+    }
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorNegateConditionalsMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_NegateConditionals");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.NEGATE_CONDITIONALS;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
+    }
+
+    @Test
+    @Execution(ExecutionMode.CONCURRENT)
+    public void testRunCommandWithRacketCalculatorDivideMutants() {
+        Path testPath = Path.of("output/TestDir/RacketCalculator_Divide");
+        Path projectPath = Path.of("samples/RacketCalculator");
+        Path sourcePath = Path.of("calculator/src");
+        Mutator.MutatorType mutationType = Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY;
+        String testCommand = "racket ./calculator/tests/all-tests.rkt";
+
+        mutantSetup(projectPath, testPath, sourcePath, mutationType);
+        testOutput(testCommand, sourcePath, testPath, true);
+        mutantTearDown(testPath);
     }
 }

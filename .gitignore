@@ -39,6 +39,7 @@ demo-output/
 /samples/CSProject/tests/CSProject.Tests/obj/
 /samples/JSProject/node_modules/
 /samples/PytestProject/venv/
+/samples/PytestProject/.venv/
 /samples/SchemeProject/project/compiled
 /samples/PytestProject/tests/__pycache__
 /samples/PytestProject/src/__pycache__

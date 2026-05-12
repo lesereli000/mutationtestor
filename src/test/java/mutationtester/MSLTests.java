@@ -344,7 +344,7 @@ public class MSLTests {
         java.io.File spec = new java.io.File(
             "OperatorMutations.txt");
         java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
-        assertEquals(23, rules.size());
+        assertEquals(25, rules.size());
     }
 
     @Test

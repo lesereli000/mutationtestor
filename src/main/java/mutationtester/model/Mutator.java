@@ -15,6 +15,10 @@ public class Mutator {
         AOR_MULTIPLY_TO_DIVIDE,
         AOR_DIVIDE_TO_MULTIPLY,
         AOR_MODULO_TO_MULTIPLY,
+        AOR_FLOOR_DIV_TO_DIV,   // Python: floor division // → regular division /
+        AOR_POWER_TO_MULTIPLY,  // Python: exponentiation ** → multiply *
+        INVERT_NEGS,            // Python: logical not x → x (removes `not`)
+        NULL_RETURNS,           // Python: return <expr> → return None
 
         //Bitwise Operator Replacement
         BOR_AND_TO_OR,
@@ -30,15 +34,12 @@ public class Mutator {
         ROR_GT_TO_GTE,
         ROR_LT_TO_GT,
         ROR_LT_TO_LTE,
-        ROR_EQ_TO_NE,
-        ROR_NE_TO_EQ,
-
-
-        // Additional ROR variants
         ROR_GTE_TO_GT,
         ROR_GTE_TO_LT,
         ROR_LTE_TO_LT,
         ROR_LTE_TO_GT,
+        ROR_EQ_TO_NE,
+        ROR_NE_TO_EQ,
 
         // Return Value Mutations
         RVM_TRUE_TO_FALSE,
@@ -68,6 +69,7 @@ public class Mutator {
 
         CONDITIONAL_TRUE,
         CONDITIONAL_FALSE,
+        NEGATE_CONDITIONALS,
         STATEMENT_MUTATION,
         STRING_MUTATION_TO_NOT_NULL,
         STRING_MUTATION_TO_NOT_EMPTY,
@@ -81,8 +83,6 @@ public class Mutator {
         NLT_FLOAT_TO_EXPONENTIAL, // 3.14 → 3.14e0
         NLT_EXPONENTIAL_TO_INTEGER, // 1e10 → 10000000000
         NLT_EXPONENTIAL_TO_FLOAT, // 1e10 → 10000000000.0
-
-
 
         CUSTOM  // spec-driven branch; config must also set custom_mutation_spec=<path>
 
@@ -108,6 +108,10 @@ public class Mutator {
         }
 
         boolean isRacket = inputPath.getFileName().toString().toLowerCase().endsWith(".rkt");
+
+        if (isRacket && type == MutatorType.NEGATE_CONDITIONALS) {
+            return mutateRacketNegateConditionals(code);
+        }
 
         // return mutateOutsideStringsAndComments(code, type, 1, language, isRacket);
         return mutateOutsideStringsAndComments(code, type, Integer.MAX_VALUE, language, isRacket);
@@ -328,6 +332,40 @@ public class Mutator {
                             }
                         }
                     }
+
+                    // AOR: * -> /
+                    if (type == MutatorType.AOR_MULTIPLY_TO_DIVIDE && c == '*') {
+                        if (isRacket) {
+                            if (shouldMutateRacketMultiplyToken(code, i)) {
+                                out.append('/');
+                                edits++;
+                                continue;
+                            }
+                        } else {
+                            if (shouldMutateBinaryOp(code, i)) {
+                                out.append('/');
+                                edits++;
+                                continue;
+                            }
+                        }
+                    }
+
+// AOR: / -> *
+                    if (type == MutatorType.AOR_DIVIDE_TO_MULTIPLY && c == '/') {
+                        if (isRacket) {
+                            if (shouldMutateRacketDivideToken(code, i)) {
+                                out.append('*');
+                                edits++;
+                                continue;
+                            }
+                        } else {
+                            if (shouldMutateBinaryOp(code, i)) {
+                                out.append('*');
+                                edits++;
+                                continue;
+                            }
+                        }
+                    }
                     // Relational
                     // 5. < -> <=
                     // if (type == MutatorType.ROR_LT_TO_LE && c == '<' && next != '=' && next !=
@@ -412,6 +450,102 @@ public class Mutator {
 
         return out.toString();
     }
+
+    private static boolean shouldMutateRacketMultiplyToken(String code, int index) {
+        char prev = (index - 1 >= 0) ? code.charAt(index - 1) : '\0';
+        char next = (index + 1 < code.length()) ? code.charAt(index + 1) : '\0';
+        return isRacketDelimiter(prev) && isRacketDelimiter(next);
+    }
+
+    private static boolean shouldMutateRacketDivideToken(String code, int index) {
+        char prev = (index - 1 >= 0) ? code.charAt(index - 1) : '\0';
+        char next = (index + 1 < code.length()) ? code.charAt(index + 1) : '\0';
+        // Don't mutate rational literals like 3/2 (digit before slash)
+        if (Character.isDigit(prev))
+            return false;
+        return isRacketDelimiter(prev) && isRacketDelimiter(next);
+    }
+
+    /**
+     * Wraps every (if condition ...) condition with (not ...) in Racket code.
+     * Handles paren-expression conditions and simple-token conditions.
+     * Skips line comments (;) and block comments (#| |#).
+     */
+    private static String mutateRacketNegateConditionals(String code) {
+        StringBuilder out = new StringBuilder(code.length() + 64);
+        int i = 0;
+        while (i < code.length()) {
+            char c = code.charAt(i);
+
+            // Skip line comments
+            if (c == ';') {
+                while (i < code.length() && code.charAt(i) != '\n')
+                    out.append(code.charAt(i++));
+                continue;
+            }
+            // Skip block comments #| ... |#
+            if (c == '#' && i + 1 < code.length() && code.charAt(i + 1) == '|') {
+                out.append(c);
+                i++;
+                while (i < code.length()) {
+                    char cc = code.charAt(i);
+                    out.append(cc);
+                    if (cc == '|' && i + 1 < code.length() && code.charAt(i + 1) == '#') {
+                        out.append(code.charAt(i + 1));
+                        i += 2;
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+            // Detect "(if " — paren followed by "if" token followed by delimiter
+            if (c == '(' && i + 3 <= code.length() && code.startsWith("if", i + 1)) {
+                int afterIf = i + 3;
+                boolean ifTokenEnd = afterIf >= code.length() || isRacketDelimiter(code.charAt(afterIf));
+                if (ifTokenEnd) {
+                    // Consume "(if"
+                    out.append("(if");
+                    i = afterIf;
+                    // Copy whitespace between "if" and condition
+                    while (i < code.length() && Character.isWhitespace(code.charAt(i))) {
+                        out.append(code.charAt(i++));
+                    }
+                    if (i >= code.length()) continue;
+                    // Insert "(not " before condition
+                    out.append("(not ");
+                    // Copy the condition expression
+                    char condStart = code.charAt(i);
+                    if (condStart == '(') {
+                        // Paren expression: copy until the matching closing paren
+                        int depth = 0;
+                        while (i < code.length()) {
+                            char cc = code.charAt(i++);
+                            out.append(cc);
+                            if (cc == '(') depth++;
+                            else if (cc == ')') { depth--; if (depth == 0) break; }
+                        }
+                    } else {
+                        // Simple token: copy until whitespace or closing paren
+                        while (i < code.length()) {
+                            char cc = code.charAt(i);
+                            if (Character.isWhitespace(cc) || cc == ')') break;
+                            out.append(cc);
+                            i++;
+                        }
+                    }
+                    // Close the "(not"
+                    out.append(')');
+                    continue;
+                }
+            }
+
+            out.append(c);
+            i++;
+        }
+        return out.toString();
+    }
+
 
     // binary operator check
     private static boolean shouldMutateBinaryOp(String code, int opIndex) {

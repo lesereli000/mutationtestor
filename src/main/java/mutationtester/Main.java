@@ -829,6 +829,12 @@ public class Main {
                         || fileName.endsWith(".rkt");
             }
  
+            // Conditional/statement mutations: only handled by AST scanners, not Dictionary.
+            if (typeName.startsWith("CONDITIONAL_") || typeName.startsWith("NEGATE_")
+                    || typeName.equals("STATEMENT_MUTATION")) {
+                return true;
+            }
+
             // Operator mutations: Dictionary is sufficient and 100x faster.
             // AOR / ROR / LCR / RVM / BOR / REMOVE_INCREMENT etc.
             return false;
