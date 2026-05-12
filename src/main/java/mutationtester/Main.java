@@ -149,7 +149,7 @@ public class Main {
             return;
         }
 
-        if ("ALL".equalsIgnoreCase(config.mutatorType)) {
+             if ("ALL".equalsIgnoreCase(config.mutatorType)) {
             for (Mutator.MutatorType type : PythonMutationScanner.getSupportedTypes()) {
                 mutationTest(
                         projectDirectory,
@@ -162,6 +162,18 @@ public class Main {
                         config.coverageCommand,
                         config.coverageReport);
             }
+        } else if (config.mutatorType.contains(",")) {
+            // Multiple comma-separated mutation types — run all, one combined report
+            multiMutationTest(
+                    projectDirectory,
+                    config.sourceCodeDirectory,
+                    config.mutatorType,
+                    config.compileCommand,
+                    config.testCommand,
+                    config.mutationStrategy,
+                    config.customMutationSpec,
+                    config.coverageCommand,
+                    config.coverageReport);
         } else {
             mutationTest(
                     projectDirectory,
@@ -177,6 +189,7 @@ public class Main {
 
         System.out.println("Quitting");
     }
+
 
     /** Package-visible overload used by tests to pass a File directly. */
     static Config readConfig(File configFile) throws IOException {
@@ -833,4 +846,110 @@ public class Main {
     private static List<MutationPoint> scanWithDictionary(File file, Mutator.MutatorType type) throws IOException {
         return DictionaryMutationScanner.scanFile(file, type);
     }
+
+        private static void multiMutationTest(
+            String projectDir, String sourceCode, String mutatorTypes,
+            String command1, String command2, String mutationStrategy,
+            String customMutationSpec, String coverageCommand, String coverageReport) {
+ 
+        Path projectPath = Path.of(projectDir);
+        Path sourcePath  = Path.of(sourceCode);
+        Path outputRoot  = Path.of(OUTPUT_ROOT);
+        Path mutantPath  = outputRoot.resolve(WORKING_DIR_PREFIX + System.currentTimeMillis());
+ 
+        System.out.println("Setting up working directory");
+        try {
+            FileUtils.forceMkdir(outputRoot.toFile());
+            cleanupWorkDirectories(outputRoot, null);
+            FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
+        } catch (IOException e) {
+            System.err.println("Error setting up working directory: " + e.getMessage());
+            return;
+        }
+        System.out.println("Working directory created: " + mutantPath);
+ 
+        try {
+            System.out.println("\nRunning baseline tests");
+            if (!command1.isEmpty()) runCommand(command1, mutantPath.toString());
+            String baselineOutput = runCommand(command2, mutantPath.toString());
+            if (hasTestFailures(baselineOutput)) {
+                System.err.println("ERROR: Tests fail on original code!");
+                return;
+            }
+            System.out.println("Baseline tests pass");
+ 
+            Path sourceDir = mutantPath.resolve(sourcePath);
+            CoverageData coverageData = loadCoverageData(
+                    mutantPath, sourceDir, coverageCommand, coverageReport);
+ 
+            // Parse and display selected strategy
+            MutationStrategy strategy;
+            if (mutationStrategy == null || mutationStrategy.trim().isEmpty()) {
+                strategy = StrategySelector.selectStrategy();
+            } else {
+                strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
+            }
+            StrategySelector.printStrategyDetails(strategy);
+ 
+            // Collect mutation points for ALL requested types
+            System.out.println("\nScanning for mutations across all types...");
+            List<MutationPoint> allPoints = new ArrayList<>();
+            String[] types = mutatorTypes.split(",");
+            for (String typeStr : types) {
+                String trimmed = typeStr.trim();
+                System.out.println("  Scanning for: " + trimmed);
+                List<MutationPoint> typePoints = scanForMutations(
+                        sourceDir,
+                        Mutator.MutatorType.valueOf(trimmed),
+                        mutationStrategy,
+                        customMutationSpec);
+                System.out.println("    Found " + typePoints.size() + " points");
+                allPoints.addAll(typePoints);
+            }
+            System.out.println("Total mutation points found: " + allPoints.size());
+ 
+            if (allPoints.isEmpty()) {
+                System.out.println("No mutations found. Exiting.");
+                return;
+            }
+ 
+            // Test all mutants, collecting into one result list
+            System.out.println("\nTesting mutants");
+            List<MutantResult> results = new ArrayList<>();
+            int current = 1;
+            for (MutationPoint point : allPoints) {
+                String labelInfo = point.getCustomLabel() != null
+                        ? " [" + point.getCustomLabel() + "]" : "";
+                System.out.print("[" + current++ + "/" + allPoints.size() + "] Testing "
+                        + point.getSourceFile().getName()
+                        + ":" + point.getLineNumber()
+                        + " (" + point.getOperator() + " \u2192 " + point.getReplacement()
+                        + ") [" + point.getType().name() + "]" + labelInfo + "... ");
+ 
+                MutantResult result = testSingleMutant(
+                        point, mutantPath, command1, command2, coverageData);
+                results.add(result);
+                System.out.println(result.getStatus());
+            }
+ 
+            // One combined report
+            System.out.println("\nGenerating combined report");
+            MutationReport report = new MutationReport(results);
+            report.printReport();
+ 
+            try {
+                HtmlReportGenerator.generateHtmlReport(report, results);
+                System.out.println("HTML report: output/report/mutation-report-demo.html");
+            } catch (IOException e) {
+                System.err.println("Failed to generate HTML report: " + e.getMessage());
+            }
+ 
+            System.out.println("\nMutation testing complete");
+        } finally {
+            cleanupWorkDirectories(outputRoot, mutantPath);
+        }
+    }
+ 
+
 }
+
