@@ -71,15 +71,17 @@ if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\csharp\" >nul 2>
 REM --------------------------------------------------------------------------
 echo.
 echo ============================================================================
-echo   [4/5] PYTHON (Pytest Project) - MSL Operators
+echo   [4/5] PYTHON (Pytest Project) - MSL Operators + NULL_RETURNS
 echo ============================================================================
 echo.
+set PYTHON_FAIL=0
 java -jar %JAR% samples/PytestProject newPython.config
-if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
+if errorlevel 1 (set PYTHON_FAIL=1)
 if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\python\" >nul 2>&1
 java -jar %JAR% samples/PytestProject nullReturns.config
-if errorlevel 1 (set /a FAIL+=1) else (set /a PASS+=1)
-if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\python-null-returns\" >nul 2>&1
+if errorlevel 1 (set PYTHON_FAIL=1)
+if exist output\report xcopy /s /q /y output\report "%DEMO_DIR%\python\" >nul 2>&1
+if %PYTHON_FAIL%==0 (set /a PASS+=1) else (set /a FAIL+=1)
 
 REM --------------------------------------------------------------------------
 echo.
@@ -107,8 +109,7 @@ echo   All reports saved to: %DEMO_DIR%\
 echo     demo-output\java\          - mutation-report-demo.html
 echo     demo-output\javascript\    - mutation-report-demo.html
 echo     demo-output\csharp\        - mutation-report-demo.html
-echo     demo-output\python\        - mutation-report-demo.html (MSL operators)
-echo     demo-output\python-null-returns\ - mutation-report-demo.html (NULL_RETURNS)
+echo     demo-output\python\        - mutation-report-demo.html (MSL operators + NULL_RETURNS)
 echo     demo-output\racket\        - mutation-report-demo.html
 echo ============================================================================
 echo.
