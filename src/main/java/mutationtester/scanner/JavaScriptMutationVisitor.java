@@ -4,7 +4,8 @@ import mutationtester.*;
 import mutationtester.model.Mutation;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-
+import mutationtester.JavaScriptParserBaseVisitor;
+import mutationtester.JavaScriptParser;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;

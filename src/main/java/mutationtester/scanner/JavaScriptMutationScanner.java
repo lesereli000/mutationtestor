@@ -1,10 +1,10 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-
+import mutationtester.JavaScriptParserBaseVisitor;
+import mutationtester.JavaScriptParser;
 import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -16,273 +16,181 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JavaScriptMutationScanner {
-    
+
     /**
-     * Scan a JavaScript file for mutations using AST parsing
+     * Scan a JavaScript file for mutations using AST parsing.
+     * Dispatches to the appropriate visitor based on mutation type category.
      */
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-        
-        // Parse JavaScript using ANTLR
+
         CharStream input = CharStreams.fromString(sourceCode);
         JavaScriptLexer lexer = new JavaScriptLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         JavaScriptParser parser = new JavaScriptParser(tokens);
-        
-        // Get parse tree starting from program() rule
         ParseTree tree = parser.program();
-        
-        // Create visitor based on mutation type
-        JavaScriptMutationVisitor visitor = new JavaScriptMutationVisitor(file, type);
+
+        // --- Dispatch to the correct visitor by mutation type category ---
+
+        if (isRORType(type)) {
+            JavaScriptRORVisitor visitor = new JavaScriptRORVisitor(file, type);
+            visitor.visit(tree);
+            return visitor.getMutations();
+        }
+
+        if (isLCRType(type)) {
+            JavaScriptLCRVisitor visitor = new JavaScriptLCRVisitor(file, type);
+            visitor.visit(tree);
+            return visitor.getMutations();
+        }
+
+        if (isRVMType(type)) {
+            JavaScriptRVMVisitor visitor = new JavaScriptRVMVisitor(file, type);
+            visitor.visit(tree);
+            return visitor.getMutations();
+        }
+
+        if (isAORType(type)) {
+            JavaScriptAORVisitor visitor = new JavaScriptAORVisitor(file, type);
+            visitor.visit(tree);
+            return visitor.getMutations();
+        }
+
+        // NLT mutations (Numeric Literal Transformations) use the inner visitor
+        NLTVisitor visitor = new NLTVisitor(file, type);
         visitor.visit(tree);
-        
         return visitor.getMutationPoints();
     }
-    
+
+    // ── Type category helpers ────────────────────────────────────────────────
+
+    private static boolean isRORType(Mutator.MutatorType type) {
+        return type.name().startsWith("ROR_");
+    }
+
+    private static boolean isLCRType(Mutator.MutatorType type) {
+        return type.name().startsWith("LCR_");
+    }
+
+    private static boolean isRVMType(Mutator.MutatorType type) {
+        return type.name().startsWith("RVM_");
+    }
+
+    private static boolean isAORType(Mutator.MutatorType type) {
+        return type.name().startsWith("AOR_");
+    }
+
+    // ── NLT visitor (Numeric Literal Transformations) ────────────────────────
+
     /**
-     * Visitor that walks the JavaScript AST and finds mutation points
+     * Handles all NLT_* mutation types: integer ↔ float ↔ exponential.
+     * Kept as an inner class because it is only meaningful for JavaScript
+     * numeric literal semantics and is not reused elsewhere.
      */
-    private static class JavaScriptMutationVisitor extends JavaScriptParserBaseVisitor<Void> {
-        
+    private static class NLTVisitor extends JavaScriptParserBaseVisitor<Void> {
+
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
-        private final List<MutationPoint> mutationPoints;
-        
-        public JavaScriptMutationVisitor(File sourceFile, Mutator.MutatorType mutationType) {
+        private final List<MutationPoint> mutationPoints = new ArrayList<>();
+
+        NLTVisitor(File sourceFile, Mutator.MutatorType mutationType) {
             this.sourceFile = sourceFile;
             this.mutationType = mutationType;
-            this.mutationPoints = new ArrayList<>();
         }
-        
-        /**
-         * Visit additive expressions: + and -
-         */
-        @Override
-        public Void visitAdditiveExpression(JavaScriptParser.AdditiveExpressionContext ctx) {
-            // Walk through all children of this expression
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-                
-                // Check if this child is a terminal node (operator)
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-                    
-                    // AOR_PLUS_TO_MINUS: mutate + to -
-                    if (operator.equals("+") && mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                        MutationPoint point = new MutationPoint(
-                            sourceFile,
-                            token.getLine(),
-                            token.getCharPositionInLine(),
-                            "+",
-                            "-",
-                            mutationType
-                        );
-                        mutationPoints.add(point);
-                    }
-                    
-                    // AOR_MINUS_TO_PLUS: mutate - to +
-                    else if (operator.equals("-") && mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                        MutationPoint point = new MutationPoint(
-                            sourceFile,
-                            token.getLine(),
-                            token.getCharPositionInLine(),
-                            "-",
-                            "+",
-                            mutationType
-                        );
-                        mutationPoints.add(point);
-                    }
-                }
-            }
-            
-            // Continue visiting children
-            return visitChildren(ctx);
+
+        List<MutationPoint> getMutationPoints() {
+            return mutationPoints;
         }
-        
-        /**
-         * NEW: Visit variable declarations to find numeric literals
-         */
+
         @Override
         public Void visitVariableDeclaration(JavaScriptParser.VariableDeclarationContext ctx) {
-            // Check if this is a variable initialization with a value
             if (ctx.assignable() != null && ctx.singleExpression() != null) {
                 JavaScriptParser.SingleExpressionContext expr = ctx.singleExpression();
-                
-                // Check if the expression is a numeric literal
                 if (isNumericLiteral(expr)) {
                     String literalText = expr.getText();
                     Token token = expr.start;
-                    
-                    // Create mutation for this numeric literal
                     createNumericLiteralMutation(literalText, token);
                 }
             }
-            
             return visitChildren(ctx);
         }
-        
-        /**
-         * Check if an expression is a numeric literal
-         */
+
         private boolean isNumericLiteral(JavaScriptParser.SingleExpressionContext ctx) {
-            // Check if this is a LiteralExpression
-            if (ctx instanceof JavaScriptParser.LiteralExpressionContext) {
-                JavaScriptParser.LiteralExpressionContext litCtx = 
-                    (JavaScriptParser.LiteralExpressionContext) ctx;
-                
-                // Check if it has a numeric literal
-                if (litCtx.literal() != null && litCtx.literal().numericLiteral() != null) {
-                    return true;
-                }
+            if (ctx instanceof JavaScriptParser.LiteralExpressionContext litCtx) {
+                return litCtx.literal() != null && litCtx.literal().numericLiteral() != null;
             }
             return false;
         }
-        
-        /**
-         * Create a mutation point for a numeric literal
-         */
+
         private void createNumericLiteralMutation(String literalText, Token token) {
-            // Determine what type of numeric literal this is
-            NumericLiteralType type = getNumericLiteralType(literalText);
-            
-            // Create appropriate mutations based on current mutation type
-            String replacement = getReplacementLiteral(literalText, type);
-            
+            NumericLiteralType kind = classify(literalText);
+            String replacement = getReplacement(literalText, kind);
             if (replacement != null) {
                 mutationPoints.add(new MutationPoint(
-                    sourceFile,
-                    token.getLine(),
-                    token.getCharPositionInLine(),
-                    literalText,
-                    replacement,
-                    mutationType
-                ));
+                        sourceFile,
+                        token.getLine(),
+                        token.getCharPositionInLine(),
+                        literalText,
+                        replacement,
+                        mutationType));
             }
         }
-        
-        /**
-         * Determine the type of numeric literal
-         */
-        private NumericLiteralType getNumericLiteralType(String literal) {
-            // Check for exponential notation (contains 'e' or 'E')
-            if (literal.toLowerCase().contains("e")) {
-                return NumericLiteralType.EXPONENTIAL;
-            }
-            
-            // Check for float (contains decimal point)
-            if (literal.contains(".")) {
-                return NumericLiteralType.FLOAT;
-            }
-            
-            // Otherwise it's an integer
+
+        private NumericLiteralType classify(String literal) {
+            if (literal.toLowerCase().contains("e")) return NumericLiteralType.EXPONENTIAL;
+            if (literal.contains("."))                return NumericLiteralType.FLOAT;
             return NumericLiteralType.INTEGER;
         }
-        
-        /**
-         * Get the replacement literal based on mutation type
-         */
-        private String getReplacementLiteral(String original, NumericLiteralType type) {
-            switch (type) {
-                case INTEGER:
-                    if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT) {
-                        return original + ".0";  // 42 → 42.0
+
+        private String getReplacement(String original, NumericLiteralType kind) {
+            return switch (kind) {
+                case INTEGER -> switch (mutationType) {
+                    case NLT_INTEGER_TO_FLOAT        -> original + ".0";
+                    case NLT_INTEGER_TO_EXPONENTIAL  -> toExponential(original);
+                    default -> null;
+                };
+                case FLOAT -> switch (mutationType) {
+                    case NLT_FLOAT_TO_INTEGER -> {
+                        int dot = original.indexOf('.');
+                        yield dot > 0 ? original.substring(0, dot) : null;
                     }
-                    if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_EXPONENTIAL) {
-                        return convertIntegerToExponential(original);  // 42 → 4.2e1
-                    }
-                    break;
-                    
-                case FLOAT:
-                    if (mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER) {
-                        // 3.14 → 3 (truncate decimal part)
-                        int dotIndex = original.indexOf('.');
-                        if (dotIndex > 0) {
-                            return original.substring(0, dotIndex);
-                        }
-                    }
-                    if (mutationType == Mutator.MutatorType.NLT_FLOAT_TO_EXPONENTIAL) {
-                        return original + "e0";  // 3.14 → 3.14e0
-                    }
-                    break;
-                    
-                case EXPONENTIAL:
-                    if (mutationType == Mutator.MutatorType.NLT_EXPONENTIAL_TO_INTEGER) {
-                        return convertExponentialToInteger(original);  // 1e10 → 10000000000
-                    }
-                    if (mutationType == Mutator.MutatorType.NLT_EXPONENTIAL_TO_FLOAT) {
-                        return convertExponentialToInteger(original) + ".0";  // 1e10 → 10000000000.0
-                    }
-                    break;
-            }
-            return null;
+                    case NLT_FLOAT_TO_EXPONENTIAL -> original + "e0";
+                    default -> null;
+                };
+                case EXPONENTIAL -> switch (mutationType) {
+                    case NLT_EXPONENTIAL_TO_INTEGER -> toInteger(original);
+                    case NLT_EXPONENTIAL_TO_FLOAT   -> toInteger(original) + ".0";
+                    default -> null;
+                };
+            };
         }
-        
-        /**
-         * Convert integer to exponential notation
-         */
-        private String convertIntegerToExponential(String integer) {
+
+        private String toExponential(String integer) {
             try {
                 long value = Long.parseLong(integer);
                 if (value == 0) return "0e0";
-                
-                // Convert to exponential form
-                int exponent = 0;
+                int exp = 0;
                 double mantissa = Math.abs(value);
-                
-                while (mantissa >= 10) {
-                    mantissa /= 10;
-                    exponent++;
-                }
-                
-                String sign = value < 0 ? "-" : "";
-                return String.format("%s%.1fe%d", sign, mantissa, exponent);
+                while (mantissa >= 10) { mantissa /= 10; exp++; }
+                return String.format("%s%.1fe%d", value < 0 ? "-" : "", mantissa, exp);
             } catch (NumberFormatException e) {
                 return null;
             }
         }
-        
-        /**
-         * Convert exponential to integer
-         */
-        private String convertExponentialToInteger(String exponential) {
+
+        private String toInteger(String exponential) {
             try {
-                double value = Double.parseDouble(exponential);
-                return String.valueOf((long) value);
+                return String.valueOf((long) Double.parseDouble(exponential));
             } catch (NumberFormatException e) {
                 return null;
             }
         }
-        
-        /**
-         * Visit multiplicative expressions: *, /, %
-         */
-        @Override
-        public Void visitMultiplicativeExpression(JavaScriptParser.MultiplicativeExpressionContext ctx) {
-            return visitChildren(ctx);
-        }
-        
-        /**
-         * Visit relational expressions: <, >, <=, >=
-         */
-        @Override
-        public Void visitRelationalExpression(JavaScriptParser.RelationalExpressionContext ctx) {
-            return visitChildren(ctx);
-        }
-        
-        public List<MutationPoint> getMutationPoints() {
-            return mutationPoints;
-        }
     }
-    
-    /**
-     * Enum to classify numeric literal types
-     */
-    private enum NumericLiteralType {
-        INTEGER,
-        FLOAT,
-        EXPONENTIAL
-    }
+
+    private enum NumericLiteralType { INTEGER, FLOAT, EXPONENTIAL }
+
+    // ── MSL adapter ─────────────────────────────────────────────────────────
+
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
         CharStream input = CharStreams.fromString(sourceCode);
@@ -294,51 +202,37 @@ public class JavaScriptMutationScanner {
         return new MSLScannerAdapter() {
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // In JavaScript grammar, many binary expressions follow the same pattern:
-                // leftExpr op rightExpr
                 if (ctx.getChildCount() == 3) {
                     return ctx.getChild(1).getText().equals(mslOperator);
                 }
                 return false;
             }
 
-            @Override
-            public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(0);
-            }
-
-            @Override
-            public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(2);
-            }
+            @Override public ParseTree getLeftOperand(ParseTree ctx)  { return ctx.getChild(0); }
+            @Override public ParseTree getRightOperand(ParseTree ctx) { return ctx.getChild(2); }
 
             @Override
             public ParseTree getOperatorToken(ParseTree ctx) {
-                if (ctx.getChildCount() >= 3) return ctx.getChild(1);
-                return null;
+                return ctx.getChildCount() >= 3 ? ctx.getChild(1) : null;
             }
 
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
                 if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == JavaScriptLexer.DecimalLiteral || 
-                           type == JavaScriptLexer.HexIntegerLiteral ||
-                           type == JavaScriptLexer.OctalIntegerLiteral ||
-                           type == JavaScriptLexer.BinaryIntegerLiteral ||
-                           type == JavaScriptLexer.Identifier;
+                    int type = tn.getSymbol().getType();
+                    return type == JavaScriptLexer.DecimalLiteral
+                            || type == JavaScriptLexer.HexIntegerLiteral
+                            || type == JavaScriptLexer.OctalIntegerLiteral
+                            || type == JavaScriptLexer.BinaryIntegerLiteral
+                            || type == JavaScriptLexer.Identifier;
                 }
-                // Check if it's a literal or primary expression
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
             }
 
             @Override
-            public String getNodeText(ParseTree ctx) {
-                return ctx.getText();
-            }
+            public String getNodeText(ParseTree ctx) { return ctx.getText(); }
 
             @Override
             public int[] getTokenPosition(ParseTree ctx) {
@@ -354,9 +248,7 @@ public class JavaScriptMutationScanner {
             }
 
             @Override
-            public ParseTree getRootContext() {
-                return tree;
-            }
+            public ParseTree getRootContext() { return tree; }
         };
     }
 }

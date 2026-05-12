@@ -219,7 +219,7 @@ public class Main {
         config.testCommand = values.get("test_command");
 
         // Read mutation strategy (defaults to AUTO)
-        config.mutationStrategy = values.getOrDefault("mutation_strategy", "AUTO");
+        config.mutationStrategy = values.getOrDefault("mutation_strategy", "");
         config.testMode = values.getOrDefault("test_mode", "AUTO");
         config.customMutationSpec = values.getOrDefault("custom_mutation_spec", null);
         config.coverageCommand = values.getOrDefault("coverage_command", "");
@@ -277,7 +277,18 @@ public class Main {
         CoverageData coverageData = loadCoverageData(mutantPath, sourceDir, coverageCommand, coverageReport);
 
         System.out.println("\nScanning for mutations...");
-        MutationStrategy strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
+
+        // Check if strategy is specified in config or show interactive menu
+        MutationStrategy strategy;
+        if (mutationStrategy == null || mutationStrategy.trim().isEmpty()) {
+            // No strategy in config - show interactive menu
+            strategy = StrategySelector.selectStrategy();
+        } else {
+            // Strategy specified in config
+            strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
+        }
+
+        // Print what strategy is being used
         StrategySelector.printStrategyDetails(strategy);
 
         List<MutationPoint> mutationPoints = scanForMutations(
@@ -774,29 +785,45 @@ public class Main {
         return scanWithDictionary(file, type);
     }
 
-     /**
-     * Determines whether to use AST or Dictionary approach
+         /**
+     * Determines whether to use AST or Dictionary approach.
+     *
+     * DICTIONARY:  Explicit override — always use regex.
+     * AST:         Explicit override — always use parse tree.
+     * AUTO:        NLT mutations require AST (type-aware semantic analysis).
+     *              Operator mutations (AOR/ROR/LCR/RVM) use Dictionary — they
+     *              are simple text swaps and Dictionary is 100x faster.
      */
     private static boolean shouldUseAST(String fileName, Mutator.MutatorType type, String strategy) {
-        // If explicitly set, use that
         if (strategy.equals("AST")) {
             return true;
         }
         if (strategy.equals("DICTIONARY")) {
             return false;
         }
-        
-        // AUTO mode - use AST whenever an ANTLR scanner exists for the file type
+ 
+        // AUTO mode — differentiate by mutation category
         if (strategy.equals("AUTO")) {
-            return fileName.endsWith(".js") || 
-                   fileName.endsWith(".cs") || 
-                   fileName.endsWith(".java") ||
-                   fileName.endsWith(".py") ||
-                   fileName.endsWith(".rkt");
+            String typeName = type.name();
+ 
+            // NLT mutations: need AST because we must distinguish
+            // integer vs float vs exponential literals (can't do that with regex)
+            if (typeName.startsWith("NLT_")) {
+                return fileName.endsWith(".js")
+                        || fileName.endsWith(".cs")
+                        || fileName.endsWith(".java")
+                        || fileName.endsWith(".py")
+                        || fileName.endsWith(".rkt");
+            }
+ 
+            // Operator mutations: Dictionary is sufficient and 100x faster.
+            // AOR / ROR / LCR / RVM / BOR / REMOVE_INCREMENT etc.
+            return false;
         }
-        
+ 
         return false;
     }
+
 
 
     /**
