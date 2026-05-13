@@ -512,4 +512,38 @@ public class RacketScannerTests {
         assertEquals("bitwise-or", p.getOperator());
         assertEquals("bitwise-and", p.getReplacement());
     }
+
+    // -------------------------------------------------------------------------
+// CONDITIONAL_TRUE
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsConditionalTrue() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONDITIONAL_TRUE);
+
+        // operators.rkt has 7 (if ...) expressions
+        assertEquals(7, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("#t", p.getReplacement());
+            assertFalse(p.getOperator().isEmpty());
+        }
+    }
+
+// -------------------------------------------------------------------------
+// CONDITIONAL_FALSE
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsConditionalFalse() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONDITIONAL_FALSE);
+
+        // operators.rkt has 7 (if ...) expressions
+        assertEquals(7, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("#f", p.getReplacement());
+            assertFalse(p.getOperator().isEmpty());
+        }
+    }
 }

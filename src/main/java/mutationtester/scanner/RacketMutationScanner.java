@@ -65,7 +65,9 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
                 Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
                 Mutator.MutatorType.BOR_AND_TO_OR,
-                Mutator.MutatorType.BOR_OR_TO_AND
+                Mutator.MutatorType.BOR_OR_TO_AND,
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                Mutator.MutatorType.CONDITIONAL_FALSE
         );
     }
 
@@ -89,7 +91,7 @@ public class RacketMutationScanner {
         ParseTree tree = parser.program();
 
 
-        ISLMutationVisitor visitor = new ISLMutationVisitor(file, type);
+        ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
@@ -103,11 +105,13 @@ public class RacketMutationScanner {
 
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
+        private final String sourceCode;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
 
-        ISLMutationVisitor(File sourceFile, Mutator.MutatorType mutationType) {
+        ISLMutationVisitor(File sourceFile, Mutator.MutatorType mutationType, String sourceCode) {
             this.sourceFile = sourceFile;
             this.mutationType = mutationType;
+            this.sourceCode = sourceCode;
         }
 
         /**
@@ -134,7 +138,7 @@ public class RacketMutationScanner {
                     // or a nested expr that resolves to a single terminal
                     Token headToken = extractToken(second);
                     if (headToken != null) {
-                        checkOperatorToken(headToken);
+                        checkOperatorToken(headToken, ctx);
                     }
                 }
             }
@@ -174,7 +178,7 @@ public class RacketMutationScanner {
         /**
          * Checks a head-position token for operator mutation targets.
          */
-        private void checkOperatorToken(Token token) {
+        private void checkOperatorToken(Token token, ISLParser.ExprContext ctx) {
             String text = token.getText();
             int line    = token.getLine();
             int col     = token.getCharPositionInLine();
@@ -240,9 +244,46 @@ public class RacketMutationScanner {
                     if (text.equals("bitwise-or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-or", "bitwise-and", mutationType));
                 }
+                case CONDITIONAL_TRUE, CONDITIONAL_FALSE -> {
+                    // ISL: (if cond then else) — child(2) is the condition
+                    if (text.equals("if") && ctx.getChildCount() >= 6) {
+                        ParseTree condExpr = ctx.getChild(2);
+                        String condText = extractSourceText(condExpr);
+                        int[] pos = getExprPosition(condExpr);
+                        String replacement = (mutationType == Mutator.MutatorType.CONDITIONAL_TRUE) ? "#t" : "#f";
+                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1], condText, replacement, mutationType));
+                    }
+                }
 
                 default -> { }
             }
+        }
+
+        private String extractSourceText(ParseTree ctx) {
+            if (ctx instanceof ParserRuleContext prc
+                    && prc.getStart() != null && prc.getStop() != null
+                    && prc.getStart().getStartIndex() >= 0
+                    && prc.getStop().getStopIndex() < sourceCode.length()) {
+                return sourceCode.substring(
+                        prc.getStart().getStartIndex(),
+                        prc.getStop().getStopIndex() + 1);
+            }
+            return ctx.getText();
+        }
+
+        /**
+         * Returns [line, col] for the start of a parse tree node.
+         */
+        private int[] getExprPosition(ParseTree ctx) {
+            if (ctx instanceof TerminalNode tn) {
+                Token s = tn.getSymbol();
+                return new int[]{s.getLine(), s.getCharPositionInLine()};
+            }
+            if (ctx instanceof ParserRuleContext prc && prc.getStart() != null) {
+                Token s = prc.getStart();
+                return new int[]{s.getLine(), s.getCharPositionInLine()};
+            }
+            return new int[]{0, 0};
         }
 
         /**
