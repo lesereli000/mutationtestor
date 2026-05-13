@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for SchemeMutationScanner (Racket/.rkt files).
- *
  * Uses:
  *   samples/SchemeProject/project/src/add1.rkt      → (+ 1 x)
  *   samples/SchemeProject/project/src/add2.rkt      → (+ 2 x)
@@ -480,5 +479,37 @@ public class RacketScannerTests {
         MutationPoint p = points.get(0);
         assertEquals("modulo", p.getOperator());
         assertEquals("*", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+// BOR_AND_TO_OR
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsBitwiseAndToOr() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.BOR_AND_TO_OR);
+
+        // operators.rkt has one (bitwise-and x y) in bitwise-test
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("bitwise-and", p.getOperator());
+        assertEquals("bitwise-or", p.getReplacement());
+    }
+
+// -------------------------------------------------------------------------
+// BOR_OR_TO_AND
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsBitwiseOrToAnd() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.BOR_OR_TO_AND);
+
+        // operators.rkt has one (bitwise-or x y) in bitwise-or-test
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("bitwise-or", p.getOperator());
+        assertEquals("bitwise-and", p.getReplacement());
     }
 }

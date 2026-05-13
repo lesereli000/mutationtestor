@@ -64,6 +64,13 @@
 (define (mod-test x y)
   (modulo x y))
 
+; BOR: bitwise operators
+(define (bitwise-test x y)
+  (bitwise-and x y))
+
+(define (bitwise-or-test x y)
+  (bitwise-or x y))
+
 
 
 

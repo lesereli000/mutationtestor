@@ -63,7 +63,9 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.CONDITIONAL_FALSE,
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
-                Mutator.MutatorType.NLT_FLOAT_TO_INTEGER
+                Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
+                Mutator.MutatorType.BOR_AND_TO_OR,
+                Mutator.MutatorType.BOR_OR_TO_AND
         );
     }
 
@@ -229,6 +231,14 @@ public class RacketMutationScanner {
                 case AOR_MODULO_TO_MULTIPLY -> {
                     if (text.equals("modulo") || text.equals("remainder"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "*", mutationType));
+                }
+                case BOR_AND_TO_OR -> {
+                    if (text.equals("bitwise-and"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-and", "bitwise-or", mutationType));
+                }
+                case BOR_OR_TO_AND -> {
+                    if (text.equals("bitwise-or"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-or", "bitwise-and", mutationType));
                 }
 
                 default -> { }
