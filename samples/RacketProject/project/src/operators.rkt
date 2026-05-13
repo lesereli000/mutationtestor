@@ -60,6 +60,10 @@
 (define (divide x y)
   (/ x y))
 
+; AOR_MODULO_TO_MULTIPLY: modulo and remainder
+(define (mod-test x y)
+  (modulo x y))
+
 
 
 

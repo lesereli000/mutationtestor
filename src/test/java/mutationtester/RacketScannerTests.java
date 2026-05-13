@@ -465,4 +465,20 @@ public class RacketScannerTests {
             assertEquals("if", p.getOperator());
         }
     }
+
+    // -------------------------------------------------------------------------
+    // AOR_MODULO_TO_MULTIPLY
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsModuloToMultiply() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY);
+
+        // operators.rkt has one (modulo x y) in mod-test
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("modulo", p.getOperator());
+        assertEquals("*", p.getReplacement());
+    }
 }

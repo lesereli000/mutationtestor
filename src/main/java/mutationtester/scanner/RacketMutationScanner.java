@@ -1,10 +1,8 @@
 package mutationtester.scanner;
 
 import mutationtester.*;
-import mutationtester.model.Mutation;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-
 import mutationtester.msl.MSLScannerAdapter;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -18,12 +16,10 @@ import java.util.List;
 /**
  * Scans Racket (.rkt) source files for mutation points using the ISL ANTLR
  * grammar (racket-isl/ISL.g4) from the ANTLR grammars-v4 repository.
- *
  * ISL (Intermediate Student Language) is a Racket teaching dialect documented
  * at https://docs.racket-lang.org/htdp-langs/intermediate-lam.html.
  * The grammar is sourced from the official ANTLR grammars-v4 repository and
  * adapted minimally to support standard #lang racket forms used in this project.
- *
  * Supported mutation types:
  *   AOR_PLUS_TO_MINUS      : (+ a b) → (- a b)
  *   AOR_MINUS_TO_PLUS      : (- a b) → (+ a b)
@@ -39,8 +35,37 @@ import java.util.List;
  *   AOR_MULTIPLY_TO_DIVIDE : (* a b) → (/ a b)
  *   AOR_DIVIDE_TO_MULTIPLY : (/ a b) → (* a b)
  *   NEGATE_CONDITIONALS    : (if cond ...) → (if (not cond) ...)
+ *   AOR_MODULO_TO_MULTIPLY   : (modulo a b) or (remainder a b) → (* a b)
  */
 public class RacketMutationScanner {
+
+    // -------------------------------------------------------------------------
+    // Supported types
+    // -------------------------------------------------------------------------
+
+    public static List<Mutator.MutatorType> getSupportedTypes() {
+        return List.of(
+                Mutator.MutatorType.AOR_PLUS_TO_MINUS,
+                Mutator.MutatorType.AOR_MINUS_TO_PLUS,
+                Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE,
+                Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY,
+                Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY,
+                Mutator.MutatorType.BOR_AND_TO_OR,
+                Mutator.MutatorType.BOR_OR_TO_AND,
+                Mutator.MutatorType.ROR_GT_TO_GE,
+                Mutator.MutatorType.ROR_GE_TO_GT,
+                Mutator.MutatorType.ROR_LT_TO_LE,
+                Mutator.MutatorType.ROR_LE_TO_LT,
+                Mutator.MutatorType.EQ_NEGATE,
+                Mutator.MutatorType.LOGICAL_AND_TO_OR,
+                Mutator.MutatorType.LOGICAL_OR_TO_AND,
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                Mutator.MutatorType.CONDITIONAL_FALSE,
+                Mutator.MutatorType.STATEMENT_MUTATION,
+                Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
+                Mutator.MutatorType.NLT_FLOAT_TO_INTEGER
+        );
+    }
 
     // -------------------------------------------------------------------------
     // Public entry point
@@ -85,19 +110,16 @@ public class RacketMutationScanner {
 
         /**
          * Visits every expression node.
-         *
          * For operator mutations: checks if this expr is a paren application
          * '(' expr expr* ')' and if so inspects the head token.
-         *
          * For and/or: ISL has explicit grammar rules '(' 'and' expr expr+ ')'
          * so the keyword is a direct terminal child at index 1.
-         *
          * For NLT: scans all NUMBER tokens in the expression.
          */
         @Override
         public Void visitExpr(ISLParser.ExprContext ctx) {
 
-            // Operato  r/keyword mutations
+            // Operator/keyword mutations
             if (ctx.getChildCount() >= 3) {
                 ParseTree first = ctx.getChild(0);
                 ParseTree second = ctx.getChild(1);
@@ -138,6 +160,12 @@ public class RacketMutationScanner {
                     && nameCtx.getChild(0) instanceof TerminalNode tn) {
                 return tn.getSymbol();
             }
+
+            // Fallback: use the start token of any parser rule context
+            if (node instanceof ParserRuleContext prc && prc.getStart() != null) {
+                return prc.getStart();
+            }
+
             return null;
         }
 
@@ -198,13 +226,17 @@ public class RacketMutationScanner {
                     if (text.equals("if"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "if", "(not if)", mutationType));
                 }
+                case AOR_MODULO_TO_MULTIPLY -> {
+                    if (text.equals("modulo") || text.equals("remainder"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "*", mutationType));
+                }
+
                 default -> { }
             }
         }
 
         /**
          * Checks a token for numeric literal mutation targets.
-         *
          * NLT_INTEGER_TO_FLOAT : 5   → 5.0
          * NLT_FLOAT_TO_INTEGER : 5.0 → 5
          */
@@ -215,7 +247,6 @@ public class RacketMutationScanner {
             int line    = token.getLine();
             int col     = token.getCharPositionInLine();
 
-            // Skip rationals like 3/2 — not int or float
             if (text.contains("/")) return;
 
             boolean isFloat   = text.contains(".");
@@ -254,10 +285,6 @@ public class RacketMutationScanner {
         return new MSLScannerAdapter() {
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                // Racket function application: ( op arg1 arg2 )
-                // Note: ISL grammar might have extra children for whitespaces depending on hidden channels,
-                // but usually ANTLR tokens on the default channel are just the meaningful ones.
-                // Based on visitor logic: ctx.getChild(1) is the head.
                 if (ctx instanceof ISLParser.ExprContext && ctx.getChildCount() >= 4) {
                     if (ctx.getChild(0).getText().equals("(")) {
                         return ctx.getChild(1).getText().equals(mslOperator);
@@ -285,11 +312,9 @@ public class RacketMutationScanner {
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
                 String text = ctx.getText();
-                // Racket numbers or names
+
                 if (ctx instanceof TerminalNode tn) {
                     Token symbol = tn.getSymbol();
-                    // We'd check ISLLexer.NUMBER etc if we had constants, 
-                    // but we can check if it's numeric or alphanumeric
                     return text.matches("-?\\d+(\\.\\d+)?") || text.matches("[a-zA-Z][a-zA-Z0-9-]*");
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
