@@ -67,7 +67,8 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.BOR_AND_TO_OR,
                 Mutator.MutatorType.BOR_OR_TO_AND,
                 Mutator.MutatorType.CONDITIONAL_TRUE,
-                Mutator.MutatorType.CONDITIONAL_FALSE
+                Mutator.MutatorType.CONDITIONAL_FALSE,
+                Mutator.MutatorType.STATEMENT_MUTATION
         );
     }
 
@@ -108,6 +109,17 @@ public class RacketMutationScanner {
         private final String sourceCode;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
 
+        private static final java.util.Set<String> SPECIAL_FORMS = java.util.Set.of(
+                "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
+                "begin", "begin0", "define", "define-struct", "provide", "require",
+                "local", "shared", "recur", "delay", "set!", "time", "module+"
+        );
+
+        private boolean isStatementHead(String text) {
+            if (SPECIAL_FORMS.contains(text)) return false;
+            return text.matches("[a-zA-Z_$%&!~^][a-zA-Z0-9_\\-?!.~^]*");
+        }
+
         ISLMutationVisitor(File sourceFile, Mutator.MutatorType mutationType, String sourceCode) {
             this.sourceFile = sourceFile;
             this.mutationType = mutationType;
@@ -139,11 +151,44 @@ public class RacketMutationScanner {
                     Token headToken = extractToken(second);
                     if (headToken != null) {
                         checkOperatorToken(headToken, ctx);
+
+                        // STATEMENT_MUTATION: flag non-last exprs inside begin/begin0
+                        if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION) {
+                            String headText = headToken.getText();
+                            if (headText.equals("begin") || headText.equals("begin0")) {
+                                handleBeginStatements(ctx);
+                            }
+                        }
                     }
                 }
             }
 
             return visitChildren(ctx);
+        }
+
+        private void handleBeginStatements(ISLParser.ExprContext ctx) {
+            // ( begin expr+ ) — children: (, begin, expr..., )
+            // last child is ')'; second-to-last is the return-value expr; rest are statements
+            int childCount = ctx.getChildCount();
+            for (int i = 2; i <= childCount - 3; i++) {
+                ParseTree child = ctx.getChild(i);
+                if (!(child instanceof ISLParser.ExprContext stmtCtx)) continue;
+                if (stmtCtx.getChildCount() < 3) continue;
+                if (!(stmtCtx.getChild(0) instanceof TerminalNode tn)
+                        || !tn.getSymbol().getText().equals("(")) continue;
+                Token stmtHead = extractToken(stmtCtx.getChild(1));
+                if (stmtHead == null || !isStatementHead(stmtHead.getText())) continue;
+                String stmtText = extractSourceText(stmtCtx);
+                Token startTok = stmtCtx.getStart();
+                mutationPoints.add(new MutationPoint(
+                        sourceFile,
+                        startTok.getLine(),
+                        startTok.getCharPositionInLine(),
+                        stmtText, "(void)",
+                        Mutator.MutatorType.STATEMENT_MUTATION,
+                        "Statement mutation"
+                ));
+            }
         }
 
         /**

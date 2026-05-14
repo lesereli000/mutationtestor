@@ -546,4 +546,20 @@ public class RacketScannerTests {
             assertFalse(p.getOperator().isEmpty());
         }
     }
+
+    // -------------------------------------------------------------------------
+// STATEMENT_MUTATION
+// -------------------------------------------------------------------------
+
+    @Test
+    public void testOperatorsStatementMutation() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.STATEMENT_MUTATION);
+
+        // operators.rkt has one statement-level function call: (display name) in greet
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertTrue(p.getOperator().contains("display"));
+        assertEquals("(void)", p.getReplacement());
+    }
 }

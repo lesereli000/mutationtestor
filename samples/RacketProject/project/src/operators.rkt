@@ -71,6 +71,12 @@
 (define (bitwise-or-test x y)
   (bitwise-or x y))
 
+; STATEMENT_MUTATION: side-effecting call in begin block
+(define (greet name)
+  (begin
+    (display name)
+    (string-length name)))
+
 
 
 
