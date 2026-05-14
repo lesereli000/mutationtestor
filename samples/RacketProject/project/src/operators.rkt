@@ -60,6 +60,23 @@
 (define (divide x y)
   (/ x y))
 
+; AOR_MODULO_TO_MULTIPLY: modulo and remainder
+(define (mod-test x y)
+  (modulo x y))
+
+; BOR: bitwise operators
+(define (bitwise-test x y)
+  (bitwise-and x y))
+
+(define (bitwise-or-test x y)
+  (bitwise-or x y))
+
+; STATEMENT_MUTATION: side-effecting call in begin block
+(define (greet name)
+  (begin
+    (display name)
+    (string-length name)))
+
 
 
 
