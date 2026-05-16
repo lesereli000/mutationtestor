@@ -202,6 +202,41 @@ public class EndToEndMSLTests {
         assertEquals("(name != \"\")", points.get(1).getReplacement());
         assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not empty", points.get(1).getCustomLabel());
     }
+
+    @Test
+    void testCustomMutationScanningInRacket() throws Exception {
+        Path rktFile = tempDir.resolve("test.rkt");
+        Files.writeString(rktFile,
+                "#lang racket\n" +
+                        "(define (add x y) (+ x y))\n" +
+                        "(define (mul x y) (* x y))\n"
+        );
+
+        Path specFile = tempDir.resolve("spec.txt");
+        Files.writeString(specFile,
+                "RktMut\n" +
+                        "    Replace: {quantity} + {quantity}\n" +
+                        "    With: {quantity} - {quantity}\n" +
+                        "    Replace: {quantity} * {quantity}\n" +
+                        "    With: {quantity} / {quantity}\n" +
+                        "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+                tempDir,
+                Mutator.MutatorType.CUSTOM,
+                "AUTO",
+                specFile.toString()
+        );
+
+        assertEquals(2, points.size());
+        assertEquals("+", points.get(0).getOperator());
+        assertEquals("-", points.get(0).getReplacement());
+        assertEquals("RktMut: + \u2192 -", points.get(0).getCustomLabel());
+        assertEquals("*", points.get(1).getOperator());
+        assertEquals("/", points.get(1).getReplacement());
+        assertEquals("RktMut: * \u2192 /", points.get(1).getCustomLabel());
+    }
 }
 
 /**
@@ -210,7 +245,7 @@ public class EndToEndMSLTests {
 class ReflectionUtils {
     @SuppressWarnings("unchecked")
     static List<MutationPoint> invokeScanForMutations(Path sourceDir, Mutator.MutatorType type, String strategy, String spec) throws Exception {
-        java.lang.reflect.Method method = Main.class.getDeclaredMethod("scanForMutations", 
+        java.lang.reflect.Method method = Main.class.getDeclaredMethod("scanForMutations",
             Path.class, Mutator.MutatorType.class, String.class, String.class);
         method.setAccessible(true);
         return (List<MutationPoint>) method.invoke(null, sourceDir, type, strategy, spec);
