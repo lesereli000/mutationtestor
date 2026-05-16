@@ -419,7 +419,66 @@ public class RacketMutationScanner {
 
             @Override
             public String getNodeText(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceCode.length()) {
+                        return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
                 return ctx.getText();
+            }
+
+            @Override
+            public boolean isInvocationStatement(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null && start.getLine() != stop.getLine())
+                        return false;
+                }
+                String text = getNodeText(ctx);
+                if (text == null || text.isBlank()) return false;
+                if (!text.startsWith("(") || !text.endsWith(")")) return false;
+                String inner = text.substring(1, text.length() - 1).trim();
+                if (inner.isEmpty()) return false;
+                int spaceIdx = inner.indexOf(' ');
+                String head = spaceIdx < 0 ? inner : inner.substring(0, spaceIdx);
+                return head.matches("[a-zA-Z_$%&!~^][a-zA-Z0-9_\\-?!.~^]*");
+            }
+
+            @Override
+            public String getSingleArgumentText(ParseTree ctx, String functionName) {
+                String text = getNodeText(ctx);
+                String prefix = "(" + functionName;
+                if (!text.startsWith(prefix) || !text.endsWith(")")) return null;
+                String inner = text.substring(prefix.length(), text.length() - 1).trim();
+                if (inner.isEmpty() || hasMultipleTopLevelArgs(inner)) return null;
+                return inner;
+            }
+
+            private boolean hasMultipleTopLevelArgs(String args) {
+                int depth = 0;
+                boolean seenArg = false;
+                boolean inWhitespace = false;
+                for (int i = 0; i < args.length(); i++) {
+                    char c = args.charAt(i);
+                    if (Character.isWhitespace(c)) {
+                        if (depth == 0 && seenArg) inWhitespace = true;
+                    } else {
+                        if (c == '(' || c == '[') depth++;
+                        else if (c == ')' || c == ']') depth--;
+                        if (depth == 0) {
+                            if (inWhitespace && seenArg) return true;
+                            seenArg = true;
+                            inWhitespace = false;
+                        }
+                    }
+                }
+                return false;
             }
 
             @Override
