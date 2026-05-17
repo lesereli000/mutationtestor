@@ -118,7 +118,6 @@ public class MainTests {
         List<MutationPoint> points = Main.scanForMutations(
                 Path.of("samples/CSProject/src"),
                 Mutator.MutatorType.CONDITIONAL_TRUE,
-                "AUTO",
                 null);
 
         assertTrue(points.stream().anyMatch(p -> p.getSourceFile().getName().equals("ConditionalDemo.cs")));

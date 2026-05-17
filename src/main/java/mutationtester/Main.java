@@ -742,13 +742,12 @@ public class Main {
             File file,
             Mutator.MutatorType type) throws IOException {
 
-        String fileName = file.getName();
-        boolean useAST = shouldUseAST(fileName, type, "AUTO");
-        if (useAST) {
-            // AST APPROACH - Use ANTLR parsers
-            // Check if this is a JavaScript file - use AST approach
-            if (file.getName().endsWith(".js")) {
-                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR JavaScript parser");
+        String name = type.name();
+            if (file.getName().endsWith(".js") &&
+                    (name.startsWith("ROR_") || name.startsWith("LCR_") ||
+                    name.startsWith("RVM_") || name.startsWith("AOR_") ||
+                    name.startsWith("NLT_"))) {
+                System.out.println("  [AST] Scanning " + file.getName());
                 return JavaScriptMutationScanner.scanFile(file, type);
             }
 
@@ -771,57 +770,10 @@ public class Main {
                 System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
                 return RacketMutationScanner.scanFile(file, type);
             }
-        }
-        // DICTIONARY APPROACH - Use regex pattern matching
-        System.out.println("  [Dictionary] Scanning " + fileName + " using regex");
+        // Fallback for any other file type
+        System.out.println("  [Dictionary] Scanning " + file.getName());
         return scanWithDictionary(file, type);
     }
-
-         /**
-     * Determines whether to use AST or Dictionary approach.
-     *
-     * DICTIONARY:  Explicit override — always use regex.
-     * AST:         Explicit override — always use parse tree.
-     * AUTO:        NLT mutations require AST (type-aware semantic analysis).
-     *              Operator mutations (AOR/ROR/LCR/RVM) use Dictionary — they
-     *              are simple text swaps and Dictionary is 100x faster.
-     */
-    private static boolean shouldUseAST(String fileName, Mutator.MutatorType type, String strategy) {
-        if (strategy.equals("AST")) {
-            return true;
-        }
-        if (strategy.equals("DICTIONARY")) {
-            return false;
-        }
- 
-        // AUTO mode — differentiate by mutation category
-        if (strategy.equals("AUTO")) {
-            String typeName = type.name();
- 
-            // NLT mutations: need AST because we must distinguish
-            // integer vs float vs exponential literals (can't do that with regex)
-            if (typeName.startsWith("NLT_")) {
-                return fileName.endsWith(".js")
-                        || fileName.endsWith(".cs")
-                        || fileName.endsWith(".java")
-                        || fileName.endsWith(".py")
-                        || fileName.endsWith(".rkt");
-            }
- 
-            // Conditional/statement mutations: only handled by AST scanners, not Dictionary.
-            if (typeName.startsWith("CONDITIONAL_") || typeName.startsWith("NEGATE_")
-                    || typeName.equals("STATEMENT_MUTATION")) {
-                return true;
-            }
-
-            // Operator mutations: Dictionary is sufficient and 100x faster.
-            // AOR / ROR / LCR / RVM / BOR / REMOVE_INCREMENT etc.
-            return false;
-        }
- 
-        return false;
-    }
-
 
 
     /**

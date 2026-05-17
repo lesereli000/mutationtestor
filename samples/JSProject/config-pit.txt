@@ -1,4 +1,5 @@
 source_code_directory=src
 mutator_type=LCR_AND_TO_OR,ROR_GT_TO_LT,RVM_TRUE_TO_FALSE
+mutation_strategy=AST
 compile_command=echo "No compilation needed"
 test_command=cd browser-tests && node run-with-puppeteer.js

@@ -77,6 +77,7 @@
     <script src="../src/floatTypes.js"></script>
     <script src="../src/exponentialTypes.js"></script>
     <script src="../src/mixedTypes.js"></script>
+    <script src="../src/BoundaryCheck.js"></script>
 
     <!-- Test framework and tests -->
       <script>
@@ -263,6 +264,36 @@
         });
         runner.test('edgeCases() should return ~1e15', () => {
             runner.assertClose(edgeCases(), 1e15, 1e5);
+        });
+        runner.endSuite();
+
+        runner.suite('BoundaryCheck Tests');
+        runner.test('clampToZero(-5) should return 0', () => {
+            runner.assertEquals(clampToZero(-5), 0);
+        });
+        runner.test('clampToZero(-1) should return 0', () => {
+            runner.assertEquals(clampToZero(-1), 0);
+        });
+        runner.test('clampToZero(0) should return 0', () => {
+            runner.assertEquals(clampToZero(0), 0);
+        });
+        runner.test('clampToZero(5) should return 5', () => {
+            runner.assertEquals(clampToZero(5), 5);
+        });
+        runner.test('clampToZero(100) should return 100', () => {
+            runner.assertEquals(clampToZero(100), 100);
+        });
+        runner.test('isUnderLimit(3, 10) should return true', () => {
+            runner.assertEquals(isUnderLimit(3, 10), true);
+        });
+        runner.test('isUnderLimit(10, 10) should return true', () => {
+            runner.assertEquals(isUnderLimit(10, 10), true);
+        });
+        runner.test('isUnderLimit(11, 10) should return false', () => {
+            runner.assertEquals(isUnderLimit(11, 10), false);
+        });
+        runner.test('isUnderLimit(100, 50) should return false', () => {
+            runner.assertEquals(isUnderLimit(100, 50), false);
         });
         runner.endSuite();
 

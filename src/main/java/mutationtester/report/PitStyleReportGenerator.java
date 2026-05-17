@@ -69,7 +69,7 @@ public class PitStyleReportGenerator {
         html.append(generateSourceCodeView(sourceLines, mutationsByLine, sourceFilePath));
         html.append(generateFooter());
 
-        try (FileWriter writer = new FileWriter(outputPath)) {
+        try (FileWriter writer = new FileWriter(outputPath, java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(html.toString());
         }
     }
@@ -278,7 +278,7 @@ public class PitStyleReportGenerator {
                     .append("\" data-mutant-ids=\"").append(escapeHtml(toJsonArray(m.candidateMutantIds))).append("\">")
                     .append("<div>").append(statusIcon).append(" ")
                     .append("<strong>").append(escapeHtml(operatorName)).append("</strong>")
-                    .append(" (").append(escapeHtml(m.original)).append(" → ").append(escapeHtml(m.mutated)).append(")")
+                    .append(" (").append(escapeHtml(m.original)).append(" -> ").append(escapeHtml(m.mutated)).append(")")
                     .append(" at column ").append(m.columnStart)
                     .append("</div>")
                     .append("<div class=\"mutation-status ").append(statusClass).append("\">")
@@ -308,9 +308,9 @@ public class PitStyleReportGenerator {
 
     private static String statusIcon(MutantResult.MutantStatus status) {
         return switch (status) {
-            case KILLED -> "✓";
+            case KILLED -> "&#10003;";
             case NO_COVERAGE -> "!";
-            default -> "✗";
+            default -> "&#10007;";
         };
     }
 
@@ -357,6 +357,12 @@ public class PitStyleReportGenerator {
         if ("^".equals(original) && "&".equals(mutated)) return "BOR_XOR_TO_AND";
         if ("<<".equals(original) && ">>".equals(mutated)) return "BOR_LSHIFT_TO_RSHIFT";
         if (">>".equals(original) && "<<".equals(mutated)) return "BOR_RSHIFT_TO_LSHIFT";
+
+        // Return Value Mutations
+        if ("true".equals(original) && "false".equals(mutated))  return "RVM_TRUE_TO_FALSE";
+        if ("false".equals(original) && "true".equals(mutated))  return "RVM_FALSE_TO_TRUE";
+        if ("0".equals(original) && "1".equals(mutated))          return "RVM_ZERO_TO_ONE";
+        if ("1".equals(original) && "0".equals(mutated))          return "RVM_NONZERO_TO_ZERO";
 
         return "MUTATION_" + sanitizeOperatorName(original) + "_TO_" + sanitizeOperatorName(mutated);
     }
