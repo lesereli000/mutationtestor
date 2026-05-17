@@ -2,3 +2,19 @@
 	path = external/CSharpProject
 	url = https://github.com/EllieJin04/CleanArchitecture.git
 	ignore = all
+[submodule "external/RacketProject"]
+	path = external/RacketProject
+	url = https://github.com/racket/rackunit.git
+	ignore = all
+[submodule "external/JavaProject"]
+	path = external/JavaProject
+	url = https://github.com/junit-team/junit5-samples.git
+	ignore = all
+[submodule "external/JavaScriptProject"]
+	path = external/JavaScriptProject
+	url = https://github.com/expressjs/express.git
+	ignore = all
+[submodule "external/PythonProject"]
+	path = external/PythonProject
+	url = https://github.com/pallets/click.git
+	ignore = all

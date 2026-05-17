@@ -704,7 +704,15 @@ public class Main {
 
     private static boolean shouldScanFile(File file) {
         String normalizedPath = file.getPath().replace('\\', '/');
-        return !normalizedPath.contains("/obj/")
+        String fileName = file.getName();
+        boolean supportedSource = fileName.endsWith(".java")
+                || fileName.endsWith(".py")
+                || fileName.endsWith(".js")
+                || fileName.endsWith(".cs")
+                || fileName.endsWith(".rkt");
+
+        return supportedSource
+                && !normalizedPath.contains("/obj/")
                 && !normalizedPath.contains("/bin/")
                 && !normalizedPath.contains("/.git/")
                 && !normalizedPath.contains("/target/")
@@ -880,4 +888,3 @@ public class Main {
  
 
 }
-
