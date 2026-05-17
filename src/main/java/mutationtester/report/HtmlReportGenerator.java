@@ -135,7 +135,7 @@ public class HtmlReportGenerator {
         html.append("        <div class=\"survivors-section\">\n");
         html.append("            <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\">\n");
         html.append("                <h2>Survived Mutants By File</h2>\n");
-        html.append("                <a href=\"all-survivors.html\" class=\"view-all\">View All Survivors →</a>\n");
+        html.append("                <a href=\"all-survivors.html\" class=\"view-all\">View All Survivors</a>\n");
         html.append("            </div>\n");
 
         html.append("            <table class=\"survivor-table\">\n");

@@ -78,6 +78,7 @@
     <script src="../src/exponentialTypes.js"></script>
     <script src="../src/mixedTypes.js"></script>
     <script src="../src/BoundaryCheck.js"></script>
+    <script src="../src/Comparisons.js"></script>
 
     <!-- Test framework and tests -->
       <script>
@@ -294,6 +295,48 @@
         });
         runner.test('isUnderLimit(100, 50) should return false', () => {
             runner.assertEquals(isUnderLimit(100, 50), false);
+        });
+        runner.endSuite();
+
+        runner.suite('Comparisons Tests');
+        runner.test('isPositive(5) should return true', () => {
+            runner.assertEquals(isPositive(5), true);
+        });
+        runner.test('isPositive(-1) should return false', () => {
+            runner.assertEquals(isPositive(-1), false);
+        });
+        runner.test('isPositive(0) should return false', () => {
+            runner.assertEquals(isPositive(0), false);
+        });
+        runner.test('isInRange(5, 1, 10) should return true', () => {
+            runner.assertEquals(isInRange(5, 1, 10), true);
+        });
+        runner.test('isInRange(0, 1, 10) should return false', () => {
+            runner.assertEquals(isInRange(0, 1, 10), false);
+        });
+        runner.test('isInRange(10, 1, 10) should return true', () => {
+            runner.assertEquals(isInRange(10, 1, 10), true);
+        });
+        runner.test('isInRange(11, 1, 10) should return false', () => {
+            runner.assertEquals(isInRange(11, 1, 10), false);
+        });
+        runner.test('isZero(0) should return true', () => {
+            runner.assertEquals(isZero(0), true);
+        });
+        runner.test('isZero(1) should return false', () => {
+            runner.assertEquals(isZero(1), false);
+        });
+        runner.test('isValid(50) should return true', () => {
+            runner.assertEquals(isValid(50), true);
+        });
+        runner.test('isValid(-1) should return false', () => {
+            runner.assertEquals(isValid(-1), false);
+        });
+        runner.test('isValid(100) should return false', () => {
+            runner.assertEquals(isValid(100), false);
+        });
+        runner.test('isValid(0) should return false', () => {
+            runner.assertEquals(isValid(0), false);
         });
         runner.endSuite();
 
