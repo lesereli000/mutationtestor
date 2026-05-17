@@ -43,18 +43,28 @@ Conditionals Boundary:
 	With: {quantity} <= {quantity}
 	And: Inverse
 
+	Replace: {quantity} <= {quantity}
+	With: {quantity} < {quantity}
+	Except: if ({quantity} <= 0) {quantity} = 0
+	And: Inverse
+
+	Replace: {quantity} >= {quantity}
+	With: {quantity} > {quantity}
+	Except: if ({quantity} >= 0) {quantity} = 0
+	And: Inverse
+
 End
 
 Negate Conditionals:
 
 	Replace: {quantity} > {quantity}
-    With: {quantity} <= {quantity}
-    And: Inverse
+	With: {quantity} <= {quantity}
+	And: Inverse
 
 	Replace: {quantity} < {quantity}
-    With: {quantity} >= {quantity}
-    And: Inverse
-
+	With: {quantity} >= {quantity}
+	And: Inverse
+	
 	Replace: {quantity} == {quantity}
 	With: {quantity} != {quantity}
 	And: Inverse
