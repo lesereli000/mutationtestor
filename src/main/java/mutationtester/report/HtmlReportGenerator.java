@@ -282,7 +282,7 @@ public class HtmlReportGenerator {
 
         html.append("</body>\n</html>");
 
-        try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html")) {
+       try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html", java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(html.toString());
         }
     }
