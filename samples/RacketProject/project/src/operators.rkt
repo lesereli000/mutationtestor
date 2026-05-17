@@ -69,7 +69,7 @@
   (bitwise-and x y))
 
 (define (bitwise-or-test x y)
-  (bitwise-or x y))
+  (bitwise-ior x y))
 
 ; STATEMENT_MUTATION: side-effecting call in begin block
 (define (greet name)

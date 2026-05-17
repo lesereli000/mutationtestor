@@ -283,11 +283,11 @@ public class RacketMutationScanner {
                 }
                 case BOR_AND_TO_OR -> {
                     if (text.equals("bitwise-and"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-and", "bitwise-or", mutationType));
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-and", "bitwise-ior", mutationType));
                 }
                 case BOR_OR_TO_AND -> {
-                    if (text.equals("bitwise-or"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-or", "bitwise-and", mutationType));
+                    if (text.equals("bitwise-ior"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-ior", "bitwise-and", mutationType));
                 }
                 case CONDITIONAL_TRUE, CONDITIONAL_FALSE -> {
                     // ISL: (if cond then else) — child(2) is the condition

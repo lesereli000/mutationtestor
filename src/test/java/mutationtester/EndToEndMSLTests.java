@@ -48,7 +48,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir, 
             Mutator.MutatorType.CUSTOM, 
-            "AUTO", 
             specFile.toString()
         );
 
@@ -84,7 +83,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir, 
             Mutator.MutatorType.CUSTOM, 
-            "AUTO", 
             specFile.toString()
         );
 
@@ -120,7 +118,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
             Mutator.MutatorType.CUSTOM,
-            "AUTO",
             specFile.toString()
         );
 
@@ -155,7 +152,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
             Mutator.MutatorType.CUSTOM,
-            "AUTO",
             specFile.toString()
         );
 
@@ -190,7 +186,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
             Mutator.MutatorType.CUSTOM,
-            "AUTO",
             specFile.toString()
         );
 
@@ -225,7 +220,6 @@ public class EndToEndMSLTests {
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
                 tempDir,
                 Mutator.MutatorType.CUSTOM,
-                "AUTO",
                 specFile.toString()
         );
 
@@ -244,10 +238,10 @@ public class EndToEndMSLTests {
  */
 class ReflectionUtils {
     @SuppressWarnings("unchecked")
-    static List<MutationPoint> invokeScanForMutations(Path sourceDir, Mutator.MutatorType type, String strategy, String spec) throws Exception {
+    static List<MutationPoint> invokeScanForMutations(Path sourceDir, Mutator.MutatorType type, String spec) throws Exception {
         java.lang.reflect.Method method = Main.class.getDeclaredMethod("scanForMutations",
-            Path.class, Mutator.MutatorType.class, String.class, String.class);
+            Path.class, Mutator.MutatorType.class, String.class);
         method.setAccessible(true);
-        return (List<MutationPoint>) method.invoke(null, sourceDir, type, strategy, spec);
+        return (List<MutationPoint>) method.invoke(null, sourceDir, type, spec);
     }
 }

@@ -156,10 +156,16 @@ function Download-Python {
     $venvDir = "$RootDir\samples\PytestProject\.venv"
     $venvPython = "$venvDir\Scripts\python.exe"
 
-    # Remove stale venv if its interpreter is missing (e.g., after Python version change)
-    if ((Test-Path $venvDir) -and -not (Test-Path $venvPython)) {
-        Info "Removing stale Python virtual environment (interpreter not found)..."
-        Remove-Item -Recurse -Force $venvDir
+    # Remove stale venv if its interpreter is missing or broken (e.g., after Python version change or cross-OS clone)
+    if (Test-Path $venvDir) {
+        $venvWorks = $false
+        if (Test-Path $venvPython) {
+            try { & $venvPython --version 2>$null | Out-Null; $venvWorks = $LASTEXITCODE -eq 0 } catch {}
+        }
+        if (-not $venvWorks) {
+            Info "Removing stale Python virtual environment (interpreter missing or broken)..."
+            Remove-Item -Recurse -Force $venvDir
+        }
     }
 
     if (-not (Test-Path $venvDir)) {

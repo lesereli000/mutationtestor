@@ -7,7 +7,6 @@ from src.ConditionalDemo import killed as conditional_killed
 from src.FloorDivDemo import floor_divide
 from src.PowerDemo import power
 from src.InvertNegDemo import is_nonzero
-from src.NullReturnDemo import add
 
 
 def test_add3():
@@ -58,6 +57,4 @@ def test_invert_negs_killed():
     assert is_nonzero(0) == False
 
 
-def test_null_returns_killed():
-    # add(2, 3) == 5; if return value is mutated to None, the assertion fails
-    assert add(2, 3) == 5
+

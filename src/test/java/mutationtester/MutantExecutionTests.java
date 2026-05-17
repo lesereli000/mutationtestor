@@ -65,7 +65,7 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedJSProject() {
         Path directory = Path.of("samples/JSProject");
-        String testCommand = "npm test";
+        String testCommand = "cd browser-tests && node run-with-puppeteer.js";
 
         testOutput(testCommand, directory, directory, false);
     }
