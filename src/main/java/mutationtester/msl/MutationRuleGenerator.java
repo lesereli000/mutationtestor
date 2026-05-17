@@ -9,21 +9,25 @@ import java.util.List;
 /**
  * Parses a .spec file into a list of MutationRule objects.
  *
- * Expected format (verbatim from OperatorMutations.txt):
+ * Supported format:
  *
  * <Group Name>
  *
  * Replace: {quantity} <op> {quantity}
  * With: {quantity} <op> {quantity}
- * [And: Inverse] ← optional; generates the reverse rule too
- *
- * ... more Replace blocks ...
+ * [Except: <context pattern>]   ← optional, may repeat
+ * [And: Inverse]                ← optional; generates the reverse rule too
  *
  * End
  *
- * Lines are trimmed before processing. Blank lines and tab-only lines
- * between blocks are ignored. The group name is the first non-blank line.
- * "End" terminates the file (or EOF also terminates safely).
+ * The "Except:" clause suppresses the mutation when the source line
+ * matches the given context pattern. Multiple Except: lines are allowed.
+ *
+ * Example:
+ *   Replace: {quantity} <= {quantity}
+ *   With: {quantity} < {quantity}
+ *   Except: if ({quantity} <= 0) {quantity} = 0
+ *   And: Inverse
  */
 public class MutationRuleGenerator {
 
@@ -67,6 +71,20 @@ public class MutationRuleGenerator {
                 String toPattern = lines.get(i).substring("With:".length()).strip();
                 i++;
 
+                // Optional "Except: ..." — may appear multiple times
+                List<ExceptPattern> exceptPatterns = new ArrayList<>();
+                while (i < lines.size()) {
+                    while (i < lines.size() && lines.get(i).isEmpty())
+                        i++;
+                    if (i < lines.size() && lines.get(i).startsWith("Except:")) {
+                        String exceptTemplate = lines.get(i).substring("Except:".length()).strip();
+                        exceptPatterns.add(new ExceptPattern(exceptTemplate));
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+
                 // Optional "And: Inverse"
                 boolean inverse = false;
                 while (i < lines.size() && lines.get(i).isEmpty())
@@ -76,11 +94,14 @@ public class MutationRuleGenerator {
                     i++;
                 }
 
-                MutationRule rule = createRule(fromPattern, toPattern, groupLabel);
+                MutationRule rule = createRule(fromPattern, toPattern, exceptPatterns, groupLabel);
                 rules.add(rule);
 
                 if (inverse) {
-                    MutationRule inverseRule = createRule(toPattern, fromPattern, groupLabel);
+                    // Note: inverse rule does NOT inherit Except: clauses —
+                    // the author can add a separate Except: for the inverse direction
+                    MutationRule inverseRule = createRule(toPattern, fromPattern,
+                            List.of(), groupLabel);
                     rules.add(inverseRule);
                 }
                 continue;
@@ -96,7 +117,10 @@ public class MutationRuleGenerator {
     private static final java.util.regex.Pattern FUNC_CALL_PATTERN =
             java.util.regex.Pattern.compile("^([A-Za-z_][A-Za-z0-9_.]*)\\(\\{quantity\\}\\)$");
 
-    private static MutationRule createRule(String fromPattern, String toPattern, String groupLabel) {
+    private static MutationRule createRule(String fromPattern, String toPattern,
+                                           List<ExceptPattern> exceptPatterns,
+                                           String groupLabel) {
+
         if (fromPattern.equals("{invocation_statement}") && toPattern.equals(";")) {
             return new StatementRemovalRule(groupLabel + ": statement \u2192 ;");
         }
@@ -116,8 +140,6 @@ public class MutationRuleGenerator {
             }
         }
 
-        // Generic function call pattern: funcname({quantity}) → replacement
-        // Supports Python-style patterns like str({quantity}) → {quantity}
         java.util.regex.Matcher m = FUNC_CALL_PATTERN.matcher(fromPattern);
         if (m.matches()) {
             String funcName = m.group(1);
@@ -135,6 +157,6 @@ public class MutationRuleGenerator {
         BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
         String label = groupLabel + ": " + fromExpr.getOperator()
                 + " \u2192 " + toExpr.getOperator();
-        return MutationRuleFactory.create("Replace", fromExpr, toExpr, label);
+        return new ReplacementRule(fromExpr, toExpr, label, exceptPatterns);
     }
 }

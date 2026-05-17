@@ -17,78 +17,32 @@ import java.util.List;
 
 public class JavaScriptMutationScanner {
 
-    /**
-     * Scan a JavaScript file for mutations using AST parsing.
-     * Dispatches to the appropriate visitor based on mutation type category.
-     */
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-
         CharStream input = CharStreams.fromString(sourceCode);
         JavaScriptLexer lexer = new JavaScriptLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         JavaScriptParser parser = new JavaScriptParser(tokens);
         ParseTree tree = parser.program();
 
-        // --- Dispatch to the correct visitor by mutation type category ---
+        if (isRORType(type)) { JavaScriptRORVisitor v = new JavaScriptRORVisitor(file, type); v.visit(tree); return v.getMutations(); }
+        if (isLCRType(type)) { JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type); v.visit(tree); return v.getMutations(); }
+        if (isRVMType(type)) { JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type); v.visit(tree); return v.getMutations(); }
+        if (isAORType(type)) { JavaScriptAORVisitor v = new JavaScriptAORVisitor(file, type); v.visit(tree); return v.getMutations(); }
 
-        if (isRORType(type)) {
-            JavaScriptRORVisitor visitor = new JavaScriptRORVisitor(file, type);
-            visitor.visit(tree);
-            return visitor.getMutations();
-        }
-
-        if (isLCRType(type)) {
-            JavaScriptLCRVisitor visitor = new JavaScriptLCRVisitor(file, type);
-            visitor.visit(tree);
-            return visitor.getMutations();
-        }
-
-        if (isRVMType(type)) {
-            JavaScriptRVMVisitor visitor = new JavaScriptRVMVisitor(file, type);
-            visitor.visit(tree);
-            return visitor.getMutations();
-        }
-
-        if (isAORType(type)) {
-            JavaScriptAORVisitor visitor = new JavaScriptAORVisitor(file, type);
-            visitor.visit(tree);
-            return visitor.getMutations();
-        }
-
-        // NLT mutations (Numeric Literal Transformations) use the inner visitor
         NLTVisitor visitor = new NLTVisitor(file, type);
         visitor.visit(tree);
         return visitor.getMutationPoints();
     }
 
-    // ── Type category helpers ────────────────────────────────────────────────
+    private static boolean isRORType(Mutator.MutatorType t) { return t.name().startsWith("ROR_"); }
+    private static boolean isLCRType(Mutator.MutatorType t) { return t.name().startsWith("LCR_"); }
+    private static boolean isRVMType(Mutator.MutatorType t) { return t.name().startsWith("RVM_"); }
+    private static boolean isAORType(Mutator.MutatorType t) { return t.name().startsWith("AOR_"); }
 
-    private static boolean isRORType(Mutator.MutatorType type) {
-        return type.name().startsWith("ROR_");
-    }
+    // ── NLT visitor ──────────────────────────────────────────────────────────
 
-    private static boolean isLCRType(Mutator.MutatorType type) {
-        return type.name().startsWith("LCR_");
-    }
-
-    private static boolean isRVMType(Mutator.MutatorType type) {
-        return type.name().startsWith("RVM_");
-    }
-
-    private static boolean isAORType(Mutator.MutatorType type) {
-        return type.name().startsWith("AOR_");
-    }
-
-    // ── NLT visitor (Numeric Literal Transformations) ────────────────────────
-
-    /**
-     * Handles all NLT_* mutation types: integer ↔ float ↔ exponential.
-     * Kept as an inner class because it is only meaningful for JavaScript
-     * numeric literal semantics and is not reused elsewhere.
-     */
     private static class NLTVisitor extends JavaScriptParserBaseVisitor<Void> {
-
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
@@ -98,42 +52,29 @@ public class JavaScriptMutationScanner {
             this.mutationType = mutationType;
         }
 
-        List<MutationPoint> getMutationPoints() {
-            return mutationPoints;
-        }
+        List<MutationPoint> getMutationPoints() { return mutationPoints; }
 
         @Override
         public Void visitVariableDeclaration(JavaScriptParser.VariableDeclarationContext ctx) {
             if (ctx.assignable() != null && ctx.singleExpression() != null) {
                 JavaScriptParser.SingleExpressionContext expr = ctx.singleExpression();
-                if (isNumericLiteral(expr)) {
-                    String literalText = expr.getText();
-                    Token token = expr.start;
-                    createNumericLiteralMutation(literalText, token);
-                }
+                if (isNumericLiteral(expr)) createNumericLiteralMutation(expr.getText(), expr.start);
             }
             return visitChildren(ctx);
         }
 
         private boolean isNumericLiteral(JavaScriptParser.SingleExpressionContext ctx) {
-            if (ctx instanceof JavaScriptParser.LiteralExpressionContext litCtx) {
+            if (ctx instanceof JavaScriptParser.LiteralExpressionContext litCtx)
                 return litCtx.literal() != null && litCtx.literal().numericLiteral() != null;
-            }
             return false;
         }
 
         private void createNumericLiteralMutation(String literalText, Token token) {
             NumericLiteralType kind = classify(literalText);
             String replacement = getReplacement(literalText, kind);
-            if (replacement != null) {
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        token.getLine(),
-                        token.getCharPositionInLine(),
-                        literalText,
-                        replacement,
-                        mutationType));
-            }
+            if (replacement != null)
+                mutationPoints.add(new MutationPoint(sourceFile, token.getLine(),
+                        token.getCharPositionInLine(), literalText, replacement, mutationType));
         }
 
         private NumericLiteralType classify(String literal) {
@@ -145,15 +86,12 @@ public class JavaScriptMutationScanner {
         private String getReplacement(String original, NumericLiteralType kind) {
             return switch (kind) {
                 case INTEGER -> switch (mutationType) {
-                    case NLT_INTEGER_TO_FLOAT        -> original + ".0";
-                    case NLT_INTEGER_TO_EXPONENTIAL  -> toExponential(original);
+                    case NLT_INTEGER_TO_FLOAT       -> original + ".0";
+                    case NLT_INTEGER_TO_EXPONENTIAL -> toExponential(original);
                     default -> null;
                 };
                 case FLOAT -> switch (mutationType) {
-                    case NLT_FLOAT_TO_INTEGER -> {
-                        int dot = original.indexOf('.');
-                        yield dot > 0 ? original.substring(0, dot) : null;
-                    }
+                    case NLT_FLOAT_TO_INTEGER -> { int d = original.indexOf('.'); yield d > 0 ? original.substring(0, d) : null; }
                     case NLT_FLOAT_TO_EXPONENTIAL -> original + "e0";
                     default -> null;
                 };
@@ -169,30 +107,29 @@ public class JavaScriptMutationScanner {
             try {
                 long value = Long.parseLong(integer);
                 if (value == 0) return "0e0";
-                int exp = 0;
-                double mantissa = Math.abs(value);
+                int exp = 0; double mantissa = Math.abs(value);
                 while (mantissa >= 10) { mantissa /= 10; exp++; }
                 return String.format("%s%.1fe%d", value < 0 ? "-" : "", mantissa, exp);
-            } catch (NumberFormatException e) {
-                return null;
-            }
+            } catch (NumberFormatException e) { return null; }
         }
 
-        private String toInteger(String exponential) {
-            try {
-                return String.valueOf((long) Double.parseDouble(exponential));
-            } catch (NumberFormatException e) {
-                return null;
-            }
+        private String toInteger(String exp) {
+            try { return String.valueOf((long) Double.parseDouble(exp)); }
+            catch (NumberFormatException e) { return null; }
         }
     }
 
     private enum NumericLiteralType { INTEGER, FLOAT, EXPONENTIAL }
 
-    // ── MSL adapter ─────────────────────────────────────────────────────────
+    // ── MSL adapter ──────────────────────────────────────────────────────────
 
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
+
+        // Pre-split for O(1) line lookups in getSourceLine()
+        // ANTLR line numbers are 1-based; index 0 = line 1
+        final String[] sourceLines = sourceCode.split("\n", -1);
+
         CharStream input = CharStreams.fromString(sourceCode);
         JavaScriptLexer lexer = new JavaScriptLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -200,19 +137,15 @@ public class JavaScriptMutationScanner {
         ParseTree tree = parser.program();
 
         return new MSLScannerAdapter() {
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                if (ctx.getChildCount() == 3) {
-                    return ctx.getChild(1).getText().equals(mslOperator);
-                }
-                return false;
+                return ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(mslOperator);
             }
 
             @Override public ParseTree getLeftOperand(ParseTree ctx)  { return ctx.getChild(0); }
             @Override public ParseTree getRightOperand(ParseTree ctx) { return ctx.getChild(2); }
-
-            @Override
-            public ParseTree getOperatorToken(ParseTree ctx) {
+            @Override public ParseTree getOperatorToken(ParseTree ctx) {
                 return ctx.getChildCount() >= 3 ? ctx.getChild(1) : null;
             }
 
@@ -231,8 +164,22 @@ public class JavaScriptMutationScanner {
                 return false;
             }
 
+            /**
+             * Returns the full source line containing this node.
+             * ReplacementRule uses this to evaluate Except: context patterns.
+             * Example: for a <= node on line 3, returns the full text of line 3.
+             */
             @Override
-            public String getNodeText(ParseTree ctx) { return ctx.getText(); }
+            public String getSourceLine(ParseTree ctx) {
+                int[] pos = getTokenPosition(ctx);
+                int lineIndex = pos[0] - 1; // convert 1-based ANTLR line to 0-based array index
+                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
+                    return sourceLines[lineIndex];
+                }
+                return "";
+            }
+
+            @Override public String getNodeText(ParseTree ctx) { return ctx.getText(); }
 
             @Override
             public int[] getTokenPosition(ParseTree ctx) {
@@ -247,8 +194,7 @@ public class JavaScriptMutationScanner {
                 return new int[]{0, 0};
             }
 
-            @Override
-            public ParseTree getRootContext() { return tree; }
+            @Override public ParseTree getRootContext() { return tree; }
         };
     }
 }

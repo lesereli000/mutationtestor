@@ -44,7 +44,6 @@ public class Main {
         String mutatorType;
         String compileCommand;
         String testCommand;
-        String mutationStrategy;  // AST or DICTIONARY, or AUTO
         String testMode;          // BROWSER, CLI, or AUTO
         String customMutationSpec; // path to .spec file when mutatorType=CUSTOM; null otherwise
         String coverageCommand;   // optional command that writes a coverage report
@@ -157,7 +156,6 @@ public class Main {
                         type.name(),
                         config.compileCommand,
                         config.testCommand,
-                        config.mutationStrategy,
                         config.customMutationSpec,
                         config.coverageCommand,
                         config.coverageReport);
@@ -170,7 +168,6 @@ public class Main {
                     config.mutatorType,
                     config.compileCommand,
                     config.testCommand,
-                    config.mutationStrategy,
                     config.customMutationSpec,
                     config.coverageCommand,
                     config.coverageReport);
@@ -181,7 +178,6 @@ public class Main {
                     config.mutatorType,
                     config.compileCommand,
                     config.testCommand,
-                    config.mutationStrategy,
                     config.customMutationSpec,
                     config.coverageCommand,
                     config.coverageReport);
@@ -232,7 +228,6 @@ public class Main {
         config.testCommand = values.get("test_command");
 
         // Read mutation strategy (defaults to AUTO)
-        config.mutationStrategy = values.getOrDefault("mutation_strategy", "");
         config.testMode = values.getOrDefault("test_mode", "AUTO");
         config.customMutationSpec = values.getOrDefault("custom_mutation_spec", null);
         config.coverageCommand = values.getOrDefault("coverage_command", "");
@@ -254,7 +249,7 @@ public class Main {
     }
 
     private static void mutationTest(String projectDir, String sourceCode, String mutatorType, String command1,
-        String command2, String mutationStrategy, String customMutationSpec,
+        String command2, String customMutationSpec,
         String coverageCommand, String coverageReport) {
         Path projectPath = Path.of(projectDir);
         Path sourcePath = Path.of(sourceCode);
@@ -291,23 +286,9 @@ public class Main {
 
         System.out.println("\nScanning for mutations...");
 
-        // Check if strategy is specified in config or show interactive menu
-        MutationStrategy strategy;
-        if (mutationStrategy == null || mutationStrategy.trim().isEmpty()) {
-            // No strategy in config - show interactive menu
-            strategy = StrategySelector.selectStrategy();
-        } else {
-            // Strategy specified in config
-            strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
-        }
-
-        // Print what strategy is being used
-        StrategySelector.printStrategyDetails(strategy);
-
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,
                 Mutator.MutatorType.valueOf(mutatorType),
-                mutationStrategy,
                 customMutationSpec);
         System.out.println("Found " + mutationPoints.size() + " mutation points");
 
@@ -680,7 +661,6 @@ public class Main {
     static List<MutationPoint> scanForMutations(
             Path sourceDir,
             Mutator.MutatorType type,
-            String mutationStrategy,
             String customMutationSpec) {
         List<MutationPoint> points = new ArrayList<>();
 
@@ -710,7 +690,7 @@ public class Main {
                 if (type == Mutator.MutatorType.CUSTOM) {
                     filePoints = findCustomMutationsInFile(file, rules);
                 } else {
-                    filePoints = findMutationsInFile(file, type, mutationStrategy);
+                    filePoints = findMutationsInFile(file, type);
                 }
                 points.addAll(filePoints);
             }
@@ -760,11 +740,10 @@ public class Main {
 
     private static List<MutationPoint> findMutationsInFile(
             File file,
-            Mutator.MutatorType type,
-            String mutationStrategy) throws IOException {
+            Mutator.MutatorType type) throws IOException {
 
         String fileName = file.getName();
-        boolean useAST = shouldUseAST(fileName, type, mutationStrategy);
+        boolean useAST = shouldUseAST(fileName, type, "AUTO");
         if (useAST) {
             // AST APPROACH - Use ANTLR parsers
             // Check if this is a JavaScript file - use AST approach
@@ -855,7 +834,7 @@ public class Main {
 
         private static void multiMutationTest(
             String projectDir, String sourceCode, String mutatorTypes,
-            String command1, String command2, String mutationStrategy,
+            String command1, String command2,
             String customMutationSpec, String coverageCommand, String coverageReport) {
  
         Path projectPath = Path.of(projectDir);
@@ -888,15 +867,7 @@ public class Main {
             CoverageData coverageData = loadCoverageData(
                     mutantPath, sourceDir, coverageCommand, coverageReport);
  
-            // Parse and display selected strategy
-            MutationStrategy strategy;
-            if (mutationStrategy == null || mutationStrategy.trim().isEmpty()) {
-                strategy = StrategySelector.selectStrategy();
-            } else {
-                strategy = MutationStrategy.valueOf(mutationStrategy.toUpperCase());
-            }
-            StrategySelector.printStrategyDetails(strategy);
- 
+        
             // Collect mutation points for ALL requested types
             System.out.println("\nScanning for mutations across all types...");
             List<MutationPoint> allPoints = new ArrayList<>();
@@ -907,7 +878,6 @@ public class Main {
                 List<MutationPoint> typePoints = scanForMutations(
                         sourceDir,
                         Mutator.MutatorType.valueOf(trimmed),
-                        mutationStrategy,
                         customMutationSpec);
                 System.out.println("    Found " + typePoints.size() + " points");
                 allPoints.addAll(typePoints);
