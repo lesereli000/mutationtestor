@@ -50,6 +50,15 @@
     (check-equal? (divide 10 2) 5)
     (check-equal? (divide 9 3) 3)))
 
+(define boundary-suite
+  (test-suite "Test boundary checks"
+    (check-equal? (clamp-to-zero 0)  0)
+    (check-equal? (clamp-to-zero -1) 0)
+    (check-equal? (clamp-to-zero 5)  5)
+    (check-equal? (under-limit? 3 5) #t)
+    (check-equal? (under-limit? 5 5) #t)   ; killed if <= → <
+    (check-equal? (under-limit? 6 5) #f)))
+
 (define typed-functions-suite
   (test-suite "Test typed-functions"
     (check-equal? (typed-add 2 3) 6)   ; 2+3+1=6, mutant gives 2-3+1=0 → fail
@@ -60,7 +69,8 @@
     add1-suite
     add2-suite
     operators-suite
-    ;typed-functions-suite
+    boundary-suite
+    typed-functions-suite
     ))
 
 
