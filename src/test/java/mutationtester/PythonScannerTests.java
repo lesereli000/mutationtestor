@@ -3,6 +3,7 @@ package mutationtester;
 import mutationtester.coverage.*;
 import mutationtester.core.*;
 import mutationtester.model.*;
+import mutationtester.msl.*;
 import mutationtester.scanner.*;
 
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,25 @@ public class PythonScannerTests {
         assertEquals(2, points.size());
         assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("==") && point.getReplacement().equals("!=")));
         assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("!=") && point.getReplacement().equals("==")));
+    }
+
+    @Test
+    public void testNegateConditionalsFull() throws IOException {
+        File file = writeTempPythonFile("def check(a, b):\n    if a > b:\n        return True\n    if a < b:\n        return False\n    if a >= b:\n        return True\n    if a <= b:\n        return False\n");
+
+        List<MutationPoint> gtToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_LT);
+        List<MutationPoint> ltToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_GT);
+        List<MutationPoint> gteToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GTE_TO_LT);
+        List<MutationPoint> lteToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LTE_TO_GT);
+
+        assertEquals(1, gtToLt.size());
+        assertEquals("<", gtToLt.get(0).getReplacement());
+        assertEquals(1, ltToGt.size());
+        assertEquals(">", ltToGt.get(0).getReplacement());
+        assertEquals(1, gteToLt.size());
+        assertEquals("<", gteToLt.get(0).getReplacement());
+        assertEquals(1, lteToGt.size());
+        assertEquals(">", lteToGt.get(0).getReplacement());
     }
 
     @Test
@@ -263,33 +283,70 @@ public class PythonScannerTests {
         assertTrue(points.isEmpty());
     }
 
-    @Test
-    public void testNullReturnsReplacesExpression() throws IOException {
-        File file = writeTempPythonFile("def add(a, b):\n    return a + b\n");
+    // ── Context-sensitive (Except:) tests ────────────────────────────────────
 
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
+    @Test
+    public void testExceptSuppressesMutationOnClampLine() throws IOException {
+        // "if n <= 0: n = 0" matches the Except: pattern — mutation should be suppressed
+        File file = writeTempPythonFile(
+                "def clamp(n):\n    if n <= 0: n = 0\n    return n\n");
+        File specFile = writeSpecFile(
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+
+        MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
+        List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
+        List<MutationPoint> points = new java.util.ArrayList<>();
+        for (MutationRule rule : rules) {
+            points.addAll(rule.findMutationPoints(adapter, file));
+        }
+
+        assertTrue(points.isEmpty(), "Mutation on clamp line should be suppressed by Except:");
+    }
+
+    @Test
+    public void testExceptDoesNotSuppressMutationOnRealLogicLine() throws IOException {
+        // "if x <= limit:" does NOT match the Except: pattern — mutation should fire
+        File file = writeTempPythonFile(
+                "def is_under(x, limit):\n    if x <= limit:\n        return True\n    return False\n");
+        File specFile = writeSpecFile(
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+
+        MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
+        List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
+        List<MutationPoint> points = new java.util.ArrayList<>();
+        for (MutationRule rule : rules) {
+            points.addAll(rule.findMutationPoints(adapter, file));
+        }
+
+        assertEquals(1, points.size(), "Mutation on real-logic line should NOT be suppressed");
+        assertEquals("<=", points.get(0).getOperator());
+        assertEquals("<", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testExceptWithNoMatchingLinesFindsAllMutations() throws IOException {
+        // No line matches the Except: pattern — all <= mutations should fire
+        File file = writeTempPythonFile(
+                "def check(a, b):\n    return a <= b\n");
+        File specFile = writeSpecFile(
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+
+        MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
+        List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
+        List<MutationPoint> points = new java.util.ArrayList<>();
+        for (MutationRule rule : rules) {
+            points.addAll(rule.findMutationPoints(adapter, file));
+        }
 
         assertEquals(1, points.size());
-        assertEquals("a + b", points.get(0).getOperator());
-        assertEquals("None", points.get(0).getReplacement());
+        assertEquals("<=", points.get(0).getOperator());
     }
 
-    @Test
-    public void testNullReturnsSkipsReturnNone() throws IOException {
-        File file = writeTempPythonFile("def nothing():\n    return None\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
-
-        assertTrue(points.isEmpty());
-    }
-
-    @Test
-    public void testNullReturnsSkipsBareReturn() throws IOException {
-        File file = writeTempPythonFile("def nothing():\n    return\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.NULL_RETURNS);
-
-        assertTrue(points.isEmpty());
+    private File writeSpecFile(String content) throws IOException {
+        Path path = Files.createTempFile("python-spec-", ".spec");
+        Files.writeString(path, content);
+        path.toFile().deleteOnExit();
+        return path.toFile();
     }
 
     private File writeTempPythonFile(String content) throws IOException {

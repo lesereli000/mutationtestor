@@ -101,28 +101,6 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
     }
 
     @Override
-    public Void visitReturn_stmt(PythonParser.Return_stmtContext ctx) {
-        if (mutationType == Mutator.MutatorType.NULL_RETURNS && ctx.testlist() != null) {
-            Token startTok = ctx.testlist().getStart();
-            Token stopTok  = ctx.testlist().getStop();
-            // Extract actual source text (preserves whitespace, unlike getText())
-            String[] lines = sourceCode.split("\n", -1);
-            int lineIdx = startTok.getLine() - 1;
-            if (lineIdx >= 0 && lineIdx < lines.length) {
-                String srcLine = lines[lineIdx];
-                int colStart = startTok.getCharPositionInLine();
-                int colStop  = stopTok.getCharPositionInLine() + stopTok.getText().length();
-                colStop = Math.min(colStop, srcLine.length());
-                String exprText = srcLine.substring(colStart, colStop);
-                if (!exprText.equals("None")) {
-                    addMutation(startTok, exprText, "None");
-                }
-            }
-        }
-        return visitChildren(ctx);
-    }
-
-    @Override
     public Void visitLogical_test(PythonParser.Logical_testContext ctx) {
         if (mutationType == Mutator.MutatorType.INVERT_NEGS && ctx.NOT() != null) {
             Token notToken = ctx.NOT().getSymbol();
@@ -167,6 +145,14 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
                 addMutation(token, "==", "!=");
             } else if (mutationType == Mutator.MutatorType.EQ_NEGATE && operator.equals("!=")) {
                 addMutation(token, "!=", "==");
+            } else if (mutationType == Mutator.MutatorType.ROR_GT_TO_LT && operator.equals(">")) {
+                addMutation(token, ">", "<");
+            } else if (mutationType == Mutator.MutatorType.ROR_LT_TO_GT && operator.equals("<")) {
+                addMutation(token, "<", ">");
+            } else if (mutationType == Mutator.MutatorType.ROR_GTE_TO_LT && operator.equals(">=")) {
+                addMutation(token, ">=", "<");
+            } else if (mutationType == Mutator.MutatorType.ROR_LTE_TO_GT && operator.equals("<=")) {
+                addMutation(token, "<=", ">");
             }
         }
 

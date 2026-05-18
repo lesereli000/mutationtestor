@@ -506,7 +506,7 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.BOR_OR_TO_AND);
 
-        // operators.rkt has one (bitwise-or x y) in bitwise-or-test
+        // operators.rkt has one (bitwise-ior x y) in bitwise-or-test
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
         assertEquals("bitwise-ior", p.getOperator());

@@ -47,7 +47,6 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV,
                 Mutator.MutatorType.AOR_POWER_TO_MULTIPLY,
                 Mutator.MutatorType.INVERT_NEGS,
-                Mutator.MutatorType.NULL_RETURNS,
                 Mutator.MutatorType.BOR_AND_TO_OR,
                 Mutator.MutatorType.BOR_OR_TO_AND,
                 Mutator.MutatorType.ROR_LT_TO_LE,
@@ -55,6 +54,10 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.ROR_GT_TO_GE,
                 Mutator.MutatorType.ROR_GE_TO_GT,
                 Mutator.MutatorType.EQ_NEGATE,
+                Mutator.MutatorType.ROR_GT_TO_LT,
+                Mutator.MutatorType.ROR_LT_TO_GT,
+                Mutator.MutatorType.ROR_GTE_TO_LT,
+                Mutator.MutatorType.ROR_LTE_TO_GT,
                 Mutator.MutatorType.LOGICAL_AND_TO_OR,
                 Mutator.MutatorType.LOGICAL_OR_TO_AND,
                 Mutator.MutatorType.TYPE_INT_TO_FLOAT,
@@ -71,7 +74,6 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV
                 || type == Mutator.MutatorType.AOR_POWER_TO_MULTIPLY
                 || type == Mutator.MutatorType.INVERT_NEGS
-                || type == Mutator.MutatorType.NULL_RETURNS
                 || type == Mutator.MutatorType.BOR_AND_TO_OR
                 || type == Mutator.MutatorType.BOR_OR_TO_AND
                 || type == Mutator.MutatorType.ROR_LT_TO_LE
@@ -79,6 +81,10 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.ROR_GT_TO_GE
                 || type == Mutator.MutatorType.ROR_GE_TO_GT
                 || type == Mutator.MutatorType.EQ_NEGATE
+                || type == Mutator.MutatorType.ROR_GT_TO_LT
+                || type == Mutator.MutatorType.ROR_LT_TO_GT
+                || type == Mutator.MutatorType.ROR_GTE_TO_LT
+                || type == Mutator.MutatorType.ROR_LTE_TO_GT
                 || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
                 || type == Mutator.MutatorType.LOGICAL_OR_TO_AND
                 || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
@@ -86,6 +92,9 @@ public class PythonMutationScanner {
     }
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
+        // Pre-split for O(1) line lookups in getSourceLine()
+        // ANTLR line numbers are 1-based; index 0 = line 1
+        final String[] sourceLines = sourceCode.split("\n", -1);
         CharStream input = CharStreams.fromString(sourceCode);
         PythonLexer lexer = new PythonLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -215,6 +224,20 @@ public class PythonMutationScanner {
                     }
                 }
                 return new int[]{0, 0};
+            }
+
+            /**
+             * Returns the full source line containing this node.
+             * ReplacementRule uses this to evaluate Except: context patterns.
+             */
+            @Override
+            public String getSourceLine(ParseTree ctx) {
+                int[] pos = getTokenPosition(ctx);
+                int lineIndex = pos[0] - 1; // convert 1-based ANTLR line to 0-based array index
+                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
+                    return sourceLines[lineIndex];
+                }
+                return "";
             }
 
             @Override
