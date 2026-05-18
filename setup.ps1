@@ -193,8 +193,13 @@ function Download-JavaScript {
  
     Info "Installing JavaScript sample dependencies (npm install)..."
     Push-Location "$RootDir\samples\JSProject"
-    npm install
-    Pop-Location
+    try {
+        npm install
+        Info "Installing Puppeteer Chrome browser..."
+        npx puppeteer browsers install chrome
+    } finally {
+        Pop-Location
+    }
  
     # Verify Puppeteer installed correctly
     Verify-Puppeteer
