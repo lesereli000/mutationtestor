@@ -950,6 +950,7 @@ public class CSharpMutationScanner {
         String sourceCode = Files.readString(file.toPath());
         sourceCode = removeBom(sourceCode);
         final String sourceText = sourceCode;
+        final String[] sourceLines = sourceCode.split("\n", -1);
         CharStream input = CharStreams.fromString(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -997,6 +998,16 @@ public class CSharpMutationScanner {
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
+            }
+
+            @Override
+            public String getSourceLine(ParseTree ctx) {
+                int[] pos = getTokenPosition(ctx);
+                int lineIndex = pos[0] - 1;
+                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
+                    return sourceLines[lineIndex];
+                }
+                return "";
             }
 
             @Override
