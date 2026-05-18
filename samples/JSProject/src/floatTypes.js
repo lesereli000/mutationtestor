@@ -22,4 +22,3 @@ function smallDecimal() {
     let small = 0.001;  // Small decimal
     return small;
 }
-

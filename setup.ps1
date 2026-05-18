@@ -135,17 +135,72 @@ function Download-Maven {
     mvn -q -DskipTests dependency:go-offline
     Pop-Location
 }
+# for JS
+
+function Verify-Puppeteer {
+    Info "Verifying Puppeteer installation..."
+ 
+    $jsProjectDir = "$RootDir\samples\JSProject"
+    $puppeteerPackage = "$jsProjectDir\node_modules\puppeteer\package.json"
+ 
+    # Check package exists
+    if (-not (Test-Path $puppeteerPackage)) {
+        Miss "Puppeteer not found in node_modules. npm install may have failed."
+        Warn "Try running manually: cd samples\JSProject && npm install"
+        return
+    }
+ 
+    # Read and display version
+    try {
+        $pkg = Get-Content $puppeteerPackage -Raw | ConvertFrom-Json
+        Ok "Puppeteer: $($pkg.version)"
+    } catch {
+        Warn "Could not read Puppeteer version from package.json"
+    }
+ 
+    # Run the browser test to confirm Chrome headless works
+    Info "Running baseline browser test to verify Puppeteer works..."
+    Push-Location $jsProjectDir
+    try {
+        $output = node browser-tests\run-with-puppeteer.js 2>&1
+        $outputStr = $output -join "`n"
+ 
+        if ($outputStr -match "ALL TESTS PASSED") {
+            Ok "Puppeteer browser test: ALL TESTS PASSED"
+        } elseif ($outputStr -match "success rate: 100") {
+            Ok "Puppeteer browser test: passed"
+        } else {
+            Miss "Puppeteer browser test did not pass."
+            Warn "Output:"
+            Write-Host $outputStr
+            Warn "Check that browser-tests\test-runner.html loads correctly."
+        }
+    } catch {
+        Miss "Failed to run Puppeteer browser test: $_"
+        Warn "Try running manually: node browser-tests\run-with-puppeteer.js"
+    } finally {
+        Pop-Location
+    }
+}
+
+ 
+
 
 function Download-JavaScript {
     if (-not (Have npm)) {
         Warn "Skipping JavaScript dependencies because npm is missing."
         return
     }
+ 
     Info "Installing JavaScript sample dependencies (npm install)..."
     Push-Location "$RootDir\samples\JSProject"
     npm install
     Pop-Location
+ 
+    # Verify Puppeteer installed correctly
+    Verify-Puppeteer
 }
+
 
 function Download-Python {
     $py = if (Have python) { "python" } elseif (Have python3) { "python3" } else { $null }
@@ -207,6 +262,18 @@ Require-Tool dotnet ".NET SDK (net10.0)" dotnet-sdk         "Install .NET SDK fr
 Require-Tool python "Python 3"           python             "Install Python 3 from https://www.python.org/downloads/"
 Require-Tool npm    "Node.js/npm"        nodejs             "Install Node.js from https://nodejs.org/"
 Check-Racket
+
+# Check Puppeteer (project-level dep, not a system tool)
+if (Have npm) {
+    $puppeteerPkg = "$RootDir\samples\JSProject\node_modules\puppeteer\package.json"
+    if (Test-Path $puppeteerPkg) {
+        $pkg = Get-Content $puppeteerPkg -Raw | ConvertFrom-Json
+        Ok "Puppeteer (JSProject): $($pkg.version)"
+    } else {
+        Miss "Puppeteer not installed in samples\JSProject\node_modules."
+        Warn "Run '.\setup.ps1 --install' or: cd samples\JSProject && npm install"
+    }
+}
 
 if ($Install) {
     Write-Host ""

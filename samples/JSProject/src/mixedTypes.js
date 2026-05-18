@@ -21,4 +21,3 @@ function edgeCases() {
     
     return zero + tiny + big;
 }
-
