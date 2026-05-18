@@ -23,10 +23,3 @@ function smallDecimal() {
     return small;
 }
 
-module.exports = {
-    calculatePi,
-    halfValue,
-    precisionTest,
-    negativeFloat,
-    smallDecimal
-};
