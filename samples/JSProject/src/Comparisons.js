@@ -16,3 +16,5 @@ function isValid(x) {
     }
     return false;
 }
+
+module.exports = { isPositive, isInRange, isZero, isValid };

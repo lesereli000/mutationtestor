@@ -9,3 +9,5 @@ function isUnderLimit(x, limit) {
     }
     return false;
 }
+
+module.exports = { clampToZero, isUnderLimit };
