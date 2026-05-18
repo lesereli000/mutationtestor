@@ -54,6 +54,10 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.ROR_GT_TO_GE,
                 Mutator.MutatorType.ROR_GE_TO_GT,
                 Mutator.MutatorType.EQ_NEGATE,
+                Mutator.MutatorType.ROR_GT_TO_LT,
+                Mutator.MutatorType.ROR_LT_TO_GT,
+                Mutator.MutatorType.ROR_GTE_TO_LT,
+                Mutator.MutatorType.ROR_LTE_TO_GT,
                 Mutator.MutatorType.LOGICAL_AND_TO_OR,
                 Mutator.MutatorType.LOGICAL_OR_TO_AND,
                 Mutator.MutatorType.TYPE_INT_TO_FLOAT,
@@ -77,6 +81,10 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.ROR_GT_TO_GE
                 || type == Mutator.MutatorType.ROR_GE_TO_GT
                 || type == Mutator.MutatorType.EQ_NEGATE
+                || type == Mutator.MutatorType.ROR_GT_TO_LT
+                || type == Mutator.MutatorType.ROR_LT_TO_GT
+                || type == Mutator.MutatorType.ROR_GTE_TO_LT
+                || type == Mutator.MutatorType.ROR_LTE_TO_GT
                 || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
                 || type == Mutator.MutatorType.LOGICAL_OR_TO_AND
                 || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT

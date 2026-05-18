@@ -145,6 +145,14 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
                 addMutation(token, "==", "!=");
             } else if (mutationType == Mutator.MutatorType.EQ_NEGATE && operator.equals("!=")) {
                 addMutation(token, "!=", "==");
+            } else if (mutationType == Mutator.MutatorType.ROR_GT_TO_LT && operator.equals(">")) {
+                addMutation(token, ">", "<");
+            } else if (mutationType == Mutator.MutatorType.ROR_LT_TO_GT && operator.equals("<")) {
+                addMutation(token, "<", ">");
+            } else if (mutationType == Mutator.MutatorType.ROR_GTE_TO_LT && operator.equals(">=")) {
+                addMutation(token, ">=", "<");
+            } else if (mutationType == Mutator.MutatorType.ROR_LTE_TO_GT && operator.equals("<=")) {
+                addMutation(token, "<=", ">");
             }
         }
 

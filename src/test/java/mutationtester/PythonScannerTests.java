@@ -53,6 +53,25 @@ public class PythonScannerTests {
     }
 
     @Test
+    public void testNegateConditionalsFull() throws IOException {
+        File file = writeTempPythonFile("def check(a, b):\n    if a > b:\n        return True\n    if a < b:\n        return False\n    if a >= b:\n        return True\n    if a <= b:\n        return False\n");
+
+        List<MutationPoint> gtToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_LT);
+        List<MutationPoint> ltToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_GT);
+        List<MutationPoint> gteToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GTE_TO_LT);
+        List<MutationPoint> lteToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LTE_TO_GT);
+
+        assertEquals(1, gtToLt.size());
+        assertEquals("<", gtToLt.get(0).getReplacement());
+        assertEquals(1, ltToGt.size());
+        assertEquals(">", ltToGt.get(0).getReplacement());
+        assertEquals(1, gteToLt.size());
+        assertEquals("<", gteToLt.get(0).getReplacement());
+        assertEquals(1, lteToGt.size());
+        assertEquals(">", lteToGt.get(0).getReplacement());
+    }
+
+    @Test
     public void testLogicalMutation() throws IOException {
         File file = writeTempPythonFile("def choose(a, b):\n    if a and b:\n        return True\n    return False\n");
 
