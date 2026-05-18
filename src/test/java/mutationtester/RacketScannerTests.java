@@ -494,7 +494,7 @@ public class RacketScannerTests {
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
         assertEquals("bitwise-and", p.getOperator());
-        assertEquals("bitwise-or", p.getReplacement());
+        assertEquals("bitwise-ior", p.getReplacement());
     }
 
 // -------------------------------------------------------------------------
@@ -509,7 +509,7 @@ public class RacketScannerTests {
         // operators.rkt has one (bitwise-or x y) in bitwise-or-test
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
-        assertEquals("bitwise-or", p.getOperator());
+        assertEquals("bitwise-ior", p.getOperator());
         assertEquals("bitwise-and", p.getReplacement());
     }
 
