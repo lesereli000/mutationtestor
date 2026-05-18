@@ -2,11 +2,11 @@
 #
 # Usage (run in an elevated PowerShell prompt):
 #   .\setup.ps1            # check whether required tools are present
-#   .\setup.ps1 --install  # install missing tools via Chocolatey, then download project deps
+#   .\setup.ps1 -Install   # install missing tools via Chocolatey, then download project deps
 #
 # Chocolatey (https://chocolatey.org) is used as the Windows package manager,
 # matching the spirit of the original request.  If Chocolatey is not found and
-# --install is specified, this script installs it automatically.
+# -Install is specified, this script installs it automatically.
 
 param(
     [switch]$Install,
@@ -44,7 +44,7 @@ function Have {
 function Ensure-Choco {
     if (Have choco) { return }
     if (-not $Install) {
-        Warn "Chocolatey not found. Run with --install to install it automatically."
+        Warn "Chocolatey not found. Run with -Install to install it automatically."
         return
     }
 
@@ -72,6 +72,7 @@ function Require-Tool {
 
     if (Have $Cmd) {
         $ver = try { & $Cmd --version 2>&1 | Select-Object -First 1 } catch { "unknown" }
+        Ok "${Label}: $ver"
         return
     }
 
@@ -279,7 +280,7 @@ if (Have npm) {
         Ok "Puppeteer (JSProject): $($pkg.version)"
     } else {
         Miss "Puppeteer not installed in samples\JSProject\node_modules."
-        Warn "Run '.\setup.ps1 --install' or: cd samples\JSProject && npm install"
+        Warn "Run '.\setup.ps1 -Install' or: cd samples\JSProject && npm install"
     }
 }
 
@@ -294,7 +295,7 @@ if ($Install) {
     Download-DotNet
 } else {
     Write-Host ""
-    Info "Run '.\setup.ps1 --install' to install missing tools and download project dependencies."
+    Info "Run '.\setup.ps1 -Install' to install missing tools and download project dependencies."
 }
 
 Write-Host ""
@@ -305,6 +306,5 @@ Write-Host "1. Build the mutation tester:"
 Write-Host "   mvn package -DskipTests"
 Write-Host ""
 Write-Host "2. Invoke the tool with the project directory and config file as arguments:"
-Write-Host "   java -jar target/MutationTester.jar <project_directory> <config_file>"
+Write-Host "   java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar <project_directory> <config_file>"
 Write-Host ""
-

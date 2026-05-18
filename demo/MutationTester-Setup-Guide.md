@@ -64,7 +64,7 @@ Run the PowerShell setup script from the project root (elevated prompt recommend
 .\setup.ps1
 
 # Install missing tools + download project dependencies
-.\setup.ps1 --install
+.\setup.ps1 -Install
 ```
 
 Or use the batch launcher:
@@ -85,7 +85,7 @@ bash setup-dependencies.sh --install
 
 The script automatically detects your package manager (`brew`, `apt`, or `choco`) and installs any missing tools.
 
-> `setup.ps1 --install` showing `[OK]` lines for Java, Maven, .NET, Python, npm, and Racket.
+> `setup.ps1 -Install` showing `[OK]` lines for Java, Maven, .NET, Python, npm, and Racket.
 > ![setup.png](setup.png)
 
 ---
