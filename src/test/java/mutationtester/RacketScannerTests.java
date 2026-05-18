@@ -159,11 +159,12 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
 
-        // operators.rkt has one (<= x y) in compare-le
-        assertEquals(1, points.size());
-        MutationPoint p = points.get(0);
-        assertEquals("<=", p.getOperator());
-        assertEquals("<", p.getReplacement());
+        // operators.rkt has compare-le, clamp-to-zero, and under-limit? using <=
+        assertEquals(3, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("<=", p.getOperator());
+            assertEquals("<", p.getReplacement());
+        }
     }
 
     @Test
@@ -271,8 +272,8 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NLT_INTEGER_TO_FLOAT);
 
-        // operators.rkt has integers: 0 (twice in check-logic), 5, 10 in check-floats
-        assertEquals(6, points.size());
+        // operators.rkt: 0x4 in check-logic, 5+10 in check-floats, 0x2 in clamp-to-zero
+        assertEquals(8, points.size());
         for (MutationPoint p : points) {
             assertFalse(p.getOperator().contains("."));
             assertTrue(p.getReplacement().endsWith(".0"));
@@ -448,6 +449,7 @@ public class RacketScannerTests {
     public void testArithmeticNegateConditionals() throws IOException {
         File file = new File("samples/RacketCalculator/calculator/src/arithmetic.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS);
+
         // arithmetic.rkt has exactly one (if ...) form in divide
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
@@ -458,8 +460,9 @@ public class RacketScannerTests {
     public void testOperatorsNegateConditionals() throws IOException {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS);
-        // operators.rkt has 7 (if ...) forms
-        assertEquals(7, points.size());
+
+        // operators.rkt has 9 (if ...) forms (includes clamp-to-zero, under-limit?)
+        assertEquals(9, points.size());
         for (MutationPoint p : points) {
             assertEquals("if", p.getOperator());
         }
@@ -522,8 +525,8 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONDITIONAL_TRUE);
 
-        // operators.rkt has 7 (if ...) expressions
-        assertEquals(7, points.size());
+        // operators.rkt has 9 (if ...) expressions (includes clamp-to-zero, under-limit?)
+        assertEquals(9, points.size());
         for (MutationPoint p : points) {
             assertEquals("#t", p.getReplacement());
             assertFalse(p.getOperator().isEmpty());
@@ -539,8 +542,8 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONDITIONAL_FALSE);
 
-        // operators.rkt has 7 (if ...) expressions
-        assertEquals(7, points.size());
+        // operators.rkt has 9 (if ...) expressions (includes clamp-to-zero, under-limit?)
+        assertEquals(9, points.size());
         for (MutationPoint p : points) {
             assertEquals("#f", p.getReplacement());
             assertFalse(p.getOperator().isEmpty());

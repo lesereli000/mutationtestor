@@ -48,6 +48,7 @@ demo-output/
 /samples/RacketProject/.mutation-racket-coverage.tmp
 /samples/RacketProject/racket-coverage.info
 /.vscode
+/node_modules
 
 # External local projects / submodules
 /external/

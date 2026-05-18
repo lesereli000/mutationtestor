@@ -418,6 +418,14 @@ public class RacketMutationScanner {
             }
 
             @Override
+            public String getSourceLine(ParseTree ctx) {
+                String[] lines = sourceCode.split("\n", -1);
+                int[] pos = getTokenPosition(ctx);
+                int idx = pos[0] - 1;   // ANTLR lines are 1-based
+                return (idx >= 0 && idx < lines.length) ? lines[idx] : "";
+            }
+
+            @Override
             public String getNodeText(ParseTree ctx) {
                 if (ctx instanceof ParserRuleContext prc) {
                     Token start = prc.getStart();
