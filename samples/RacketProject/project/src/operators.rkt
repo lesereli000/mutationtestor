@@ -1,6 +1,6 @@
 #lang racket
 
-(provide add subtract compare-gt compare-ge check-equal check-logic check-floats compare-lt compare-le multiply divide)
+(provide add subtract compare-gt compare-ge check-equal check-logic check-floats compare-lt compare-le multiply divide clamp-to-zero under-limit?)
 
 ; AOR: + and -
 (define (add x y)
@@ -76,6 +76,15 @@
   (begin
     (display name)
     (string-length name)))
+
+; Context-sensitive boundary mutations
+; clamp-to-zero: (<= n 0) is equivalent to (< n 0) because the then-branch returns the boundary value 0
+(define (clamp-to-zero n)
+  (if (<= n 0) 0 n))
+
+; under-limit?: real logic — mutation changes result when x = limit
+(define (under-limit? x limit)
+  (if (<= x limit) #t #f))
 
 
 
