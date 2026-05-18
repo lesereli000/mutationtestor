@@ -71,8 +71,7 @@ function Require-Tool {
     )
 
     if (Have $Cmd) {
-        $ver = & $Cmd --version 2>$null | Select-Object -First 1
-        Ok "${Label}: $ver"
+        $ver = try { & $Cmd --version 2>&1 | Select-Object -First 1 } catch { "unknown" }
         return
     }
 
@@ -95,7 +94,7 @@ function Require-Tool {
 
 function Check-Racket {
     if (Have racket) {
-        $ver = racket --version 2>$null | Select-Object -First 1
+        $ver = try { racket --version 2>&1 | Select-Object -First 1 } catch { "unknown" }
         Ok "Racket: $ver"
         return
     }
