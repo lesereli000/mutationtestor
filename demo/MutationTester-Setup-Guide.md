@@ -127,7 +127,7 @@ mvn clean package
 A successful build produces the JAR at:
 
 ```
-target/MutationTester.jar
+target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 > 📸 **Screenshot:** Terminal showing `mvn package` completing with `BUILD SUCCESS` and the path to the generated JAR file.
@@ -157,14 +157,198 @@ There are three families of config files included in the repo:
 | `coverage_command` | Optional | Command to generate a coverage report |
 | `coverage_report` | Optional | Path to the generated coverage file |
 
+### Using MutationTester on a Local Project
+
+To test a local project, create a config file for that project and pass both the project directory and config file to the MutationTester JAR.
+
+General config format:
+
+```text
+source_code_directory=<path-to-source-code>
+mutator_type=CUSTOM
+custom_mutation_spec=<path-to-msl-spec-file>
+compile_command=<command-to-build-project>
+test_command=<command-to-run-tests>
+```
+
+Important notes:
+
+- `source_code_directory` is relative to the target project root.
+- `compile_command` is optional. Leave it blank if the project does not need a compile step.
+- `test_command` must run the target project's tests.
+- The original tests must pass before mutation testing can continue.
+- `custom_mutation_spec` points to the MSL spec file used for custom mutations.
+
+#### Java Project
+
+Example config:
+
+```text
+source_code_directory=src/main/java
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=mvn test-compile
+test_command=mvn test
+```
+
+Run command:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/java/project my-java.config
+```
+
+#### JavaScript Project
+
+Example config:
+
+```text
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=
+test_command=npm test
+```
+
+For context-sensitive JavaScript mutations:
+
+```text
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=specs/context-sensitive-mutations.spec
+compile_command=echo "No compilation needed"
+test_command=cd browser-tests && node run-with-puppeteer.js
+```
+
+If the project uses Mocha and `node_modules/.bin` does not work after copying into the temporary workdir, call Mocha directly:
+
+```text
+source_code_directory=lib
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=
+test_command=node node_modules/mocha/bin/mocha.js test/
+```
+
+Run command:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/javascript/project my-js.config
+```
+
+Bundled context-sensitive demo:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config-context.txt
+```
+
+#### Python Project
+
+Example config:
+
+```text
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=
+test_command=python3 -m pytest tests
+```
+
+For context-sensitive Python mutations:
+
+```text
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=specs/context-sensitive-python.spec
+compile_command=
+test_command=python3 -m pytest tests
+```
+
+Run command:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/python/project my-python.config
+```
+
+#### C# Project
+
+Example config:
+
+```text
+source_code_directory=src/MyProject
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=dotnet build tests/MyProject.Tests/MyProject.Tests.csproj
+test_command=dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
+```
+
+For context-sensitive C# mutations:
+
+```text
+source_code_directory=src/MyProject
+mutator_type=CUSTOM
+custom_mutation_spec=specs/context-sensitive-mutations.spec
+compile_command=dotnet build tests/MyProject.Tests/MyProject.Tests.csproj
+test_command=dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
+```
+
+Run command:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/csharp/project my-csharp.config
+```
+
+#### Racket Project
+
+Example config:
+
+```text
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=
+test_command=raco test tests
+```
+
+For context-sensitive Racket mutations:
+
+```text
+source_code_directory=project/src
+mutator_type=CUSTOM
+custom_mutation_spec=specs/context-sensitive-racket.spec
+compile_command=
+test_command=racket ./project/tests/racket-project.rkt
+```
+
+Run command:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/racket/project my-racket.config
+```
+
+Bundled context-sensitive demo:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/RacketProject samples/RacketProject/config-context.txt
+```
+
 
 ## 7. Run Mutation Testing
 
 Invoke the tool with the project directory and config file as arguments:
 
 ```bash
-java -jar target/MutationTester.jar <project_directory> <config_file>
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar <project_directory> <config_file>
 ```
+
+The MutationTester will:
+
+1. Copy the target project into a temporary working directory.
+2. Run the baseline tests.
+3. Stop if the original tests fail.
+4. Scan the source files for mutation points.
+5. Apply one mutation at a time.
+6. Run the configured test command for each mutant.
+7. Generate a mutation testing report.
 
 
 ## 8. View the HTML Report
@@ -173,13 +357,13 @@ After the run completes, open the report in a browser:
 
 ```bash
 # macOS
-open output/report/mutation-report.html
+open output/report/mutation-report-demo.html
 
 # Linux
-xdg-open output/report/mutation-report.html
+xdg-open output/report/mutation-report-demo.html
 
 # Windows
-start output/report/mutation-report.html
+start output/report/mutation-report-demo.html
 ```
 
 The report includes:
