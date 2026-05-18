@@ -304,6 +304,7 @@ Write-Host "====================================================================
 Write-Host "1. Build the mutation tester:"
 Write-Host "   mvn package -DskipTests"
 Write-Host ""
-Write-Host "2. Run the multi-language demo:"
-Write-Host "   .\demo-all-languages.bat"
+Write-Host "2. Invoke the tool with the project directory and config file as arguments:"
+Write-Host "   java -jar target/MutationTester.jar <project_directory> <config_file>"
 Write-Host ""
+
