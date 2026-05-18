@@ -10,6 +10,3 @@ function main() {
     console.log(e);
 }
 
-if (require.main === module) {
-    main();
-}
