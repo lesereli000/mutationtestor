@@ -74,52 +74,66 @@ public class Main {
         }
 
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append(System.lineSeparator());
+        ExecutorService outputExecutor = Executors.newSingleThreadExecutor();
+        Future<?> outputFuture = outputExecutor.submit(() -> {
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append(System.lineSeparator());
+                }
+            } catch (IOException e) {
+                if (process.isAlive() && !"Stream closed".equals(e.getMessage())) {
+                    throw new RuntimeException(e);
+                }
             }
-        } catch (IOException e) {
-            process.destroyForcibly();
-            System.out.println("Error running command " + command + ": " + e.getMessage());
-            e.printStackTrace();
-            return "";
-        }
+        });
 
         try {
-            boolean timeout = !process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
-
-            ExecutorService executor = Executors.newSingleThreadExecutor();
-            Future<Integer> future = executor.submit(() -> process.waitFor());
-            try {
-                int exitCode = future.get(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
-                if (exitCode != 0) {
-                    output.append("PROCESS_EXIT_CODE: ").append(exitCode).append(System.lineSeparator());
-                }
-            } catch (TimeoutException e) {
+            boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+            if (!completed) {
                 process.destroyForcibly();
                 System.out.println("Process " + commandList.get(0) + " timed out.");
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
-                return output.toString();
-            } catch (ExecutionException | InterruptedException e) {
-                process.destroyForcibly();
-                System.out.println("Error running command " + command + ": " + e.getMessage());
-                e.printStackTrace();
-                output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
+                outputFuture.cancel(true);
                 return output.toString();
             }
-            executor.shutdown();
 
+            waitForOutputReader(outputFuture);
+
+            int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                output.append("PROCESS_EXIT_CODE: ").append(exitCode).append(System.lineSeparator());
+            }
+
+            outputExecutor.shutdown();
             process.destroy();
             System.out.println("Process " + commandList.get(0) + " finished");
             return output.toString();
 
+        } catch (ExecutionException e) {
+            process.destroyForcibly();
+            System.out.println("Error reading command output " + command + ": " + e.getMessage());
+            e.printStackTrace();
+            output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
+            return output.toString();
         } catch (InterruptedException e) {
             process.destroyForcibly();
+            Thread.currentThread().interrupt();
             System.out.println("Interrupted while waiting for process " + commandList.get(0) + " to finish");
             e.printStackTrace();
             return "";
+        } finally {
+            outputExecutor.shutdownNow();
+        }
+    }
+
+    private static void waitForOutputReader(Future<?> outputFuture)
+            throws InterruptedException, ExecutionException {
+        try {
+            outputFuture.get(5, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            outputFuture.cancel(true);
         }
     }
 
