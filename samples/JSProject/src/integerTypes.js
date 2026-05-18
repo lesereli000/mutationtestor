@@ -23,3 +23,10 @@ function largeInteger() {
     return large;
 }
 
+module.exports = {
+    addInteger,
+    multiplyInteger,
+    zeroInteger,
+    negativeInteger,
+    largeInteger
+};
