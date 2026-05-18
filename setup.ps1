@@ -251,6 +251,10 @@ Write-Host "====================================================================
 Write-Host "Project root: $RootDir"
 Write-Host ""
 
+# Reload PATH from registry so tools installed outside this terminal session are visible
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
+        [System.Environment]::GetEnvironmentVariable("Path","User")
+
 if ($Install) {
     Ensure-Choco
 }
