@@ -498,7 +498,39 @@ function Ensure-Python {
         }
 }
 
+function Get-NvmNodeSymlink {
+        $nodeDir = Join-Path $env:ProgramFiles "nodejs"
+        if (-not (Test-Path $nodeDir)) { return $null }
+        $item = Get-Item $nodeDir -Force -ErrorAction SilentlyContinue
+        if (-not ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint))) { return $null }
+        $target = @($item.Target) -join ';'
+        if ($target -match '\\nvm\\') {
+                return [pscustomobject]@{ Path = $nodeDir; Target = $target }
+        }
+        return $null
+}
+
+function Repair-ChocolateyNode {
+        $link = Get-NvmNodeSymlink
+        if ($link) {
+                Warn "$($link.Path) points to nvm ($($link.Target)); replacing it with Chocolatey Node.js."
+                Remove-Item -LiteralPath $link.Path -Force
+        }
+        $args = @("install", $ChocoPackages.Node.Name, "-y", "--force", "--no-progress", "--no-color", "--execution-timeout=2700")
+        & choco @args
+        Refresh-Path
+}
+
 function Ensure-Node {
+        $nvmLink = Get-NvmNodeSymlink
+        if ($nvmLink) {
+                Warn "Node.js is coming from nvm symlink instead of Chocolatey: $($nvmLink.Path) -> $($nvmLink.Target)"
+                if ($Mode -eq "install") {
+                        Repair-ChocolateyNode
+                } else {
+                        return
+                }
+        }
         $maj = Get-NodeMajor
         if ($maj -ge $Required.NodeMinMajor) { Ok "Node.js $maj already installed."; return }
         if ($maj) { Warn "Node.js $maj found, but $($Required.NodeMinMajor)+ is required. Upgrading..." }
