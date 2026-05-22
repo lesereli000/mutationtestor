@@ -537,22 +537,6 @@ function Get-PuppeteerInfo {
         return [pscustomobject]@{ Version = $ver; Chrome = $chrome.FullName; Build = $chrome.Directory.Parent.Name }
 }
 
-# Read-only probe: JUnit Jupiter is a Maven dep, not an installable tool,
-# so its 'install' is whether Restore-MavenDeps populated the local
-# repository under ~/.m2. Returns @{Version=...} for the newest
-# junit-jupiter jar present, or $null if none.
-function Get-JunitInfo {
-        $dir = Join-Path $env:USERPROFILE ".m2\repository\org\junit\jupiter\junit-jupiter"
-        if (-not (Test-Path $dir)) { return $null }
-        $versions = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue |
-                Where-Object {
-                        Test-Path (Join-Path $_.FullName ("junit-jupiter-{0}.jar" -f $_.Name))
-                } |
-                Sort-Object Name -Descending
-        if (-not $versions) { return $null }
-        return [pscustomobject]@{ Version = $versions[0].Name; Path = $versions[0].FullName }
-}
-
 # Print an 'already installed' line up-front when Puppeteer + cached Chrome
 # are present, mirroring the per-tool messages. Otherwise note that the
 # parallel restore phase will install it.
@@ -560,15 +544,6 @@ function Ensure-Puppeteer {
         $info = Get-PuppeteerInfo
         if ($info) { Ok "Puppeteer $($info.Version) already installed."; return }
         Info "Puppeteer not yet installed; the parallel restore phase will fetch it (~170 MB Chrome)."
-}
-
-# Same pattern for JUnit Jupiter -- a green line when the jar is already
-# in the local Maven repo, otherwise a note that Restore-MavenDeps will
-# pull it.
-function Ensure-Junit {
-        $info = Get-JunitInfo
-        if ($info) { Ok "JUnit Jupiter $($info.Version) already installed."; return }
-        Info "JUnit Jupiter not yet in local Maven repo; the parallel restore phase will fetch it."
 }
 
 # ---------------------------------------------------------------------------
@@ -831,12 +806,6 @@ function Verify-All {
                 $bad++
         }
 
-        # JUnit Jupiter: pulled into ~/.m2 by Restore-MavenDeps, not by a tool
-        # installer. The Java mutation tests cannot compile without it.
-        $jun = Get-JunitInfo
-        if ($jun) { Ok "JUnit Jupiter $($jun.Version)" }
-        else      { Fail "JUnit Jupiter missing from local Maven repo"; $bad++ }
-
         return $bad
 }
 
@@ -864,7 +833,6 @@ Ensure-Python
 Ensure-Node
 Ensure-Racket
 Ensure-Puppeteer
-Ensure-Junit
 
 if ($Mode -eq "install") {
         Write-Host ""
