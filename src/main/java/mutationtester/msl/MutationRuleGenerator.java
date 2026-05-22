@@ -98,10 +98,11 @@ public class MutationRuleGenerator {
                 rules.add(rule);
 
                 if (inverse) {
-                    // Note: inverse rule does NOT inherit Except: clauses —
-                    // the author can add a separate Except: for the inverse direction
+                    // The inverse rule inherits the same Except: clauses as the forward rule.
+                    // This ensures that guarded contexts (e.g., clamp/guard patterns) are also
+                    // suppressed when the operator is mutated in the opposite direction.
                     MutationRule inverseRule = createRule(toPattern, fromPattern,
-                            List.of(), groupLabel);
+                            exceptPatterns, groupLabel);
                     rules.add(inverseRule);
                 }
                 continue;

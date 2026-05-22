@@ -9,6 +9,9 @@ import mutationtester.msl.*;
 
 import org.junit.jupiter.api.Test;
 import java.io.File;
+import java.util.List;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MSLTests {
@@ -380,6 +383,33 @@ public class MSLTests {
         assertEquals(2, rules.size());
     }
 
+    @Test
+    void ruleGeneratorInverseInheritsExceptPatterns(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "Group\n\n" +
+            "\tReplace: {quantity} <= {quantity}\n" +
+            "\tWith: {quantity} < {quantity}\n" +
+            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n" +
+            "\tAnd: Inverse\n\n" +
+            "End\n");
+
+        java.util.List<MutationRule> rules =
+            MutationRuleGenerator.generateRules(spec.toFile());
+        assertEquals(2, rules.size());
+
+        // Forward rule: <= -> <, should carry the Except: pattern
+        ReplacementRule forward = (ReplacementRule) rules.get(0);
+        assertEquals(1, forward.getExceptPatterns().size(),
+            "Forward rule should have 1 Except: pattern");
+
+        // Inverse rule: < -> <=, must ALSO inherit the same Except: pattern
+        ReplacementRule inverse = (ReplacementRule) rules.get(1);
+        assertEquals(1, inverse.getExceptPatterns().size(),
+            "Inverse rule should inherit Except: patterns from the forward rule");
+    }
+
     // ── Step 13: JavaMutationScanner.createAdapter() ──────────────────────────
 
     @Test
@@ -524,5 +554,207 @@ public class MSLTests {
             if (anyStringLiteralIsQuantity(adapter, node.getChild(i))) return true;
         }
         return false;
+    }
+
+    // ── Step 14: Java context-sensitive (Except:) mutations ───────────────────
+
+    @Test
+    void javaAdapterGetSourceLineReturnsLineOneContent(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src,
+            "class A {\n" +
+            "    int x = 1;\n" +
+            "}\n");
+
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
+        ParseTree root = adapter.getRootContext();
+        ParseTree nodeOnLine1 = findFirstTerminalOnLine(root, 1);
+
+        assertNotNull(nodeOnLine1, "Should find a terminal node on line 1");
+        String line = adapter.getSourceLine(nodeOnLine1);
+        assertFalse(line.isBlank(),
+            "getSourceLine() should return non-blank content for line 1, not \"\"");
+        assertTrue(line.contains("class A"),
+            "Line 1 should contain 'class A', but was: \"" + line + "\"");
+    }
+
+    @Test
+    void javaAdapterGetSourceLineReturnsDifferentContentForDifferentLines(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src,
+            "class A {\n" +
+            "    int x = 1;\n" +
+            "}\n");
+
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
+        ParseTree root = adapter.getRootContext();
+        ParseTree nodeOnLine1 = findFirstTerminalOnLine(root, 1);
+        ParseTree nodeOnLine2 = findFirstTerminalOnLine(root, 2);
+
+        assertNotNull(nodeOnLine1, "Should find a node on line 1");
+        assertNotNull(nodeOnLine2, "Should find a node on line 2");
+        assertNotEquals(
+            adapter.getSourceLine(nodeOnLine1),
+            adapter.getSourceLine(nodeOnLine2),
+            "getSourceLine() must return different content for different lines");
+    }
+
+    @Test
+    void exceptSuppressesMutationOnLeClampLineInJava(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("T.java");
+        java.nio.file.Files.writeString(src,
+            "public class T {\n" +
+            "    int clamp(int n) {\n" +
+            "        if (n <= 0) n = 0;\n" +
+            "        return n;\n" +
+            "    }\n" +
+            "}\n");
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "Test\n\n" +
+            "\tReplace: {quantity} <= {quantity}\n" +
+            "\tWith: {quantity} < {quantity}\n" +
+            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n\n" +
+            "End\n");
+
+        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+        assertEquals(0, points.size(),
+            "Clamp line should be suppressed by Except: — expected 0, got " + points.size());
+    }
+
+    @Test
+    void exceptSuppressesLeClampButNotRealLogicLineInJava(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("T.java");
+        java.nio.file.Files.writeString(src,
+            "public class T {\n" +
+            "    int clamp(int n) {\n" +
+            "        if (n <= 0) n = 0;\n" +   // guard — suppressed
+            "        return n;\n" +
+            "    }\n" +
+            "    boolean isUnder(int x, int limit) {\n" +
+            "        return x <= limit;\n" +    // real logic — fires
+            "    }\n" +
+            "}\n");
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "Test\n\n" +
+            "\tReplace: {quantity} <= {quantity}\n" +
+            "\tWith: {quantity} < {quantity}\n" +
+            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n\n" +
+            "End\n");
+
+        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+        assertEquals(1, points.size(),
+            "Only real-logic <= should fire; clamp suppressed. Points: " + points.size());
+        assertEquals("<=", points.get(0).getOperator());
+    }
+
+    @Test
+    void exceptSuppressesMutationOnGeClampLineInJava(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("T.java");
+        java.nio.file.Files.writeString(src,
+            "public class T {\n" +
+            "    int clamp(int n) {\n" +
+            "        if (n >= 0) n = 0;\n" +
+            "        return n;\n" +
+            "    }\n" +
+            "}\n");
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "Test\n\n" +
+            "\tReplace: {quantity} >= {quantity}\n" +
+            "\tWith: {quantity} > {quantity}\n" +
+            "\tExcept: if ({quantity} >= 0) {quantity} = 0\n\n" +
+            "End\n");
+
+        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+        assertEquals(0, points.size(),
+            ">= clamp line should be suppressed by Except: — expected 0, got " + points.size());
+    }
+
+    @Test
+    void exceptSuppressesGeClampButNotRealLogicLineInJava(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("T.java");
+        java.nio.file.Files.writeString(src,
+            "public class T {\n" +
+            "    int clamp(int n) {\n" +
+            "        if (n >= 0) n = 0;\n" +   // guard — suppressed
+            "        return n;\n" +
+            "    }\n" +
+            "    boolean isAbove(int x, int threshold) {\n" +
+            "        return x >= threshold;\n" + // real logic — fires
+            "    }\n" +
+            "}\n");
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "Test\n\n" +
+            "\tReplace: {quantity} >= {quantity}\n" +
+            "\tWith: {quantity} > {quantity}\n" +
+            "\tExcept: if ({quantity} >= 0) {quantity} = 0\n\n" +
+            "End\n");
+
+        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+        assertEquals(1, points.size(),
+            "Only real-logic >= should fire; clamp suppressed. Points: " + points.size());
+        assertEquals(">=", points.get(0).getOperator());
+    }
+
+    @Test
+    void endToEndContextSensitiveJavaSpecSuppressesGuardLine(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("Boundary.java");
+        java.nio.file.Files.writeString(src,
+            "public class Boundary {\n" +
+            "    int clamp(int n) {\n" +
+            "        if (n <= 0) n = 0;\n" +   // suppressed by real spec
+            "        return n;\n" +
+            "    }\n" +
+            "    boolean isUnder(int x, int limit) {\n" +
+            "        return x <= limit;\n" +    // fires
+            "    }\n" +
+            "}\n");
+
+        File specFile = new File("specs/context-sensitive-mutations.spec");
+        List<MutationPoint> points = scanWithSpec(src.toFile(), specFile);
+
+        long lePoints = points.stream()
+            .filter(p -> p.getOperator().equals("<="))
+            .count();
+        assertEquals(1, lePoints,
+            "Only 1 <= mutation should fire (clamp suppressed by real spec). " +
+            "Total points: " + points.size());
+    }
+
+    // ── Helpers for Step 14 ───────────────────────────────────────────────────
+
+    /** Runs adapter + rule pipeline, returns all mutation points found. */
+    private List<MutationPoint> scanWithSpec(File sourceFile, File specFile)
+            throws Exception {
+        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(sourceFile);
+        java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
+        List<MutationPoint> points = new java.util.ArrayList<>();
+        for (MutationRule rule : rules) {
+            points.addAll(rule.findMutationPoints(adapter, sourceFile));
+        }
+        return points;
+    }
+
+    /** Depth-first search: returns the first TerminalNode on the given 1-based line. */
+    private ParseTree findFirstTerminalOnLine(ParseTree node, int targetLine) {
+        if (node instanceof TerminalNode tn) {
+            org.antlr.v4.runtime.Token sym = tn.getSymbol();
+            if (sym.getLine() == targetLine) return tn;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            ParseTree result = findFirstTerminalOnLine(node.getChild(i), targetLine);
+            if (result != null) return result;
+        }
+        return null;
     }
 }
