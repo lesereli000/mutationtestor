@@ -46,7 +46,7 @@ public class MutantExecutionTests {
     @Execution(ExecutionMode.CONCURRENT)
     public void testRunCommandUnmutatedPytestProject() {
         Path directory = Path.of("samples/PytestProject");
-        String testCommand = "python3 -m pytest ./tests/TestAdd.py";
+        String testCommand = "python -m pytest ./tests/TestAdd.py";
         testOutput(testCommand, directory, directory, false);
     }
 
