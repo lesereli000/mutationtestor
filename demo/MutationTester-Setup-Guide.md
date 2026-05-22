@@ -258,7 +258,7 @@ For context-sensitive Python mutations:
 ```text
 source_code_directory=src
 mutator_type=CUSTOM
-custom_mutation_spec=specs/context-sensitive-python.spec
+custom_mutation_spec=specs/context-sensitive-mutations.spec
 compile_command=
 test_command=python3 -m pytest tests
 ```
@@ -314,7 +314,7 @@ For context-sensitive Racket mutations:
 ```text
 source_code_directory=project/src
 mutator_type=CUSTOM
-custom_mutation_spec=specs/context-sensitive-racket.spec
+custom_mutation_spec=specs/context-sensitive-mutations.spec
 compile_command=
 test_command=racket ./project/tests/racket-project.rkt
 ```

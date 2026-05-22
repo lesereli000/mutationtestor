@@ -961,6 +961,7 @@ public class CSharpMutationScanner {
             private final Pattern invocationStatement = Pattern.compile(
                     "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
             );
+            private final Pattern csharpIdentifier = Pattern.compile("@?[A-Za-z_][A-Za-z0-9_]*");
 
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
@@ -994,7 +995,8 @@ public class CSharpMutationScanner {
                     int type = symbol.getType();
                     return type == CSharpLexer.Integer_Literal ||
                             type == CSharpLexer.Real_Literal ||
-                            type == CSharpLexer.Simple_Identifier;
+                            type == CSharpLexer.Simple_Identifier ||
+                            csharpIdentifier.matcher(symbol.getText()).matches();
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
@@ -1002,6 +1004,21 @@ public class CSharpMutationScanner {
 
             @Override
             public String getSourceLine(ParseTree ctx) {
+                ParseTree statement = ctx;
+                while (statement != null && !(statement instanceof CSharpParser.StatementContext)) {
+                    statement = statement.getParent();
+                }
+                if (statement instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceText.length()) {
+                        return sourceText.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
+
                 int[] pos = getTokenPosition(ctx);
                 int lineIndex = pos[0] - 1;
                 if (lineIndex >= 0 && lineIndex < sourceLines.length) {
