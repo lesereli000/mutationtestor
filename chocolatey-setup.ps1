@@ -222,16 +222,19 @@ function Install-OrUpgrade {
         param(
                 [string]$Label,
                 [string]$Package,
-                [string]$Version  # optional pinned version
+                [string]$Version,                 # optional pinned version
+                [scriptblock]$Verify = $null      # optional post-install probe; should return $true if the tool is actually usable
         )
-        $chocoArgs = @("install", $Package, "-y", "--no-progress", "--limit-output", "--no-color")
+        $baseFlags = @("-y", "--no-progress", "--limit-output", "--no-color")
+
+        $chocoArgs = @("install", $Package) + $baseFlags
         if ($Version) { $chocoArgs += @("--version=$Version", "--allow-downgrade") }
         Info "Installing/upgrading $Label via Chocolatey ($Package)..."
         & choco @chocoArgs
         if ($LASTEXITCODE -ne 0) {
                 # Already installed at a different version - force upgrade
                 Info "Forcing upgrade of $Label..."
-                $upgradeArgs = @("upgrade", $Package, "-y", "--no-progress", "--limit-output", "--no-color")
+                $upgradeArgs = @("upgrade", $Package) + $baseFlags
                 if ($Version) { $upgradeArgs += @("--version=$Version", "--allow-downgrade") }
                 & choco @upgradeArgs
                 if ($LASTEXITCODE -ne 0) {
@@ -240,6 +243,26 @@ function Install-OrUpgrade {
                 }
         }
         Refresh-Path
+
+        # Self-heal when Chocolatey's local DB thinks the package is installed
+        # but the actual binary is gone (typical after the user deletes the
+        # install dir manually). 'choco install' would no-op, leaving the tool
+        # unusable; --force re-downloads and re-extracts everything.
+        if ($Verify -and -not (& $Verify)) {
+                Warn "$Label looks installed to Chocolatey but the binary is missing/broken; forcing a full reinstall..."
+                $forceArgs = @("install", $Package) + $baseFlags + @("--force")
+                if ($Version) { $forceArgs += @("--version=$Version", "--allow-downgrade") }
+                & choco @forceArgs
+                if ($LASTEXITCODE -ne 0) {
+                        Fail "Forced reinstall of $Label failed."
+                        return $false
+                }
+                Refresh-Path
+                if (-not (& $Verify)) {
+                        Fail "$Label still not usable after forced reinstall."
+                        return $false
+                }
+        }
         return $true
 }
 
@@ -330,8 +353,27 @@ function Get-PythonVersion {
 }
 
 function Get-RacketMajor {
-        if (-not (Have racket)) { return $null }
-        $v = Invoke-Native "racket" @("--version")
+        # PATH-only detection is unreliable right after Choco installs Racket:
+        # the package updates Machine PATH via the registry, but that change
+        # doesn't propagate into the already-running PowerShell process, so
+        # Get-Command racket comes up empty and the verify probe falsely fails.
+        # Fall back to well-known install locations.
+        $exe = $null
+        $cmd = Get-Command racket -ErrorAction SilentlyContinue
+        if ($cmd) { $exe = $cmd.Source }
+        if (-not $exe) {
+                $candidates = @(
+                        "C:\Program Files\Racket\Racket.exe",
+                        "C:\Program Files (x86)\Racket\Racket.exe",
+                        (Join-Path $env:LOCALAPPDATA "Racket\Racket.exe"),
+                        (Join-Path $env:ProgramData "chocolatey\lib\racket\tools\Racket.exe")
+                )
+                foreach ($c in $candidates) {
+                        if (Test-Path $c) { $exe = $c; break }
+                }
+        }
+        if (-not $exe) { return $null }
+        $v = Invoke-Native $exe @("--version") -TimeoutSec 10
         if ($v -match '(\d+)\.') { return [int]$Matches[1] }
         return $null
 }
@@ -350,13 +392,19 @@ function Ensure-Jdk {
         if ($maj -and $maj -ge $Required.JdkMajor) { Ok "JDK $maj already installed (>= $($Required.JdkMajor))."; return }
         if ($maj) { Warn "Java $maj found, but JDK $($Required.JdkMajor)+ is required. Installing Temurin 17..." }
         else      { Info "Installing JDK $($Required.JdkMajor)..." }
-        if ($Mode -eq "install") { [void](Install-OrUpgrade "Temurin JDK 17" $ChocoPackages.Jdk.Name $null) }
+        if ($Mode -eq "install") {
+                [void](Install-OrUpgrade "Temurin JDK 17" $ChocoPackages.Jdk.Name $null `
+            -Verify { $m = Get-JavaMajor; $m -and $m -ge $Required.JdkMajor })
+        }
 }
 
 function Ensure-Maven {
         if (Get-MavenOk) { Ok "Maven already installed."; return }
         Info "Installing Maven..."
-        if ($Mode -eq "install") { [void](Install-OrUpgrade "Maven" $ChocoPackages.Maven.Name $null) }
+        if ($Mode -eq "install") {
+                [void](Install-OrUpgrade "Maven" $ChocoPackages.Maven.Name $null `
+            -Verify { Get-MavenOk })
+        }
 }
 
 function Ensure-Dotnet {
@@ -400,7 +448,14 @@ function Ensure-Python {
         }
         if ($info) { Warn "Python $($info.Major).$($info.Minor) found, but $($Required.PythonMinMajor).$($Required.PythonMinMinor)+ is required. Upgrading..." }
         else       { Info "Installing Python..." }
-        if ($Mode -eq "install") { [void](Install-OrUpgrade "Python" $ChocoPackages.Python.Name $null) }
+        if ($Mode -eq "install") {
+                [void](Install-OrUpgrade "Python" $ChocoPackages.Python.Name $null `
+            -Verify {
+                        $i = Get-PythonVersion
+                        $i -and ($i.Major -gt $Required.PythonMinMajor -or
+                                ($i.Major -eq $Required.PythonMinMajor -and $i.Minor -ge $Required.PythonMinMinor))
+                })
+        }
 }
 
 function Ensure-Node {
@@ -408,7 +463,10 @@ function Ensure-Node {
         if ($maj -ge $Required.NodeMinMajor) { Ok "Node.js $maj already installed."; return }
         if ($maj) { Warn "Node.js $maj found, but $($Required.NodeMinMajor)+ is required. Upgrading..." }
         else      { Info "Installing Node.js LTS..." }
-        if ($Mode -eq "install") { [void](Install-OrUpgrade "Node.js LTS" $ChocoPackages.Node.Name $null) }
+        if ($Mode -eq "install") {
+                [void](Install-OrUpgrade "Node.js LTS" $ChocoPackages.Node.Name $null `
+            -Verify { (Get-NodeMajor) -ge $Required.NodeMinMajor })
+        }
 }
 
 function Ensure-Racket {
@@ -418,9 +476,34 @@ function Ensure-Racket {
         else      { Info "Installing Racket (package is ~600 MB, may take 5-10 minutes)..." }
         if ($Mode -eq "install") {
                 Invoke-Step "Installing Racket" "Downloading ~600 MB installer, please wait..." {
-                        [void](Install-OrUpgrade "Racket" $ChocoPackages.Racket.Name $null)
+                        [void](Install-OrUpgrade "Racket" $ChocoPackages.Racket.Name $null `
+                -Verify { (Get-RacketMajor) -ge $Required.RacketMajor })
                 }
         }
+}
+
+# Read-only probe: returns @{Version=...; Chrome=<path>} when both the
+# Puppeteer npm package and a Chrome binary are present, otherwise $null.
+# Used both by the upfront 'already installed' message and Verify-All.
+function Get-PuppeteerInfo {
+        $pkg = Join-Path $RootDir "samples\JSProject\node_modules\puppeteer\package.json"
+        if (-not (Test-Path $pkg)) { return $null }
+        $cacheRoot = Join-Path $env:USERPROFILE ".cache\puppeteer\chrome"
+        if (-not (Test-Path $cacheRoot)) { return $null }
+        $chrome = Get-ChildItem -Path $cacheRoot -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+        if (-not $chrome) { return $null }
+        $ver = (Get-Content $pkg -Raw | ConvertFrom-Json).version
+        return [pscustomobject]@{ Version = $ver; Chrome = $chrome.FullName; Build = $chrome.Directory.Parent.Name }
+}
+
+# Print an 'already installed' line up-front when Puppeteer + cached Chrome
+# are present, mirroring the per-tool messages. Otherwise note that the
+# parallel restore phase will install it.
+function Ensure-Puppeteer {
+        $info = Get-PuppeteerInfo
+        if ($info) { Ok "Puppeteer $($info.Version) already installed."; return }
+        Info "Puppeteer not yet installed; the parallel restore phase will fetch it (~170 MB Chrome)."
 }
 
 # ---------------------------------------------------------------------------
@@ -667,6 +750,22 @@ function Verify-All {
         $nm = Get-NodeMajor;   if ($nm -ge $Required.NodeMinMajor) { Ok "Node.js $nm" } else { Fail "Node.js major=$nm (need $($Required.NodeMinMajor)+)"; $bad++ }
         $rm = Get-RacketMajor; if ($rm -ge $Required.RacketMajor)  { Ok "Racket $rm"  } else { Fail "Racket major=$rm (need $($Required.RacketMajor)+)"; $bad++ }
 
+        # Puppeteer: the JS sample's tests drive a headless Chrome that gets
+        # downloaded into the per-user puppeteer cache, separate from any
+        # Chrome the user already has installed.
+        $pup = Get-PuppeteerInfo
+        if ($pup) {
+                Ok "Puppeteer $($pup.Version) (+ Chrome at $($pup.Build))"
+        } else {
+                $pkg   = Join-Path $RootDir "samples\JSProject\node_modules\puppeteer\package.json"
+                $cache = Join-Path $env:USERPROFILE ".cache\puppeteer\chrome"
+                $missing = @()
+                if (-not (Test-Path $pkg))   { $missing += "npm package" }
+                if (-not (Test-Path $cache)) { $missing += "Chrome binary" }
+                Fail "Puppeteer missing: $($missing -join ', ')"
+                $bad++
+        }
+
         return $bad
 }
 
@@ -693,6 +792,7 @@ Ensure-Dotnet
 Ensure-Python
 Ensure-Node
 Ensure-Racket
+Ensure-Puppeteer
 
 if ($Mode -eq "install") {
         Write-Host ""
