@@ -383,6 +383,44 @@ function Get-MavenOk {
         return $true
 }
 
+function Get-MavenBin {
+        $candidates = @(
+                (Join-Path $env:ProgramData "chocolatey\lib\maven\apache-maven-*\bin"),
+                (Join-Path $env:ProgramData "chocolatey\lib\maven\tools\apache-maven-*\bin")
+        )
+        foreach ($g in $candidates) {
+                $dir = Get-ChildItem -Path $g -Directory -ErrorAction SilentlyContinue |
+                        Where-Object { Test-Path (Join-Path $_.FullName "mvn.cmd") } |
+                        Sort-Object FullName -Descending |
+                        Select-Object -First 1
+                if ($dir) { return $dir.FullName }
+        }
+        return $null
+}
+
+function Ensure-MavenOnPath {
+        $dir = Get-MavenBin
+        if (-not $dir) { return $false }
+
+        $machine = [Environment]::GetEnvironmentVariable('Path','Machine')
+        $entries = @()
+        if ($machine) { $entries = $machine -split ';' | Where-Object { $_ } }
+
+        if (($entries | ForEach-Object { $_.TrimEnd('\') }) -notcontains $dir.TrimEnd('\')) {
+                try {
+                        [Environment]::SetEnvironmentVariable('Path', ($entries + $dir -join ';'), 'Machine')
+                        Ok "Added Maven to Machine PATH: $dir"
+                } catch {
+                        Warn "Could not add Maven to Machine PATH: $($_.Exception.Message)"
+                }
+        }
+
+        if (($env:Path -split ';' | ForEach-Object { $_.TrimEnd('\') }) -notcontains $dir.TrimEnd('\')) {
+                $env:Path = "$dir;$env:Path"
+        }
+        return (Have mvn)
+}
+
 # ---------------------------------------------------------------------------
 # Ensure-<Tool> functions - install if missing OR if version is wrong
 # ---------------------------------------------------------------------------
@@ -399,11 +437,13 @@ function Ensure-Jdk {
 }
 
 function Ensure-Maven {
+        [void](Ensure-MavenOnPath)
         if (Get-MavenOk) { Ok "Maven already installed."; return }
         Info "Installing Maven..."
         if ($Mode -eq "install") {
                 [void](Install-OrUpgrade "Maven" $ChocoPackages.Maven.Name $null `
-            -Verify { Get-MavenOk })
+            -Verify { (Get-MavenOk) -or (Ensure-MavenOnPath) })
+                [void](Ensure-MavenOnPath)
         }
 }
 
