@@ -108,6 +108,54 @@ java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar <project_
 
 The tool copies the project into a temporary working directory, runs the baseline tests (and stops if they fail), then applies each mutation one at a time, re-runs the tests, and generates a report.
 
+### Run on Your Own Local Project
+
+After cloning and building MutationTester, you can run it against any local project on your computer. The target project does **not** need to be inside the MutationTester repository.
+
+1. Build MutationTester from the cloned repository:
+
+```bash
+cd mutationtestor
+mvn package -DskipTests
+```
+
+2. Create a config file for your target project. You can place it inside the target project or anywhere else on your computer.
+
+3. Run MutationTester with the target project path and config path:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/your/project /path/to/your/project/mutation.config
+```
+
+Windows example:
+
+```powershell
+java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar C:\Users\you\Projects\MyProject C:\Users\you\Projects\MyProject\mutation.config
+```
+
+macOS/Linux example:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar ~/Projects/MyProject ~/Projects/MyProject/mutation.config
+```
+
+The `source_code_directory`, `compile_command`, and `test_command` values inside the config file are relative to the target project directory, not the MutationTester repository.
+
+Example target project layout:
+
+```text
+MyProject/
+  src/
+  tests/
+  mutation.config
+```
+
+Example command from the MutationTester repository:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar ../MyProject ../MyProject/mutation.config
+```
+
 ### Config Files
 
 A config file is a plain `.config` or `.txt` file using `key=value` syntax. It tells MutationTester where your source lives, how to build it, how to run tests, and which mutations to apply.
@@ -182,6 +230,25 @@ mutator_type=CUSTOM
 custom_mutation_spec=OperatorMutations.txt
 compile_command=
 test_command=raco test tests/
+```
+
+Local project command examples:
+
+```bash
+# Java Maven project
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/java-project /path/to/java-project/mutation.config
+
+# Python pytest project
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/python-project /path/to/python-project/mutation.config
+
+# JavaScript npm project
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/js-project /path/to/js-project/mutation.config
+
+# C# dotnet project
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/csharp-project /path/to/csharp-project/mutation.config
+
+# Racket project
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /path/to/racket-project /path/to/racket-project/mutation.config
 ```
 
 For context-sensitive mutations, JavaScript, Python, C#, and Racket all use the shared spec file:
