@@ -1,5 +1,7 @@
 package mutationtester.msl;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -11,25 +13,38 @@ import java.util.regex.Pattern;
  * Example:
  *   Except: if ({quantity} <= 0) {quantity} = 0
  *
- * This suppresses the mutation on any line matching that pattern,
- * e.g.:   if(n <= 0) n = 0;   would be excluded.
+ *
  */
 public class ExceptPattern {
 
-    private final Pattern regex;
-    private final String original;
+    private final String template;
+    private final Map<Class<?>, Pattern> regexByAdapter = new ConcurrentHashMap<>();
 
     public ExceptPattern(String template) {
-        this.original = template;
-        this.regex = templateToRegex(template);
+        this.template = template;
     }
 
     /**
-     * Returns true if the given source line matches this exception pattern,
-     * meaning the mutation should be suppressed on that line.
+     * Returns true if the given source line matches this exception pattern
+     * after the template has been translated for the supplied adapter.
+     */
+    public boolean matches(String sourceLine, MSLScannerAdapter adapter) {
+        if (sourceLine == null || sourceLine.isBlank()) return false;
+        Pattern regex = regexByAdapter.computeIfAbsent(
+                adapter.getClass(),
+                cls -> templateToRegex(adapter.translateExceptTemplate(template)));
+        return regex.matcher(sourceLine).find();
+    }
+
+    /**
+     * Returns true if the source line matches the untranslated template.
+     * Retained for unit tests and adapter-less callers.
      */
     public boolean matches(String sourceLine) {
         if (sourceLine == null || sourceLine.isBlank()) return false;
+        Pattern regex = regexByAdapter.computeIfAbsent(
+                ExceptPattern.class,
+                cls -> templateToRegex(template));
         return regex.matcher(sourceLine).find();
     }
 
@@ -61,6 +76,6 @@ public class ExceptPattern {
 
     @Override
     public String toString() {
-        return original;
+        return template;
     }
 }

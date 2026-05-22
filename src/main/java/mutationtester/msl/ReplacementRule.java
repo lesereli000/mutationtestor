@@ -50,7 +50,7 @@ public class ReplacementRule implements MutationRule {
         if (!exceptPatterns.isEmpty()) {
             String sourceLine = scanner.getSourceLine(ctx);
             for (ExceptPattern except : exceptPatterns) {
-                if (except.matches(sourceLine)) {
+                if (except.matches(sourceLine, scanner)) {
                     return false; // suppressed — this context is excluded
                 }
             }

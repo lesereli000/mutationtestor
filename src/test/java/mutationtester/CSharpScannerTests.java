@@ -429,6 +429,81 @@ public class CSharpScannerTests {
     }
 
     @Test
+    public void testVoidMethodCallMutationFindsStandaloneCall() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitVoidMethodCallDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.VML_VOID_METHOD_CALL);
+
+        assertEquals(2, points.size());
+        assertTrue(points.stream().allMatch(p -> p.getOperator().equals("Record();")));
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals(";")));
+    }
+
+    @Test
+    public void testIncrementToDecrementMutationFindsPostIncrement() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitIncrementDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT);
+
+        assertEquals(1, points.size());
+        assertEquals("++", points.get(0).getOperator());
+        assertEquals("--", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testDecrementToIncrementMutationFindsPostDecrement() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitIncrementDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT);
+
+        assertEquals(1, points.size());
+        assertEquals("--", points.get(0).getOperator());
+        assertEquals("++", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testInvertNegativeMutationFindsUnaryMinus() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitInvertNegativeDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.INEG_INVERT_NEGATIVE);
+
+        assertEquals(4, points.size());
+        assertTrue(points.stream().allMatch(p -> p.getOperator().equals("-")));
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("")));
+    }
+
+    @Test
+    public void testReturnValueMutationsFindBooleanNumericStringAndObjectReturns() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitReturnValueDemo.cs");
+
+        List<MutationPoint> trueToFalse = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_TRUE_TO_FALSE);
+        assertEquals(2, trueToFalse.size());
+        assertEquals("true", trueToFalse.get(0).getOperator());
+        assertEquals("false", trueToFalse.get(0).getReplacement());
+
+        List<MutationPoint> falseToTrue = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_FALSE_TO_TRUE);
+        assertEquals(2, falseToTrue.size());
+        assertEquals("false", falseToTrue.get(0).getOperator());
+        assertEquals("true", falseToTrue.get(0).getReplacement());
+
+        List<MutationPoint> zeroToOne = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_ZERO_TO_ONE);
+        assertEquals(2, zeroToOne.size());
+        assertEquals("0", zeroToOne.get(0).getOperator());
+        assertEquals("1", zeroToOne.get(0).getReplacement());
+
+        List<MutationPoint> nonZeroToZero = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_NONZERO_TO_ZERO);
+        assertEquals(2, nonZeroToZero.size());
+        assertEquals("42", nonZeroToZero.get(0).getOperator());
+        assertEquals("0", nonZeroToZero.get(0).getReplacement());
+
+        List<MutationPoint> stringToEmpty = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_STRING_TO_EMPTY);
+        assertEquals(2, stringToEmpty.size());
+        assertEquals("\"ready\"", stringToEmpty.get(0).getOperator());
+        assertEquals("\"\"", stringToEmpty.get(0).getReplacement());
+
+        List<MutationPoint> objectToNull = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.RVM_OBJECT_TO_NULL);
+        assertEquals(4, objectToNull.size());
+        assertTrue(objectToNull.stream().anyMatch(p ->
+                p.getOperator().equals("this") && p.getReplacement().equals("null")));
+    }
+
+    @Test
     public void testCustomSpecSuppressesCSharpMutationThatWouldProduceLoop() throws Exception {
         Path source = Files.createTempFile("LoopGuardDemo", ".cs");
         Files.writeString(source, """

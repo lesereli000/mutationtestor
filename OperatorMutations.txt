@@ -38,11 +38,29 @@ Conditionals Boundary:
 	Replace: {quantity} > {quantity}
 	With: {quantity} >= {quantity}
 	Except: if ({quantity} > {quantity}) { {quantity} = {quantity}
+	Except: while (
+	Except: for (
 	And: Inverse
 
 	Replace: {quantity} < {quantity}
 	With: {quantity} <= {quantity}
 	Except: if ({quantity} < {quantity}) { {quantity} = {quantity}
+	Except: while (
+	Except: for (
+	And: Inverse
+
+	Replace: {quantity} <= {quantity}
+	With: {quantity} < {quantity}
+	Except: if ({quantity} <= 0) {quantity} = 0
+	Except: while (
+	Except: for (
+	And: Inverse
+
+	Replace: {quantity} >= {quantity}
+	With: {quantity} > {quantity}
+	Except: if ({quantity} >= 0) {quantity} = 0
+	Except: while (
+	Except: for (
 	And: Inverse
 
 End
@@ -51,12 +69,16 @@ Negate Conditionals:
 
 	Replace: {quantity} > {quantity}
 	With: {quantity} <= {quantity}
+	Except: while (
+	Except: for (
 	And: Inverse
 
 	Replace: {quantity} < {quantity}
 	With: {quantity} >= {quantity}
+	Except: while (
+	Except: for (
 	And: Inverse
-	
+
 	Replace: {quantity} == {quantity}
 	With: {quantity} != {quantity}
 	And: Inverse

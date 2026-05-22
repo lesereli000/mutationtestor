@@ -340,6 +340,42 @@
         });
         runner.endSuite();
 
+        runner.suite('Increment / Decrement Tests');
+        runner.test('incrementCounter(5) should return 6', () => {
+            runner.assertEquals(incrementCounter(5), 6);
+        });
+        runner.test('incrementCounter(0) should return 1', () => {
+            runner.assertEquals(incrementCounter(0), 1);
+        });
+        runner.test('decrementCounter(5) should return 4', () => {
+            runner.assertEquals(decrementCounter(5), 4);
+        });
+        runner.test('decrementCounter(1) should return 0', () => {
+            runner.assertEquals(decrementCounter(1), 0);
+        });
+        runner.endSuite();
+
+        runner.suite('Invert Negatives Tests');
+        runner.test('absoluteValue(-5) should return 5', () => {
+            runner.assertEquals(absoluteValue(-5), 5);
+        });
+        runner.test('absoluteValue(5) should return 5', () => {
+            runner.assertEquals(absoluteValue(5), 5);
+        });
+        runner.test('absoluteValue(0) should return 0', () => {
+            runner.assertEquals(absoluteValue(0), 0);
+        });
+        runner.endSuite();
+
+        runner.suite('Void Method Call Tests');
+        runner.test('logAndReturn(42) should return 42', () => {
+            runner.assertEquals(logAndReturn(42), 42);
+        });
+        runner.test('logAndReturn("hello") should return "hello"', () => {
+            runner.assertEquals(logAndReturn("hello"), "hello");
+        });
+        runner.endSuite();
+
         // Render results
         runner.render();
 
