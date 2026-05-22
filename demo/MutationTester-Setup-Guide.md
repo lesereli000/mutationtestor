@@ -177,7 +177,6 @@ test_command=mvn test
 - `custom_mutation_spec` - path to a `.txt` or `.spec` MSL spec file defining custom mutation rules; only used when `mutator_type=CUSTOM`
 - `compile_command` - command to build the project before testing; leave blank if no compile step is needed
 - `test_command` - command to run the test suite (must pass on the original code before mutation begins)
-- `test_mode` - `AUTO` (default), `AST`, `DICTIONARY`, or `MSL`
 - `coverage_command` / `coverage_report` - optional; used to attach a coverage report to the output
 
 **Language-specific examples:**
