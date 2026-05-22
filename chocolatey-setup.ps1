@@ -444,6 +444,7 @@ function Ensure-Python {
         if ($info -and ($info.Major -gt $Required.PythonMinMajor -or
                 ($info.Major -eq $Required.PythonMinMajor -and $info.Minor -ge $Required.PythonMinMinor))) {
                 Ok "Python $($info.Major).$($info.Minor) already installed."
+                Ensure-Python3Alias
                 return
         }
         if ($info) { Warn "Python $($info.Major).$($info.Minor) found, but $($Required.PythonMinMajor).$($Required.PythonMinMinor)+ is required. Upgrading..." }
@@ -455,6 +456,33 @@ function Ensure-Python {
                         $i -and ($i.Major -gt $Required.PythonMinMajor -or
                                 ($i.Major -eq $Required.PythonMinMajor -and $i.Minor -ge $Required.PythonMinMinor))
                 })
+                Ensure-Python3Alias
+        }
+}
+
+# Chocolatey's python311 package installs python.exe but not python3.exe.
+# The mutation tester's Java child-process command 'python3 -m pytest ...'
+# is a Linux/Mac convention; on Windows it fails with "'python3' is not
+# recognized" even when Python itself is fully installed and pytest is on
+# the system Python. Create a python3.exe next to python.exe by hardlink
+# (works on same volume, stays current if python.exe is upgraded) and
+# fall back to copy if the hardlink call fails.
+function Ensure-Python3Alias {
+        $info = Get-PythonVersion
+        if (-not $info) { return }
+        $src = $info.Exe
+        $dst = Join-Path (Split-Path $src) "python3.exe"
+        if (Test-Path $dst) { return }
+        try {
+                New-Item -ItemType HardLink -Path $dst -Target $src -ErrorAction Stop | Out-Null
+                Info "Created python3.exe hardlink at $dst (so child processes finding 'python3' work)."
+        } catch {
+                try {
+                        Copy-Item -Path $src -Destination $dst -Force -ErrorAction Stop
+                        Info "Created python3.exe copy at $dst (hardlink unavailable)."
+                } catch {
+                        Warn "Could not create python3.exe alias: $($_.Exception.Message)"
+                }
         }
 }
 
