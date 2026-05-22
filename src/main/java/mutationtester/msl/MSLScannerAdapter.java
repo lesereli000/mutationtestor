@@ -38,6 +38,17 @@ public interface MSLScannerAdapter {
 
     // ── Optional language-specific helpers ────────────────────────────────
 
+    /**
+     * Translates an Except: template from the shared infix spec into the
+     * source-language form used by this adapter. Default: identity (templates
+     * are already infix; matches JS/Python/C#). Languages with non-infix
+     * operator syntax (e.g. Racket prefix) override to rewrite the
+     * `{quantity} OP {quantity}` segments.
+     */
+    default String translateExceptTemplate(String infixTemplate) {
+        return infixTemplate;
+    }
+
     default String getSingleArgumentText(ParseTree ctx, String functionName) {
         return null;
     }

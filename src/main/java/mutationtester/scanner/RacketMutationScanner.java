@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Scans Racket (.rkt) source files for mutation points using the ISL ANTLR
@@ -38,6 +40,27 @@ import java.util.List;
  *   AOR_MODULO_TO_MULTIPLY   : (modulo a b) or (remainder a b) → (* a b)
  */
 public class RacketMutationScanner {
+
+    // Matches `<operand> OP <operand>` inside an infix Except: template so it
+    // can be rewritten to Racket's prefix form `(OP <operand> <operand>)`.
+    // Operand alternatives: {quantity}, numeric literal, or identifier.
+    // Multi-char comparison/equality operators come first so they win over
+    // their single-char prefixes.
+    private static final Pattern INFIX_OPERATOR_SEGMENT = Pattern.compile(
+            "(\\{quantity\\}|-?\\d+(?:\\.\\d+)?|[A-Za-z_][A-Za-z0-9_]*)" +
+                    "\\s*(<=|>=|==|!=|&&|\\|\\||<<|>>|\\+|-|\\*|/|<|>)\\s*" +
+                    "(\\{quantity\\}|-?\\d+(?:\\.\\d+)?|[A-Za-z_][A-Za-z0-9_]*)"
+    );
+
+    // Rewrites the C-style guarded-assignment clamp form
+    //   if (COND) {quantity} = VALUE
+    // into Racket's if-expression form
+    //   (if COND VALUE
+    // so that the shared spec's Except clause suppresses Racket's
+    // (if (<= n 0) 0 n) clamp pattern.
+    private static final Pattern IF_ASSIGN_CLAMP = Pattern.compile(
+            "if\\s*\\(\\s*(.+?)\\s*\\)\\s*\\{quantity\\}\\s*=\\s*(\\S+)"
+    );
 
     // -------------------------------------------------------------------------
     // Supported types
@@ -415,6 +438,29 @@ public class RacketMutationScanner {
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
+            }
+
+            @Override
+            public String translateExceptTemplate(String infixTemplate) {
+                // First fold the C-style guarded-assignment clamp form into
+                // Racket's (if cond value ...) form, then rewrite operator
+                // subexpressions into prefix.
+                String t = rewriteAll(IF_ASSIGN_CLAMP, infixTemplate,
+                        m -> "(if " + m.group(1) + " " + m.group(2));
+                t = rewriteAll(INFIX_OPERATOR_SEGMENT, t,
+                        m -> "(" + m.group(2) + " " + m.group(1) + " " + m.group(3) + ")");
+                return t;
+            }
+
+            private String rewriteAll(Pattern p, String input,
+                                      java.util.function.Function<Matcher, String> fn) {
+                Matcher m = p.matcher(input);
+                StringBuilder sb = new StringBuilder();
+                while (m.find()) {
+                    m.appendReplacement(sb, Matcher.quoteReplacement(fn.apply(m)));
+                }
+                m.appendTail(sb);
+                return sb.toString();
             }
 
             @Override

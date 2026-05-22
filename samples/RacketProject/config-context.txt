@@ -1,6 +1,6 @@
 source_code_directory=project/src
 mutator_type=CUSTOM
-custom_mutation_spec=specs/context-sensitive-racket.spec
+custom_mutation_spec=specs/context-sensitive-mutations.spec
 compile_command=
 test_command=racket ./project/tests/racket-project.rkt
 coverage_command=racket ./racket-line-coverage.rkt project/src project/tests/racket-project.rkt racket-coverage.info
