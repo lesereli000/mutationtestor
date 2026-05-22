@@ -135,6 +135,7 @@ test_command=mvn test
 **Language-specific examples:**
 
 Java:
+
 ```text
 source_code_directory=src/main/java
 mutator_type=CUSTOM
@@ -144,6 +145,7 @@ test_command=mvn test
 ```
 
 Python:
+
 ```text
 source_code_directory=src
 mutator_type=CUSTOM
@@ -153,6 +155,7 @@ test_command=python3 -m pytest tests
 ```
 
 JavaScript:
+
 ```text
 source_code_directory=src
 mutator_type=CUSTOM
@@ -162,6 +165,7 @@ test_command=npm test
 ```
 
 C#:
+
 ```text
 source_code_directory=src/MyProject
 mutator_type=CUSTOM
@@ -171,12 +175,38 @@ test_command=dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
 ```
 
 Racket:
+
 ```text
 source_code_directory=src
 mutator_type=CUSTOM
 custom_mutation_spec=OperatorMutations.txt
 compile_command=
 test_command=raco test tests/
+```
+
+For context-sensitive mutations, JavaScript, Python, C#, and Racket all use the shared spec file:
+
+```text
+custom_mutation_spec=specs/context-sensitive-mutations.spec
+```
+
+Bundled context-sensitive demos:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/PytestProject samples/PytestProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/CSProject samples/CSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/RacketProject samples/RacketProject/config-context.txt
+```
+
+If a JavaScript project uses Mocha and `node_modules/.bin` does not work after copying into the temporary workdir, call Mocha directly:
+
+```text
+source_code_directory=lib
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=
+test_command=node node_modules/mocha/bin/mocha.js test/
 ```
 
 ![Terminal output showing mutation testing in progress](running_mutation.png)

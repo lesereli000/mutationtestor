@@ -61,15 +61,16 @@ public class ExceptPattern {
         String[] parts = template.split("\\{quantity\\}", -1);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length; i++) {
-            // Quote the literal part so ( ) . etc are treated as literals
-            sb.append(Pattern.quote(parts[i]));
+            // Replace spaces with \E\s*\Q so they become flexible whitespace outside literal quotes
+            String part = parts[i].replaceAll("\\s+", "\\\\E\\\\s*\\\\Q");
+            sb.append("\\Q").append(part).append("\\E");
             if (i < parts.length - 1) {
                 // {quantity} matches identifiers, numbers, field accesses
                 sb.append("[\\w.]+");
             }
         }
-        // Allow flexible whitespace (the author may write spaces differently)
-        String regexStr = sb.toString().replace("\\Q \\E", "\\s*").replaceAll("\\\\Q\\s+\\\\E", "\\\\s+");
+        // Cleanup empty quotes (e.g., \Q\E) that may have been generated
+        String regexStr = sb.toString().replace("\\Q\\E", "");
         return Pattern.compile(regexStr);
     }
 

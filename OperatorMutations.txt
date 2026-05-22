@@ -37,12 +37,14 @@ Conditionals Boundary:
 
 	Replace: {quantity} > {quantity}
 	With: {quantity} >= {quantity}
+	Except: if ({quantity} > {quantity}) { {quantity} = {quantity}
 	Except: while (
 	Except: for (
 	And: Inverse
 
 	Replace: {quantity} < {quantity}
 	With: {quantity} <= {quantity}
+	Except: if ({quantity} < {quantity}) { {quantity} = {quantity}
 	Except: while (
 	Except: for (
 	And: Inverse
