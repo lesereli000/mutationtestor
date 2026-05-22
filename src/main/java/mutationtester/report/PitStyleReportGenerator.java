@@ -322,6 +322,7 @@ public class PitStyleReportGenerator {
         if ("%".equals(original) && "*".equals(mutated)) return "AOR_MODULO_TO_MULTIPLY";
         if ("++".equals(original) && "--".equals(mutated)) return "AOR_INCREMENT_TO_DECREMENT";
         if ("--".equals(original) && "++".equals(mutated)) return "AOR_DECREMENT_TO_INCREMENT";
+        if ("-".equals(original) && "".equals(mutated)) return "INEG_INVERT_NEGATIVE";
 
         if (">".equals(original) && ">=".equals(mutated)) return "ROR_GT_TO_GE";
         if (">".equals(original) && "<".equals(mutated)) return "ROR_GT_TO_LT";
@@ -362,7 +363,9 @@ public class PitStyleReportGenerator {
         if ("true".equals(original) && "false".equals(mutated))  return "RVM_TRUE_TO_FALSE";
         if ("false".equals(original) && "true".equals(mutated))  return "RVM_FALSE_TO_TRUE";
         if ("0".equals(original) && "1".equals(mutated))          return "RVM_ZERO_TO_ONE";
-        if ("1".equals(original) && "0".equals(mutated))          return "RVM_NONZERO_TO_ZERO";
+        if (isNonZeroNumericLiteral(original) && "0".equals(mutated)) return "RVM_NONZERO_TO_ZERO";
+        if ("null".equals(mutated)) return "RVM_OBJECT_TO_NULL";
+        if ("\"\"".equals(mutated)) return "RVM_STRING_TO_EMPTY";
 
         return "MUTATION_" + sanitizeOperatorName(original) + "_TO_" + sanitizeOperatorName(mutated);
     }
@@ -374,6 +377,18 @@ public class PitStyleReportGenerator {
         String sanitized = value.toUpperCase().replaceAll("[^A-Z0-9]+", "_");
         sanitized = sanitized.replaceAll("^_+", "").replaceAll("_+$", "");
         return sanitized.isEmpty() ? "UNKNOWN" : sanitized;
+    }
+
+    private static boolean isNonZeroNumericLiteral(String value) {
+        if (value == null || !value.matches("^[+-]?(\\d+\\.?\\d*|\\d*\\.\\d+)([eE][+-]?\\d+)?([fFdDmM])?$")) {
+            return false;
+        }
+
+        try {
+            return Double.parseDouble(value.replaceAll("[fFdDmM]$", "")) != 0.0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static String generateLegend() {
