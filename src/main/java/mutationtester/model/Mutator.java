@@ -50,6 +50,7 @@ public class Mutator {
         // Extended Return Value Mutations
         RVM_OBJECT_TO_NULL,
         RVM_PRIMITIVE_TO_ZERO,
+        RVM_STRING_TO_EMPTY,
 
         // Void Method Call removal
         VML_VOID_METHOD_CALL,

@@ -26,6 +26,19 @@ public class CSharpMutationScanner {
         if (isTypeSwapMutation(type)) {
             return scanTypeSwapMutations(file, sourceCode, type);
         }
+        if (isReturnValueMutation(type)) {
+            return scanReturnValueMutations(file, sourceCode, type);
+        }
+        if (type == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
+            return scanVoidMethodCallMutations(file, sourceCode);
+        }
+        if (type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT
+                || type == Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT) {
+            return scanIncrementSwapMutations(file, sourceCode, type);
+        }
+        if (type == Mutator.MutatorType.INEG_INVERT_NEGATIVE) {
+            return scanInvertNegativeMutations(file, sourceCode);
+        }
         if (type == Mutator.MutatorType.REMOVE_INCREMENT) {
             return scanRemoveIncrementMutations(file, sourceCode);
         }
@@ -371,6 +384,197 @@ public class CSharpMutationScanner {
         return true;
     }
 
+    private static boolean isReturnValueMutation(Mutator.MutatorType type) {
+        return type == Mutator.MutatorType.RVM_TRUE_TO_FALSE
+                || type == Mutator.MutatorType.RVM_FALSE_TO_TRUE
+                || type == Mutator.MutatorType.RVM_ZERO_TO_ONE
+                || type == Mutator.MutatorType.RVM_NONZERO_TO_ZERO
+                || type == Mutator.MutatorType.RVM_OBJECT_TO_NULL
+                || type == Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
+                || type == Mutator.MutatorType.RVM_STRING_TO_EMPTY;
+    }
+
+    private static List<MutationPoint> scanReturnValueMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        String currentReturnType = "";
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String detectedReturnType = detectMethodReturnType(line);
+            if (detectedReturnType != null) {
+                currentReturnType = detectedReturnType;
+            }
+            int searchFrom = 0;
+
+            while (searchFrom < line.length()) {
+                int returnIndex = findKeywordOutsideStringOrComment(line, "return", searchFrom);
+                if (returnIndex < 0) {
+                    break;
+                }
+
+                int expressionStart = skipLeadingTrivia(line, returnIndex + "return".length());
+                if (expressionStart >= line.length() || line.charAt(expressionStart) == ';') {
+                    searchFrom = returnIndex + "return".length();
+                    continue;
+                }
+
+                int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
+                if (semicolon < 0) {
+                    searchFrom = returnIndex + "return".length();
+                    continue;
+                }
+
+                String expression = line.substring(expressionStart, semicolon).trim();
+                int column = line.indexOf(expression, expressionStart);
+                String replacement = getReturnValueReplacement(expression, type, currentReturnType);
+
+                if (replacement != null && column >= 0) {
+                    points.add(new MutationPoint(file, i + 1, column, expression, replacement, type));
+                }
+
+                searchFrom = semicolon + 1;
+            }
+        }
+
+        return points;
+    }
+
+    private static String getReturnValueReplacement(String expression, Mutator.MutatorType type, String returnType) {
+        String value = stripOuterParentheses(expression.trim());
+
+        return switch (type) {
+            case RVM_TRUE_TO_FALSE -> value.equals("true") ? "false" : null;
+            case RVM_FALSE_TO_TRUE -> value.equals("false") ? "true" : null;
+            case RVM_ZERO_TO_ONE -> isZeroLiteral(value) ? "1" : null;
+            case RVM_NONZERO_TO_ZERO -> isNonZeroNumericLiteral(value) ? "0" : null;
+            case RVM_PRIMITIVE_TO_ZERO -> isNonZeroNumericLiteral(value) ? "0" : null;
+            case RVM_OBJECT_TO_NULL -> isReferenceReturnType(returnType) && isObjectLikeReturn(value) ? "null" : null;
+            case RVM_STRING_TO_EMPTY -> isNonEmptyStringLiteral(value) ? "\"\"" : null;
+            default -> null;
+        };
+    }
+
+    private static String detectMethodReturnType(String line) {
+        String trimmed = line.trim();
+        Pattern methodPattern = Pattern.compile(
+                "^(?:public|private|protected|internal|static|sealed|override|virtual|async|extern|new|partial|readonly|unsafe|\\s)+\\s*([A-Za-z_][A-Za-z0-9_<>?\\[\\]\\.]*|void)\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\("
+        );
+        Matcher matcher = methodPattern.matcher(trimmed);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private static boolean isReferenceReturnType(String returnType) {
+        if (returnType == null || returnType.isBlank()) {
+            return false;
+        }
+
+        String normalized = returnType.replace("?", "").trim();
+        return !normalized.equals("void")
+                && !normalized.equals("bool")
+                && !normalized.equals("byte")
+                && !normalized.equals("sbyte")
+                && !normalized.equals("short")
+                && !normalized.equals("ushort")
+                && !normalized.equals("int")
+                && !normalized.equals("uint")
+                && !normalized.equals("long")
+                && !normalized.equals("ulong")
+                && !normalized.equals("float")
+                && !normalized.equals("double")
+                && !normalized.equals("decimal")
+                && !normalized.equals("char");
+    }
+
+    private static List<MutationPoint> scanVoidMethodCallMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        Pattern invocationStatement = Pattern.compile(
+                "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
+        );
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            Matcher matcher = invocationStatement.matcher(line);
+            if (!matcher.matches()) {
+                continue;
+            }
+
+            String statement = line.trim();
+            if (startsWithControlKeyword(statement)) {
+                continue;
+            }
+
+            int column = line.indexOf(statement);
+            points.add(new MutationPoint(
+                    file,
+                    i + 1,
+                    column,
+                    statement,
+                    ";",
+                    Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                    "Void method call mutation"
+            ));
+        }
+
+        return points;
+    }
+
+    private static List<MutationPoint> scanIncrementSwapMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        String original = type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT ? "++" : "--";
+        String replacement = type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT ? "--" : "++";
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            for (int col = 0; col < line.length() - 1; col++) {
+                if (isInStringOrComment(line, col)) {
+                    continue;
+                }
+
+                if (line.startsWith(original, col)) {
+                    points.add(new MutationPoint(file, i + 1, col, original, replacement, type));
+                    col++;
+                }
+            }
+        }
+
+        return points;
+    }
+
+    private static List<MutationPoint> scanInvertNegativeMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            for (int col = 0; col < line.length(); col++) {
+                if (line.charAt(col) != '-' || isInStringOrComment(line, col)) {
+                    continue;
+                }
+
+                if (isUnaryMinus(line, col)) {
+                    points.add(new MutationPoint(
+                            file,
+                            i + 1,
+                            col,
+                            "-",
+                            "",
+                            Mutator.MutatorType.INEG_INVERT_NEGATIVE
+                    ));
+                }
+            }
+        }
+
+        return points;
+    }
+
     private static List<MutationPoint> scanRemoveIncrementMutations(File file, String sourceCode) {
         List<MutationPoint> points = new ArrayList<>();
         String[] lines = sourceCode.split("\n", -1);
@@ -502,6 +706,119 @@ public class CSharpMutationScanner {
         return points;
     }
 
+    private static int findSemicolonOutsideStringOrComment(String line, int from) {
+        for (int i = from; i < line.length(); i++) {
+            if (line.charAt(i) == ';' && !isInStringOrComment(line, i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String stripOuterParentheses(String expression) {
+        String value = expression;
+        while (value.startsWith("(") && value.endsWith(")") && findMatchingParen(value, 0) == value.length() - 1) {
+            value = value.substring(1, value.length() - 1).trim();
+        }
+        return value;
+    }
+
+    private static boolean isZeroLiteral(String value) {
+        return value.matches("^[+-]?0+(\\.0+)?([fFdDmM])?$");
+    }
+
+    private static boolean isNonZeroNumericLiteral(String value) {
+        if (!value.matches("^[+-]?(\\d+\\.?\\d*|\\d*\\.\\d+)([eE][+-]?\\d+)?([fFdDmM])?$")) {
+            return false;
+        }
+
+        try {
+            String normalized = value.replaceAll("[fFdDmM]$", "");
+            return Double.parseDouble(normalized) != 0.0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static boolean isNonEmptyStringLiteral(String value) {
+        return value.length() >= 2
+                && value.startsWith("\"")
+                && value.endsWith("\"")
+                && !value.equals("\"\"");
+    }
+
+    private static boolean isObjectLikeReturn(String value) {
+        if (value.isBlank()
+                || value.equals("true")
+                || value.equals("false")
+                || value.equals("null")
+                || isZeroLiteral(value)
+                || isNonZeroNumericLiteral(value)) {
+            return false;
+        }
+
+        return isNonEmptyStringLiteral(value)
+                || value.equals("\"\"")
+                || value.startsWith("new ")
+                || value.startsWith("this")
+                || value.matches("^@?[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$");
+    }
+
+    private static boolean startsWithControlKeyword(String statement) {
+        return statement.startsWith("if ")
+                || statement.startsWith("if(")
+                || statement.startsWith("while ")
+                || statement.startsWith("while(")
+                || statement.startsWith("for ")
+                || statement.startsWith("for(")
+                || statement.startsWith("foreach ")
+                || statement.startsWith("foreach(")
+                || statement.startsWith("switch ")
+                || statement.startsWith("switch(")
+                || statement.startsWith("using ")
+                || statement.startsWith("using(")
+                || statement.startsWith("lock ")
+                || statement.startsWith("lock(")
+                || statement.startsWith("catch ")
+                || statement.startsWith("catch(");
+    }
+
+    private static boolean isUnaryMinus(String line, int minusIndex) {
+        if (minusIndex + 1 >= line.length()) {
+            return false;
+        }
+
+        char next = line.charAt(minusIndex + 1);
+        if (next == '-' || next == '>' || next == '=') {
+            return false;
+        }
+
+        int nextNonWhitespace = skipLeadingTrivia(line, minusIndex + 1);
+        if (nextNonWhitespace >= line.length()) {
+            return false;
+        }
+
+        char nextChar = line.charAt(nextNonWhitespace);
+        if (!Character.isLetterOrDigit(nextChar) && nextChar != '_' && nextChar != '(') {
+            return false;
+        }
+
+        int prev = previousNonWhitespace(line, minusIndex - 1);
+        if (prev < 0) {
+            return true;
+        }
+
+        char prevChar = line.charAt(prev);
+        if ("([{=,:;!&|?+-*/%^~<>".indexOf(prevChar) >= 0) {
+            return true;
+        }
+
+        String before = line.substring(0, minusIndex).trim();
+        return before.endsWith("return")
+                || before.endsWith("case")
+                || before.endsWith("=>")
+                || before.endsWith("throw");
+    }
 
     private static boolean isInStringOrComment(String line, int position) {
         boolean inString = false;
