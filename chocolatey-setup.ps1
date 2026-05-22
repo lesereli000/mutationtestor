@@ -436,8 +436,8 @@ function Test-PythonModule {
                 [string]$Module
         )
         if (-not (Test-Path $PythonExe)) { return $false }
-        & $PythonExe -c "import $Module" 2>$null
-        return $LASTEXITCODE -eq 0
+        $out = Invoke-Native $PythonExe @("-c", "import $Module") -TimeoutSec 10
+        return $out -notmatch 'Traceback|ModuleNotFoundError|ImportError'
 }
 
 function Ensure-PythonTestDeps {
