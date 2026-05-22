@@ -220,6 +220,9 @@ public class JavaMutationScanner {
     }
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
+        // Pre-split for O(1) line lookups in getSourceLine()
+        // ANTLR line numbers are 1-based; index 0 = line 1
+        final String[] sourceLines = sourceCode.split("\n", -1);
         CharStream input = CharStreams.fromString(sourceCode);
         JavaLexer lexer = new JavaLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -312,6 +315,16 @@ public class JavaMutationScanner {
                     return new int[]{s.getLine(), s.getCharPositionInLine()};
                 }
                 return new int[]{0, 0};
+            }
+
+            @Override
+            public String getSourceLine(ParseTree ctx) {
+                int[] pos = getTokenPosition(ctx);
+                int lineIndex = pos[0] - 1; // ANTLR line numbers are 1-based
+                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
+                    return sourceLines[lineIndex];
+                }
+                return "";
             }
 
             @Override

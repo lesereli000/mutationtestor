@@ -1,301 +1,136 @@
-# setup.ps1 — Windows setup script for the multi-language mutation tester demo.
-#
-# Usage (run in an elevated PowerShell prompt):
-#   .\setup.ps1            # check whether required tools are present
-#   .\setup.ps1 -Install   # install missing tools via Chocolatey, then download project deps
-#
-# Chocolatey (https://chocolatey.org) is used as the Windows package manager,
-# matching the spirit of the original request.  If Chocolatey is not found and
-# -Install is specified, this script installs it automatically.
+# setup.ps1 - Single Command Environment Setup for Windows
 
-param(
-    [switch]$Install,
-    [switch]$Help
-)
-
-Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-
 $RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-if ($Help) {
-    Get-Content $MyInvocation.MyCommand.Path | Select-Object -First 12
-    exit 0
+# 1. Check for Admin privileges.
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "Requesting Administrator privileges to install system tools..." -ForegroundColor Cyan
+    # Relaunch the script as admin to install chocolatey and packages
+    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -SystemDepsOnly"
+    Write-Host "Waiting for system dependencies to finish installing in the new window..." -ForegroundColor Cyan
+    # Wait a moment for the user to accept the prompt before continuing
+    Start-Sleep -Seconds 15
 }
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-function Info  { param($msg) Write-Host "[INFO] $msg" }
-function Ok    { param($msg) Write-Host "[OK]   $msg" -ForegroundColor Green }
-function Warn  { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yellow }
-function Miss  { param($msg) Write-Host "[MISS] $msg" -ForegroundColor Red }
-
-function Have {
-    param($cmd)
-    $null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
-}
-
-# ---------------------------------------------------------------------------
-# Chocolatey bootstrap
-# ---------------------------------------------------------------------------
-
-function Ensure-Choco {
-    if (Have choco) { return }
-    if (-not $Install) {
-        Warn "Chocolatey not found. Run with -Install to install it automatically."
-        return
+# 2. Install System Dependencies (Runs in Admin window)
+if ($args -contains "-SystemDepsOnly" -or $isAdmin) {
+    Write-Host "==================================================="
+    Write-Host "Installing System Tools via Chocolatey..."
+    Write-Host "==================================================="
+    
+    # Ensure Chocolatey is installed
+    if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
     }
-
-    Info "Installing Chocolatey..."
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
-    # Reload PATH so choco is available immediately
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-                [System.Environment]::GetEnvironmentVariable("Path","User")
-}
-
-# ---------------------------------------------------------------------------
-# Tool checks / installs
-# ---------------------------------------------------------------------------
-
-function Require-Tool {
-    param(
-        [string]$Cmd,
-        [string]$Label,
-        [string]$ChocoPackage,
-        [string]$InstallNote
-    )
-
-    if (Have $Cmd) {
-        $ver = try { & $Cmd --version 2>&1 | Select-Object -First 1 } catch { "unknown" }
-        Ok "${Label}: $ver"
-        return
-    }
-
-    Miss "$Label is not installed or not on PATH."
-
-    if ($Install) {
-        if (Have choco) {
-            Info "Installing $Label via Chocolatey..."
-            choco install $ChocoPackage -y
-            # Reload PATH after install
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-                        [System.Environment]::GetEnvironmentVariable("Path","User")
-        } else {
-            Warn $InstallNote
-        }
-    } else {
-        Warn $InstallNote
+    
+    # Install or upgrade everything in packages.config to ensure the latest versions
+    choco upgrade "$RootDir\packages.config" -y
+    
+    if ($args -contains "-SystemDepsOnly") {
+        Write-Host "System installation complete. This window will close in 5 seconds."
+        Start-Sleep -Seconds 5
+        exit
     }
 }
 
-function Check-Racket {
-    if (Have racket) {
-        $ver = try { racket --version 2>&1 | Select-Object -First 1 } catch { "unknown" }
-        Ok "Racket: $ver"
-        return
-    }
+# 3. Reload Path to ensure new tools are available in current session
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-    Miss "Racket is not installed or not on PATH."
+# 4. Initialize Project Dependencies
+Write-Host "==================================================="
+Write-Host "Initializing Project Dependencies..."
+Write-Host "==================================================="
 
-    if ($Install) {
-        if (Have choco) {
-            Info "Installing Racket via Chocolatey..."
-            choco install racket -y
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-                        [System.Environment]::GetEnvironmentVariable("Path","User")
-        } else {
-            Warn "Install Racket from https://download.racket-lang.org/"
-        }
-    } else {
-        Warn "Install Racket from https://download.racket-lang.org/"
-    }
-}
+Write-Host "`n[1/5] Downloading Maven dependencies..."
+Push-Location $RootDir
+mvn -q -DskipTests dependency:go-offline
+Pop-Location
 
-# ---------------------------------------------------------------------------
-# Project-level dependency downloads
-# ---------------------------------------------------------------------------
+Push-Location "$RootDir\samples\MavenProject"
+mvn -q -DskipTests dependency:go-offline
+Pop-Location
 
-function Download-Maven {
-    if (-not (Have mvn)) {
-        Warn "Skipping Maven dependency download because mvn is missing."
-        return
-    }
-    Info "Downloading root Maven dependencies..."
-    Push-Location $RootDir
-    mvn -q -DskipTests dependency:go-offline
-    Pop-Location
+Write-Host "`n[2/5] Installing and updating JavaScript dependencies..."
+Push-Location "$RootDir\samples\JSProject"
+$env:PUPPETEER_SKIP_DOWNLOAD="true"
+npm install
+npm update
+Write-Host "Installing Puppeteer Chrome browser..."
+npx puppeteer browsers install chrome
+Pop-Location
 
-    Info "Downloading Java sample Maven dependencies..."
-    Push-Location "$RootDir\samples\MavenProject"
-    mvn -q -DskipTests dependency:go-offline
-    Pop-Location
-}
-# for JS
-
-function Verify-Puppeteer {
-    Info "Verifying Puppeteer installation..."
- 
-    $jsProjectDir = "$RootDir\samples\JSProject"
-    $puppeteerPackage = "$jsProjectDir\node_modules\puppeteer\package.json"
- 
-    # Check package exists
-    if (-not (Test-Path $puppeteerPackage)) {
-        Miss "Puppeteer not found in node_modules. npm install may have failed."
-        Warn "Try running manually: cd samples\JSProject && npm install"
-        return
-    }
- 
-    # Read and display version
-    try {
-        $pkg = Get-Content $puppeteerPackage -Raw | ConvertFrom-Json
-        Ok "Puppeteer: $($pkg.version)"
-    } catch {
-        Warn "Could not read Puppeteer version from package.json"
-    }
- 
-    # Run the browser test to confirm Chrome headless works
-    Info "Running baseline browser test to verify Puppeteer works..."
-    Push-Location $jsProjectDir
-    try {
-        $output = node browser-tests\run-with-puppeteer.js 2>&1
-        $outputStr = $output -join "`n"
- 
-        if ($outputStr -match "ALL TESTS PASSED") {
-            Ok "Puppeteer browser test: ALL TESTS PASSED"
-        } elseif ($outputStr -match "success rate: 100") {
-            Ok "Puppeteer browser test: passed"
-        } else {
-            Miss "Puppeteer browser test did not pass."
-            Warn "Output:"
-            Write-Host $outputStr
-            Warn "Check that browser-tests\test-runner.html loads correctly."
-        }
-    } catch {
-        Miss "Failed to run Puppeteer browser test: $_"
-        Warn "Try running manually: node browser-tests\run-with-puppeteer.js"
-    } finally {
-        Pop-Location
-    }
-}
-
- 
-
-
-function Download-JavaScript {
-    if (-not (Have npm)) {
-        Warn "Skipping JavaScript dependencies because npm is missing."
-        return
-    }
- 
-    Info "Installing JavaScript sample dependencies (npm install)..."
-    Push-Location "$RootDir\samples\JSProject"
-    try {
-        npm install
-        Info "Installing Puppeteer Chrome browser..."
-        npx puppeteer browsers install chrome
-    } finally {
-        Pop-Location
-    }
- 
-    # Verify Puppeteer installed correctly
-    Verify-Puppeteer
-}
-
-
-function Download-Python {
-    $py = if (Have python) { "python" } elseif (Have python3) { "python3" } else { $null }
-    if (-not $py) {
-        Warn "Skipping Python dependencies because python/python3 is missing."
-        return
-    }
+Write-Host "`n[3/5] Installing Python dependencies..."
+$py = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } elseif (Get-Command python3 -ErrorAction SilentlyContinue) { "python3" } else { $null }
+if ($py) {
     $venvDir = "$RootDir\samples\PytestProject\.venv"
-    $venvPython = "$venvDir\Scripts\python.exe"
-
-    # Remove stale venv if its interpreter is missing or broken (e.g., after Python version change or cross-OS clone)
+    # Check if stale or invalid venv exists (e.g. checked-in from macOS/Linux or missing interpreter)
     if (Test-Path $venvDir) {
-        $venvWorks = $false
-        if (Test-Path $venvPython) {
-            try { & $venvPython --version 2>$null | Out-Null; $venvWorks = $LASTEXITCODE -eq 0 } catch {}
+        $pyVenvExe = "$venvDir\Scripts\python.exe"
+        $isValid = $false
+        if (Test-Path $pyVenvExe) {
+            try {
+                $null = & $pyVenvExe --version
+                if ($LASTEXITCODE -eq 0) { $isValid = $true }
+            } catch {
+                $isValid = $false
+            }
         }
-        if (-not $venvWorks) {
-            Info "Removing stale Python virtual environment (interpreter missing or broken)..."
+        if (-not $isValid) {
+            Write-Host "Removing stale or invalid Python virtual environment..." -ForegroundColor Yellow
             Remove-Item -Recurse -Force $venvDir
         }
     }
-
+    
+    # Create virtual environment if it doesn't exist
     if (-not (Test-Path $venvDir)) {
-        Info "Creating Python virtual environment..."
+        Write-Host "Creating Python virtual environment..."
         & $py -m venv $venvDir
     }
-    Info "Installing pytest into virtual environment..."
-    & $venvPython -m pip install --quiet pytest
-}
-
-function Download-DotNet {
-    if (-not (Have dotnet)) {
-        Warn "Skipping .NET restore because dotnet is missing."
-        return
-    }
-    Info "Restoring C# sample dependencies..."
-    Push-Location "$RootDir\samples\CSProject"
-    dotnet restore tests\CSProject.Tests\CSProject.Tests.csproj
-    Pop-Location
-}
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-Write-Host "============================================================================"
-Write-Host "Mutation Tester Dependency Setup (Windows / PowerShell)"
-Write-Host "============================================================================"
-Write-Host "Project root: $RootDir"
-Write-Host ""
-
-# Reload PATH from registry so tools installed outside this terminal session are visible
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-        [System.Environment]::GetEnvironmentVariable("Path","User")
-
-if ($Install) {
-    Ensure-Choco
-}
-
-Require-Tool java   "Java/JDK 17+"       openjdk17          "Install JDK 17 from https://adoptium.net/"
-Require-Tool mvn    "Maven"              maven              "Install Maven from https://maven.apache.org/"
-Require-Tool dotnet ".NET SDK (net10.0)" dotnet-sdk         "Install .NET SDK from https://dotnet.microsoft.com/download"
-Require-Tool python "Python 3"           python             "Install Python 3 from https://www.python.org/downloads/"
-Require-Tool npm    "Node.js/npm"        nodejs             "Install Node.js from https://nodejs.org/"
-Check-Racket
-
-# Check Puppeteer (project-level dep, not a system tool)
-if (Have npm) {
-    $puppeteerPkg = "$RootDir\samples\JSProject\node_modules\puppeteer\package.json"
-    if (Test-Path $puppeteerPkg) {
-        $pkg = Get-Content $puppeteerPkg -Raw | ConvertFrom-Json
-        Ok "Puppeteer (JSProject): $($pkg.version)"
-    } else {
-        Miss "Puppeteer not installed in samples\JSProject\node_modules."
-        Warn "Run '.\setup.ps1 -Install' or: cd samples\JSProject && npm install"
-    }
-}
-
-if ($Install) {
-    Write-Host ""
-    Write-Host "============================================================================"
-    Write-Host "Downloading project dependencies"
-    Write-Host "============================================================================"
-    Download-Maven
-    Download-JavaScript
-    Download-Python
-    Download-DotNet
+    
+    # Install/upgrade pytest in the virtual environment
+    Write-Host "Installing/updating pytest in the virtual environment..."
+    & "$venvDir\Scripts\python.exe" -m pip install --upgrade --quiet pytest
 } else {
-    Write-Host ""
-    Info "Run '.\setup.ps1 -Install' to install missing tools and download project dependencies."
+    Write-Host "Python not found, skipping." -ForegroundColor Yellow
+}
+
+Write-Host "`n[4/5] Restoring and updating .NET dependencies..."
+Push-Location "$RootDir\samples\CSProject"
+$projFile = "tests\CSProject.Tests\CSProject.Tests.csproj"
+if (Test-Path $projFile) {
+    # Parse PackageReference elements using SelectNodes and update them to latest
+    [xml]$xml = Get-Content $projFile
+    $packages = $xml.SelectNodes("//PackageReference")
+    foreach ($pkg in $packages) {
+        $name = $pkg.GetAttribute("Include")
+        if ($name) {
+            Write-Host "Auto-updating NuGet package: $name"
+            dotnet add "tests\CSProject.Tests" package $name
+        }
+    }
+}
+dotnet restore $projFile
+Pop-Location
+
+Write-Host "`n[5/5] Restoring and updating Racket dependencies..."
+if (Get-Command raco -ErrorAction SilentlyContinue) {
+    $rktPaths = @(
+        "$RootDir\samples\RacketProject\project",
+        "$RootDir\samples\RacketCalculator\calculator"
+    )
+    foreach ($path in $rktPaths) {
+        Write-Host "Restoring racket package in $path..."
+        raco pkg install --auto --batch --skip-installed --no-docs $path
+        Write-Host "Updating racket package dependencies in $path..."
+        raco pkg update --auto --batch --no-docs $path
+    }
+} else {
+    Write-Host "Racket command raco not found, skipping." -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -303,6 +138,7 @@ Write-Host "====================================================================
 Write-Host "Next steps"
 Write-Host "============================================================================"
 Write-Host "1. Build the mutation tester:"
+Write-Host "`nSetup complete! You can now build the project." -ForegroundColor Green
 Write-Host "   mvn package -DskipTests"
 Write-Host ""
 Write-Host "2. Invoke the tool with the project directory and config file as arguments:"
