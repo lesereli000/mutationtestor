@@ -30,6 +30,8 @@ cd mutationtestor
 3. Extract the ZIP to a folder of your choice (e.g. `C:\Multi-Language_mutationtestor`)
 4. Open Windows Terminal and navigate to that folder
 
+![clone repository](git_clone.png)
+
 ---
 
 ## 2. Install Dependencies
@@ -70,7 +72,7 @@ Expected output:
 [OK] Puppeteer (JSProject): x.x.x
 ```
 
-![Dependency check showing all OK](docs/images/setup-verify.png)
+![Dependency check showing all OK](dependency_check.png)
 
 ---
 
@@ -92,7 +94,7 @@ A successful build produces:
 target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-![Maven build success output](docs/images/build-success.png)
+![Maven build success output](mvn_build.png)
 
 ---
 
@@ -177,7 +179,7 @@ compile_command=
 test_command=raco test tests/
 ```
 
-![Terminal output showing mutation testing in progress](docs/images/run-mutations.png)
+![Terminal output showing mutation testing in progress](running_mutation.png)
 
 ---
 
@@ -210,6 +212,6 @@ The report includes:
 
 > Equivalent mutant marking requires the API server running on `localhost:8081`.
 
-![HTML mutation report showing 83.3% score](docs/images/report-overview.png)
+![HTML mutation report showing 83.3% score](mutation_report.png)
 
-![Source code overlay with killed and survived lines highlighted](docs/images/report-source-overlay.png)
+![Source code overlay with killed and survived lines highlighted](mutation_overlay.png)
