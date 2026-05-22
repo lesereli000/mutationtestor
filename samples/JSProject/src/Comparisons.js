@@ -16,3 +16,28 @@ function isValid(x) {
     }
     return false;
 }
+
+
+function incrementCounter(n) {
+    let count = n;
+    count++;
+    return count;
+}
+
+function decrementCounter(n) {
+    let count = n;
+    count--;
+    return count;
+}
+
+function absoluteValue(n) {
+    if (n < 0) {
+        return -n;
+    }
+    return n;
+}
+
+function logAndReturn(x) {
+    console.log(x);
+    return x;
+}

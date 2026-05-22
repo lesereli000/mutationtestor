@@ -47,6 +47,20 @@ public class Mutator {
         RVM_ZERO_TO_ONE,
         RVM_NONZERO_TO_ZERO,
 
+        // Extended Return Value Mutations
+        RVM_OBJECT_TO_NULL,
+        RVM_PRIMITIVE_TO_ZERO,
+
+        // Void Method Call removal
+        VML_VOID_METHOD_CALL,
+
+        // Increment / Decrement swap
+        AOR_INCREMENT_TO_DECREMENT,
+        AOR_DECREMENT_TO_INCREMENT,
+
+        // Invert Negatives
+        INEG_INVERT_NEGATIVE,
+
         // Logical Connector Replacement
         LCR_AND_TO_OR,          // && to ||
         LCR_OR_TO_AND,          // || to &&

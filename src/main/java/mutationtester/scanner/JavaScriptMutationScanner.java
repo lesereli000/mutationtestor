@@ -25,20 +25,55 @@ public class JavaScriptMutationScanner {
         JavaScriptParser parser = new JavaScriptParser(tokens);
         ParseTree tree = parser.program();
 
-        if (isRORType(type)) { JavaScriptRORVisitor v = new JavaScriptRORVisitor(file, type); v.visit(tree); return v.getMutations(); }
-        if (isLCRType(type)) { JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type); v.visit(tree); return v.getMutations(); }
-        if (isRVMType(type)) { JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type); v.visit(tree); return v.getMutations(); }
-        if (isAORType(type)) { JavaScriptAORVisitor v = new JavaScriptAORVisitor(file, type); v.visit(tree); return v.getMutations(); }
+        String name = type.name();
 
+        // ROR — Relational Operator Replacement
+        if (name.startsWith("ROR_")) {
+            JavaScriptRORVisitor v = new JavaScriptRORVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // LCR — Logical Connector Replacement
+        if (name.startsWith("LCR_")) {
+            JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // RVM — Return Value Mutations (all variants)
+        if (name.startsWith("RVM_")) {
+            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // AOR — Arithmetic Operator Replacement (including ++ / --)
+        if (name.startsWith("AOR_")) {
+            // Increment/decrement are a subset of AOR
+            if (type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT
+                    || type == Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT) {
+                JavaScriptIncrementVisitor v = new JavaScriptIncrementVisitor(file, type);
+                v.visit(tree); return v.getMutations();
+            }
+            JavaScriptAORVisitor v = new JavaScriptAORVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // VML — Void Method Call removal
+        if (name.startsWith("VML_")) {
+            JavaScriptVMLVisitor v = new JavaScriptVMLVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // INEG — Invert Negatives
+        if (name.startsWith("INEG_")) {
+            JavaScriptINEGVisitor v = new JavaScriptINEGVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // NLT — Numeric Literal Transformations
         NLTVisitor visitor = new NLTVisitor(file, type);
         visitor.visit(tree);
         return visitor.getMutationPoints();
     }
-
-    private static boolean isRORType(Mutator.MutatorType t) { return t.name().startsWith("ROR_"); }
-    private static boolean isLCRType(Mutator.MutatorType t) { return t.name().startsWith("LCR_"); }
-    private static boolean isRVMType(Mutator.MutatorType t) { return t.name().startsWith("RVM_"); }
-    private static boolean isAORType(Mutator.MutatorType t) { return t.name().startsWith("AOR_"); }
 
     // ── NLT visitor ──────────────────────────────────────────────────────────
 
@@ -125,9 +160,6 @@ public class JavaScriptMutationScanner {
 
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-
-        // Pre-split for O(1) line lookups in getSourceLine()
-        // ANTLR line numbers are 1-based; index 0 = line 1
         final String[] sourceLines = sourceCode.split("\n", -1);
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -137,18 +169,15 @@ public class JavaScriptMutationScanner {
         ParseTree tree = parser.program();
 
         return new MSLScannerAdapter() {
-
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 return ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(mslOperator);
             }
-
             @Override public ParseTree getLeftOperand(ParseTree ctx)  { return ctx.getChild(0); }
             @Override public ParseTree getRightOperand(ParseTree ctx) { return ctx.getChild(2); }
             @Override public ParseTree getOperatorToken(ParseTree ctx) {
                 return ctx.getChildCount() >= 3 ? ctx.getChild(1) : null;
             }
-
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
@@ -163,24 +192,14 @@ public class JavaScriptMutationScanner {
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
                 return false;
             }
-
-            /**
-             * Returns the full source line containing this node.
-             * ReplacementRule uses this to evaluate Except: context patterns.
-             * Example: for a <= node on line 3, returns the full text of line 3.
-             */
             @Override
             public String getSourceLine(ParseTree ctx) {
                 int[] pos = getTokenPosition(ctx);
-                int lineIndex = pos[0] - 1; // convert 1-based ANTLR line to 0-based array index
-                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
-                    return sourceLines[lineIndex];
-                }
+                int lineIndex = pos[0] - 1;
+                if (lineIndex >= 0 && lineIndex < sourceLines.length) return sourceLines[lineIndex];
                 return "";
             }
-
             @Override public String getNodeText(ParseTree ctx) { return ctx.getText(); }
-
             @Override
             public int[] getTokenPosition(ParseTree ctx) {
                 if (ctx instanceof TerminalNode tn) {
@@ -193,7 +212,6 @@ public class JavaScriptMutationScanner {
                 }
                 return new int[]{0, 0};
             }
-
             @Override public ParseTree getRootContext() { return tree; }
         };
     }
