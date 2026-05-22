@@ -2,4 +2,4 @@ source_code_directory=src
 mutator_type=CUSTOM
 custom_mutation_spec=specs/context-sensitive-mutations.spec
 compile_command=
-test_command=python3 -m pytest ./tests/TestBoundaryCheck.py ./tests/TestAdd.py ./tests/TestAlgorithms.py ./tests/TestLogicAndTypes.py ./tests/TestKilledSurvived.py
+test_command=python3 -m pytest ./tests/TestBoundaryCheck.py ./tests/TestAdd.py ./tests/TestAlgorithms.py ./tests/TestLogicAndTypes.py ./tests/TestKilledSurvived.py ./tests/TestLoopBoundaryCheck.py
