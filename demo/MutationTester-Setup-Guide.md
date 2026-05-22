@@ -1,5 +1,19 @@
 # MutationTester - Setup Guide
 
+## Prerequisites
+
+| Tool | Required Version | Purpose |
+|------|-----------------|---------|
+| Java / JDK | 17+ | Compiles and runs the tool |
+| Maven | 3.8+ | Build system |
+| Git | Any | Clone the repository |
+| Racket | 8.x | Racket language support |
+| Python 3 | 3.8+ | Python language support |
+| Node.js / npm | 18+ | JavaScript support (Puppeteer) |
+| .NET SDK | **10.0** | C# language support |
+
+---
+
 ## 1. Clone the Repository
 
 **Option A - Git clone:**
@@ -12,7 +26,7 @@ cd mutationtestor
 **Option B - Manual download (no Git required):**
 
 1. Open <https://github.com/EllieJin04/mutationtestor> in your browser
-2. Click the green **Code** button → **Download ZIP**
+2. Click the green **Code** button -> **Download ZIP**
 3. Extract the ZIP to a folder of your choice (e.g. `C:\Multi-Language_mutationtestor`)
 4. Open Windows Terminal and navigate to that folder
 
@@ -23,7 +37,7 @@ cd mutationtestor
 From the project root, run the setup script in an **elevated (Administrator) PowerShell**:
 
 ```powershell
-.\chocolatey-setup.ps1
+.\chocolatey-setup.ps1 --install
 ```
 
 This installs Chocolatey (if needed) and then installs all required tools: Java 21, Maven, Git, Racket, Python 3, Node.js, and .NET SDK 10. **.NET 10 is required** - earlier versions will cause a build failure.
@@ -38,13 +52,13 @@ This installs Chocolatey (if needed) and then installs all required tools: Java 
 
 ## 3. Verify Dependencies
 
-After installation, confirm everything is green:
+When the script finishes, it prints a verification summary. All lines should read `[OK]` before proceeding. To re-run verification at any time:
 
 ```powershell
-.\setup.ps1
+.\chocolatey-setup.ps1
 ```
 
-Expected output - all lines should read `[OK]`:
+Expected output:
 
 ```
 [OK] Java/JDK 17+:          openjdk 21.x.x ...
