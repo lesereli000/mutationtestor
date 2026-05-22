@@ -6,7 +6,9 @@ import java.io.InputStream;
 import java.io.PrintStream;
 
 // Enum example
-enum Status { STARTED, RUNNING, FINISHED }
+enum Status {
+    STARTED, RUNNING, FINISHED
+}
 
 // Interface example
 interface Greeter {
@@ -36,7 +38,7 @@ class Dog extends Animal {
     }
 
     public void play() throws InterruptedException {
-        synchronized(this) {
+        synchronized (this) {
             energy -= 10;
         }
     }
@@ -49,9 +51,18 @@ class Dog extends Animal {
 // Generic class example
 class Box<T> {
     T value;
-    public Box(T value) { this.value = value; }
-    public T get() { return value; }
-    public void set(T value) { this.value = value; }
+
+    public Box(T value) {
+        this.value = value;
+    }
+
+    public T get() {
+        return value;
+    }
+
+    public void set(T value) {
+        this.value = value;
+    }
 }
 
 class MutationTestDemo {
@@ -61,10 +72,11 @@ class MutationTestDemo {
     final int max = 10;
     transient String tempValue = "temp";
     volatile boolean flag = true;
-    String[] names = {"Alice", "Bob", "Charlie"};
+    String[] names = { "Alice", "Bob", "Charlie" };
 
     // Constructor
-    public MutationTestDemo() {}
+    public MutationTestDemo() {
+    }
 
     // Static method
     static void staticMethod() {
@@ -74,7 +86,7 @@ class MutationTestDemo {
     // Instance method
     int sum(int... nums) {
         int result = 0;
-        for(int n : nums) {
+        for (int n : nums) {
             result += n; // arithmetic + assignment
         }
         return result;
@@ -127,7 +139,6 @@ class MutationTestDemo {
         // && || !
         // & | ^ ~ << >>
 
-
         // Logical operators
         boolean logic = (a > 0 && b > 0) || !bool;
 
@@ -135,9 +146,12 @@ class MutationTestDemo {
         int ternary = (a > b) ? a : b;
 
         // Conditional statements
-        if(a > 0) {
+        if (a > 0) {
+            a = 0;
+            System.out.println("equivalent mutant should only be mutated to <=, not >=");
+        } else if (a > 0) {
             System.out.println("a positive");
-        } else if(a < 0) {
+        } else if (a < 0) {
             System.out.println("a negative");
         } else {
             System.out.println("a zero");
@@ -145,20 +159,21 @@ class MutationTestDemo {
 
         // Switch statement
         Status status = Status.RUNNING;
-        switch(status) {
+        switch (status) {
             case STARTED -> System.out.println("Started");
             case RUNNING -> System.out.println("Running");
             case FINISHED -> System.out.println("Finished");
         }
 
         // Loops
-        for(int i = 0; i < 3; i++) {
-            if(i!=1) continue;
+        for (int i = 0; i < 3; i++) {
+            if (i != 1)
+                continue;
             System.out.println("For loop " + i);
         }
 
         int j = 0;
-        while(j < 3) {
+        while (j < 3) {
             System.out.println("While " + j);
             j++;
         }
@@ -167,17 +182,21 @@ class MutationTestDemo {
         do {
             System.out.println("Do-while " + k);
             k++;
-            if(k==2) break;
-        } while(k<3);
+            if (k == 2)
+                break;
+        } while (k < 3);
 
         // Arrays
-        for(String n : demo.names) System.out.println("Name: " + n);
+        for (String n : demo.names)
+            System.out.println("Name: " + n);
 
         // Collections
         List<String> list = new ArrayList<>();
-        list.add("One"); list.add("Two");
+        list.add("One");
+        list.add("Two");
         Map<String, Integer> map = new HashMap<>();
-        map.put("A",1); map.put("B",2);
+        map.put("A", 1);
+        map.put("B", 2);
 
         // Lambda
         list.forEach(e -> System.out.println("Lambda: " + e));
@@ -185,24 +204,28 @@ class MutationTestDemo {
         // Try-catch-finally
         try {
             int x = 10 / 2;
-            if(x == 5) throw new IOException("Example exception");
-        } catch(IOException | ArithmeticException e) {
+            if (x == 5)
+                throw new IOException("Example exception");
+        } catch (IOException | ArithmeticException e) {
             e.printStackTrace();
         } finally {
             System.out.println("Finally executed");
         }
 
         // Try-with-resources
-        try(Scanner scanner = new Scanner(System.in)) {
+        try (Scanner scanner = new Scanner(System.in)) {
             System.out.println("Scanner ready (no input needed)");
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
         // Object creation
         Dog dog = new Dog("Labrador");
         dog.makeSound();
-        try { dog.play(); } catch(InterruptedException e) { }
+        try {
+            dog.play();
+        } catch (InterruptedException e) {
+        }
 
         // Interface implementation (anonymous class)
         Greeter greeter = new Greeter() {
@@ -218,21 +241,25 @@ class MutationTestDemo {
 
         // Casting
         double d = 3.5;
-        int di = (int)d;
+        int di = (int) d;
         System.out.println("Casted: " + di);
 
         // instanceof
-        if(dog instanceof Animal) System.out.println("dog is Animal");
+        if (dog instanceof Animal)
+            System.out.println("dog is Animal");
 
         // synchronized
-        synchronized(MutationTestDemo.class) { counter++; }
+        synchronized (MutationTestDemo.class) {
+            counter++;
+        }
 
         // assert
         assert counter >= 0;
 
         // null check
         String s = null;
-        if(s == null) System.out.println("s is null");
+        if (s == null)
+            System.out.println("s is null");
 
         // break & continue handled in loops above
     }
