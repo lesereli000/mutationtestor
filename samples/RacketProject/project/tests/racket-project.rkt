@@ -5,7 +5,8 @@
          "../src/add1.rkt"
          "../src/add2.rkt"
          "../src/operators.rkt"
-         "../src/typed-functions.rkt")
+         "../src/typed-functions.rkt"
+         "../src/loop-demo.rkt")
 
 (define add1-suite
   (test-suite "Test add1"
@@ -64,6 +65,23 @@
     (check-equal? (typed-add 2 3) 6)   ; 2+3+1=6, mutant gives 2-3+1=0 → fail
     (check-equal? (mixed-types 2 3 4 5) 29)))  ; (2*3)+(4*5)+3=29
 
+; Tests for the while-loop equivalent (countdown-to-zero).
+; With the context-sensitive spec, the (<= n 0) guard is suppressed
+; (it matches the Except: pattern for infinite-loop prevention).
+; Without the spec, the <= -> < mutation would be generated and killed
+; by the boundary check (countdown-to-zero 0).
+(define loop-demo-suite
+  (test-suite "Test while-loop equivalent"
+    ; countdown-to-zero: guard is suppressed — <= mutation will NOT appear in report
+    (check-equal? (countdown-to-zero 0)  0)  ; boundary: would kill <= → < if generated
+    (check-equal? (countdown-to-zero -3) 0)  ; negative input
+    (check-equal? (countdown-to-zero 1)  1)  ; one step
+    (check-equal? (countdown-to-zero 5)  5)  ; five steps
+    ; at-or-below?: real logic — <= mutation WILL appear in report
+    (check-equal? (at-or-below? 3 5) #t)
+    (check-equal? (at-or-below? 5 5) #t)   ; boundary: kills <= → < mutant
+    (check-equal? (at-or-below? 6 5) #f)))
+
 (define all-tests
   (test-suite "All Tests"
     add1-suite
@@ -71,6 +89,7 @@
     operators-suite
     boundary-suite
     typed-functions-suite
+    loop-demo-suite
     ))
 
 
