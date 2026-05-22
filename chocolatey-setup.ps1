@@ -471,6 +471,11 @@ function Ensure-Node {
 
 function Ensure-Racket {
         $maj = Get-RacketMajor
+        if ($maj -ge $Required.RacketMajor) {
+                Ok "Racket $maj already installed."
+                Ensure-RacketOnPath   # heal stale PATH even on the warm path
+                return
+        }
         if ($maj) { Warn "Racket $maj found, but $($Required.RacketMajor)+ is required. Upgrading..." }
         else      { Info "Installing Racket (package is ~600 MB, may take 5-10 minutes)..." }
         if ($Mode -eq "install") {
@@ -478,6 +483,42 @@ function Ensure-Racket {
                         [void](Install-OrUpgrade "Racket" $ChocoPackages.Racket.Name $null `
                 -Verify { (Get-RacketMajor) -ge $Required.RacketMajor })
                 }
+                Ensure-RacketOnPath
+        }
+}
+
+# Chocolatey's racket package drops Racket at C:\Program Files\Racket but
+# does not reliably add that dir to Machine PATH. Get-RacketMajor papers
+# over the gap for the script's own verification, but external processes
+# spawned later (mvn surefire running 'racket project/tests/x.rkt', for
+# instance) inherit PATH and fail with "'racket' is not recognized."
+# Add the install dir to Machine PATH and the current session if missing
+# so child processes find it.
+function Ensure-RacketOnPath {
+        $candidates = @(
+                "C:\Program Files\Racket",
+                "C:\Program Files (x86)\Racket",
+                (Join-Path $env:LOCALAPPDATA "Racket")
+        )
+        $dir = $candidates | Where-Object { Test-Path (Join-Path $_ "Racket.exe") } | Select-Object -First 1
+        if (-not $dir) { return }
+
+        # Persist into Machine PATH for future shells.
+        $machine = [Environment]::GetEnvironmentVariable('Path','Machine')
+        $entries = $machine -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') }
+        if ($entries -notcontains $dir) {
+                Info "Adding $dir to Machine PATH (for future shells and child processes)..."
+                try {
+                        [Environment]::SetEnvironmentVariable('Path', ($entries + $dir -join ';'), 'Machine')
+                } catch {
+                        Warn "Failed to update Machine PATH: $($_.Exception.Message)"
+                }
+        }
+
+        # Make the current session see it immediately so any later step in
+        # this run (e.g. a Maven test that shells out to racket) works.
+        if (($env:Path -split ';') -notcontains $dir) {
+                $env:Path = "$env:Path;$dir"
         }
 }
 
@@ -496,6 +537,22 @@ function Get-PuppeteerInfo {
         return [pscustomobject]@{ Version = $ver; Chrome = $chrome.FullName; Build = $chrome.Directory.Parent.Name }
 }
 
+# Read-only probe: JUnit Jupiter is a Maven dep, not an installable tool,
+# so its 'install' is whether Restore-MavenDeps populated the local
+# repository under ~/.m2. Returns @{Version=...} for the newest
+# junit-jupiter jar present, or $null if none.
+function Get-JunitInfo {
+        $dir = Join-Path $env:USERPROFILE ".m2\repository\org\junit\jupiter\junit-jupiter"
+        if (-not (Test-Path $dir)) { return $null }
+        $versions = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue |
+                Where-Object {
+                        Test-Path (Join-Path $_.FullName ("junit-jupiter-{0}.jar" -f $_.Name))
+                } |
+                Sort-Object Name -Descending
+        if (-not $versions) { return $null }
+        return [pscustomobject]@{ Version = $versions[0].Name; Path = $versions[0].FullName }
+}
+
 # Print an 'already installed' line up-front when Puppeteer + cached Chrome
 # are present, mirroring the per-tool messages. Otherwise note that the
 # parallel restore phase will install it.
@@ -503,6 +560,15 @@ function Ensure-Puppeteer {
         $info = Get-PuppeteerInfo
         if ($info) { Ok "Puppeteer $($info.Version) already installed."; return }
         Info "Puppeteer not yet installed; the parallel restore phase will fetch it (~170 MB Chrome)."
+}
+
+# Same pattern for JUnit Jupiter -- a green line when the jar is already
+# in the local Maven repo, otherwise a note that Restore-MavenDeps will
+# pull it.
+function Ensure-Junit {
+        $info = Get-JunitInfo
+        if ($info) { Ok "JUnit Jupiter $($info.Version) already installed."; return }
+        Info "JUnit Jupiter not yet in local Maven repo; the parallel restore phase will fetch it."
 }
 
 # ---------------------------------------------------------------------------
@@ -765,6 +831,12 @@ function Verify-All {
                 $bad++
         }
 
+        # JUnit Jupiter: pulled into ~/.m2 by Restore-MavenDeps, not by a tool
+        # installer. The Java mutation tests cannot compile without it.
+        $jun = Get-JunitInfo
+        if ($jun) { Ok "JUnit Jupiter $($jun.Version)" }
+        else      { Fail "JUnit Jupiter missing from local Maven repo"; $bad++ }
+
         return $bad
 }
 
@@ -792,6 +864,7 @@ Ensure-Python
 Ensure-Node
 Ensure-Racket
 Ensure-Puppeteer
+Ensure-Junit
 
 if ($Mode -eq "install") {
         Write-Host ""
