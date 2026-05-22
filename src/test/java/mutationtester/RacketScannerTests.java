@@ -565,4 +565,218 @@ public class RacketScannerTests {
         assertTrue(p.getOperator().contains("display"));
         assertEquals("(void)", p.getReplacement());
     }
+
+    // -------------------------------------------------------------------------
+    // VML_VOID_METHOD_CALL
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitVoidMethodCall() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.VML_VOID_METHOD_CALL);
+
+        // pit-mutations.rkt has one void call: (display items) in log-and-count
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertTrue(p.getOperator().contains("display"));
+        assertEquals("", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsVoidMethodCall() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.VML_VOID_METHOD_CALL);
+
+        // Same call site as STATEMENT_MUTATION, but replacement is ""
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertTrue(p.getOperator().contains("display"));
+        assertEquals("", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // AOR_INCREMENT_TO_DECREMENT  (add1 → sub1)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitIncrementToDecrement() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT);
+
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("add1", p.getOperator());
+        assertEquals("sub1", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsNoIncrement() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT);
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
+    // AOR_DECREMENT_TO_INCREMENT  (sub1 → add1)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitDecrementToIncrement() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT);
+
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("sub1", p.getOperator());
+        assertEquals("add1", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsNoDecrement() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT);
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
+    // INEG_INVERT_NEGATIVE  ((- x) → x)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitInvertNegative() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.INEG_INVERT_NEGATIVE);
+
+        // negate-x body is (- x), a unary minus with one argument
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertTrue(p.getOperator().contains("-"));
+        assertEquals("x", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsNoInvertNegative() throws IOException {
+        // operators.rkt has only binary minus (- x y), never unary (- x)
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.INEG_INVERT_NEGATIVE);
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_TRUE_TO_FALSE  (#t → #f)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmTrueToFalse() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_TRUE_TO_FALSE);
+
+        // always-true returns #t
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("#t", p.getOperator());
+        assertEquals("#f", p.getReplacement());
+    }
+
+    @Test
+    public void testOperatorsRvmTrueToFalse() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_TRUE_TO_FALSE);
+
+        // under-limit? returns (if ...) not a bare #t, so no match
+        assertEquals(0, points.size());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_FALSE_TO_TRUE  (#f → #t)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmFalseToTrue() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_FALSE_TO_TRUE);
+
+        // always-false returns #f
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("#f", p.getOperator());
+        assertEquals("#t", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_ZERO_TO_ONE  (0 → 1)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmZeroToOne() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_ZERO_TO_ONE);
+
+        // return-zero returns 0
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("0", p.getOperator());
+        assertEquals("1", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_NONZERO_TO_ZERO  (non-zero integer → 0)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmNonzeroToZero() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_NONZERO_TO_ZERO);
+
+        // return-nonzero returns 42
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("42", p.getOperator());
+        assertEquals("0", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_PRIMITIVE_TO_ZERO  (numeric literal → 0, excluding 0 itself)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmPrimitiveToZero() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO);
+
+        // return-nonzero returns 42; return-zero returns 0 (excluded)
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("42", p.getOperator());
+        assertEquals("0", p.getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // RVM_OBJECT_TO_NULL  (complex/identifier return → '())
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRvmObjectToNull() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_OBJECT_TO_NULL);
+
+        // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
+        // negate-x, get-pair, get-id  → 6 points
+        assertEquals(6, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("'()", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testOperatorsRvmObjectToNull() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_OBJECT_TO_NULL);
+
+        // Every function in operators.rkt has a complex return expression
+        assertTrue(points.size() > 0);
+        for (MutationPoint p : points) {
+            assertEquals("'()", p.getReplacement());
+        }
+    }
 }
