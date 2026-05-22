@@ -95,7 +95,7 @@ public class JavaScannerTests {
 
         // ROR_GT_TO_GE
         List<MutationPoint> gtPoints = JavaMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_GE, false);
-        assertEquals(9, gtPoints.size());
+        assertEquals(10, gtPoints.size());
 
         // ROR_GE_TO_GT
         List<MutationPoint> gePoints = JavaMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GE_TO_GT, false);

@@ -319,6 +319,21 @@ public class JavaMutationScanner {
 
             @Override
             public String getSourceLine(ParseTree ctx) {
+                ParseTree p = ctx;
+                while (p != null && !(p instanceof mutationtester.JavaParser.StatementContext)) {
+                    p = p.getParent();
+                }
+                if (p != null) {
+                    org.antlr.v4.runtime.ParserRuleContext prc = (org.antlr.v4.runtime.ParserRuleContext) p;
+                    if (prc.getStart() != null && prc.getStop() != null) {
+                        int start = prc.getStart().getStartIndex();
+                        int stop = prc.getStop().getStopIndex();
+                        if (start >= 0 && stop >= start) {
+                            return prc.getStart().getInputStream().getText(new org.antlr.v4.runtime.misc.Interval(start, stop));
+                        }
+                    }
+                }
+                
                 int[] pos = getTokenPosition(ctx);
                 int lineIndex = pos[0] - 1; // ANTLR line numbers are 1-based
                 if (lineIndex >= 0 && lineIndex < sourceLines.length) {

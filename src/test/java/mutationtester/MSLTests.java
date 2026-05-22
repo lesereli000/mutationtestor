@@ -343,11 +343,11 @@ public class MSLTests {
 
     @Test
     void ruleGeneratorParsesAllRulesFromRealSpec() throws Exception {
-        // The real OperatorMutations.txt: 17 Replace blocks, 12 with And: Inverse -> 29 total
+        // The real OperatorMutations.txt: 15 Replace blocks, 10 with And: Inverse -> 25 total
         java.io.File spec = new java.io.File(
             "OperatorMutations.txt");
         java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
-        assertEquals(29, rules.size());
+        assertEquals(25, rules.size());
     }
 
     @Test
@@ -729,6 +729,32 @@ public class MSLTests {
         assertEquals(1, lePoints,
             "Only 1 <= mutation should fire (clamp suppressed by real spec). " +
             "Total points: " + points.size());
+    }
+
+    @Test
+    void exceptPatternRobustlyMatchesSpacingAndNewlines(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path src = tmp.resolve("SpacingTest.java");
+        java.nio.file.Files.writeString(src,
+            "public class SpacingTest {\n" +
+            "    void test(int a) {\n" +
+            "        if (a > 0) {\n" +
+            "            a = 0;\n" +
+            "        }\n" +
+            "    }\n" +
+            "}\n");
+
+        java.nio.file.Path spec = tmp.resolve("spacing.spec");
+        java.nio.file.Files.writeString(spec,
+            "Test Spacing\n\n" +
+            "    Replace: {quantity} > {quantity}\n" +
+            "    With: {quantity} >= {quantity}\n" +
+            "    Except: if ({quantity} > {quantity}) { {quantity} = {quantity}\n\n" +
+            "End\n");
+
+        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+        assertEquals(0, points.size(),
+            "The multi-line brace structure should be successfully matched and suppressed.");
     }
 
     // ── Helpers for Step 14 ───────────────────────────────────────────────────
