@@ -319,7 +319,7 @@ public class Main {
             String labelInfo = point.getCustomLabel() != null ? " [" + point.getCustomLabel() + "]" : "";
             System.out.print("[" + current++ + "/" + mutationPoints.size() + "] Testing " +
                     point.getSourceFile().getName() + ":" + point.getLineNumber() + ":" + point.getColumnNumber() +
-                    " (" + point.getOperator() + " \u2192 " + point.getReplacement() + ")" + labelInfo + "... ");
+                    " (" + point.getOperator() + " to " + point.getReplacement() + ")" + labelInfo + "... ");
 
             MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
             results.add(result);

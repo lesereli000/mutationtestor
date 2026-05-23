@@ -41,3 +41,19 @@ function logAndReturn(x) {
     console.log(x);
     return x;
 }
+
+function sumUpTo(n) {
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+        total += i;
+    }
+    return total;
+}
+
+function countDown(n) {
+    let count = n;
+    while (count > 0) {
+        count--;
+    }
+    return count;
+}
