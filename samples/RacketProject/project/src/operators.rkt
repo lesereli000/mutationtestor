@@ -1,6 +1,6 @@
 #lang racket
 
-(provide add subtract compare-gt compare-ge check-equal check-logic check-floats compare-lt compare-le multiply divide clamp-to-zero under-limit?)
+(provide add subtract compare-gt compare-ge check-equal check-logic check-floats compare-lt compare-le multiply divide clamp-to-zero under-limit? greet)
 
 ; AOR: + and -
 (define (add x y)
