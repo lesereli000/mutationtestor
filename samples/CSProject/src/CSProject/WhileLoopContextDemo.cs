@@ -26,11 +26,20 @@ namespace samples.CSProject.src
             return n;
         }
 
-        public static bool IsWithinLimit(int n, int limit)
+        public static int CountStepsThroughLimit(int start, int limit)
         {
-            // This comparison is safe to mutate, so this file still appears
-            // in the mutation report while the dangerous while loops are skipped.
-            return n <= limit;
+            // This while condition is safe to mutate, so this mutant still appears
+            // in the mutation report while the dangerous while loops above are skipped.
+            var current = start;
+            var steps = 0;
+
+            while (current <= limit)
+            {
+                current++;
+                steps++;
+            }
+
+            return steps;
         }
     }
 }
