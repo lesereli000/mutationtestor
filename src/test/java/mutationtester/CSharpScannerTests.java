@@ -504,6 +504,100 @@ public class CSharpScannerTests {
     }
 
     @Test
+    public void testEmptyReturnsFindStringNumericAndCollectionReturns() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitEmptyReturnsDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.EMPTY_RETURNS);
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getOperator().equals("\"items\"") && p.getReplacement().equals("\"\"")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getOperator().equals("7") && p.getReplacement().equals("0")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getOperator().equals("new List<int> { 1, 2, 3 }")
+                        && p.getReplacement().equals("new System.Collections.Generic.List<int>()")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getOperator().equals("new[] { \"alpha\", \"beta\" }")
+                        && p.getReplacement().equals("System.Linq.Enumerable.Empty<string>()")));
+    }
+
+    @Test
+    public void testConstructorCallMutationFindsNewObjectExpressions() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitConstructorCallsDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.CONSTRUCTOR_CALLS);
+
+        assertEquals(2, points.size());
+        assertTrue(points.stream().allMatch(p -> p.getOperator().startsWith("new Widget(")));
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("null")));
+    }
+
+    @Test
+    public void testNonVoidMethodCallMutationFindsReturnAndAssignmentCalls() throws IOException {
+        File file = new File("samples/CSProject/src/CSProject/PitNonVoidMethodCallsDemo.cs");
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        assertEquals(4, points.size());
+        assertTrue(points.stream().allMatch(p -> p.getOperator().equals("ComputeValue()")));
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("0")));
+    }
+
+    @Test
+    public void testRemoveConditionalsFindsEqualityAndOrderVariants() throws IOException {
+        Path file = Files.createTempFile("RemoveConditionalDemo", ".cs");
+        Files.writeString(file, """
+                namespace Demo;
+
+                public static class RemoveConditionalDemo
+                {
+                    public static int EqualIf(int x)
+                    {
+                        if (x == 10)
+                        {
+                            return 1;
+                        }
+                        return 0;
+                    }
+
+                    public static int OrderIf(int x)
+                    {
+                        if (x > 10)
+                        {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        List<MutationPoint> equalIf = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF);
+        assertEquals(1, equalIf.size());
+        assertEquals("x == 10", equalIf.get(0).getOperator());
+        assertEquals("true", equalIf.get(0).getReplacement());
+
+        List<MutationPoint> equalElse = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE);
+        assertEquals(1, equalElse.size());
+        assertEquals("x == 10", equalElse.get(0).getOperator());
+        assertEquals("false", equalElse.get(0).getReplacement());
+
+        List<MutationPoint> orderIf = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF);
+        assertEquals(1, orderIf.size());
+        assertEquals("x > 10", orderIf.get(0).getOperator());
+        assertEquals("true", orderIf.get(0).getReplacement());
+
+        List<MutationPoint> orderElse = CSharpMutationScanner.scanFile(
+                file.toFile(),
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE);
+        assertEquals(1, orderElse.size());
+        assertEquals("x > 10", orderElse.get(0).getOperator());
+        assertEquals("false", orderElse.get(0).getReplacement());
+    }
+
+    @Test
     public void testCustomSpecSuppressesCSharpMutationThatWouldProduceLoop() throws Exception {
         Path source = Files.createTempFile("LoopGuardDemo", ".cs");
         Files.writeString(source, """
