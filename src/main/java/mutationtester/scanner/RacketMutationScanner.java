@@ -23,21 +23,36 @@ import java.util.regex.Pattern;
  * The grammar is sourced from the official ANTLR grammars-v4 repository and
  * adapted minimally to support standard #lang racket forms used in this project.
  * Supported mutation types:
- *   AOR_PLUS_TO_MINUS      : (+ a b) → (- a b)
- *   AOR_MINUS_TO_PLUS      : (- a b) → (+ a b)
- *   ROR_GT_TO_GE           : (> a b) → (>= a b)
- *   ROR_GE_TO_GT           : (>= a b) → (> a b)
- *   ROR_LT_TO_LE           : (< a b) → (<= a b)
- *   ROR_LE_TO_LT           : (<= a b) → (< a b)
- *   EQ_NEGATE              : (= a b) → flagged at = token
- *   LOGICAL_AND_TO_OR      : (and p q) → (or p q)
- *   LOGICAL_OR_TO_AND      : (or p q) → (and p q)
- *   NLT_INTEGER_TO_FLOAT   : 5 → 5.0
- *   NLT_FLOAT_TO_INTEGER   : 5.0 → 5
- *   AOR_MULTIPLY_TO_DIVIDE : (* a b) → (/ a b)
- *   AOR_DIVIDE_TO_MULTIPLY : (/ a b) → (* a b)
- *   NEGATE_CONDITIONALS    : (if cond ...) → (if (not cond) ...)
- *   AOR_MODULO_TO_MULTIPLY   : (modulo a b) or (remainder a b) → (* a b)
+ *   AOR_PLUS_TO_MINUS            : (+ a b) → (- a b)
+ *   AOR_MINUS_TO_PLUS            : (- a b) → (+ a b)
+ *   AOR_MULTIPLY_TO_DIVIDE       : (* a b) → (/ a b)
+ *   AOR_DIVIDE_TO_MULTIPLY       : (/ a b) → (* a b)
+ *   AOR_MODULO_TO_MULTIPLY       : (modulo a b) or (remainder a b) → (* a b)
+ *   AOR_INCREMENT_TO_DECREMENT   : (add1 x) → (sub1 x)
+ *   AOR_DECREMENT_TO_INCREMENT   : (sub1 x) → (add1 x)
+ *   BOR_AND_TO_OR                : (bitwise-and x y) → (bitwise-ior x y)
+ *   BOR_OR_TO_AND                : (bitwise-ior x y) → (bitwise-and x y)
+ *   ROR_GT_TO_GE                 : (> a b) → (>= a b)
+ *   ROR_GE_TO_GT                 : (>= a b) → (> a b)
+ *   ROR_LT_TO_LE                 : (< a b) → (<= a b)
+ *   ROR_LE_TO_LT                 : (<= a b) → (< a b)
+ *   EQ_NEGATE                    : (= a b) → (not (= a b))
+ *   LOGICAL_AND_TO_OR            : (and p q) → (or p q)
+ *   LOGICAL_OR_TO_AND            : (or p q) → (and p q)
+ *   CONDITIONAL_TRUE             : (if cond t f) → (if #t t f)
+ *   CONDITIONAL_FALSE            : (if cond t f) → (if #f t f)
+ *   NEGATE_CONDITIONALS          : (if cond ...) → (if (not cond) ...)
+ *   STATEMENT_MUTATION           : (stmt ...) in begin → (void)
+ *   VML_VOID_METHOD_CALL         : (stmt ...) in begin → removed entirely
+ *   INEG_INVERT_NEGATIVE         : (- x) → x
+ *   NLT_INTEGER_TO_FLOAT         : 5 → 5.0
+ *   NLT_FLOAT_TO_INTEGER         : 5.0 → 5
+ *   RVM_TRUE_TO_FALSE            : function returning #t → #f
+ *   RVM_FALSE_TO_TRUE            : function returning #f → #t
+ *   RVM_ZERO_TO_ONE              : function returning 0 → 1
+ *   RVM_NONZERO_TO_ZERO          : function returning non-zero integer → 0
+ *   RVM_OBJECT_TO_NULL           : function returning expression/identifier → '()
+ *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
  */
 public class RacketMutationScanner {
 
@@ -73,6 +88,8 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE,
                 Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY,
                 Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY,
+                Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT,
+                Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT,
                 Mutator.MutatorType.BOR_AND_TO_OR,
                 Mutator.MutatorType.BOR_OR_TO_AND,
                 Mutator.MutatorType.ROR_GT_TO_GE,
@@ -84,14 +101,18 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.LOGICAL_OR_TO_AND,
                 Mutator.MutatorType.CONDITIONAL_TRUE,
                 Mutator.MutatorType.CONDITIONAL_FALSE,
+                Mutator.MutatorType.NEGATE_CONDITIONALS,
                 Mutator.MutatorType.STATEMENT_MUTATION,
+                Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                Mutator.MutatorType.INEG_INVERT_NEGATIVE,
                 Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
                 Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
-                Mutator.MutatorType.BOR_AND_TO_OR,
-                Mutator.MutatorType.BOR_OR_TO_AND,
-                Mutator.MutatorType.CONDITIONAL_TRUE,
-                Mutator.MutatorType.CONDITIONAL_FALSE,
-                Mutator.MutatorType.STATEMENT_MUTATION
+                Mutator.MutatorType.RVM_TRUE_TO_FALSE,
+                Mutator.MutatorType.RVM_FALSE_TO_TRUE,
+                Mutator.MutatorType.RVM_ZERO_TO_ONE,
+                Mutator.MutatorType.RVM_NONZERO_TO_ZERO,
+                Mutator.MutatorType.RVM_OBJECT_TO_NULL,
+                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
         );
     }
 
@@ -175,8 +196,9 @@ public class RacketMutationScanner {
                     if (headToken != null) {
                         checkOperatorToken(headToken, ctx);
 
-                        // STATEMENT_MUTATION: flag non-last exprs inside begin/begin0
-                        if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION) {
+                        // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
+                        if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
+                                || mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
                             String headText = headToken.getText();
                             if (headText.equals("begin") || headText.equals("begin0")) {
                                 handleBeginStatements(ctx);
@@ -203,13 +225,15 @@ public class RacketMutationScanner {
                 if (stmtHead == null || !isStatementHead(stmtHead.getText())) continue;
                 String stmtText = extractSourceText(stmtCtx);
                 Token startTok = stmtCtx.getStart();
+                String replacement = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "" : "(void)";
+                String label = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "Void method call" : "Statement mutation";
                 mutationPoints.add(new MutationPoint(
                         sourceFile,
                         startTok.getLine(),
                         startTok.getCharPositionInLine(),
-                        stmtText, "(void)",
-                        Mutator.MutatorType.STATEMENT_MUTATION,
-                        "Statement mutation"
+                        stmtText, replacement,
+                        mutationType,
+                        label
                 ));
             }
         }
@@ -304,6 +328,26 @@ public class RacketMutationScanner {
                     if (text.equals("modulo") || text.equals("remainder"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "*", mutationType));
                 }
+                case AOR_INCREMENT_TO_DECREMENT -> {
+                    if (text.equals("add1"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "add1", "sub1", mutationType));
+                }
+                case AOR_DECREMENT_TO_INCREMENT -> {
+                    if (text.equals("sub1"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "sub1", "add1", mutationType));
+                }
+                case INEG_INVERT_NEGATIVE -> {
+                    // Unary minus: (- arg) has exactly 4 children: '(' '-' arg ')'
+                    if (text.equals("-") && ctx.getChildCount() == 4) {
+                        ParseTree argExpr = ctx.getChild(2);
+                        String argText = extractSourceText(argExpr);
+                        String fullExpr = extractSourceText(ctx);
+                        int[] exprPos = getExprPosition(ctx);
+                        mutationPoints.add(new MutationPoint(
+                                sourceFile, exprPos[0], exprPos[1],
+                                fullExpr, argText, mutationType));
+                    }
+                }
                 case BOR_AND_TO_OR -> {
                     if (text.equals("bitwise-and"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-and", "bitwise-ior", mutationType));
@@ -378,6 +422,126 @@ public class RacketMutationScanner {
                 String intPart = dotIndex > 0 ? text.substring(0, dotIndex) : text;
                 mutationPoints.add(new MutationPoint(sourceFile, line, col, text, intPart, mutationType));
             }
+        }
+
+        // -------------------------------------------------------------------------
+        // RVM: Return Value Mutations — applied to the last expr of function bodies
+        // -------------------------------------------------------------------------
+
+        @Override
+        public Void visitDefinition(ISLParser.DefinitionContext ctx) {
+            if (isRVMMutation() && ctx.getChildCount() >= 6) {
+                // Function definition: '(' 'define' '(' name NAME* ')' expr+ ')'
+                // Distinguish from value definition by checking child(2) == '('
+                ParseTree thirdChild = ctx.getChild(2);
+                if (thirdChild instanceof TerminalNode tn3 && tn3.getText().equals("(")) {
+                    List<ISLParser.ExprContext> bodyExprs = ctx.expr();
+                    if (!bodyExprs.isEmpty()) {
+                        checkReturnValueMutation(bodyExprs.get(bodyExprs.size() - 1));
+                    }
+                }
+            }
+            return visitChildren(ctx);
+        }
+
+        private boolean isRVMMutation() {
+            return mutationType == Mutator.MutatorType.RVM_TRUE_TO_FALSE
+                    || mutationType == Mutator.MutatorType.RVM_FALSE_TO_TRUE
+                    || mutationType == Mutator.MutatorType.RVM_ZERO_TO_ONE
+                    || mutationType == Mutator.MutatorType.RVM_NONZERO_TO_ZERO
+                    || mutationType == Mutator.MutatorType.RVM_OBJECT_TO_NULL
+                    || mutationType == Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO;
+        }
+
+        private void checkReturnValueMutation(ISLParser.ExprContext returnExpr) {
+            String exprText = extractSourceText(returnExpr);
+            int[] pos = getExprPosition(returnExpr);
+            int line = pos[0], col = pos[1];
+
+            switch (mutationType) {
+                case RVM_TRUE_TO_FALSE -> {
+                    if (isBooleanToken(returnExpr, "#t", "#true", "#T"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "#f", mutationType));
+                }
+                case RVM_FALSE_TO_TRUE -> {
+                    if (isBooleanToken(returnExpr, "#f", "#false", "#F"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "#t", mutationType));
+                }
+                case RVM_ZERO_TO_ONE -> {
+                    if (isLiteralNumber(returnExpr, "0"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "1", mutationType));
+                }
+                case RVM_NONZERO_TO_ZERO -> {
+                    if (isNonZeroIntegerLiteral(returnExpr))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "0", mutationType));
+                }
+                case RVM_OBJECT_TO_NULL -> {
+                    if (isObjectReturn(returnExpr))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "'()", mutationType));
+                }
+                case RVM_PRIMITIVE_TO_ZERO -> {
+                    if (isNumericLiteralNonZero(returnExpr))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "0", mutationType));
+                }
+                default -> { }
+            }
+        }
+
+        private Token getSingleExprToken(ISLParser.ExprContext ctx) {
+            if (ctx.getChildCount() == 1 && ctx.getChild(0) instanceof TerminalNode tn)
+                return tn.getSymbol();
+            return null;
+        }
+
+        private boolean isBooleanToken(ISLParser.ExprContext ctx, String... variants) {
+            Token tok = getSingleExprToken(ctx);
+            if (tok == null || tok.getType() != ISLLexer.BOOLEAN) return false;
+            String text = tok.getText();
+            for (String v : variants) { if (text.equals(v)) return true; }
+            return false;
+        }
+
+        private boolean isLiteralNumber(ISLParser.ExprContext ctx, String value) {
+            Token tok = getSingleExprToken(ctx);
+            return tok != null && tok.getType() == ISLLexer.NUMBER && tok.getText().equals(value);
+        }
+
+        private boolean isNonZeroIntegerLiteral(ISLParser.ExprContext ctx) {
+            Token tok = getSingleExprToken(ctx);
+            if (tok == null || tok.getType() != ISLLexer.NUMBER) return false;
+            String text = tok.getText();
+            if (text.contains(".") || text.contains("/")) return false;
+            try { return Long.parseLong(text) != 0; } catch (NumberFormatException e) { return false; }
+        }
+
+        private boolean isNumericLiteralNonZero(ISLParser.ExprContext ctx) {
+            Token tok = getSingleExprToken(ctx);
+            if (tok == null || tok.getType() != ISLLexer.NUMBER) return false;
+            return !tok.getText().equals("0");
+        }
+
+        private boolean isObjectReturn(ISLParser.ExprContext ctx) {
+            // Exclude: number, boolean, string literals
+            Token tok = getSingleExprToken(ctx);
+            if (tok != null) {
+                int type = tok.getType();
+                if (type == ISLLexer.NUMBER || type == ISLLexer.BOOLEAN || type == ISLLexer.STRING)
+                    return false;
+            }
+            // Include: identifiers (NAME/SYMBOL) resolved via extractToken fallback
+            Token resolved = extractToken(ctx);
+            if (resolved != null) {
+                int type = resolved.getType();
+                if (type == ISLLexer.NAME || type == ISLLexer.SYMBOL)
+                    return true;
+            }
+            // Include: paren expressions like (cons x y), (list ...), (add1 x), etc.
+            if (ctx.getChildCount() >= 3) {
+                ParseTree first = ctx.getChild(0);
+                if (first instanceof TerminalNode tn && tn.getText().equals("("))
+                    return true;
+            }
+            return false;
         }
 
         public List<MutationPoint> getMutationPoints() {

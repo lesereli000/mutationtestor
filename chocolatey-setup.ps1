@@ -200,7 +200,7 @@ function Assert-Admin {
 
 function Ensure-Choco {
         if (Have choco) { Ok "Chocolatey is already installed."; return }
-        Info "Bootstrapping Chocolatey..."
+        Info "Bootstrapping Chocolatey (no Winget required)..."
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = `
         [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
@@ -225,9 +225,7 @@ function Install-OrUpgrade {
                 [string]$Version,                 # optional pinned version
                 [scriptblock]$Verify = $null      # optional post-install probe; should return $true if the tool is actually usable
         )
-        # Keep Chocolatey's output visible. Silent MSI installers can take a
-        # long time, and --limit-output makes a healthy install look stuck.
-        $baseFlags = @("-y", "--no-progress", "--no-color", "--execution-timeout=2700")
+        $baseFlags = @("-y", "--no-progress", "--limit-output", "--no-color")
 
         $chocoArgs = @("install", $Package) + $baseFlags
         if ($Version) { $chocoArgs += @("--version=$Version", "--allow-downgrade") }
@@ -354,120 +352,6 @@ function Get-PythonVersion {
         return $null
 }
 
-function Ensure-PathEntry {
-        param(
-                [string]$Dir,
-                [string]$Scope = "User"
-        )
-        if (-not $Dir -or -not (Test-Path $Dir)) { return }
-
-        $existing = [Environment]::GetEnvironmentVariable('Path',$Scope)
-        $entries = @()
-        if ($existing) { $entries = $existing -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') } }
-        $normalized = $Dir.Trim().TrimEnd('\')
-        if ($entries -notcontains $normalized) {
-                Info "Adding $normalized to $Scope PATH..."
-                try {
-                        [Environment]::SetEnvironmentVariable('Path', (($entries + $normalized) -join ';'), $Scope)
-                } catch {
-                        Warn "Failed to update $Scope PATH: $($_.Exception.Message)"
-                }
-        }
-
-        if (($env:Path -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') }) -notcontains $normalized) {
-                $env:Path = "$normalized;$env:Path"
-        }
-}
-
-function Ensure-PythonCommands {
-        $info = Get-PythonVersion
-        if (-not $info) { return $false }
-
-        $pythonDir = Split-Path -Parent $info.Exe
-        Ensure-PathEntry $pythonDir "User"
-
-        $shimText = "@echo off`r`n`"$($info.Exe)`" %*`r`n"
-        $primaryShim = Join-Path $pythonDir "python3.cmd"
-
-        # Put python3.cmd next to python.exe whenever possible. If a shell can
-        # already run "python", this makes "python3" work in that same shell
-        # without waiting for PATH changes or a terminal restart.
-        try {
-                $currentShim = if (Test-Path $primaryShim) { Get-Content $primaryShim -Raw } else { "" }
-                if ($currentShim -ne $shimText) {
-                        Set-Content -Path $primaryShim -Value $shimText -Encoding ASCII -Force
-                        Ok "Created python3 command at $primaryShim"
-                }
-        } catch {
-                Warn "Could not create python3 shim at ${primaryShim}: $($_.Exception.Message)"
-        }
-
-        if (Have python3) {
-                Ok "python3 command available."
-                return $true
-        }
-
-        $candidateShims = @(
-                (Join-Path $env:USERPROFILE "bin\python3.cmd")
-        )
-
-        foreach ($shim in $candidateShims) {
-                $dir = Split-Path -Parent $shim
-                try {
-                        New-Item -ItemType Directory -Force -Path $dir | Out-Null
-                        Set-Content -Path $shim -Value $shimText -Encoding ASCII
-                        Ensure-PathEntry $dir "User"
-                        $env:Path = "$dir;$env:Path"
-                        if (Have python3) {
-                                Ok "Created python3 command at $shim"
-                                return $true
-                        }
-                } catch {
-                        Warn "Could not create python3 shim at ${shim}: $($_.Exception.Message)"
-                }
-        }
-
-        return $false
-}
-
-function Test-PythonModule {
-        param(
-                [string]$PythonExe,
-                [string]$Module
-        )
-        if (-not (Test-Path $PythonExe)) { return $false }
-        & $PythonExe -c "import $Module" 2>$null
-        return $LASTEXITCODE -eq 0
-}
-
-function Ensure-PythonTestDeps {
-        $info = Get-PythonVersion
-        if (-not $info) { Warn "Skipping Python test dependencies: python not found."; return $false }
-
-        if (Test-PythonModule $info.Exe "pytest") {
-                Ok "pytest already installed for $($info.Exe)."
-                return $true
-        }
-
-        Info "Installing pytest for Maven integration tests..."
-        & $info.Exe -m pip install pytest
-        if (Test-PythonModule $info.Exe "pytest") {
-                Ok "pytest installed."
-                return $true
-        }
-
-        Warn "Standard pytest install did not complete; retrying with explicit wheel dependencies..."
-        & $info.Exe -m pip install --no-deps colorama iniconfig packaging pluggy pygments
-        & $info.Exe -m pip install --no-deps pytest
-        if (Test-PythonModule $info.Exe "pytest") {
-                Ok "pytest installed after retry."
-                return $true
-        }
-
-        Fail "pytest is still not importable from $($info.Exe)."
-        return $false
-}
-
 function Get-RacketMajor {
         # PATH-only detection is unreliable right after Choco installs Racket:
         # the package updates Machine PATH via the registry, but that change
@@ -526,18 +410,32 @@ function Ensure-Maven {
 function Ensure-Dotnet {
         $maj = Get-DotnetMajor
         if ($maj -and $maj -ge $Required.DotnetMajor) { Ok ".NET SDK $maj already installed (>= $($Required.DotnetMajor))."; return }
-
-        if ($Mode -ne "install") {
-                if ($maj) { Warn ".NET SDK $maj found, but .NET $($Required.DotnetMajor)+ is required." }
-                else      { Warn ".NET SDK $($Required.DotnetMajor)+ is required but was not found." }
-                return
-        }
-
         if ($maj) { Warn ".NET SDK $maj found, but .NET $($Required.DotnetMajor)+ is required. Installing $($Required.DotnetMajor)..." }
         else      { Info "Installing .NET SDK $($Required.DotnetMajor)..." }
 
-        [void](Install-OrUpgrade ".NET SDK $($Required.DotnetMajor)" $ChocoPackages.Dotnet.Name $null `
-            -Verify { (Get-DotnetMajor) -ge $Required.DotnetMajor })
+        if ($Mode -ne "install") { return }
+
+        # Try Chocolatey first.
+        $ok = Install-OrUpgrade ".NET SDK $($Required.DotnetMajor)" $ChocoPackages.Dotnet.Name $null
+        Refresh-Path
+        if ((Get-DotnetMajor) -ge $Required.DotnetMajor) { return }
+
+        # Fallback: use Microsoft's official dotnet-install.ps1 (no Winget needed).
+        Warn "Chocolatey package did not yield .NET $($Required.DotnetMajor)+. Falling back to Microsoft's dotnet-install.ps1..."
+        $tmp = Join-Path $env:TEMP "dotnet-install.ps1"
+        # Cache the bootstrap script for a day so reruns skip the re-download.
+        $needFetch = $true
+        if (Test-Path $tmp) {
+                $age = (Get-Date) - (Get-Item $tmp).LastWriteTime
+                if ($age.TotalHours -lt 24) { $needFetch = $false; Info "Reusing cached dotnet-install.ps1." }
+        }
+        if ($needFetch) {
+                Invoke-WebRequest -UseBasicParsing `
+            -Uri "https://dot.net/v1/dotnet-install.ps1" `
+            -OutFile $tmp
+        }
+        & $tmp -Channel "$($Required.DotnetMajor).0" -InstallDir "$env:ProgramFiles\dotnet"
+        $env:Path = "$env:ProgramFiles\dotnet;$env:Path"
         Refresh-Path
 }
 
@@ -546,7 +444,7 @@ function Ensure-Python {
         if ($info -and ($info.Major -gt $Required.PythonMinMajor -or
                 ($info.Major -eq $Required.PythonMinMajor -and $info.Minor -ge $Required.PythonMinMinor))) {
                 Ok "Python $($info.Major).$($info.Minor) already installed."
-                Ensure-PythonCommands | Out-Null
+                Ensure-Python3Alias
                 return
         }
         if ($info) { Warn "Python $($info.Major).$($info.Minor) found, but $($Required.PythonMinMajor).$($Required.PythonMinMinor)+ is required. Upgrading..." }
@@ -558,7 +456,33 @@ function Ensure-Python {
                         $i -and ($i.Major -gt $Required.PythonMinMajor -or
                                 ($i.Major -eq $Required.PythonMinMajor -and $i.Minor -ge $Required.PythonMinMinor))
                 })
-                Ensure-PythonCommands | Out-Null
+                Ensure-Python3Alias
+        }
+}
+
+# Chocolatey's python311 package installs python.exe but not python3.exe.
+# The mutation tester's Java child-process command 'python3 -m pytest ...'
+# is a Linux/Mac convention; on Windows it fails with "'python3' is not
+# recognized" even when Python itself is fully installed and pytest is on
+# the system Python. Create a python3.exe next to python.exe by hardlink
+# (works on same volume, stays current if python.exe is upgraded) and
+# fall back to copy if the hardlink call fails.
+function Ensure-Python3Alias {
+        $info = Get-PythonVersion
+        if (-not $info) { return }
+        $src = $info.Exe
+        $dst = Join-Path (Split-Path $src) "python3.exe"
+        if (Test-Path $dst) { return }
+        try {
+                New-Item -ItemType HardLink -Path $dst -Target $src -ErrorAction Stop | Out-Null
+                Info "Created python3.exe hardlink at $dst (so child processes finding 'python3' work)."
+        } catch {
+                try {
+                        Copy-Item -Path $src -Destination $dst -Force -ErrorAction Stop
+                        Info "Created python3.exe copy at $dst (hardlink unavailable)."
+                } catch {
+                        Warn "Could not create python3.exe alias: $($_.Exception.Message)"
+                }
         }
 }
 
@@ -641,6 +565,22 @@ function Get-PuppeteerInfo {
         return [pscustomobject]@{ Version = $ver; Chrome = $chrome.FullName; Build = $chrome.Directory.Parent.Name }
 }
 
+# Read-only probe: JUnit Jupiter is a Maven dep, not an installable tool,
+# so its 'install' is whether Restore-MavenDeps populated the local
+# repository under ~/.m2. Returns @{Version=...} for the newest
+# junit-jupiter jar present, or $null if none.
+function Get-JunitInfo {
+        $dir = Join-Path $env:USERPROFILE ".m2\repository\org\junit\jupiter\junit-jupiter"
+        if (-not (Test-Path $dir)) { return $null }
+        $versions = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue |
+                Where-Object {
+                        Test-Path (Join-Path $_.FullName ("junit-jupiter-{0}.jar" -f $_.Name))
+                } |
+                Sort-Object Name -Descending
+        if (-not $versions) { return $null }
+        return [pscustomobject]@{ Version = $versions[0].Name; Path = $versions[0].FullName }
+}
+
 # Print an 'already installed' line up-front when Puppeteer + cached Chrome
 # are present, mirroring the per-tool messages. Otherwise note that the
 # parallel restore phase will install it.
@@ -648,6 +588,15 @@ function Ensure-Puppeteer {
         $info = Get-PuppeteerInfo
         if ($info) { Ok "Puppeteer $($info.Version) already installed."; return }
         Info "Puppeteer not yet installed; the parallel restore phase will fetch it (~170 MB Chrome)."
+}
+
+# Same pattern for JUnit Jupiter -- a green line when the jar is already
+# in the local Maven repo, otherwise a note that Restore-MavenDeps will
+# pull it.
+function Ensure-Junit {
+        $info = Get-JunitInfo
+        if ($info) { Ok "JUnit Jupiter $($info.Version) already installed."; return }
+        Info "JUnit Jupiter not yet in local Maven repo; the parallel restore phase will fetch it."
 }
 
 # ---------------------------------------------------------------------------
@@ -692,8 +641,6 @@ function Restore-NpmDeps {
 function Restore-PythonDeps {
         $info = Get-PythonVersion
         if (-not $info) { Warn "Skipping Python venv: python not on PATH."; return }
-        Ensure-PythonCommands | Out-Null
-        Ensure-PythonTestDeps | Out-Null
         $venvDir    = Join-Path $RootDir "samples\PytestProject\.venv"
         $venvPython = Join-Path $venvDir "Scripts\python.exe"
 
@@ -716,10 +663,7 @@ function Restore-PythonDeps {
 }
 
 function Restore-DotnetDeps {
-        if (-not ((Get-DotnetMajor) -ge $Required.DotnetMajor)) {
-                Warn "Skipping dotnet restore: .NET SDK $($Required.DotnetMajor)+ is not available."
-                return
-        }
+        if (-not (Have dotnet)) { Warn "Skipping dotnet restore: dotnet not on PATH."; return }
         $proj = Join-Path $RootDir "samples\CSProject\tests\CSProject.Tests\CSProject.Tests.csproj"
         if (-not (Test-Path $proj)) { return }
         Info "Restoring .NET test project..."
@@ -794,10 +738,16 @@ function Restore-AllInParallel {
                         }
                         if (-not (Test-Path $venv)) { & $pyExe -m venv $venv 2>&1 }
                         & $venvPy -m pip install --quiet pytest 2>&1
+                        # Also install pytest into the system Python so the mutation
+                        # tester's child-process command 'python3 -m pytest ...' works.
+                        # The venv pytest is for developers running tests inside the
+                        # sample; the system pytest is what the MutantExecutionTests
+                        # surefire test actually shells out to.
+                        & $pyExe -m pip install --quiet pytest 2>&1
                 } -ArgumentList $venvDir, $venvPython, $pyInfo.Exe, $sharedPath })
         }
 
-        if ((Get-DotnetMajor) -ge $Required.DotnetMajor) {
+        if (Have dotnet) {
                 $proj = Join-Path $RootDir "samples\CSProject\tests\CSProject.Tests\CSProject.Tests.csproj"
                 if (Test-Path $proj) {
                         $csDir = Join-Path $RootDir "samples\CSProject"
@@ -896,14 +846,6 @@ function Verify-All {
         if ($pi -and ($pi.Major -gt $Required.PythonMinMajor -or ($pi.Major -eq $Required.PythonMinMajor -and $pi.Minor -ge $Required.PythonMinMinor))) {
                 Ok "Python $($pi.Major).$($pi.Minor)"
         } else { Fail "Python missing or too old"; $bad++ }
-        $python3Shim = if ($pi) { Join-Path (Split-Path -Parent $pi.Exe) "python3.cmd" } else { $null }
-        if ($python3Shim -and (Test-Path $python3Shim)) {
-                Ok "python3 command present beside python.exe"
-        } else {
-                Fail "python3 command missing beside python.exe"
-                $bad++
-        }
-        if ($pi -and (Test-PythonModule $pi.Exe "pytest")) { Ok "pytest available" } else { Fail "pytest missing"; $bad++ }
         $nm = Get-NodeMajor;   if ($nm -ge $Required.NodeMinMajor) { Ok "Node.js $nm" } else { Fail "Node.js major=$nm (need $($Required.NodeMinMajor)+)"; $bad++ }
         $rm = Get-RacketMajor; if ($rm -ge $Required.RacketMajor)  { Ok "Racket $rm"  } else { Fail "Racket major=$rm (need $($Required.RacketMajor)+)"; $bad++ }
 
@@ -922,6 +864,12 @@ function Verify-All {
                 Fail "Puppeteer missing: $($missing -join ', ')"
                 $bad++
         }
+
+        # JUnit Jupiter: pulled into ~/.m2 by Restore-MavenDeps, not by a tool
+        # installer. The Java mutation tests cannot compile without it.
+        $jun = Get-JunitInfo
+        if ($jun) { Ok "JUnit Jupiter $($jun.Version)" }
+        else      { Fail "JUnit Jupiter missing from local Maven repo"; $bad++ }
 
         return $bad
 }
@@ -950,6 +898,7 @@ Ensure-Python
 Ensure-Node
 Ensure-Racket
 Ensure-Puppeteer
+Ensure-Junit
 
 if ($Mode -eq "install") {
         Write-Host ""
