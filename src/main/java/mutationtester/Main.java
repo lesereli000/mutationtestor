@@ -92,7 +92,7 @@ public class Main {
         try {
             boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
             if (!completed) {
-                process.destroyForcibly();
+                destroyProcessTree(process);
                 System.out.println("Process " + commandList.get(0) + " timed out.");
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
                 outputFuture.cancel(true);
@@ -112,19 +112,35 @@ public class Main {
             return output.toString();
 
         } catch (ExecutionException e) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
             System.out.println("Error reading command output " + command + ": " + e.getMessage());
             e.printStackTrace();
             output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
             return output.toString();
         } catch (InterruptedException e) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
             Thread.currentThread().interrupt();
             System.out.println("Interrupted while waiting for process " + commandList.get(0) + " to finish");
             e.printStackTrace();
             return "";
         } finally {
             outputExecutor.shutdownNow();
+        }
+    }
+
+    private static void destroyProcessTree(Process process) {
+        List<ProcessHandle> descendants = process.descendants().toList();
+        descendants.forEach(ProcessHandle::destroyForcibly);
+        process.destroyForcibly();
+        try {
+            process.waitFor(5, TimeUnit.SECONDS);
+            for (ProcessHandle descendant : descendants) {
+                descendant.onExit().get(5, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | TimeoutException e) {
+            System.err.println("Warning: Timed out while waiting for child process cleanup: " + e.getMessage());
         }
     }
 
@@ -505,7 +521,12 @@ public class Main {
         } finally {
             if (originalContent != null) {
                 try {
-                    Files.writeString(originalFile.toPath(), originalContent);
+                    Path originalPath = originalFile.toPath();
+                    Path parent = originalPath.getParent();
+                    if (parent != null) {
+                        Files.createDirectories(parent);
+                    }
+                    Files.writeString(originalPath, originalContent);
                 } catch (IOException e) {
                     System.err.println("ERROR: Failed to restore " + originalFile + ": " + e.getMessage());
                 }
