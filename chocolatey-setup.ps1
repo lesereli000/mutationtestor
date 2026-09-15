@@ -1,929 +1,1035 @@
-# chocolatey-setup.ps1 - One-shot Windows setup for the mutation tester.
+#Requires -Version 5.1
 #
-# Usage (run in an elevated PowerShell prompt):
-#   .\chocolatey-setup.ps1 --install      # install/upgrade every required tool
-#   .\chocolatey-setup.ps1 --check        # only verify versions, install nothing
+# Sets up the Windows toolchain for the mutation tester.
+#
+#   .\chocolatey-setup.ps1                        see what's installed, change nothing
+#   .\chocolatey-setup.ps1 --install              install whatever's missing
+#   .\chocolatey-setup.ps1 --install --minimal    skip Racket and Puppeteer's Chrome
+#   .\chocolatey-setup.ps1 --install --only dotnet,node
+#   .\chocolatey-setup.ps1 --install --skip racket
+#   .\chocolatey-setup.ps1 --install --portable   no Chocolatey, no admin needed
 #   .\chocolatey-setup.ps1 --help
 #
-# Required versions (kept in sync with the project sources):
-#   - JDK              : 17 or newer (matches pom.xml maven.compiler.source/target = 17)
-#   - Maven            : 3.9+
-#   - .NET SDK         : 10.0.x  (samples/CSProject targets net10.0)
-#   - Python           : 3.11+
-#   - Node.js / npm    : 20 LTS or newer (Puppeteer ^24 requires Node 18+)
-#   - Racket           : 8.x
-#   - Chocolatey       : latest
+# Notes:
+#   - Existing tools are used as-is. Nothing is upgraded or reinstalled.
+#   - The system PATH is never touched. We write demo-env.ps1 / demo-env.cmd
+#     instead; dot-source one to set up a shell.
+#   - Admin is optional. Without it we skip Chocolatey and unzip into .tools\.
+#   - Only the JDK and Maven are required. The rest each gate one language sample.
 #
-# This script is idempotent: if a tool is missing it is installed, and if it is
-# present at the wrong version it is upgraded to the pinned version below.
-# Winget is NOT used. Chocolatey is bootstrapped automatically if absent.
+# To undo: delete .tools\, demo-env.ps1, demo-env.cmd.
 
-# NOTE: no [CmdletBinding()] / param() block here on purpose.
-# We accept --install / --check / --help via the automatic $args array,
-# which only works in plain (non-advanced) script mode.
+param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Continue'   # plenty of these tools write to stderr on success
+$ProgressPreference    = 'SilentlyContinue'
 
 # ---------------------------------------------------------------------------
-# Argument parsing (supports both --install and -Install styles)
+# Arguments
 # ---------------------------------------------------------------------------
 
-$Mode = "check"
-foreach ($a in $args) {
-        switch -Regex ($a) {
-                '^(--install|-Install|-i|/install)$' { $Mode = "install" }
-                '^(--check|-Check|-c|/check)$'       { $Mode = "check" }
-                '^(--help|-Help|-h|/?|/help)$'       { $Mode = "help" }
-                default { Write-Warning "Unknown argument: $a" }
+$Mode      = 'check'
+$Minimal   = $false
+$Portable  = $false
+$OnlyList  = @()
+$SkipList  = @()
+$BadArg    = $false
+
+if (-not $Arguments) { $Arguments = @() }
+
+for ($i = 0; $i -lt $Arguments.Count; $i++) {
+    $a = $Arguments[$i]
+    $val = $null
+    if ($a -match '^(--[a-z-]+)=(.*)$') { $a = $Matches[1]; $val = $Matches[2] }
+
+    switch -Regex ($a) {
+        '^(--install|-Install|-i|/install)$'   { $Mode = 'install' }
+        '^(--check|-Check|-c|/check)$'         { $Mode = 'check' }
+        '^(--help|-Help|-h|/\?|/help)$'        { $Mode = 'help' }
+        '^(--minimal|-Minimal)$'               { $Minimal = $true }
+        '^(--portable|-Portable|--no-admin)$'  { $Portable = $true }
+        '^(--only|-Only)$' {
+            if ($null -eq $val) { $i++; $val = $Arguments[$i] }
+            $OnlyList = @($val -split '[,;]' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ })
         }
-}
-
-if ($Mode -eq "help") {
-        Get-Content $MyInvocation.MyCommand.Path | Select-Object -First 22
-        exit 0
-}
-
-$RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-
-# ---------------------------------------------------------------------------
-# Pinned versions
-# ---------------------------------------------------------------------------
-
-$Required = @{
-        JdkMajor      = 17
-        DotnetMajor   = 10
-        PythonMinMajor = 3
-        PythonMinMinor = 11
-        NodeMinMajor  = 20
-        RacketMajor   = 8
-}
-
-$ChocoPackages = @{
-        Jdk    = @{ Name = "temurin17"; Version = $null }     # Temurin OpenJDK 17
-        Maven  = @{ Name = "maven";     Version = $null }
-        Dotnet = @{ Name = "dotnet-10.0-sdk"; Version = $null } # .NET 10 SDK
-        Python = @{ Name = "python311"; Version = $null }
-        Node   = @{ Name = "nodejs-lts"; Version = $null }    # 20.x LTS
-        Racket = @{ Name = "racket";    Version = $null }
-}
-
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-
-function Info  { param($m) Write-Host "[INFO] $m" -ForegroundColor Cyan }
-function Ok    { param($m) Write-Host "[OK]   $m" -ForegroundColor Green }
-function Warn  { param($m) Write-Host "[WARN] $m" -ForegroundColor Yellow }
-function Fail  { param($m) Write-Host "[FAIL] $m" -ForegroundColor Red }
-
-# Show a Write-Progress bar while running $Body, then report elapsed time.
-# This makes slow, otherwise-silent commands visually obvious.
-function Invoke-Step {
-        param(
-                [string]$Activity,
-                [string]$Status = "Running...",
-                [scriptblock]$Body
-        )
-        Write-Progress -Id 1 -Activity $Activity -Status $Status -PercentComplete -1
-        $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        try { & $Body }
-        finally {
-                $sw.Stop()
-                Write-Progress -Id 1 -Activity $Activity -Completed
-                Info "$Activity finished ($([int]$sw.Elapsed.TotalSeconds)s)"
+        '^(--skip|-Skip)$' {
+            if ($null -eq $val) { $i++; $val = $Arguments[$i] }
+            $SkipList = @($val -split '[,;]' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ })
         }
+        default { Write-Host "Unknown argument: $a" -ForegroundColor Yellow; $BadArg = $true }
+    }
 }
 
-function Have {
-        param($cmd)
-        $null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
+$RootDir     = $PSScriptRoot
+$ToolsDir    = Join-Path $RootDir '.tools'
+$ShimDir     = Join-Path $ToolsDir 'bin'
+$DownloadDir = Join-Path $ToolsDir 'downloads'
+
+function Show-Help {
+    # Echo the header block, stopping at the first non-comment line.
+    foreach ($line in [IO.File]::ReadAllLines($PSCommandPath)) {
+        if ($line -match '^\s*#Requires') { continue }
+        if ($line -notmatch '^#') { break }
+        Write-Host ($line -replace '^#\s?', '')
+    }
 }
 
-# Run a native command without letting its stderr text trip
-# $ErrorActionPreference = 'Stop' (Java's -version writes to stderr even on
-# success, which PowerShell 5.1 otherwise surfaces as a NativeCommandError).
+if ($Mode -eq 'help' -or $BadArg) { Show-Help; exit ([int]$BadArg) }
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+
+function Info { param($m) Write-Host "[INFO] $m" -ForegroundColor Cyan }
+function Ok   { param($m) Write-Host "[OK]   $m" -ForegroundColor Green }
+function Warn { param($m) Write-Host "[WARN] $m" -ForegroundColor Yellow }
+function Fail { param($m) Write-Host "[FAIL] $m" -ForegroundColor Red }
+function Head {
+    param($m)
+    Write-Host ''
+    Write-Host ('=' * 76)
+    Write-Host $m
+    Write-Host ('=' * 76)
+}
+
+# ---------------------------------------------------------------------------
+# Process / filesystem helpers
+# ---------------------------------------------------------------------------
+
+# Run a command and capture its output, with a timeout so nothing can wedge us.
+# Read the pipes async or we deadlock once the child fills the 4 KB buffer, and
+# route .cmd/.bat through cmd.exe since CreateProcess won't run them (mvn.cmd).
 function Invoke-Native {
-        param(
-                [string]$Exe,
-        # NOTE: do NOT name this $Args - that collides with PowerShell's
-        # automatic $args variable and the parameter never gets bound, so
-        # every caller ends up invoking $Exe with no arguments. For
-        # 'node'/'python'/'racket' that opens a REPL and hangs; for
-        # 'java'/'dotnet' it prints the help text and can deadlock on the
-        # stdout pipe. Either way the script reports a bogus 30 s timeout.
-                [string[]]$Argv,
-                [int]$TimeoutSec = 30   # hard cap so a wedged child can't hang the whole script
-        )
-        # PS 5.1 / .NET Framework: ProcessStartInfo only exposes .Arguments
-        # (a single string), not the .ArgumentList collection from .NET Core.
-        $quoted = foreach ($a in $Argv) {
-                if ($a -match '[\s"]') { '"' + ($a -replace '"', '\"') + '"' } else { $a }
+    param(
+        [string]   $Exe,
+        [string[]] $Argv = @(),
+        [int]      $TimeoutSec = 30
+    )
+    if (-not $Exe) { return '' }
+
+    $file = $Exe
+    $list = @($Argv)
+    if ($Exe -match '\.(cmd|bat)$') {
+        $file = "$env:SystemRoot\System32\cmd.exe"
+        $list = @('/d', '/c', $Exe) + $Argv
+    }
+
+    $quoted = foreach ($x in $list) {
+        if ("$x" -match '[\s"]') { '"' + ("$x" -replace '"', '\"') + '"' } else { "$x" }
+    }
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $file
+    $psi.Arguments              = ($quoted -join ' ')
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.RedirectStandardInput  = $true      # anything that prompts gets EOF instead of hanging
+    $psi.UseShellExecute        = $false
+    $psi.CreateNoWindow         = $true
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $psi
+    try {
+        if (-not $p.Start()) { return '' }
+        $outTask = $p.StandardOutput.ReadToEndAsync()
+        $errTask = $p.StandardError.ReadToEndAsync()
+        try { $p.StandardInput.Close() } catch { }
+        if (-not $p.WaitForExit($TimeoutSec * 1000)) {
+            try { $p.Kill() } catch { }
+            Warn "'$Exe' did not respond within ${TimeoutSec}s; killed."
+            return ''
         }
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName  = $Exe
-        $psi.Arguments = ($quoted -join ' ')
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true
-        $psi.UseShellExecute        = $false
-        $psi.CreateNoWindow         = $true
-        $p = New-Object System.Diagnostics.Process
-        $p.StartInfo = $psi
-        try {
-                [void]$p.Start()
-                if (-not $p.WaitForExit($TimeoutSec * 1000)) {
-                        try { $p.Kill($true) } catch { try { $p.Kill() } catch {} }
-                        Write-Host "[WARN] '$Exe' did not return within $TimeoutSec s; killed." -ForegroundColor Yellow
-                        return ""
-                }
-                $out = $p.StandardOutput.ReadToEnd()
-                $err = $p.StandardError.ReadToEnd()
-                return (($out, $err) -join "`n")
-        } catch {
-                return ""
-        } finally {
-                $p.Dispose()
-        }
+        return (@($outTask.Result, $errTask.Result) -join "`n")
+    } catch {
+        return ''
+    } finally {
+        try { $p.Dispose() } catch { }
+    }
 }
 
-function Refresh-Path {
-        # Windows caps a single env var at 8191 chars. The raw concat of
-        # Machine + User PATH often overflows after several Choco installs
-        # because the same directories end up in both scopes. Dedupe
-        # (case-insensitive, preserving first-seen order) before assigning.
-        $machine = [System.Environment]::GetEnvironmentVariable("Path","Machine")
-        $user    = [System.Environment]::GetEnvironmentVariable("Path","User")
-        $raw     = @()
-        if ($machine) { $raw += $machine -split ';' }
-        if ($user)    { $raw += $user    -split ';' }
+function Test-Admin {
+    try {
+        $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+        return (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator)
+    } catch { return $false }
+}
 
-        $seen   = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-        $unique = New-Object System.Collections.Generic.List[string]
-        foreach ($e in $raw) {
-                $t = $e.Trim().TrimEnd('\')
-                if (-not $t) { continue }
-                if ($seen.Add($t)) { [void]$unique.Add($t) }
+function New-Dir {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+    return $Path
+}
+
+# Pull PATH back out of the registry so tools installed a moment ago show up.
+# Dedupe while we're at it - Choco tends to add the same dirs to both Machine
+# and User scope, and Windows truncates anything past 8191 chars.
+function Sync-ProcessPath {
+    $raw = @()
+    foreach ($scope in 'Machine', 'User') {
+        $v = [Environment]::GetEnvironmentVariable('Path', $scope)
+        if ($v) { $raw += ($v -split ';') }
+    }
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $keep = New-Object System.Collections.Generic.List[string]
+    foreach ($e in $raw) {
+        $t = "$e".Trim().TrimEnd('\')
+        if ($t -and $seen.Add($t)) { [void]$keep.Add($t) }
+    }
+    $joined = $keep -join ';'
+    if ($joined.Length -le 8191) { $env:Path = $joined }
+    else { Warn "Deduped PATH is $($joined.Length) chars (limit 8191); keeping the current one." }
+}
+
+function Enable-Tls12 {
+    try {
+        [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    } catch { }
+    # So downloads work behind a corporate proxy.
+    try {
+        if ([Net.WebRequest]::DefaultWebProxy) {
+            [Net.WebRequest]::DefaultWebProxy.Credentials = [Net.CredentialCache]::DefaultCredentials
         }
-        $joined = $unique -join ';'
+    } catch { }
+}
 
-        if ($joined.Length -gt 8191) {
-                Write-Host ("[WARN] Deduped PATH is {0} chars (>8191). Keeping current `$env:Path; user PATH likely needs manual cleanup via 'Edit environment variables for your account'." -f $joined.Length) -ForegroundColor Yellow
+function Get-RemoteFile {
+    param([string]$Uri, [string]$OutFile, [string]$Label = 'file')
+    Enable-Tls12
+    New-Dir (Split-Path -Parent $OutFile) | Out-Null
+    if (Test-Path -LiteralPath $OutFile) {
+        $age = (Get-Date) - (Get-Item -LiteralPath $OutFile).LastWriteTime
+        if ($age.TotalDays -lt 7 -and (Get-Item -LiteralPath $OutFile).Length -gt 0) {
+            Info "Reusing cached download for $Label."
+            return $true
+        }
+    }
+    Info "Downloading $Label ..."
+    try {
+        Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 900
+        return $true
+    } catch {
+        Warn "Download of $Label failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Unzip and hand back whichever directory holds bin\. These archives nest
+# everything one level down (jdk-17.0.x+7\, apache-maven-3.9.9\, ...).
+function Expand-ToolArchive {
+    param([string]$Archive, [string]$Dest)
+    if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force -ErrorAction SilentlyContinue }
+    New-Dir $Dest | Out-Null
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Dest)
+    } catch {
+        try { Expand-Archive -LiteralPath $Archive -DestinationPath $Dest -Force -ErrorAction Stop }
+        catch { Warn "Could not unpack $Archive : $($_.Exception.Message)"; return $null }
+    }
+    if (Test-Path -LiteralPath (Join-Path $Dest 'bin')) { return $Dest }
+    $child = Get-ChildItem -LiteralPath $Dest -Directory -ErrorAction SilentlyContinue |
+             Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'bin') } |
+             Select-Object -First 1
+    if ($child) { return $child.FullName }
+    return $Dest
+}
+
+# ---------------------------------------------------------------------------
+# Chocolatey - only used when we're already elevated
+# ---------------------------------------------------------------------------
+
+$script:ChocoExe    = $null
+$script:ChocoUsable = $null
+
+function Get-Choco {
+    if ($null -ne $script:ChocoUsable) { return $script:ChocoExe }
+    $script:ChocoUsable = $false
+
+    if ($Portable) { Info 'Chocolatey disabled (--portable).'; return $null }
+    if (-not (Test-Admin)) { return $null }
+
+    $cmd = Get-Command choco -ErrorAction SilentlyContinue
+    if ($cmd) { $script:ChocoExe = $cmd.Source }
+    elseif (Test-Path -LiteralPath "$env:ProgramData\chocolatey\bin\choco.exe") {
+        $script:ChocoExe = "$env:ProgramData\chocolatey\bin\choco.exe"
+    }
+
+    if (-not $script:ChocoExe -and $Mode -eq 'install') {
+        Info 'Installing Chocolatey ...'
+        try {
+            Enable-Tls12
+            Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
+            $installer = (New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')
+            Invoke-Expression $installer | Out-Null
+            Sync-ProcessPath
+            if (Test-Path -LiteralPath "$env:ProgramData\chocolatey\bin\choco.exe") {
+                $script:ChocoExe = "$env:ProgramData\chocolatey\bin\choco.exe"
+            }
+        } catch {
+            Warn "Chocolatey bootstrap failed: $($_.Exception.Message)"
+        }
+    }
+
+    if ($script:ChocoExe) { $script:ChocoUsable = $true }
+    return $script:ChocoExe
+}
+
+# Only called when the tool is actually missing, so no --force and no upgrade
+# path that could stomp on something the user installed themselves.
+function Install-ChocoPackage {
+    param([string]$Package, [string]$Label, [int]$TimeoutSec = 1800)
+
+    $choco = Get-Choco
+    if (-not $choco) { return $false }
+
+    Info "Chocolatey: installing $Label ($Package). This can take several minutes."
+    $out = Invoke-Native $choco @(
+        'install', $Package, '-y', '--no-progress', '--limit-output', '--no-color',
+        '--ignore-package-exit-codes', '--execution-timeout', "$TimeoutSec"
+    ) -TimeoutSec ($TimeoutSec + 120)
+
+    foreach ($line in ($out -split "`r?`n")) {
+        if ($line -match 'ERROR|WARNING|Installed|already installed|reboot') { Write-Host "       $line" }
+    }
+    Sync-ProcessPath
+    return $true   # caller re-probes anyway; choco's exit code isn't worth trusting
+}
+
+# ---------------------------------------------------------------------------
+# Version probes - each returns a [version], or $null if unusable
+# ---------------------------------------------------------------------------
+
+function Probe-Jdk {
+    param([string]$Exe)
+    # Needs javac next to it, or it's a JRE and Maven will die with
+    # "No compiler is provided in this environment".
+    $dir = Split-Path -Parent $Exe
+    if (-not (Test-Path -LiteralPath (Join-Path $dir 'javac.exe'))) { return $null }
+    $out = Invoke-Native $Exe @('-version') -TimeoutSec 25
+    if ($out -match '"(\d+)(?:\.(\d+))?') {
+        $maj = [int]$Matches[1]
+        $min = 0
+        if ($Matches.ContainsKey(2) -and $Matches[2]) { $min = [int]$Matches[2] }
+        if ($maj -eq 1) { return [version]("{0}.0" -f $min) }   # 1.8.0_402 -> 8.0
+        return [version]("{0}.0" -f $maj)
+    }
+    return $null
+}
+
+# Ask the JVM where it lives instead of guessing from the path. The java.exe
+# first on PATH is usually Oracle's javapath shim, which has javac beside it but
+# isn't a JDK home - guessing there gives you a JAVA_HOME with no bin\ or lib\.
+function Resolve-JavaHome {
+    param([string]$Exe)
+    $out = Invoke-Native $Exe @('-XshowSettings:properties', '-version') -TimeoutSec 25
+    foreach ($line in ($out -split "`r?`n")) {
+        if ($line -match '^\s*java\.home\s*=\s*(.+?)\s*$') {
+            $h = $Matches[1]
+            if (Test-Path -LiteralPath (Join-Path $h 'bin\java.exe')) { return $h }
+        }
+    }
+    # If it won't say, fall back to the usual <home>\bin\java.exe layout.
+    $guess = Split-Path -Parent (Split-Path -Parent $Exe)
+    if ($guess -and (Test-Path -LiteralPath (Join-Path $guess 'bin\java.exe'))) { return $guess }
+    return $null
+}
+
+function Resolve-JdkExe {
+    param([string]$Exe)
+    $h = Resolve-JavaHome $Exe
+    if ($h) { return (Join-Path $h 'bin\java.exe') }
+    return $Exe
+}
+
+function Probe-Maven {
+    param([string]$Exe)
+    $out = Invoke-Native $Exe @('-v') -TimeoutSec 60
+    if ($out -match 'Apache Maven (\d+)\.(\d+)') { return [version]("{0}.{1}" -f $Matches[1], $Matches[2]) }
+    # mvn -v needs a JDK. Without one, read the version off the install path so
+    # we don't report Maven missing for the wrong reason.
+    if ($Exe -match 'maven-(\d+)\.(\d+)') { return [version]("{0}.{1}" -f $Matches[1], $Matches[2]) }
+    return $null
+}
+
+function Probe-Dotnet {
+    param([string]$Exe)
+    # Highest SDK wins. .NET is side-by-side, so an existing 8.x/9.x is fine.
+    $out = Invoke-Native $Exe @('--list-sdks') -TimeoutSec 45
+    if (-not $out) { return $null }
+    $best = $null
+    foreach ($line in ($out -split "`r?`n")) {
+        if ($line -match '^(\d+)\.(\d+)\.(\d+)') {
+            $v = [version]("{0}.{1}" -f $Matches[1], $Matches[2])
+            if (-not $best -or $v -gt $best) { $best = $v }
+        }
+    }
+    return $best
+}
+
+function Probe-Node {
+    param([string]$Exe)
+    $out = Invoke-Native $Exe @('--version') -TimeoutSec 25
+    if ($out -match 'v(\d+)\.(\d+)') { return [version]("{0}.{1}" -f $Matches[1], $Matches[2]) }
+    return $null
+}
+
+function Probe-Python {
+    param([string]$Exe)
+    $out = Invoke-Native $Exe @('--version') -TimeoutSec 20
+    if ($out -match 'Python (\d+)\.(\d+)') { return [version]("{0}.{1}" -f $Matches[1], $Matches[2]) }
+    return $null
+}
+
+function Probe-Racket {
+    param([string]$Exe)
+    $out = Invoke-Native $Exe @('--version') -TimeoutSec 30
+    if ($out -match 'v(\d+)\.(\d+)') { return [version]("{0}.{1}" -f $Matches[1], $Matches[2]) }
+    if ($out -match 'v(\d+)')        { return [version]("{0}.0" -f $Matches[1]) }
+    return $null
+}
+
+# ---------------------------------------------------------------------------
+# Discovery - candidates come back in priority order, whatever the user
+# already has first, our own .tools\ copies last
+# ---------------------------------------------------------------------------
+
+function Get-PathCandidates {
+    param([string]$Name, [switch]$ExcludeStoreStubs)
+    $out = @()
+    foreach ($c in @(Get-Command $Name -All -ErrorAction SilentlyContinue)) {
+        $src = $c.Source
+        if (-not $src) { continue }
+        # Skip the Store alias stubs in WindowsApps - they're 0-byte and will
+        # sit there for minutes waiting on the Store UI that never opens.
+        if ($ExcludeStoreStubs -and $src -match '\\Microsoft\\WindowsApps\\') { continue }
+        try { if ((Get-Item -LiteralPath $src).Length -le 0) { continue } } catch { continue }
+        $out += $src
+    }
+    return $out
+}
+
+function Get-GlobCandidates {
+    param([string[]]$Patterns)
+    $out = @()
+    foreach ($p in $Patterns) {
+        if (-not $p) { continue }
+        try { $out += @(Get-ChildItem -Path $p -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) } catch { }
+    }
+    return $out
+}
+
+function Get-RegistryValues {
+    param([string]$KeyGlob, [string]$ValueName)
+    $out = @()
+    try {
+        foreach ($k in @(Get-ItemProperty -Path $KeyGlob -ErrorAction SilentlyContinue)) {
+            $v = $k.$ValueName
+            if ($v) { $out += $v }
+        }
+    } catch { }
+    return $out
+}
+
+function Find-Jdk {
+    $c = @()
+    if ($env:JAVA_HOME) { $c += (Join-Path $env:JAVA_HOME 'bin\java.exe') }
+    $c += Get-PathCandidates 'java'
+    foreach ($jh in (Get-RegistryValues 'HKLM:\SOFTWARE\JavaSoft\JDK\*' 'JavaHome')) { $c += (Join-Path $jh 'bin\java.exe') }
+    foreach ($p in (Get-RegistryValues 'HKLM:\SOFTWARE\Eclipse Adoptium\JDK\*\hotspot\MSI' 'Path')) { $c += (Join-Path $p 'bin\java.exe') }
+    $c += Get-GlobCandidates @(
+        'C:\Program Files\Eclipse Adoptium\jdk*\bin\java.exe',
+        'C:\Program Files\Java\jdk*\bin\java.exe',
+        'C:\Program Files\Microsoft\jdk*\bin\java.exe',
+        'C:\Program Files\Amazon Corretto\jdk*\bin\java.exe',
+        'C:\Program Files\Zulu\zulu*\bin\java.exe',
+        'C:\Program Files\BellSoft\*\bin\java.exe',
+        'C:\Program Files\RedHat\java*\bin\java.exe',
+        "$env:ProgramData\chocolatey\lib\*jdk*\tools\*\bin\java.exe",
+        "$env:LOCALAPPDATA\Programs\Eclipse Adoptium\jdk*\bin\java.exe",
+        (Join-Path $ToolsDir 'jdk\*\bin\java.exe'),
+        (Join-Path $ToolsDir 'jdk\bin\java.exe')
+    )
+    return $c
+}
+
+function Find-Maven {
+    $c = @()
+    foreach ($h in @($env:MAVEN_HOME, $env:M2_HOME)) {
+        if ($h) { $c += (Join-Path $h 'bin\mvn.cmd') }
+    }
+    $c += Get-PathCandidates 'mvn'
+    $c += Get-GlobCandidates @(
+        "$env:ProgramData\chocolatey\lib\maven\apache-maven-*\bin\mvn.cmd",
+        'C:\Program Files\Apache\maven*\bin\mvn.cmd',
+        'C:\Program Files\apache-maven-*\bin\mvn.cmd',
+        'C:\apache-maven-*\bin\mvn.cmd',
+        "$env:USERPROFILE\scoop\apps\maven\current\bin\mvn.cmd",
+        (Join-Path $ToolsDir 'maven\*\bin\mvn.cmd'),
+        (Join-Path $ToolsDir 'maven\bin\mvn.cmd')
+    )
+    return $c
+}
+
+function Find-Dotnet {
+    $c = @()
+    if ($env:DOTNET_ROOT) { $c += (Join-Path $env:DOTNET_ROOT 'dotnet.exe') }
+    # Ours has to win over a system install: dotnet.exe only finds SDKs sitting
+    # next to it, so DOTNET_ROOT won't make our SDK 10 visible to the one in
+    # Program Files.
+    $c += @(Join-Path $ToolsDir 'dotnet\dotnet.exe')
+    $c += Get-PathCandidates 'dotnet'
+    foreach ($p in (Get-RegistryValues 'HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64' 'InstallLocation')) {
+        $c += (Join-Path $p 'dotnet.exe')
+    }
+    $c += @(
+        "$env:ProgramFiles\dotnet\dotnet.exe",
+        "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe"
+    )
+    return $c
+}
+
+function Find-Node {
+    $c = @()
+    $c += Get-PathCandidates 'node'
+    if ($env:NVM_SYMLINK) { $c += (Join-Path $env:NVM_SYMLINK 'node.exe') }
+    $c += Get-GlobCandidates @(
+        'C:\Program Files\nodejs\node.exe',
+        "$env:APPDATA\nvm\v*\node.exe",
+        "$env:LOCALAPPDATA\nvs\node\*\*\node.exe",
+        "$env:ProgramData\chocolatey\lib\nodejs*\tools\node.exe",
+        (Join-Path $ToolsDir 'node\*\node.exe'),
+        (Join-Path $ToolsDir 'node\node.exe')
+    )
+    return $c
+}
+
+function Find-Python {
+    $c = @()
+    # py.exe lists every registered interpreter and won't hang on the Store.
+    $py = (Get-Command py -ErrorAction SilentlyContinue)
+    if ($py) {
+        $out = Invoke-Native $py.Source @('-0p') -TimeoutSec 15
+        foreach ($line in ($out -split "`r?`n")) {
+            if ($line -match '([A-Za-z]:\\[^\r\n]*python\.exe)') { $c += $Matches[1].Trim() }
+        }
+    }
+    $c += Get-PathCandidates 'python'  -ExcludeStoreStubs
+    $c += Get-PathCandidates 'python3' -ExcludeStoreStubs
+    $c += Get-GlobCandidates @(
+        "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe",
+        'C:\Python3*\python.exe',
+        'C:\Program Files\Python3*\python.exe',
+        'C:\Program Files (x86)\Python3*\python.exe',
+        "$env:ProgramData\chocolatey\lib\python3*\tools\python.exe"
+    )
+    return $c
+}
+
+function Find-Racket {
+    $c = @()
+    $c += Get-PathCandidates 'racket'
+    $c += Get-GlobCandidates @(
+        'C:\Program Files\Racket*\Racket.exe',
+        'C:\Program Files (x86)\Racket*\Racket.exe',
+        "$env:LOCALAPPDATA\Racket*\Racket.exe",
+        "$env:ProgramData\chocolatey\lib\racket\tools\*\Racket.exe",
+        "$env:USERPROFILE\scoop\apps\racket\current\Racket.exe"
+    )
+    return $c
+}
+
+# ---------------------------------------------------------------------------
+# Portable installs - straight into .tools\, no admin, nothing machine-wide
+# ---------------------------------------------------------------------------
+
+function Install-JdkPortable {
+    Info 'Fetching Temurin JDK 17 from Adoptium (portable, no admin required) ...'
+    Enable-Tls12
+    $url = $null
+    try {
+        $api = Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri `
+            'https://api.adoptium.net/v3/assets/latest/17/hotspot?architecture=x64&image_type=jdk&os=windows&vendor=eclipse'
+        foreach ($asset in ($api.Content | ConvertFrom-Json)) {
+            $link = $asset.binary.package.link
+            if ($link -and $link -match '\.zip$') { $url = $link; break }
+        }
+    } catch {
+        Warn "Adoptium API unreachable: $($_.Exception.Message)"
+    }
+    if (-not $url) { $url = 'https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse' }
+
+    $zip = Join-Path $DownloadDir 'temurin-jdk17.zip'
+    if (-not (Get-RemoteFile $url $zip 'Temurin JDK 17 (~180 MB)')) { return $false }
+    $dir = Expand-ToolArchive $zip (Join-Path $ToolsDir 'jdk')
+    return [bool]$dir
+}
+
+function Install-MavenPortable {
+    # Pull from archive.apache.org - the dlcdn mirrors drop old releases.
+    $ver = '3.9.9'
+    $url = "https://archive.apache.org/dist/maven/maven-3/$ver/binaries/apache-maven-$ver-bin.zip"
+    $zip = Join-Path $DownloadDir "apache-maven-$ver-bin.zip"
+    if (-not (Get-RemoteFile $url $zip "Apache Maven $ver (~9 MB)")) { return $false }
+    $dir = Expand-ToolArchive $zip (Join-Path $ToolsDir 'maven')
+    return [bool]$dir
+}
+
+function Install-NodePortable {
+    Enable-Tls12
+    $ver = $null
+    try {
+        $idx = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri 'https://nodejs.org/dist/index.json').Content | ConvertFrom-Json
+        foreach ($rel in $idx) {
+            if ($rel.lts -and $rel.version -match '^v(\d+)' -and [int]$Matches[1] -ge 20) { $ver = $rel.version; break }
+        }
+    } catch {
+        Warn "nodejs.org index unreachable: $($_.Exception.Message)"
+    }
+    if (-not $ver) { $ver = 'v22.11.0' }
+
+    $url = "https://nodejs.org/dist/$ver/node-$ver-win-x64.zip"
+    $zip = Join-Path $DownloadDir "node-$ver-win-x64.zip"
+    if (-not (Get-RemoteFile $url $zip "Node.js $ver (~30 MB)")) { return $false }
+
+    # Node's zip has no bin\, so Expand-ToolArchive can't find its landmark.
+    # Unpack it here and look for node.exe instead.
+    $dest = Join-Path $ToolsDir 'node'
+    if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue }
+    New-Dir $dest | Out-Null
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest)
+    } catch {
+        try { Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force -ErrorAction Stop }
+        catch { Warn "Could not unpack Node.js: $($_.Exception.Message)"; return $false }
+    }
+    return [bool](Get-ChildItem -Path (Join-Path $dest '*\node.exe') -ErrorAction SilentlyContinue)
+}
+
+function Install-DotnetSdk {
+    param([int]$Major)
+    # Microsoft's installer rather than the Choco package - it's the supported
+    # route, needs no admin, and installs alongside whatever .NET is already here.
+    $script = Join-Path $DownloadDir 'dotnet-install.ps1'
+    if (-not (Get-RemoteFile 'https://dot.net/v1/dotnet-install.ps1' $script 'dotnet-install.ps1')) { return $false }
+
+    $target = Join-Path $ToolsDir 'dotnet'
+    New-Dir $target | Out-Null
+    Info ".NET SDK $Major.0 -> $target (side-by-side; existing .NET installs are untouched)"
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script `
+            -Channel "$Major.0" -InstallDir $target -NoPath 2>&1 |
+            ForEach-Object { Write-Host "       $_" }
+        return (Test-Path -LiteralPath (Join-Path $target 'dotnet.exe'))
+    } catch {
+        Warn "dotnet-install.ps1 failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Install-Racket {
+    if (Install-ChocoPackage 'racket' 'Racket (~600 MB)' 2700) { return $true }
+    Warn 'Racket has no reliable no-admin install. Install it manually from https://download.racket-lang.org/'
+    Warn 'and re-run this script; everything else will still work without it.'
+    return $false
+}
+
+# ---------------------------------------------------------------------------
+# Tool table
+# ---------------------------------------------------------------------------
+
+$Tools = @(
+    [ordered]@{
+        Key = 'java'; Label = 'JDK'; Min = [version]'17.0'; Required = $true; Heavy = $false
+        Gate = 'the mutation tester itself'
+        Find = { Find-Jdk }; Probe = { param($e) Probe-Jdk $e }
+        Normalize = { param($e) Resolve-JdkExe $e }
+        Install = { if (Install-ChocoPackage 'temurin17' 'Temurin JDK 17') { $true } else { Install-JdkPortable } }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+    [ordered]@{
+        Key = 'maven'; Label = 'Maven'; Min = [version]'3.8'; Required = $true; Heavy = $false
+        Gate = 'building the mutation tester'
+        Find = { Find-Maven }; Probe = { param($e) Probe-Maven $e }
+        Install = { if (Install-ChocoPackage 'maven' 'Apache Maven') { $true } else { Install-MavenPortable } }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+    [ordered]@{
+        Key = 'dotnet'; Label = '.NET SDK'; Min = [version]'10.0'; Required = $false; Heavy = $false
+        Gate = 'the C# sample (samples\CSProject targets net10.0)'
+        Find = { Find-Dotnet }; Probe = { param($e) Probe-Dotnet $e }
+        Install = { Install-DotnetSdk 10 }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+    [ordered]@{
+        Key = 'node'; Label = 'Node.js'; Min = [version]'20.0'; Required = $false; Heavy = $false
+        Gate = 'the JavaScript sample (Jest + Puppeteer)'
+        Find = { Find-Node }; Probe = { param($e) Probe-Node $e }
+        Install = { if (Install-ChocoPackage 'nodejs-lts' 'Node.js LTS') { $true } else { Install-NodePortable } }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+    [ordered]@{
+        Key = 'python'; Label = 'Python'; Min = [version]'3.9'; Required = $false; Heavy = $false
+        Gate = 'the Python sample (pytest)'
+        Find = { Find-Python }; Probe = { param($e) Probe-Python $e }
+        Install = { Install-ChocoPackage 'python3' 'Python 3' }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+    [ordered]@{
+        Key = 'racket'; Label = 'Racket'; Min = [version]'8.0'; Required = $false; Heavy = $true
+        Gate = 'the Racket sample'
+        Find = { Find-Racket }; Probe = { param($e) Probe-Racket $e }
+        Install = { Install-Racket }
+        BinDir = { param($e) Split-Path -Parent $e }
+    }
+)
+
+function Test-Selected {
+    param($Tool)   # don't type this - [ordered] gives an OrderedDictionary, not a Hashtable
+    if ($OnlyList.Count -gt 0 -and $OnlyList -notcontains $Tool.Key) { return $false }
+    if ($SkipList -contains $Tool.Key) { return $false }
+    if ($Minimal -and $Tool.Heavy)     { return $false }
+    return $true
+}
+
+# First candidate that runs and is new enough wins. Hang onto anything that ran
+# but was too old, so the summary can say "found 9.0, need 10.0" not "missing".
+function Resolve-Tool {
+    param($Tool)
+
+    $seen     = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $fallback = $null
+
+    foreach ($exe in (& $Tool.Find)) {
+        if (-not $exe) { continue }
+        $exe = "$exe".Trim()
+        if (-not $seen.Add($exe)) { continue }
+        if (-not (Test-Path -LiteralPath $exe)) { continue }
+
+        $v = & $Tool.Probe $exe
+        if (-not $v) { continue }
+
+        if ($v -ge $Tool.Min) {
+            # Swap a shim path for the real install (see Resolve-JdkExe).
+            if ($Tool.Contains('Normalize')) { $exe = & $Tool.Normalize $exe }
+            return [pscustomobject]@{ Exe = $exe; Version = $v; Meets = $true }
+        }
+        if (-not $fallback) {
+            $fallback = [pscustomobject]@{ Exe = $exe; Version = $v; Meets = $false }
+        }
+    }
+    return $fallback
+}
+
+# ---------------------------------------------------------------------------
+# Find everything, install only what's missing
+# ---------------------------------------------------------------------------
+
+Head 'Mutation Tester - Windows environment setup'
+Write-Host "Mode          : $Mode$(if ($Minimal) { ' (minimal)' })"
+Write-Host "Project root  : $RootDir"
+Write-Host "Administrator : $(if (Test-Admin) { 'yes' } else { 'no - Chocolatey will be skipped, portable installs used instead' })"
+if ($OnlyList.Count) { Write-Host "Only          : $($OnlyList -join ', ')" }
+if ($SkipList.Count) { Write-Host "Skipping      : $($SkipList -join ', ')" }
+
+Sync-ProcessPath
+if ($Mode -eq 'install') { New-Dir $ToolsDir | Out-Null; New-Dir $DownloadDir | Out-Null }
+
+# Keep dotnet quiet and predictable during a demo.
+$env:DOTNET_CLI_TELEMETRY_OPTOUT     = '1'
+$env:DOTNET_NOLOGO                   = '1'
+$env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
+
+$Resolved = [ordered]@{}
+
+Head 'Detecting installed tools'
+
+foreach ($tool in $Tools) {
+    if (-not (Test-Selected $tool)) {
+        Info "$($tool.Label): skipped."
+        $Resolved[$tool.Key] = [pscustomobject]@{ Tool = $tool; Exe = $null; Version = $null; State = 'skipped' }
+        continue
+    }
+
+    $found = Resolve-Tool $tool
+
+    if ($found -and $found.Meets) {
+        Ok "$($tool.Label) $($found.Version) already installed - using it as-is."
+        Write-Host "       $($found.Exe)" -ForegroundColor DarkGray
+    }
+    elseif ($Mode -eq 'install') {
+        if ($found) { Warn "$($tool.Label) $($found.Version) found but $($tool.Min)+ is needed. Installing $($tool.Min)+ alongside it." }
+        else        { Info "$($tool.Label) not found. Installing ..." }
+
+        [void](& $tool.Install)
+        Sync-ProcessPath
+        $found = Resolve-Tool $tool
+
+        if ($found -and $found.Meets) { Ok "$($tool.Label) $($found.Version) installed." }
+        else { Fail "$($tool.Label) still unavailable after install." }
+    }
+    else {
+        if ($found) { Warn "$($tool.Label) $($found.Version) found, but $($tool.Min)+ is required." }
+        else        { Warn "$($tool.Label) not found." }
+    }
+
+    $state = 'missing'
+    if ($found -and $found.Meets) { $state = 'ok' } elseif ($found) { $state = 'old' }
+
+    $Resolved[$tool.Key] = [pscustomobject]@{
+        Tool    = $tool
+        Exe     = $(if ($found) { $found.Exe } else { $null })
+        Version = $(if ($found) { $found.Version } else { $null })
+        State   = $state
+    }
+
+    # Maven needs a JDK, so hand it the one we just found rather than whatever
+    # JAVA_HOME happened to be pointing at.
+    if ($tool.Key -eq 'java' -and $state -eq 'ok') {
+        $env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $Resolved['java'].Exe)
+        Info "JAVA_HOME for this session: $env:JAVA_HOME"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# demo-env.ps1 / demo-env.cmd
+# ---------------------------------------------------------------------------
+
+function Get-ToolBinDirs {
+    $dirs = New-Object System.Collections.Generic.List[string]
+    foreach ($key in $Resolved.Keys) {
+        $r = $Resolved[$key]
+        if ($r.State -ne 'ok' -or -not $r.Exe) { continue }
+        $d = & $r.Tool.BinDir $r.Exe
+        if ($d -and -not $dirs.Contains($d)) { [void]$dirs.Add($d) }
+    }
+    return $dirs
+}
+
+# The sample configs run `python3 -m pytest ...`, which is a Unix name Windows
+# doesn't have. Drop a shim in .tools\bin and put that on the session PATH -
+# beats hardlinking python3.exe into Program Files, and it's easy to delete.
+function New-Shims {
+    $py = $Resolved['python']
+    if (-not $py -or $py.State -ne 'ok') { return }
+    New-Dir $ShimDir | Out-Null
+
+    $target = $py.Exe
+    $venvPy = Join-Path $ToolsDir 'pyvenv\Scripts\python.exe'
+    if (Test-Path -LiteralPath $venvPy) { $target = $venvPy }
+
+    Set-Content -LiteralPath (Join-Path $ShimDir 'python3.cmd') -Encoding ASCII -Value @(
+        '@echo off',
+        "`"$target`" %*"
+    )
+    Set-Content -LiteralPath (Join-Path $ShimDir 'pytest.cmd') -Encoding ASCII -Value @(
+        '@echo off',
+        "`"$target`" -m pytest %*"
+    )
+}
+
+function Write-EnvScripts {
+    $dirs = @(Get-ToolBinDirs)
+    if (Test-Path -LiteralPath $ShimDir) { $dirs = @($ShimDir) + $dirs }
+
+    $javaHome = $null
+    if ($Resolved['java'].State -eq 'ok') {
+        $javaHome = Split-Path -Parent (Split-Path -Parent $Resolved['java'].Exe)
+    }
+    $dotnetRoot = $null
+    if ($Resolved['dotnet'].State -eq 'ok') {
+        $dotnetRoot = Split-Path -Parent $Resolved['dotnet'].Exe
+    }
+
+    $ps = New-Object System.Collections.Generic.List[string]
+    [void]$ps.Add('# Generated by chocolatey-setup.ps1 - do not edit, re-run the script instead.')
+    [void]$ps.Add('# Puts the detected toolchain on PATH for THIS shell only. Nothing global changes.')
+    [void]$ps.Add('#   . .\demo-env.ps1')
+    [void]$ps.Add('')
+    foreach ($d in $dirs) { [void]$ps.Add(('$env:Path = "{0};" + $env:Path' -f $d)) }
+    if ($javaHome)   { [void]$ps.Add(('$env:JAVA_HOME = "{0}"'   -f $javaHome)) }
+    if ($dotnetRoot) { [void]$ps.Add(('$env:DOTNET_ROOT = "{0}"' -f $dotnetRoot)) }
+    [void]$ps.Add('$env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"')
+    [void]$ps.Add('$env:DOTNET_NOLOGO = "1"')
+    [void]$ps.Add('Write-Host "Mutation tester environment ready." -ForegroundColor Green')
+    Set-Content -LiteralPath (Join-Path $RootDir 'demo-env.ps1') -Value $ps -Encoding UTF8
+
+    $cmd = New-Object System.Collections.Generic.List[string]
+    [void]$cmd.Add('@echo off')
+    [void]$cmd.Add(':: Generated by chocolatey-setup.ps1 - do not edit, re-run the script instead.')
+    foreach ($d in $dirs) { [void]$cmd.Add(('set "PATH={0};%PATH%"' -f $d)) }
+    if ($javaHome)   { [void]$cmd.Add(('set "JAVA_HOME={0}"'   -f $javaHome)) }
+    if ($dotnetRoot) { [void]$cmd.Add(('set "DOTNET_ROOT={0}"' -f $dotnetRoot)) }
+    [void]$cmd.Add('set "DOTNET_CLI_TELEMETRY_OPTOUT=1"')
+    [void]$cmd.Add('set "DOTNET_NOLOGO=1"')
+    [void]$cmd.Add('echo Mutation tester environment ready.')
+    Set-Content -LiteralPath (Join-Path $RootDir 'demo-env.cmd') -Value $cmd -Encoding ASCII
+}
+
+# Same PATH, applied to this process, so the restore and summary below see the
+# tools right away instead of needing a fresh shell.
+function Enter-ToolEnv {
+    $dirs = @(Get-ToolBinDirs)
+    if (Test-Path -LiteralPath $ShimDir) { $dirs = @($ShimDir) + $dirs }
+    foreach ($d in $dirs) {
+        if (($env:Path -split ';') -notcontains $d) { $env:Path = "$d;$env:Path" }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Project dependencies
+# ---------------------------------------------------------------------------
+
+function Invoke-Restore {
+    param([string]$Label, [string]$WorkDir, [string]$Exe, [string[]]$Argv, [int]$TimeoutSec = 1200)
+    if (-not $Exe -or -not (Test-Path -LiteralPath $WorkDir)) { return }
+    Info "$Label ..."
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    Push-Location $WorkDir
+    try {
+        $out = Invoke-Native $Exe $Argv -TimeoutSec $TimeoutSec
+        $bad = @($out -split "`r?`n" | Where-Object { $_ -match 'BUILD FAILURE|^\[ERROR\]|error [A-Z]+\d+|npm ERR!' })
+        if ($bad.Count -gt 0) {
+            Warn "$Label reported problems:"
+            $bad | Select-Object -First 8 | ForEach-Object { Write-Host "       $_" -ForegroundColor DarkYellow }
         } else {
-                $env:Path = $joined
+            Ok "$Label done ($([int]$sw.Elapsed.TotalSeconds)s)."
         }
-
-        # Pull in any other env vars Chocolatey/installers set (JAVA_HOME, etc.)
-        foreach ($scope in 'Machine','User') {
-                foreach ($name in 'JAVA_HOME','MAVEN_HOME','M2_HOME','DOTNET_ROOT') {
-                        $val = [System.Environment]::GetEnvironmentVariable($name,$scope)
-                        if ($val) {
-                                try { Set-Item -Path "env:$name" -Value $val } catch {}
-                        }
-                }
-        }
-}
-
-function Assert-Admin {
-        $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = New-Object System.Security.Principal.WindowsPrincipal($id)
-        if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
-                Fail "This script must be run from an elevated (Administrator) PowerShell prompt."
-                Fail "Right-click PowerShell and choose 'Run as administrator', then re-run:"
-                Fail "    .\chocolatey-setup.ps1 --install"
-                exit 1
-        }
-}
-
-# ---------------------------------------------------------------------------
-# Chocolatey bootstrap
-# ---------------------------------------------------------------------------
-
-function Ensure-Choco {
-        if (Have choco) { Ok "Chocolatey is already installed."; return }
-        Info "Bootstrapping Chocolatey (no Winget required)..."
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = `
-        [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString(
-                'https://community.chocolatey.org/install.ps1'))
-        Refresh-Path
-        if (-not (Have choco)) {
-                Fail "Chocolatey installation failed."
-                exit 1
-        }
-        Ok "Chocolatey installed."
-}
-
-# ---------------------------------------------------------------------------
-# Generic install / upgrade-to-correct-version helper
-# ---------------------------------------------------------------------------
-
-function Install-OrUpgrade {
-        param(
-                [string]$Label,
-                [string]$Package,
-                [string]$Version,                 # optional pinned version
-                [scriptblock]$Verify = $null      # optional post-install probe; should return $true if the tool is actually usable
-        )
-        $baseFlags = @("-y", "--no-progress", "--limit-output", "--no-color")
-
-        $chocoArgs = @("install", $Package) + $baseFlags
-        if ($Version) { $chocoArgs += @("--version=$Version", "--allow-downgrade") }
-        Info "Installing/upgrading $Label via Chocolatey ($Package)..."
-        & choco @chocoArgs
-        if ($LASTEXITCODE -ne 0) {
-                # Already installed at a different version - force upgrade
-                Info "Forcing upgrade of $Label..."
-                $upgradeArgs = @("upgrade", $Package) + $baseFlags
-                if ($Version) { $upgradeArgs += @("--version=$Version", "--allow-downgrade") }
-                & choco @upgradeArgs
-                if ($LASTEXITCODE -ne 0) {
-                        Fail "Failed to install/upgrade $Label."
-                        return $false
-                }
-        }
-        Refresh-Path
-
-        # Self-heal when Chocolatey's local DB thinks the package is installed
-        # but the actual binary is gone (typical after the user deletes the
-        # install dir manually). 'choco install' would no-op, leaving the tool
-        # unusable; --force re-downloads and re-extracts everything.
-        if ($Verify -and -not (& $Verify)) {
-                Warn "$Label looks installed to Chocolatey but the binary is missing/broken; forcing a full reinstall..."
-                $forceArgs = @("install", $Package) + $baseFlags + @("--force")
-                if ($Version) { $forceArgs += @("--version=$Version", "--allow-downgrade") }
-                & choco @forceArgs
-                if ($LASTEXITCODE -ne 0) {
-                        Fail "Forced reinstall of $Label failed."
-                        return $false
-                }
-                Refresh-Path
-                if (-not (& $Verify)) {
-                        Fail "$Label still not usable after forced reinstall."
-                        return $false
-                }
-        }
-        return $true
-}
-
-# ---------------------------------------------------------------------------
-# Per-tool verification
-# ---------------------------------------------------------------------------
-
-function Get-JavaMajor {
-        if (-not (Have java)) { return $null }
-        $out = Invoke-Native "java" @("-version")
-        if ($out -match '"(\d+)(?:\.(\d+))?') {
-                $maj = [int]$Matches[1]
-                if ($maj -eq 1 -and $Matches[2]) { return [int]$Matches[2] }
-                return $maj
-        }
-        return $null
-}
-
-function Get-DotnetMajor {
-        if (-not (Have dotnet)) { return $null }
-        $out = Invoke-Native "dotnet" @("--list-sdks")
-        $majors = @()
-        foreach ($line in ($out -split "`n")) {
-                if ($line -match '^(\d+)\.') { $majors += [int]$Matches[1] }
-        }
-        if ($majors.Count -eq 0) { return $null }
-        return ($majors | Sort-Object -Descending | Select-Object -First 1)
-}
-
-function Get-NodeMajor {
-        if (-not (Have node)) { return $null }
-        $v = Invoke-Native "node" @("--version")
-        if ($v -match 'v(\d+)') { return [int]$Matches[1] }
-        return $null
-}
-
-# Resolve a real python executable, skipping the Microsoft Store App Execution
-# Alias stubs under %LOCALAPPDATA%\Microsoft\WindowsApps. Those stubs are
-# 0-byte placeholders that, when invoked from a non-interactive script, can
-# hang indefinitely waiting on the Store to open. That hang has no output
-# and silently wedges the entire setup right after the previous step.
-function Resolve-RealPython {
-        param([string]$Name)
-        $cmds = @(Get-Command $Name -All -ErrorAction SilentlyContinue)
-        foreach ($c in $cmds) {
-                $src = $c.Source
-                if (-not $src) { continue }
-                if ($src -match '\\Microsoft\\WindowsApps\\') { continue }      # Store alias stub
-                try {
-                        $len = (Get-Item $src -ErrorAction Stop).Length
-                        if ($len -le 0) { continue }                                # Zero-byte stub
-                } catch { continue }
-                return $src
-        }
-        return $null
-}
-
-function Get-PythonVersion {
-        # Do NOT trust 'py.exe' or the Microsoft Store python aliases - both
-        # can hang for minutes waiting on the Store with no output. Instead,
-        # enumerate concrete install paths plus any non-Store python on PATH.
-        $candidates = New-Object System.Collections.Generic.List[string]
-        $globs = @(
-                "C:\Python3*\python.exe",
-                "C:\Program Files\Python3*\python.exe",
-                "C:\Program Files (x86)\Python3*\python.exe",
-                (Join-Path $env:LOCALAPPDATA "Programs\Python\Python3*\python.exe"),
-                (Join-Path $env:ProgramData "chocolatey\lib\python3\tools\python.exe"),
-                (Join-Path $env:ProgramData "chocolatey\lib\python\tools\python.exe")
-        )
-        foreach ($g in $globs) {
-                Get-ChildItem -Path $g -ErrorAction SilentlyContinue |
-                        ForEach-Object { [void]$candidates.Add($_.FullName) }
-        }
-        foreach ($n in 'python','python3') {
-                $real = Resolve-RealPython $n
-                if ($real) { [void]$candidates.Add($real) }
-        }
-
-        foreach ($exe in ($candidates | Select-Object -Unique)) {
-                if (-not (Test-Path $exe)) { continue }
-                $v = Invoke-Native $exe @("--version") -TimeoutSec 10
-                if ($v -match '(\d+)\.(\d+)\.(\d+)') {
-                        return [pscustomobject]@{ Major=[int]$Matches[1]; Minor=[int]$Matches[2]; Exe=$exe }
-                }
-        }
-        return $null
-}
-
-function Get-RacketMajor {
-        # PATH-only detection is unreliable right after Choco installs Racket:
-        # the package updates Machine PATH via the registry, but that change
-        # doesn't propagate into the already-running PowerShell process, so
-        # Get-Command racket comes up empty and the verify probe falsely fails.
-        # Fall back to well-known install locations.
-        $exe = $null
-        $cmd = Get-Command racket -ErrorAction SilentlyContinue
-        if ($cmd) { $exe = $cmd.Source }
-        if (-not $exe) {
-                $candidates = @(
-                        "C:\Program Files\Racket\Racket.exe",
-                        "C:\Program Files (x86)\Racket\Racket.exe",
-                        (Join-Path $env:LOCALAPPDATA "Racket\Racket.exe"),
-                        (Join-Path $env:ProgramData "chocolatey\lib\racket\tools\Racket.exe")
-                )
-                foreach ($c in $candidates) {
-                        if (Test-Path $c) { $exe = $c; break }
-                }
-        }
-        if (-not $exe) { return $null }
-        $v = Invoke-Native $exe @("--version") -TimeoutSec 10
-        if ($v -match '(\d+)\.') { return [int]$Matches[1] }
-        return $null
-}
-
-function Get-MavenOk {
-        if (-not (Have mvn)) { return $false }
-        return $true
-}
-
-# ---------------------------------------------------------------------------
-# Ensure-<Tool> functions - install if missing OR if version is wrong
-# ---------------------------------------------------------------------------
-
-function Ensure-Jdk {
-        $maj = Get-JavaMajor
-        if ($maj -and $maj -ge $Required.JdkMajor) { Ok "JDK $maj already installed (>= $($Required.JdkMajor))."; return }
-        if ($maj) { Warn "Java $maj found, but JDK $($Required.JdkMajor)+ is required. Installing Temurin 17..." }
-        else      { Info "Installing JDK $($Required.JdkMajor)..." }
-        if ($Mode -eq "install") {
-                [void](Install-OrUpgrade "Temurin JDK 17" $ChocoPackages.Jdk.Name $null `
-            -Verify { $m = Get-JavaMajor; $m -and $m -ge $Required.JdkMajor })
-        }
-}
-
-function Ensure-Maven {
-        if (Get-MavenOk) { Ok "Maven already installed."; return }
-        Info "Installing Maven..."
-        if ($Mode -eq "install") {
-                [void](Install-OrUpgrade "Maven" $ChocoPackages.Maven.Name $null `
-            -Verify { Get-MavenOk })
-        }
-}
-
-function Ensure-Dotnet {
-        $maj = Get-DotnetMajor
-        if ($maj -and $maj -ge $Required.DotnetMajor) { Ok ".NET SDK $maj already installed (>= $($Required.DotnetMajor))."; return }
-        if ($maj) { Warn ".NET SDK $maj found, but .NET $($Required.DotnetMajor)+ is required. Installing $($Required.DotnetMajor)..." }
-        else      { Info "Installing .NET SDK $($Required.DotnetMajor)..." }
-
-        if ($Mode -ne "install") { return }
-
-        # Try Chocolatey first.
-        $ok = Install-OrUpgrade ".NET SDK $($Required.DotnetMajor)" $ChocoPackages.Dotnet.Name $null
-        Refresh-Path
-        if ((Get-DotnetMajor) -ge $Required.DotnetMajor) { return }
-
-        # Fallback: use Microsoft's official dotnet-install.ps1 (no Winget needed).
-        Warn "Chocolatey package did not yield .NET $($Required.DotnetMajor)+. Falling back to Microsoft's dotnet-install.ps1..."
-        $tmp = Join-Path $env:TEMP "dotnet-install.ps1"
-        # Cache the bootstrap script for a day so reruns skip the re-download.
-        $needFetch = $true
-        if (Test-Path $tmp) {
-                $age = (Get-Date) - (Get-Item $tmp).LastWriteTime
-                if ($age.TotalHours -lt 24) { $needFetch = $false; Info "Reusing cached dotnet-install.ps1." }
-        }
-        if ($needFetch) {
-                Invoke-WebRequest -UseBasicParsing `
-            -Uri "https://dot.net/v1/dotnet-install.ps1" `
-            -OutFile $tmp
-        }
-        & $tmp -Channel "$($Required.DotnetMajor).0" -InstallDir "$env:ProgramFiles\dotnet"
-        $env:Path = "$env:ProgramFiles\dotnet;$env:Path"
-        Refresh-Path
-}
-
-function Ensure-Python {
-        $info = Get-PythonVersion
-        if ($info -and ($info.Major -gt $Required.PythonMinMajor -or
-                ($info.Major -eq $Required.PythonMinMajor -and $info.Minor -ge $Required.PythonMinMinor))) {
-                Ok "Python $($info.Major).$($info.Minor) already installed."
-                Ensure-Python3Alias
-                return
-        }
-        if ($info) { Warn "Python $($info.Major).$($info.Minor) found, but $($Required.PythonMinMajor).$($Required.PythonMinMinor)+ is required. Upgrading..." }
-        else       { Info "Installing Python..." }
-        if ($Mode -eq "install") {
-                [void](Install-OrUpgrade "Python" $ChocoPackages.Python.Name $null `
-            -Verify {
-                        $i = Get-PythonVersion
-                        $i -and ($i.Major -gt $Required.PythonMinMajor -or
-                                ($i.Major -eq $Required.PythonMinMajor -and $i.Minor -ge $Required.PythonMinMinor))
-                })
-                Ensure-Python3Alias
-        }
-}
-
-# Chocolatey's python311 package installs python.exe but not python3.exe.
-# The mutation tester's Java child-process command 'python3 -m pytest ...'
-# is a Linux/Mac convention; on Windows it fails with "'python3' is not
-# recognized" even when Python itself is fully installed and pytest is on
-# the system Python. Create a python3.exe next to python.exe by hardlink
-# (works on same volume, stays current if python.exe is upgraded) and
-# fall back to copy if the hardlink call fails.
-function Ensure-Python3Alias {
-        $info = Get-PythonVersion
-        if (-not $info) { return }
-        $src = $info.Exe
-        $dst = Join-Path (Split-Path $src) "python3.exe"
-        if (Test-Path $dst) { return }
-        try {
-                New-Item -ItemType HardLink -Path $dst -Target $src -ErrorAction Stop | Out-Null
-                Info "Created python3.exe hardlink at $dst (so child processes finding 'python3' work)."
-        } catch {
-                try {
-                        Copy-Item -Path $src -Destination $dst -Force -ErrorAction Stop
-                        Info "Created python3.exe copy at $dst (hardlink unavailable)."
-                } catch {
-                        Warn "Could not create python3.exe alias: $($_.Exception.Message)"
-                }
-        }
-}
-
-function Ensure-Node {
-        $maj = Get-NodeMajor
-        if ($maj -ge $Required.NodeMinMajor) { Ok "Node.js $maj already installed."; return }
-        if ($maj) { Warn "Node.js $maj found, but $($Required.NodeMinMajor)+ is required. Upgrading..." }
-        else      { Info "Installing Node.js LTS..." }
-        if ($Mode -eq "install") {
-                [void](Install-OrUpgrade "Node.js LTS" $ChocoPackages.Node.Name $null `
-            -Verify { (Get-NodeMajor) -ge $Required.NodeMinMajor })
-        }
-}
-
-function Ensure-Racket {
-        $maj = Get-RacketMajor
-        if ($maj -ge $Required.RacketMajor) {
-                Ok "Racket $maj already installed."
-                Ensure-RacketOnPath   # heal stale PATH even on the warm path
-                return
-        }
-        if ($maj) { Warn "Racket $maj found, but $($Required.RacketMajor)+ is required. Upgrading..." }
-        else      { Info "Installing Racket (package is ~600 MB, may take 5-10 minutes)..." }
-        if ($Mode -eq "install") {
-                Invoke-Step "Installing Racket" "Downloading ~600 MB installer, please wait..." {
-                        [void](Install-OrUpgrade "Racket" $ChocoPackages.Racket.Name $null `
-                -Verify { (Get-RacketMajor) -ge $Required.RacketMajor })
-                }
-                Ensure-RacketOnPath
-        }
-}
-
-# Chocolatey's racket package drops Racket at C:\Program Files\Racket but
-# does not reliably add that dir to Machine PATH. Get-RacketMajor papers
-# over the gap for the script's own verification, but external processes
-# spawned later (mvn surefire running 'racket project/tests/x.rkt', for
-# instance) inherit PATH and fail with "'racket' is not recognized."
-# Add the install dir to Machine PATH and the current session if missing
-# so child processes find it.
-function Ensure-RacketOnPath {
-        $candidates = @(
-                "C:\Program Files\Racket",
-                "C:\Program Files (x86)\Racket",
-                (Join-Path $env:LOCALAPPDATA "Racket")
-        )
-        $dir = $candidates | Where-Object { Test-Path (Join-Path $_ "Racket.exe") } | Select-Object -First 1
-        if (-not $dir) { return }
-
-        # Persist into Machine PATH for future shells.
-        $machine = [Environment]::GetEnvironmentVariable('Path','Machine')
-        $entries = $machine -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') }
-        if ($entries -notcontains $dir) {
-                Info "Adding $dir to Machine PATH (for future shells and child processes)..."
-                try {
-                        [Environment]::SetEnvironmentVariable('Path', ($entries + $dir -join ';'), 'Machine')
-                } catch {
-                        Warn "Failed to update Machine PATH: $($_.Exception.Message)"
-                }
-        }
-
-        # Make the current session see it immediately so any later step in
-        # this run (e.g. a Maven test that shells out to racket) works.
-        if (($env:Path -split ';') -notcontains $dir) {
-                $env:Path = "$env:Path;$dir"
-        }
-}
-
-# Read-only probe: returns @{Version=...; Chrome=<path>} when both the
-# Puppeteer npm package and a Chrome binary are present, otherwise $null.
-# Used both by the upfront 'already installed' message and Verify-All.
-function Get-PuppeteerInfo {
-        $pkg = Join-Path $RootDir "samples\JSProject\node_modules\puppeteer\package.json"
-        if (-not (Test-Path $pkg)) { return $null }
-        $cacheRoot = Join-Path $env:USERPROFILE ".cache\puppeteer\chrome"
-        if (-not (Test-Path $cacheRoot)) { return $null }
-        $chrome = Get-ChildItem -Path $cacheRoot -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue |
-                Select-Object -First 1
-        if (-not $chrome) { return $null }
-        $ver = (Get-Content $pkg -Raw | ConvertFrom-Json).version
-        return [pscustomobject]@{ Version = $ver; Chrome = $chrome.FullName; Build = $chrome.Directory.Parent.Name }
-}
-
-# Read-only probe: JUnit Jupiter is a Maven dep, not an installable tool,
-# so its 'install' is whether Restore-MavenDeps populated the local
-# repository under ~/.m2. Returns @{Version=...} for the newest
-# junit-jupiter jar present, or $null if none.
-function Get-JunitInfo {
-        $dir = Join-Path $env:USERPROFILE ".m2\repository\org\junit\jupiter\junit-jupiter"
-        if (-not (Test-Path $dir)) { return $null }
-        $versions = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue |
-                Where-Object {
-                        Test-Path (Join-Path $_.FullName ("junit-jupiter-{0}.jar" -f $_.Name))
-                } |
-                Sort-Object Name -Descending
-        if (-not $versions) { return $null }
-        return [pscustomobject]@{ Version = $versions[0].Name; Path = $versions[0].FullName }
-}
-
-# Print an 'already installed' line up-front when Puppeteer + cached Chrome
-# are present, mirroring the per-tool messages. Otherwise note that the
-# parallel restore phase will install it.
-function Ensure-Puppeteer {
-        $info = Get-PuppeteerInfo
-        if ($info) { Ok "Puppeteer $($info.Version) already installed."; return }
-        Info "Puppeteer not yet installed; the parallel restore phase will fetch it (~170 MB Chrome)."
-}
-
-# Same pattern for JUnit Jupiter -- a green line when the jar is already
-# in the local Maven repo, otherwise a note that Restore-MavenDeps will
-# pull it.
-function Ensure-Junit {
-        $info = Get-JunitInfo
-        if ($info) { Ok "JUnit Jupiter $($info.Version) already installed."; return }
-        Info "JUnit Jupiter not yet in local Maven repo; the parallel restore phase will fetch it."
-}
-
-# ---------------------------------------------------------------------------
-# Project-level dependency downloads
-# ---------------------------------------------------------------------------
-
-function Restore-MavenDeps {
-        if (-not (Have mvn)) { Warn "Skipping Maven restore: mvn not on PATH."; return }
-        Info "Resolving Maven dependencies (root) -- first run downloads jars from the internet..."
-        Invoke-Step "Maven resolve (root)" "Downloading dependencies, please wait..." {
-                Push-Location $RootDir
-                try { mvn -DskipTests dependency:go-offline } finally { Pop-Location }
-        }
-
-        $javaSample = Join-Path $RootDir "samples\MavenProject"
-        if (Test-Path $javaSample) {
-                Info "Resolving Maven dependencies (samples\MavenProject)..."
-                Invoke-Step "Maven resolve (samples\MavenProject)" "Downloading dependencies, please wait..." {
-                        Push-Location $javaSample
-                        try { mvn -DskipTests dependency:go-offline } finally { Pop-Location }
-                }
-        }
-}
-
-function Restore-NpmDeps {
-        if (-not (Have npm)) { Warn "Skipping npm install: npm not on PATH."; return }
-        $jsDir = Join-Path $RootDir "samples\JSProject"
-        if (-not (Test-Path $jsDir)) { return }
-        Info "Installing JS sample dependencies (npm install)..."
-        Push-Location $jsDir
-        try {
-                Invoke-Step "npm install (JSProject)" "Installing packages..." {
-                        npm install
-                }
-                Info "Installing Puppeteer Chrome browser (~170 MB download, may take a few minutes)..."
-                Invoke-Step "Puppeteer Chrome download" "Downloading Chrome, please wait..." {
-                        npx puppeteer browsers install chrome
-                }
-        } finally { Pop-Location }
-}
-
-function Restore-PythonDeps {
-        $info = Get-PythonVersion
-        if (-not $info) { Warn "Skipping Python venv: python not on PATH."; return }
-        $venvDir    = Join-Path $RootDir "samples\PytestProject\.venv"
-        $venvPython = Join-Path $venvDir "Scripts\python.exe"
-
-        if (Test-Path $venvDir) {
-                $works = $false
-                if (Test-Path $venvPython) {
-                        try { & $venvPython --version 2>$null | Out-Null; $works = ($LASTEXITCODE -eq 0) } catch {}
-                }
-                if (-not $works) {
-                        Info "Removing stale Python virtual environment..."
-                        Remove-Item -Recurse -Force $venvDir
-                }
-        }
-        if (-not (Test-Path $venvDir)) {
-                Info "Creating Python virtual environment..."
-                & $info.Exe -m venv $venvDir
-        }
-        Info "Installing pytest..."
-        & $venvPython -m pip install --quiet pytest
-}
-
-function Restore-DotnetDeps {
-        if (-not (Have dotnet)) { Warn "Skipping dotnet restore: dotnet not on PATH."; return }
-        $proj = Join-Path $RootDir "samples\CSProject\tests\CSProject.Tests\CSProject.Tests.csproj"
-        if (-not (Test-Path $proj)) { return }
-        Info "Restoring .NET test project..."
-        Invoke-Step "dotnet restore (CSProject)" "Restoring NuGet packages..." {
-                Push-Location (Join-Path $RootDir "samples\CSProject")
-                try { dotnet restore $proj } finally { Pop-Location }
-        }
-}
-
-# Run all four project-restore steps concurrently as background jobs.
-# Each is independent (separate package managers, separate caches), so
-# parallelizing overlaps network and CPU and shaves time off cold runs.
-# Output is streamed as it arrives, prefixed with a [label] for clarity.
-function Restore-AllInParallel {
-        $jobs = New-Object System.Collections.Generic.List[object]
-        $sharedPath = $env:Path
-
-        if (Have mvn) {
-                $jobs.Add(@{ Name = "maven"; Job = Start-Job -Name "maven" -ScriptBlock {
-                        param($root, $pathEnv)
-                        $env:Path = $pathEnv
-                        Set-Location $root
-                        # -B / --no-transfer-progress kill the byte-by-byte 'Progress (4):'
-                        # spam and color codes; otherwise a cold restore prints hundreds
-                        # of useless lines for one resolve.
-                        mvn -B --no-transfer-progress -DskipTests dependency:go-offline 2>&1
-                        $sample = Join-Path $root "samples\MavenProject"
-                        if (Test-Path $sample) {
-                                Set-Location $sample
-                                mvn -B --no-transfer-progress -DskipTests dependency:go-offline 2>&1
-                        }
-                } -ArgumentList $RootDir, $sharedPath })
-        }
-
-        if (Have npm) {
-                $jsDir = Join-Path $RootDir "samples\JSProject"
-                if (Test-Path $jsDir) {
-                        $jobs.Add(@{ Name = "npm"; Job = Start-Job -Name "npm" -ScriptBlock {
-                                param($dir, $pathEnv)
-                                $env:Path = $pathEnv
-                                # Don't let node's deprecation/info messages on stderr blow
-                                # up Receive-Job in the parent as NativeCommandError.
-                                $ErrorActionPreference = 'Continue'
-                                # Force Puppeteer's installer to emit progress even though
-                                # Start-Job has no TTY -- otherwise the Chrome download
-                                # (~170 MB) is completely silent and looks like a hang.
-                                $env:PUPPETEER_LOG_LEVEL = "info"
-                                $env:npm_config_progress = "true"
-                                Set-Location $dir
-                                # Merge stderr -> stdout so warnings come through as plain
-                                # output, not as PowerShell error records.
-                                npm install 2>&1
-                                npx puppeteer browsers install chrome 2>&1
-                        } -ArgumentList $jsDir, $sharedPath })
-                }
-        }
-
-        $pyInfo = Get-PythonVersion
-        if ($pyInfo) {
-                $venvDir    = Join-Path $RootDir "samples\PytestProject\.venv"
-                $venvPython = Join-Path $venvDir "Scripts\python.exe"
-                $jobs.Add(@{ Name = "python"; Job = Start-Job -Name "python" -ScriptBlock {
-                        param($venv, $venvPy, $pyExe, $pathEnv)
-                        $env:Path = $pathEnv
-                        $ErrorActionPreference = 'Continue'
-                        if (Test-Path $venv) {
-                                $works = $false
-                                if (Test-Path $venvPy) {
-                                        try { & $venvPy --version 2>$null | Out-Null; $works = ($LASTEXITCODE -eq 0) } catch {}
-                                }
-                                if (-not $works) { Remove-Item -Recurse -Force $venv }
-                        }
-                        if (-not (Test-Path $venv)) { & $pyExe -m venv $venv 2>&1 }
-                        & $venvPy -m pip install --quiet pytest 2>&1
-                        # Also install pytest into the system Python so the mutation
-                        # tester's child-process command 'python3 -m pytest ...' works.
-                        # The venv pytest is for developers running tests inside the
-                        # sample; the system pytest is what the MutantExecutionTests
-                        # surefire test actually shells out to.
-                        & $pyExe -m pip install --quiet pytest 2>&1
-                } -ArgumentList $venvDir, $venvPython, $pyInfo.Exe, $sharedPath })
-        }
-
-        if (Have dotnet) {
-                $proj = Join-Path $RootDir "samples\CSProject\tests\CSProject.Tests\CSProject.Tests.csproj"
-                if (Test-Path $proj) {
-                        $csDir = Join-Path $RootDir "samples\CSProject"
-                        $jobs.Add(@{ Name = "dotnet"; Job = Start-Job -Name "dotnet" -ScriptBlock {
-                                param($dir, $project, $pathEnv)
-                                $env:Path = $pathEnv
-                                $ErrorActionPreference = 'Continue'
-                                Set-Location $dir
-                                # --nologo trims the banner; --verbosity minimal cuts per-package noise.
-                                dotnet restore $project --nologo --verbosity minimal 2>&1
-                        } -ArgumentList $csDir, $proj, $sharedPath })
-                }
-        }
-
-        if ($jobs.Count -eq 0) { Warn "No project-restore jobs to run."; return }
-
-        Info "Started $($jobs.Count) parallel restore job(s): $(($jobs | ForEach-Object Name) -join ', ')"
-        Info "Note: 'npm' includes a ~170 MB silent Puppeteer Chrome download; expect 3-10 min."
-        $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $lastHeartbeat = [System.Diagnostics.Stopwatch]::StartNew()
-
-        # Drop high-volume status lines that don't tell the user anything useful.
-        # Errors, warnings, and the final BUILD SUCCESS/FAILURE still come through.
-        $noise = @(
-                '^\[INFO\] Resolved (plugin|dependency):',
-                '^\[INFO\] Downloading from',
-                '^\[INFO\] Downloaded from',
-                '^Downloading from',
-                '^Downloaded from',
-                '^Progress \(\d+\):',
-                '^\s*$'
-        ) -join '|'
-
-        $emit = {
-                param($name, $chunk)
-                foreach ($line in $chunk) {
-                        $text = "$line"
-                        if ($text -match $noise) { continue }
-                        Write-Host "[$name] $text"
-                }
-        }
-
-        while ($jobs | Where-Object { $_.Job.State -eq 'Running' }) {
-                foreach ($j in $jobs) {
-                        $chunk = Receive-Job -Job $j.Job -ErrorAction SilentlyContinue
-                        & $emit $j.Name $chunk
-                }
-                # @(...) forces an array so .Count works under Set-StrictMode when
-                # Where-Object returns 0 or 1 items (scalars don't expose .Count).
-                $done = @($jobs | Where-Object { $_.Job.State -ne 'Running' }).Count
-                $pct  = [int](100 * $done / $jobs.Count)
-                Write-Progress -Id 1 -Activity "Project restores (parallel)" `
-            -Status "$done/$($jobs.Count) jobs complete" -PercentComplete $pct
-
-                # Heartbeat every 15s so silent downloads (Puppeteer Chrome, big
-                # NuGet/Maven jars) don't look like a wedged script.
-                if ($lastHeartbeat.Elapsed.TotalSeconds -ge 15) {
-                        $still = $jobs | Where-Object { $_.Job.State -eq 'Running' } | ForEach-Object { $_.Name }
-                        $mins  = [int]$sw.Elapsed.TotalMinutes
-                        $secs  = $sw.Elapsed.Seconds
-                        Info ("Heartbeat: {0}m{1:D2}s elapsed; still running: {2}" -f $mins, $secs, ($still -join ', '))
-                        $lastHeartbeat.Restart()
-                }
-                Start-Sleep -Milliseconds 500
-        }
-
-        foreach ($j in $jobs) {
-                $chunk = Receive-Job -Job $j.Job -ErrorAction SilentlyContinue
-                & $emit $j.Name $chunk
-                $state = $j.Job.State
-                Remove-Job $j.Job -Force
-                if ($state -eq 'Completed') { Ok "Restore job '$($j.Name)' finished." }
-                else                         { Fail "Restore job '$($j.Name)' ended in state: $state" }
-        }
+    } finally {
+        Pop-Location
         $sw.Stop()
-        Write-Progress -Id 1 -Activity "Project restores (parallel)" -Completed
-        Info "All restore jobs done in $([int]$sw.Elapsed.TotalSeconds)s."
+    }
 }
 
-# ---------------------------------------------------------------------------
-# Final verification (runs after install completes - order matters)
-# ---------------------------------------------------------------------------
+function Restore-Project {
+    Head 'Restoring project dependencies'
 
-function Verify-All {
-        Write-Host ""
-        Write-Host "============================================================================"
-        Write-Host "Version verification"
-        Write-Host "============================================================================"
-        Refresh-Path
-
-        $bad = 0
-        $jm = Get-JavaMajor;   if ($jm -and $jm -ge $Required.JdkMajor) { Ok "Java $jm" } else { Fail "Java major=$jm (need $($Required.JdkMajor)+)"; $bad++ }
-        if (Get-MavenOk)       { Ok "Maven present" }          else { Fail "Maven missing"; $bad++ }
-        $dm = Get-DotnetMajor; if ($dm -and $dm -ge $Required.DotnetMajor) { Ok ".NET SDK $dm" } else { Fail ".NET SDK major=$dm (need $($Required.DotnetMajor)+)"; $bad++ }
-        $pi = Get-PythonVersion
-        if ($pi -and ($pi.Major -gt $Required.PythonMinMajor -or ($pi.Major -eq $Required.PythonMinMajor -and $pi.Minor -ge $Required.PythonMinMinor))) {
-                Ok "Python $($pi.Major).$($pi.Minor)"
-        } else { Fail "Python missing or too old"; $bad++ }
-        $nm = Get-NodeMajor;   if ($nm -ge $Required.NodeMinMajor) { Ok "Node.js $nm" } else { Fail "Node.js major=$nm (need $($Required.NodeMinMajor)+)"; $bad++ }
-        $rm = Get-RacketMajor; if ($rm -ge $Required.RacketMajor)  { Ok "Racket $rm"  } else { Fail "Racket major=$rm (need $($Required.RacketMajor)+)"; $bad++ }
-
-        # Puppeteer: the JS sample's tests drive a headless Chrome that gets
-        # downloaded into the per-user puppeteer cache, separate from any
-        # Chrome the user already has installed.
-        $pup = Get-PuppeteerInfo
-        if ($pup) {
-                Ok "Puppeteer $($pup.Version) (+ Chrome at $($pup.Build))"
-        } else {
-                $pkg   = Join-Path $RootDir "samples\JSProject\node_modules\puppeteer\package.json"
-                $cache = Join-Path $env:USERPROFILE ".cache\puppeteer\chrome"
-                $missing = @()
-                if (-not (Test-Path $pkg))   { $missing += "npm package" }
-                if (-not (Test-Path $cache)) { $missing += "Chrome binary" }
-                Fail "Puppeteer missing: $($missing -join ', ')"
-                $bad++
+    $mvn = $Resolved['maven']
+    if ($mvn.State -eq 'ok') {
+        Invoke-Restore 'Maven dependencies (root)' $RootDir $mvn.Exe `
+            @('-B', '--no-transfer-progress', '-DskipTests', 'dependency:go-offline') 1800
+        $sample = Join-Path $RootDir 'samples\MavenProject'
+        if (Test-Path -LiteralPath $sample) {
+            Invoke-Restore 'Maven dependencies (samples\MavenProject)' $sample $mvn.Exe `
+                @('-B', '--no-transfer-progress', '-DskipTests', 'dependency:go-offline') 1800
         }
+    }
 
-        # JUnit Jupiter: pulled into ~/.m2 by Restore-MavenDeps, not by a tool
-        # installer. The Java mutation tests cannot compile without it.
-        $jun = Get-JunitInfo
-        if ($jun) { Ok "JUnit Jupiter $($jun.Version)" }
-        else      { Fail "JUnit Jupiter missing from local Maven repo"; $bad++ }
+    $dn = $Resolved['dotnet']
+    if ($dn.State -eq 'ok') {
+        $csDir = Join-Path $RootDir 'samples\CSProject'
+        $proj  = Join-Path $csDir 'tests\CSProject.Tests\CSProject.Tests.csproj'
+        if (Test-Path -LiteralPath $proj) {
+            Invoke-Restore 'NuGet restore (samples\CSProject)' $csDir $dn.Exe `
+                @('restore', $proj, '--nologo', '--verbosity', 'minimal') 900
+        }
+    }
 
-        return $bad
+    $node = $Resolved['node']
+    if ($node.State -eq 'ok') {
+        $jsDir = Join-Path $RootDir 'samples\JSProject'
+        $npm   = Join-Path (Split-Path -Parent $node.Exe) 'npm.cmd'
+        if ((Test-Path -LiteralPath $jsDir) -and (Test-Path -LiteralPath $npm)) {
+            Invoke-Restore 'npm install (samples\JSProject)' $jsDir $npm @('install', '--no-fund', '--no-audit') 1800
+            if ($Minimal) {
+                Info 'Skipping the Puppeteer Chrome download (--minimal).'
+            } else {
+                $npx = Join-Path (Split-Path -Parent $node.Exe) 'npx.cmd'
+                Info 'Puppeteer Chrome is a silent ~170 MB download; allow a few minutes.'
+                Invoke-Restore 'Puppeteer Chrome' $jsDir $npx @('--yes', 'puppeteer', 'browsers', 'install', 'chrome') 2400
+            }
+        }
+    }
+
+    $py = $Resolved['python']
+    if ($py.State -eq 'ok') {
+        # Own venv so we never pip install into the user's system Python.
+        # The python3 shim points at this.
+        $venv   = Join-Path $ToolsDir 'pyvenv'
+        $venvPy = Join-Path $venv 'Scripts\python.exe'
+        if (-not (Test-Path -LiteralPath $venvPy)) {
+            Info 'Creating a repo-local Python virtual environment (.tools\pyvenv) ...'
+            [void](Invoke-Native $py.Exe @('-m', 'venv', $venv) -TimeoutSec 300)
+        }
+        if (Test-Path -LiteralPath $venvPy) {
+            Invoke-Restore 'pip install pytest' $RootDir $venvPy `
+                @('-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', 'pytest') 600
+        } else {
+            Warn 'Could not create the Python virtual environment; skipping pytest.'
+        }
+        New-Shims
+    }
 }
+
+if ($Mode -eq 'install') {
+    New-Shims
+    Enter-ToolEnv
+    Restore-Project
+}
+
+New-Shims
+Enter-ToolEnv
+Write-EnvScripts
 
 # ---------------------------------------------------------------------------
-# Main
+# Report
 # ---------------------------------------------------------------------------
 
-Write-Host "============================================================================"
-Write-Host "Mutation Tester - Chocolatey-based Windows setup"
-Write-Host "Mode: $Mode    Project root: $RootDir"
-Write-Host "============================================================================"
+Head 'Summary'
 
-Refresh-Path
+$rows = foreach ($key in $Resolved.Keys) {
+    $r = $Resolved[$key]
+    $status = switch ($r.State) {
+        'ok'      { 'OK' }
+        'old'     { 'TOO OLD' }
+        'skipped' { 'skipped' }
+        default   { 'MISSING' }
+    }
+    [pscustomobject]@{
+        Tool     = $r.Tool.Label
+        Status   = $status
+        Version  = $(if ($r.Version) { "$($r.Version)" } else { '-' })
+        Required = $(if ($r.Tool.Required) { 'yes' } else { 'no' })
+        Location = $(if ($r.Exe) { $r.Exe } else { '-' })
+    }
+}
+$rows | Format-Table -AutoSize | Out-String | Write-Host
 
-if ($Mode -eq "install") {
-        Assert-Admin
-        Ensure-Choco
+# Something skipped on purpose via --only/--skip isn't a failure.
+$blocking = @($Resolved.Keys | Where-Object {
+    $Resolved[$_].Tool.Required -and $Resolved[$_].State -notin @('ok', 'skipped')
+})
+$degraded = @($Resolved.Keys | Where-Object { -not $Resolved[$_].Tool.Required -and $Resolved[$_].State -notin @('ok', 'skipped') })
+
+foreach ($k in $degraded) {
+    Warn "$($Resolved[$k].Tool.Label) unavailable - $($Resolved[$k].Tool.Gate) will not run. Everything else still works."
 }
 
-# Install/upgrade tools FIRST, then verify versions.
-Ensure-Jdk
-Ensure-Maven
-Ensure-Dotnet
-Ensure-Python
-Ensure-Node
-Ensure-Racket
-Ensure-Puppeteer
-Ensure-Junit
-
-if ($Mode -eq "install") {
-        Write-Host ""
-        Write-Host "============================================================================"
-        Write-Host "Restoring project dependencies (in parallel)"
-        Write-Host "============================================================================"
-        Restore-AllInParallel
+if ($blocking.Count -eq 0) {
+    Ok 'All required tools are available.'
+    Write-Host ''
+    Write-Host 'Next steps:'
+    Write-Host '  . .\demo-env.ps1                       # load the toolchain into this shell'
+    Write-Host '  mvn package -DskipTests'
+    Write-Host '  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples\MavenProject maven.config'
+    if ($Mode -ne 'install') {
+        Write-Host ''
+        Info 'Check mode: nothing was installed. Only demo-env.ps1 / demo-env.cmd were written.'
+    }
+    exit 0
 }
 
-$bad = Verify-All
-
-Write-Host ""
-if ($bad -eq 0) {
-        Ok "All required tools are installed at the correct version."
-        Write-Host ""
-        Write-Host "Next steps:"
-        Write-Host "  mvn package -DskipTests"
-        Write-Host "  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar [project_dir] [config]"
-        exit 0
+foreach ($k in $blocking) { Fail "$($Resolved[$k].Tool.Label) is required for $($Resolved[$k].Tool.Gate)." }
+Write-Host ''
+if ($Mode -ne 'install') {
+    Warn 'Re-run with --install to set these up:    .\chocolatey-setup.ps1 --install'
 } else {
-        Fail "$bad tool(s) are still missing or at the wrong version."
-        if ($Mode -ne "install") {
-                Warn "Re-run with --install to fix:    .\chocolatey-setup.ps1 --install"
-        } else {
-                Warn "Open a NEW elevated PowerShell window (so PATH changes take effect) and re-run --install."
-        }
-        exit 1
+    Warn 'Install did not resolve everything. Try:'
+    Warn '  .\chocolatey-setup.ps1 --install --portable      (skip Chocolatey, unpack into .tools\)'
+    Warn 'or run the same command from an elevated PowerShell.'
 }
+exit 1
