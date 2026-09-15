@@ -10,17 +10,21 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- release, not source/target - compiles against the real JDK 17 API so
+             building on a newer JDK can't pull in methods 17 doesn't have. -->
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>6.1.3</junit.version>
     </properties>
 
     <dependencies>
-        <!-- Source: https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
+        <!-- Pinned on purpose. LATEST is deprecated in Maven 3, gone in Maven 4,
+             and re-checks remote metadata every build - a bad network day or a
+             new JUnit release breaks a build that worked yesterday. -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>LATEST</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
