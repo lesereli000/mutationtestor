@@ -36,25 +36,45 @@ cd mutationtestor
 
 ## 2. Install Dependencies
 
-From the project root, run the setup script in an **elevated (Administrator) PowerShell**:
+First, see what is already on the machine. This changes nothing:
+
+```powershell
+.\chocolatey-setup.ps1
+```
+
+Then install whatever came back missing:
 
 ```powershell
 .\chocolatey-setup.ps1 --install
 ```
 
-This installs Chocolatey (if needed) and then installs all required tools: Java 21, Maven, Git, Racket, Python 3, Node.js, and .NET SDK 10. **.NET 10 is required** - earlier versions will cause a build failure.
+Useful variations:
+
+| Command | Effect |
+|---------|--------|
+| `--install --minimal` | Skips the slow optional pieces (Racket, the ~170 MB Puppeteer Chrome download) |
+| `--install --portable` | Never calls Chocolatey; unpacks tools into `.tools\` instead. Use when you have no Administrator rights |
+| `--install --only dotnet,node` | Only touches the listed tools |
+| `--install --skip racket` | Leaves the listed tools alone |
+
+What the script will and will not do:
+
+- **It never upgrades or replaces anything you already have.** If a usable JDK, Maven, .NET SDK, Node, Python, or Racket is already installed, it is detected and used as-is. A pre-existing .NET 8 or 9 is fine — .NET SDKs install side by side, so adding 10 does not disturb them.
+- **It never edits your system PATH.** Instead it writes `demo-env.ps1` and `demo-env.cmd`, which put the detected tools on PATH for one shell session only.
+- **Administrator rights are optional.** Without them it skips Chocolatey and downloads the official upstream archives into `.tools\`.
+- **To undo everything:** delete `.tools\`, `demo-env.ps1`, and `demo-env.cmd`.
 
 > **If PowerShell blocks the script**, run it as a one-time bypass:
 >
 > ```powershell
-> powershell -ExecutionPolicy Bypass -File .\chocolatey-setup.ps1
+> powershell -ExecutionPolicy Bypass -File .\chocolatey-setup.ps1 --install
 > ```
 
 ---
 
 ## 3. Verify Dependencies
 
-When the script finishes, it prints a verification summary. All lines should read `[OK]` before proceeding. To re-run verification at any time:
+The script ends with a summary table. Re-run it at any time — it is safe and read-only without `--install`:
 
 ```powershell
 .\chocolatey-setup.ps1
@@ -63,16 +83,57 @@ When the script finishes, it prints a verification summary. All lines should rea
 Expected output:
 
 ```
-[OK] Java/JDK 17+:          openjdk 21.x.x ...
-[OK] Maven:                 Apache Maven 3.x.x ...
-[OK] .NET SDK (net10.0):    10.x.x
-[OK] Python 3:              Python 3.x.x
-[OK] Node.js/npm:           x.x.x
-[OK] Racket:                Racket v8.x ...
-[OK] Puppeteer (JSProject): x.x.x
+Tool     Status Version Required Location
+----     ------ ------- -------- --------
+JDK      OK     17.0    yes      C:\Program Files\Eclipse Adoptium\jdk-17...\bin\java.exe
+Maven    OK     3.9     yes      C:\ProgramData\chocolatey\lib\maven\...\bin\mvn.cmd
+.NET SDK OK     10.0    no       C:\Program Files\dotnet\dotnet.exe
+Node.js  OK     22.11   no       C:\Program Files\nodejs\node.exe
+Python   OK     3.11    no       C:\Python311\python.exe
+Racket   OK     8.12    no       C:\Program Files\Racket\Racket.exe
+```
+
+Only **JDK** and **Maven** are required — they run the tester itself. Each of the others gates one language sample, so if `.NET SDK` is missing you lose the C# demo and nothing else.
+
+Before building or running, load the toolchain into your shell:
+
+```powershell
+. .\demo-env.ps1
+```
+
+```cmd
+:: cmd.exe
+demo-env.cmd
 ```
 
 ![Dependency check showing all OK](dependency_check.png)
+
+---
+
+## 2b. Alternative: run it in Docker
+
+If you want one environment that behaves identically everywhere — and no installs at all on the presenting machine — build the image once, ahead of time:
+
+```powershell
+docker build -t mutationtester:demo .
+docker run --rm -it mutationtester:demo
+```
+
+The image bakes in JDK 17, Maven, .NET 10, Node, Python + pytest, Racket, and Chromium for Puppeteer, and it pre-builds the JAR and every package cache, so the demo itself needs no network. To run against your own project, mount it:
+
+```powershell
+docker run --rm -it -v "${PWD}/myproject:/work" mutationtester:demo `
+  java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+```
+
+To move it to a machine with no registry access:
+
+```powershell
+docker save mutationtester:demo | gzip > mutationtester-demo.tar.gz
+docker load < mutationtester-demo.tar.gz
+```
+
+> Build this image and run it end-to-end **before** you rely on it for a demo. It requires Docker Desktop, which itself needs Administrator rights, WSL2, and hardware virtualization.
 
 ---
 
