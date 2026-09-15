@@ -245,6 +245,28 @@ public class MSLTests {
     }
 
     @Test
+    void expressionFactoryAcceptsCanonicalLessThanOrEqualSymbol() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} <= {quantity}");
+        assertEquals("<=", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryRejectsParserTokenAlias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} LE {quantity}"));
+        assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
+            error.getMessage());
+    }
+
+    @Test
+    void expressionFactoryRejectsCaseVariantAlias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} leq {quantity}"));
+        assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
+            error.getMessage());
+    }
+
+    @Test
     void expressionFactoryThrowsOnUnknownPattern() {
         assertThrows(IllegalArgumentException.class,
             () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
