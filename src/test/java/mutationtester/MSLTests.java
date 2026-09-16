@@ -245,6 +245,28 @@ public class MSLTests {
     }
 
     @Test
+    void expressionFactoryAcceptsCanonicalLessThanOrEqualSymbol() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} <= {quantity}");
+        assertEquals("<=", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryRejectsParserTokenAlias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} LE {quantity}"));
+        assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
+            error.getMessage());
+    }
+
+    @Test
+    void expressionFactoryRejectsCaseVariantAlias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} leq {quantity}"));
+        assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
+            error.getMessage());
+    }
+
+    @Test
     void expressionFactoryThrowsOnUnknownPattern() {
         assertThrows(IllegalArgumentException.class,
             () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
@@ -343,11 +365,11 @@ public class MSLTests {
 
     @Test
     void ruleGeneratorParsesAllRulesFromRealSpec() throws Exception {
-        // The real OperatorMutations.txt: 17 Replace blocks, 12 with And: Inverse -> 29 total
+        // The real OperatorMutations.txt: 19 Replace blocks, 6 with And: Inverse -> 25 total
         java.io.File spec = new java.io.File(
             "OperatorMutations.txt");
         java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
-        assertEquals(29, rules.size());
+        assertEquals(25, rules.size());
     }
 
     @Test
@@ -381,6 +403,36 @@ public class MSLTests {
         java.util.List<MutationRule> rules =
             MutationRuleGenerator.generateRules(spec.toFile());
         assertEquals(2, rules.size());
+    }
+
+    @Test
+    void ruleGeneratorParsesPitStyleScannerBackedRules(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path spec = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(spec,
+            "PIT Built-in Mutations\n\n" +
+            "\tReplace: {return_value}\n" +
+            "\tWith: {empty_value}\n\n" +
+            "\tReplace: {constructor_call}\n" +
+            "\tWith: null\n\n" +
+            "\tReplace: {non_void_method_call}\n" +
+            "\tWith: {default_value}\n\n" +
+            "\tReplace: {equality_condition}\n" +
+            "\tWith: true\n\n" +
+            "\tReplace: {order_condition}\n" +
+            "\tWith: false\n\n" +
+            "End\n");
+
+        java.util.List<MutationRule> rules =
+            MutationRuleGenerator.generateRules(spec.toFile());
+
+        assertEquals(5, rules.size());
+        assertTrue(rules.stream().allMatch(rule -> rule instanceof ScannerBackedRule));
+        assertEquals("PIT Built-in Mutations: return value \u2192 empty value", rules.get(0).getLabel());
+        assertEquals("PIT Built-in Mutations: constructor call \u2192 null", rules.get(1).getLabel());
+        assertEquals("PIT Built-in Mutations: non-void method call \u2192 default value", rules.get(2).getLabel());
+        assertEquals("PIT Built-in Mutations: equality condition \u2192 true", rules.get(3).getLabel());
+        assertEquals("PIT Built-in Mutations: order condition \u2192 false", rules.get(4).getLabel());
     }
 
     @Test

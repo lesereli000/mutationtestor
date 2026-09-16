@@ -1,5 +1,5 @@
 source_code_directory=src/CSProject
 mutator_type=CUSTOM
-custom_mutation_spec=specs/context-sensitive-mutations.spec
+custom_mutation_spec=StatementMutation.txt
 compile_command=dotnet build tests/CSProject.Tests/CSProject.Tests.csproj
-test_command=dotnet test tests/CSProject.Tests/CSProject.Tests.csproj
+test_command=dotnet test --no-build tests/CSProject.Tests/CSProject.Tests.csproj

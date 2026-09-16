@@ -376,6 +376,22 @@
         });
         runner.endSuite();
 
+        runner.suite('Loop Tests');
+        runner.test('sumUpTo(5) should return 10', () => {
+            runner.assertEquals(sumUpTo(5), 10);
+        });
+        runner.test('sumUpTo(0) should return 0', () => {
+            runner.assertEquals(sumUpTo(0), 0);
+        });
+        runner.test('countDown(3) should return 0', () => {
+            runner.assertEquals(countDown(3), 0);
+        });
+        runner.endSuite();
+
+        runner.test('isInRange(1, 1, 10) should return true - boundary', () => {
+            runner.assertEquals(isInRange(1, 1, 10), true);
+        });
+
         // Render results
         runner.render();
 

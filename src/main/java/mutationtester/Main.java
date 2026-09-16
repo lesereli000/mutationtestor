@@ -1,21 +1,5 @@
 package mutationtester;
 
-import mutationtester.coverage.CoverageData;
-import mutationtester.model.MutantResult;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-import mutationtester.scanner.CSharpMutationScanner;
-import mutationtester.scanner.DictionaryMutationScanner;
-import mutationtester.scanner.JavaMutationScanner;
-import mutationtester.scanner.JavaScriptMutationScanner;
-import mutationtester.scanner.PythonMutationScanner;
-import mutationtester.scanner.RacketMutationScanner;
-
-import mutationtester.msl.MSLScannerAdapter;
-import mutationtester.msl.MutationRule;
-import mutationtester.msl.MutationRuleGenerator;
-import mutationtester.report.HtmlReportGenerator;
-import mutationtester.report.MutationReport;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -25,17 +9,38 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Collections;
-import java.util.concurrent.*;
-import java.util.Iterator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.FileUtils;
 
+import mutationtester.coverage.CoverageData;
+import mutationtester.model.MutantResult;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
+import mutationtester.msl.MutationRule;
+import mutationtester.msl.MutationRuleGenerator;
+import mutationtester.report.HtmlReportGenerator;
+import mutationtester.report.MutationReport;
+import mutationtester.scanner.CSharpMutationScanner;
+import mutationtester.scanner.DictionaryMutationScanner;
+import mutationtester.scanner.JavaMutationScanner;
+import mutationtester.scanner.JavaScriptMutationScanner;
+import mutationtester.scanner.PythonMutationScanner;
+import mutationtester.scanner.RacketMutationScanner;
+
 public class Main {
-    private static final long MAX_CMD_TIME = 60000;
+    private static final long MAX_CMD_TIME = 180000;
     private static final String OUTPUT_ROOT = "output";
     private static final String WORKING_DIR_PREFIX = "workdir-";
 
@@ -92,7 +97,7 @@ public class Main {
         try {
             boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
             if (!completed) {
-                process.destroyForcibly();
+                destroyProcessTree(process);
                 System.out.println("Process " + commandList.get(0) + " timed out.");
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
                 outputFuture.cancel(true);
@@ -112,19 +117,35 @@ public class Main {
             return output.toString();
 
         } catch (ExecutionException e) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
             System.out.println("Error reading command output " + command + ": " + e.getMessage());
             e.printStackTrace();
             output.append("PROCESS_EXECUTION_ERROR").append(System.lineSeparator());
             return output.toString();
         } catch (InterruptedException e) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
             Thread.currentThread().interrupt();
             System.out.println("Interrupted while waiting for process " + commandList.get(0) + " to finish");
             e.printStackTrace();
             return "";
         } finally {
             outputExecutor.shutdownNow();
+        }
+    }
+
+    private static void destroyProcessTree(Process process) {
+        List<ProcessHandle> descendants = process.descendants().toList();
+        descendants.forEach(ProcessHandle::destroyForcibly);
+        process.destroyForcibly();
+        try {
+            process.waitFor(5, TimeUnit.SECONDS);
+            for (ProcessHandle descendant : descendants) {
+                descendant.onExit().get(5, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | TimeoutException e) {
+            System.err.println("Warning: Timed out while waiting for child process cleanup: " + e.getMessage());
         }
     }
 
@@ -162,18 +183,16 @@ public class Main {
             return;
         }
 
-             if ("ALL".equalsIgnoreCase(config.mutatorType)) {
-            for (Mutator.MutatorType type : PythonMutationScanner.getSupportedTypes()) {
-                mutationTest(
-                        projectDirectory,
-                        config.sourceCodeDirectory,
-                        type.name(),
-                        config.compileCommand,
-                        config.testCommand,
-                        config.customMutationSpec,
-                        config.coverageCommand,
-                        config.coverageReport);
-            }
+        if ("ALL".equalsIgnoreCase(config.mutatorType)) {
+            multiMutationTest(
+                    projectDirectory,
+                    config.sourceCodeDirectory,
+                    allSupportedTypes(),
+                    config.compileCommand,
+                    config.testCommand,
+                    config.customMutationSpec,
+                    config.coverageCommand,
+                    config.coverageReport);
         } else if (config.mutatorType.contains(",")) {
             // Multiple comma-separated mutation types — run all, one combined report
             multiMutationTest(
@@ -319,7 +338,7 @@ public class Main {
             String labelInfo = point.getCustomLabel() != null ? " [" + point.getCustomLabel() + "]" : "";
             System.out.print("[" + current++ + "/" + mutationPoints.size() + "] Testing " +
                     point.getSourceFile().getName() + ":" + point.getLineNumber() + ":" + point.getColumnNumber() +
-                    " (" + point.getOperator() + " \u2192 " + point.getReplacement() + ")" + labelInfo + "... ");
+                    " (" + point.getOperator() + " to " + point.getReplacement() + ")" + labelInfo + "... ");
 
             MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
             results.add(result);
@@ -505,7 +524,12 @@ public class Main {
         } finally {
             if (originalContent != null) {
                 try {
-                    Files.writeString(originalFile.toPath(), originalContent);
+                    Path originalPath = originalFile.toPath();
+                    Path parent = originalPath.getParent();
+                    if (parent != null) {
+                        Files.createDirectories(parent);
+                    }
+                    Files.writeString(originalPath, originalContent);
                 } catch (IOException e) {
                     System.err.println("ERROR: Failed to restore " + originalFile + ": " + e.getMessage());
                 }
@@ -714,6 +738,23 @@ public class Main {
         }
 
         return points;
+    }
+
+    private static String allSupportedTypes() {
+        List<Mutator.MutatorType> union = new ArrayList<>(PythonMutationScanner.getSupportedTypes());
+        for (Mutator.MutatorType type : RacketMutationScanner.getSupportedTypes()) {
+            if (!union.contains(type)) {
+                union.add(type);
+            }
+        }
+        StringBuilder joined = new StringBuilder();
+        for (Mutator.MutatorType type : union) {
+            if (joined.length() > 0) {
+                joined.append(',');
+            }
+            joined.append(type.name());
+        }
+        return joined.toString();
     }
 
     private static boolean shouldScanFile(File file) {

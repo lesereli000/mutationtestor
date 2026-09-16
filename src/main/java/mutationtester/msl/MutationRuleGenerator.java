@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import mutationtester.model.Mutator;
+
 /**
  * Parses a .spec file into a list of MutationRule objects.
  *
@@ -124,6 +126,48 @@ public class MutationRuleGenerator {
 
         if (fromPattern.equals("{invocation_statement}") && toPattern.equals(";")) {
             return new StatementRemovalRule(groupLabel + ": statement \u2192 ;");
+        }
+
+        if (fromPattern.equals("{return_value}") && toPattern.equals("{empty_value}")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.EMPTY_RETURNS,
+                    groupLabel + ": return value \u2192 empty value");
+        }
+
+        if (fromPattern.equals("{constructor_call}") && toPattern.equals("null")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.CONSTRUCTOR_CALLS,
+                    groupLabel + ": constructor call \u2192 null");
+        }
+
+        if (fromPattern.equals("{non_void_method_call}") && toPattern.equals("{default_value}")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                    groupLabel + ": non-void method call \u2192 default value");
+        }
+
+        if (fromPattern.equals("{equality_condition}") && toPattern.equals("true")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF,
+                    groupLabel + ": equality condition \u2192 true");
+        }
+
+        if (fromPattern.equals("{equality_condition}") && toPattern.equals("false")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE,
+                    groupLabel + ": equality condition \u2192 false");
+        }
+
+        if (fromPattern.equals("{order_condition}") && toPattern.equals("true")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF,
+                    groupLabel + ": order condition \u2192 true");
+        }
+
+        if (fromPattern.equals("{order_condition}") && toPattern.equals("false")) {
+            return new ScannerBackedRule(
+                    Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
+                    groupLabel + ": order condition \u2192 false");
         }
 
         if (fromPattern.equals("string.IsNullOrEmpty({quantity})")) {
