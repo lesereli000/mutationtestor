@@ -132,21 +132,49 @@ java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/R
 
 The image bakes in JDK 17, Maven, .NET 10, Node, Python + pytest, Racket, and Chrome for Puppeteer, and pre-builds the JAR and every package cache, so the demo needs no network.
 
-To run against **your own** project, mount it. The directory you mount must already exist and contain a config file. Note the line-continuation character differs by shell — `\` on macOS/Linux, backtick on PowerShell. Getting this wrong leaves the shell sitting at a `>` prompt waiting for you to finish the command; press Ctrl+C and try again.
+### Running it against your own project
+
+A container has its own filesystem. Nothing from your computer is visible inside it unless you say so, which is what *mounting* means — `-v` maps a folder on your machine to a path inside the container:
+
+```
+-v  C:\folder\on\your\machine  :  /path/inside/the/container
+```
+
+So `-v "${PWD}/myproject:/work"` makes your `myproject` folder appear as `/work` inside the container. Every path you pass to the tool after that (`/work/mutation.config`) is a path **inside** the container, not on your machine.
+
+Your project needs a config file in it. A complete, working example:
+
+```text
+myproject/
+  src/calc.py
+  tests/test_calc.py
+  mutation.config
+```
+
+```text
+source_code_directory=src
+mutator_type=AOR_PLUS_TO_MINUS
+compile_command=
+test_command=python3 -m pytest ./tests
+```
+
+Then run it. Note the line-continuation character differs by shell — `\` on macOS/Linux, a backtick on PowerShell. Getting it wrong leaves the shell sitting at a `>` prompt waiting for you to finish the command; press Ctrl+C and try again.
 
 macOS / Linux:
 
 ```bash
-docker run --rm -it -v "$PWD/myproject:/work" mutationtester:demo \
-  java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+docker run --rm -w /work -v "$PWD/myproject:/work" mutationtester:demo \
+  java -jar /opt/mutationtester/target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
 ```
 
 Windows PowerShell:
 
 ```powershell
-docker run --rm -it -v "${PWD}/myproject:/work" mutationtester:demo `
-  java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+docker run --rm -w /work -v "${PWD}/myproject:/work" mutationtester:demo `
+  java -jar /opt/mutationtester/target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
 ```
+
+**`-w /work` is not optional.** It makes the container write its output into the mounted folder, so the HTML report ends up at `myproject/output/report/mutation-report-demo.html` on your machine. Without it the report is written inside the container and `--rm` deletes it the moment the run finishes — the tool still prints "HTML report generated at...", but the file is gone. The jar path must be absolute for the same reason, since `/work` is now the working directory.
 
 To move the image to a machine with no registry access:
 
