@@ -6,3 +6,4 @@ function testNumbers() {
     return integer + decimal + scientific;
 }
 
+module.exports = { testNumbers };
