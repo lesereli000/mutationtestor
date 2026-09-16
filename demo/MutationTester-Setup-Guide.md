@@ -81,6 +81,7 @@ The script ends with a summary table. Re-run it at any time — it is safe and r
 ```
 
 Expected output:
+![Dependency check showing all OK](dependency_verification.png)
 
 ```
 Tool     Status Version Required Location
@@ -106,7 +107,7 @@ Before building or running, load the toolchain into your shell:
 demo-env.cmd
 ```
 
-![Dependency check showing all OK](dependency_check.png)
+![Toolchain load](toolchain_load.png)
 
 ---
 
