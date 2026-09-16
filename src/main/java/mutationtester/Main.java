@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,6 +44,20 @@ public class Main {
     private static final long MAX_CMD_TIME = 180000;
     private static final String OUTPUT_ROOT = "output";
     private static final String WORKING_DIR_PREFIX = "workdir-";
+    private static final Set<String> DEFAULT_COPY_EXCLUDED_DIRS = Set.of(
+            ".git",
+            ".idea",
+            ".vscode",
+            "target",
+            "output",
+            "demo-output",
+            "external",
+            "node_modules",
+            "bin",
+            "obj",
+            "__pycache__",
+            ".venv",
+            "venv");
 
     static class Config {
         String sourceCodeDirectory;
@@ -293,7 +308,7 @@ public class Main {
         try {
             FileUtils.forceMkdir(outputRoot.toFile());
             cleanupWorkDirectories(outputRoot, null);
-            FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
+            copyProjectToWorkingDirectory(projectPath, mutantPath, sourcePath);
         } catch (IOException e) {
             System.err.println("Error copying " + sourcePath + " to " + mutantPath + ": " + e.getMessage());
             return;
@@ -406,6 +421,39 @@ public class Main {
                 System.err.println("Warning: Failed to delete temporary work directory " + activeWorkdir + ": " + e.getMessage());
             }
         }
+    }
+
+    static void copyProjectToWorkingDirectory(Path projectPath, Path mutantPath, Path sourcePath) throws IOException {
+        Path projectRoot = projectPath.toAbsolutePath().normalize();
+        Path requiredSource = projectRoot.resolve(sourcePath).normalize();
+
+        FileUtils.copyDirectory(
+                projectRoot.toFile(),
+                mutantPath.toFile(),
+                file -> shouldCopyProjectPath(file.toPath(), projectRoot, requiredSource));
+    }
+
+    private static boolean shouldCopyProjectPath(Path path, Path projectRoot, Path requiredSource) {
+        Path normalized = path.toAbsolutePath().normalize();
+        if (normalized.equals(projectRoot)) {
+            return true;
+        }
+
+        boolean neededForSource = normalized.startsWith(requiredSource) || requiredSource.startsWith(normalized);
+        Path relative;
+        try {
+            relative = projectRoot.relativize(normalized);
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+
+        for (Path part : relative) {
+            if (DEFAULT_COPY_EXCLUDED_DIRS.contains(part.toString()) && !neededForSource) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static CoverageData loadCoverageData(
@@ -862,7 +910,7 @@ public class Main {
         try {
             FileUtils.forceMkdir(outputRoot.toFile());
             cleanupWorkDirectories(outputRoot, null);
-            FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
+            copyProjectToWorkingDirectory(projectPath, mutantPath, sourcePath);
         } catch (IOException e) {
             System.err.println("Error setting up working directory: " + e.getMessage());
             return;

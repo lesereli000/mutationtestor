@@ -142,6 +142,44 @@ public class MainTests {
     }
 
     @Test
+    void testCopyProjectToWorkingDirectorySkipsHeavyGeneratedDirectories() throws Exception {
+        Path projectDir = Files.createTempDirectory("mutation-copy-project");
+        Path destination = Files.createTempDirectory("mutation-copy-destination");
+
+        Files.createDirectories(projectDir.resolve("src/main/java"));
+        Files.writeString(projectDir.resolve("src/main/java/Demo.java"), "class Demo {}\n");
+        Files.createDirectories(projectDir.resolve("external/bad"));
+        Files.writeString(projectDir.resolve("external/bad/file.txt"), "unused\n");
+        Files.createDirectories(projectDir.resolve("output/report"));
+        Files.writeString(projectDir.resolve("output/report/old.html"), "old\n");
+        Files.createDirectories(projectDir.resolve("target/classes"));
+        Files.writeString(projectDir.resolve("target/classes/Demo.class"), "compiled\n");
+
+        Main.copyProjectToWorkingDirectory(projectDir, destination, Path.of("src/main/java"));
+
+        assertTrue(Files.exists(destination.resolve("src/main/java/Demo.java")));
+        assertFalse(Files.exists(destination.resolve("external")));
+        assertFalse(Files.exists(destination.resolve("output")));
+        assertFalse(Files.exists(destination.resolve("target")));
+    }
+
+    @Test
+    void testCopyProjectToWorkingDirectoryKeepsSourceInsideExcludedDirectory() throws Exception {
+        Path projectDir = Files.createTempDirectory("mutation-copy-external-source");
+        Path destination = Files.createTempDirectory("mutation-copy-external-destination");
+
+        Files.createDirectories(projectDir.resolve("external/app/src"));
+        Files.writeString(projectDir.resolve("external/app/src/Demo.java"), "class Demo {}\n");
+        Files.createDirectories(projectDir.resolve("external/unused"));
+        Files.writeString(projectDir.resolve("external/unused/file.txt"), "unused\n");
+
+        Main.copyProjectToWorkingDirectory(projectDir, destination, Path.of("external/app/src"));
+
+        assertTrue(Files.exists(destination.resolve("external/app/src/Demo.java")));
+        assertFalse(Files.exists(destination.resolve("external/unused")));
+    }
+
+    @Test
     void testSingleMutantSkipsExecutionWhenLineHasNoCoverage() throws Exception {
         Path projectDir = Files.createTempDirectory("mutation-no-coverage-skip");
         Path sourceFile = projectDir.resolve("Demo.java");
