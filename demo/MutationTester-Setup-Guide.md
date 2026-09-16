@@ -112,28 +112,52 @@ demo-env.cmd
 
 ## 2b. Alternative: run it in Docker
 
-If you want one environment that behaves identically everywhere — and no installs at all on the presenting machine — build the image once, ahead of time:
+If you want one environment that behaves identically everywhere — and no installs at all on the presenting machine — build the image once, ahead of time. Works the same on Windows, macOS and Linux:
 
-```powershell
+```bash
 docker build -t mutationtester:demo .
 docker run --rm -it mutationtester:demo
 ```
 
-The image bakes in JDK 17, Maven, .NET 10, Node, Python + pytest, Racket, and Chromium for Puppeteer, and it pre-builds the JAR and every package cache, so the demo itself needs no network. To run against your own project, mount it:
+The image is not published anywhere, so you must build it yourself. Running `docker run` without building first fails with `pull access denied` — that only means Docker looked on Docker Hub and found nothing.
+
+That drops you at a shell inside the container. From there, run any of the bundled samples:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/PytestProject samples/PytestProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/CSProject samples/CSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/RacketProject samples/RacketProject/config-context.txt
+```
+
+The image bakes in JDK 17, Maven, .NET 10, Node, Python + pytest, Racket, and Chrome for Puppeteer, and pre-builds the JAR and every package cache, so the demo needs no network.
+
+To run against **your own** project, mount it. The directory you mount must already exist and contain a config file. Note the line-continuation character differs by shell — `\` on macOS/Linux, backtick on PowerShell. Getting this wrong leaves the shell sitting at a `>` prompt waiting for you to finish the command; press Ctrl+C and try again.
+
+macOS / Linux:
+
+```bash
+docker run --rm -it -v "$PWD/myproject:/work" mutationtester:demo \
+  java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+```
+
+Windows PowerShell:
 
 ```powershell
 docker run --rm -it -v "${PWD}/myproject:/work" mutationtester:demo `
   java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
 ```
 
-To move it to a machine with no registry access:
+To move the image to a machine with no registry access:
 
-```powershell
+```bash
 docker save mutationtester:demo | gzip > mutationtester-demo.tar.gz
 docker load < mutationtester-demo.tar.gz
 ```
 
-> Build this image and run it end-to-end **before** you rely on it for a demo. It requires Docker Desktop, which itself needs Administrator rights, WSL2, and hardware virtualization.
+> On an Apple Silicon Mac, build the image on that Mac rather than loading a tarball built on Windows — the transferred image would be x86 and run under emulation.
+
+> Build this image and run it end-to-end **before** you rely on it for a demo. It requires Docker Desktop, which on Windows needs Administrator rights, WSL2, and hardware virtualization.
 
 ---
 
