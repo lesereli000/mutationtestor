@@ -47,7 +47,10 @@ demo-output/
 /samples/JSProject/coverage/
 /samples/RacketProject/.mutation-racket-coverage.tmp
 /samples/RacketProject/racket-coverage.info
-/.vscode
+# Share settings.json (it turns off the Java extension's autobuild, which
+# otherwise fights Maven over target/classes), keep everything else local.
+.vscode/*
+!.vscode/settings.json
 /node_modules
 
 # External local projects / submodules
