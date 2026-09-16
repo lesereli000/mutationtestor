@@ -71,7 +71,11 @@ COPY --chown=demo:demo . .
 # fail the whole build.
 RUN mvn -B --no-transfer-progress package -DskipTests \
     && (cd samples/MavenProject && mvn -B --no-transfer-progress -DskipTests dependency:go-offline || true) \
-    && (cd samples/JSProject && npm install --no-fund --no-audit && npx puppeteer browsers install chrome) \
+    && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+           (cd samples/JSProject && npm install --no-fund --no-audit && npx puppeteer browsers install chrome); \
+       else \
+           (cd samples/JSProject && PUPPETEER_SKIP_DOWNLOAD=true npm install --no-fund --no-audit); \
+       fi \
     && (cd samples/CSProject && dotnet restore tests/CSProject.Tests/CSProject.Tests.csproj || true)
 
 # Fail here rather than during a demo. An earlier version of this file built
@@ -81,9 +85,13 @@ RUN java -version && javac -version && mvn -v >/dev/null \
     && dotnet --list-sdks >/dev/null && node --version \
     && python3 -m pytest --version >/dev/null && racket --version \
     && test -f target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    && node -e "require('/opt/mutationtester/samples/JSProject/node_modules/puppeteer') \
-        .launch({args: ['--no-sandbox', '--disable-setuid-sandbox']}) \
-        .then(async b => { console.log('chrome ok:', await b.version()); await b.close(); }) \
-        .catch(e => { console.error('chrome failed:', e.message); process.exit(1); })"
+    && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+           node -e "require('/opt/mutationtester/samples/JSProject/node_modules/puppeteer') \
+               .launch({args: ['--no-sandbox', '--disable-setuid-sandbox']}) \
+               .then(async b => { console.log('chrome ok:', await b.version()); await b.close(); }) \
+               .catch(e => { console.error('chrome failed:', e.message); process.exit(1); })"; \
+       else \
+           echo "Skipping Puppeteer Chrome launch check on $(dpkg --print-architecture): Chrome for Testing is not published for linux/arm64."; \
+       fi
 
 CMD ["/bin/bash"]
