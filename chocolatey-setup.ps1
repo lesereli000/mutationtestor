@@ -744,6 +744,14 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT     = '1'
 $env:DOTNET_NOLOGO                   = '1'
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
 
+# Stop dotnet leaving MSBuild and Roslyn servers running in the background.
+# They hold open handles on the build output, so deleting a mutant's work
+# directory fails on Windows with "Cannot delete file". MSBuild reads its
+# properties from the environment, so UseSharedCompilation works here too.
+$env:MSBUILDDISABLENODEREUSE       = '1'
+$env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
+$env:UseSharedCompilation          = 'false'
+
 $Resolved = [ordered]@{}
 
 Head 'Detecting installed tools'
@@ -855,6 +863,10 @@ function Write-EnvScripts {
     if ($dotnetRoot) { [void]$ps.Add(('$env:DOTNET_ROOT = "{0}"' -f $dotnetRoot)) }
     [void]$ps.Add('$env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"')
     [void]$ps.Add('$env:DOTNET_NOLOGO = "1"')
+    # Keep build servers from holding handles on files we need to delete.
+    [void]$ps.Add('$env:MSBUILDDISABLENODEREUSE = "1"')
+    [void]$ps.Add('$env:DOTNET_CLI_USE_MSBUILD_SERVER = "0"')
+    [void]$ps.Add('$env:UseSharedCompilation = "false"')
     [void]$ps.Add('Write-Host "Mutation tester environment ready." -ForegroundColor Green')
     Set-Content -LiteralPath (Join-Path $RootDir 'demo-env.ps1') -Value $ps -Encoding UTF8
 
@@ -866,6 +878,9 @@ function Write-EnvScripts {
     if ($dotnetRoot) { [void]$cmd.Add(('set "DOTNET_ROOT={0}"' -f $dotnetRoot)) }
     [void]$cmd.Add('set "DOTNET_CLI_TELEMETRY_OPTOUT=1"')
     [void]$cmd.Add('set "DOTNET_NOLOGO=1"')
+    [void]$cmd.Add('set "MSBUILDDISABLENODEREUSE=1"')
+    [void]$cmd.Add('set "DOTNET_CLI_USE_MSBUILD_SERVER=0"')
+    [void]$cmd.Add('set "UseSharedCompilation=false"')
     [void]$cmd.Add('echo Mutation tester environment ready.')
     Set-Content -LiteralPath (Join-Path $RootDir 'demo-env.cmd') -Value $cmd -Encoding ASCII
 }
