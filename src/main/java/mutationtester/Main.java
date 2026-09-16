@@ -183,18 +183,16 @@ public class Main {
             return;
         }
 
-             if ("ALL".equalsIgnoreCase(config.mutatorType)) {
-            for (Mutator.MutatorType type : PythonMutationScanner.getSupportedTypes()) {
-                mutationTest(
-                        projectDirectory,
-                        config.sourceCodeDirectory,
-                        type.name(),
-                        config.compileCommand,
-                        config.testCommand,
-                        config.customMutationSpec,
-                        config.coverageCommand,
-                        config.coverageReport);
-            }
+        if ("ALL".equalsIgnoreCase(config.mutatorType)) {
+            multiMutationTest(
+                    projectDirectory,
+                    config.sourceCodeDirectory,
+                    allSupportedTypes(),
+                    config.compileCommand,
+                    config.testCommand,
+                    config.customMutationSpec,
+                    config.coverageCommand,
+                    config.coverageReport);
         } else if (config.mutatorType.contains(",")) {
             // Multiple comma-separated mutation types — run all, one combined report
             multiMutationTest(
@@ -740,6 +738,23 @@ public class Main {
         }
 
         return points;
+    }
+
+    private static String allSupportedTypes() {
+        List<Mutator.MutatorType> union = new ArrayList<>(PythonMutationScanner.getSupportedTypes());
+        for (Mutator.MutatorType type : RacketMutationScanner.getSupportedTypes()) {
+            if (!union.contains(type)) {
+                union.add(type);
+            }
+        }
+        StringBuilder joined = new StringBuilder();
+        for (Mutator.MutatorType type : union) {
+            if (joined.length() > 0) {
+                joined.append(',');
+            }
+            joined.append(type.name());
+        }
+        return joined.toString();
     }
 
     private static boolean shouldScanFile(File file) {
