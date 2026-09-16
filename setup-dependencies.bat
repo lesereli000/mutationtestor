@@ -1,12 +1,12 @@
 @echo off
-:: setup-dependencies.bat — Windows launcher for chocolatey-setup.ps1
+:: Launcher for chocolatey-setup.ps1. Arguments pass straight through, so
+:: anything the script takes works here:
 ::
-:: Usage:
-::   setup-dependencies.bat            (check tools)
-::   setup-dependencies.bat --install  (install missing tools + project deps)
-::
-:: Requires PowerShell 5+ (built into Windows 10/11).
-:: Run from an elevated (Administrator) command prompt when using --install.
+::   setup-dependencies.bat                      see what's installed
+::   setup-dependencies.bat --install            install what's missing
+::   setup-dependencies.bat --install --minimal  skip the slow downloads
+::   setup-dependencies.bat --install --portable no Chocolatey, no admin
+::   setup-dependencies.bat --help
 
 setlocal
 set "SCRIPT_DIR=%~dp0"
@@ -17,14 +17,5 @@ if not exist "%PS_SCRIPT%" (
     exit /b 1
 )
 
-if /i "%~1"=="--install" (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" --install
-) else if /i "%~1"=="--help" (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" --help
-) else if "%~1"=="" (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" --check
-) else (
-    echo Unknown option: %~1
-    echo Usage: setup-dependencies.bat [--install]
-    exit /b 1
-)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %*
+exit /b %ERRORLEVEL%
