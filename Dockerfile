@@ -21,16 +21,21 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DOTNET_NOLOGO=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
-# JDK 17 (what the pom targets), Maven, Python, Racket, and Chromium for
-# Puppeteer. The distro Chromium saves us the 170 MB download and the usual
-# hunt for missing shared libraries when Chrome won't start in a container.
+# JDK 17 (what the pom targets), Maven, Python and Racket, plus the shared
+# libraries Chrome needs. Puppeteer downloads its own Chrome - don't reach for
+# the chromium package here, it's snap-only on Ubuntu and apt quietly satisfies
+# it with a stub that isn't a browser.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openjdk-17-jdk-headless \
         maven \
         python3 python3-venv python3-pip \
         racket \
-        chromium \
         ca-certificates curl git unzip xz-utils \
+        fonts-liberation libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 \
+        libcairo2 libcups2t64 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 \
+        libglib2.0-0t64 libgtk-3-0t64 libnspr4 libnss3 libpango-1.0-0 \
+        libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 \
+        libxi6 libxkbcommon0 libxrandr2 libxtst6 libxss1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Node from the official tarball so we control the version, not the distro.
@@ -40,11 +45,10 @@ RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-l
     && rm /tmp/node.tar.xz \
     && node --version && npm --version
 
-ENV PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_CACHE_DIR=/home/demo/.cache/puppeteer
 
-# Not root, mostly because Chromium won't start as root without --no-sandbox
-# and the sample tests don't pass it.
+# Don't run as root. The JS sample already launches Chrome with --no-sandbox,
+# so this is just good hygiene rather than something Puppeteer depends on.
 RUN useradd --create-home --shell /bin/bash demo
 USER demo
 
@@ -60,7 +64,19 @@ COPY --chown=demo:demo . .
 # fail the whole build.
 RUN mvn -B --no-transfer-progress package -DskipTests \
     && (cd samples/MavenProject && mvn -B --no-transfer-progress -DskipTests dependency:go-offline || true) \
-    && (cd samples/JSProject && npm install --no-fund --no-audit || true) \
+    && (cd samples/JSProject && npm install --no-fund --no-audit && npx puppeteer browsers install chrome) \
     && (cd samples/CSProject && dotnet restore tests/CSProject.Tests/CSProject.Tests.csproj || true)
+
+# Fail here rather than during a demo. An earlier version of this file built
+# perfectly well with a "Chrome" that was really a snap stub, so actually
+# launch the browser instead of trusting that the package installed.
+RUN java -version && javac -version && mvn -v >/dev/null \
+    && dotnet --list-sdks >/dev/null && node --version \
+    && python3 -m pytest --version >/dev/null && racket --version \
+    && test -f target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    && node -e "require('/opt/mutationtester/samples/JSProject/node_modules/puppeteer') \
+        .launch({args: ['--no-sandbox', '--disable-setuid-sandbox']}) \
+        .then(async b => { console.log('chrome ok:', await b.version()); await b.close(); }) \
+        .catch(e => { console.error('chrome failed:', e.message); process.exit(1); })"
 
 CMD ["/bin/bash"]
