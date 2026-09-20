@@ -13,6 +13,25 @@ public interface MSLScannerAdapter {
 
     boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator);
 
+    /**
+     * True when {@code ctx} is a prefix/postfix update for the canonical MSL
+     * operator {@code ++} or {@code --}. Languages without those tokens map
+     * the equivalent form (Racket {@code add1}/{@code sub1}). Default: false.
+     */
+    default boolean isUpdateExpressionFor(ParseTree ctx, String mslOperator) {
+        return false;
+    }
+
+    /**
+     * Maps a canonical MSL operator to the token that appears in this
+     * language's source (identity for Java/JS/C#/Python; {@code ++}→{@code add1}
+     * on Racket). Used when writing the MutationPoint so apply/restore splice
+     * the real source token.
+     */
+    default String translateOperator(String mslOperator) {
+        return mslOperator;
+    }
+
     ParseTree getLeftOperand(ParseTree ctx);
 
     ParseTree getRightOperand(ParseTree ctx);

@@ -1765,6 +1765,19 @@ public class CSharpMutationScanner {
             }
 
             @Override
+            public boolean isUpdateExpressionFor(ParseTree ctx, String mslOperator) {
+                if (ctx instanceof CSharpParser.Post_increment_expressionContext
+                        || ctx instanceof CSharpParser.Pre_increment_expressionContext) {
+                    return "++".equals(mslOperator);
+                }
+                if (ctx instanceof CSharpParser.Post_decrement_expressionContext
+                        || ctx instanceof CSharpParser.Pre_decrement_expressionContext) {
+                    return "--".equals(mslOperator);
+                }
+                return false;
+            }
+
+            @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
                 return ctx.getChild(0);
             }
@@ -1776,6 +1789,14 @@ public class CSharpMutationScanner {
 
             @Override
             public ParseTree getOperatorToken(ParseTree ctx) {
+                if (ctx instanceof CSharpParser.Post_increment_expressionContext
+                        || ctx instanceof CSharpParser.Post_decrement_expressionContext) {
+                    return ctx.getChild(ctx.getChildCount() - 1);
+                }
+                if (ctx instanceof CSharpParser.Pre_increment_expressionContext
+                        || ctx instanceof CSharpParser.Pre_decrement_expressionContext) {
+                    return ctx.getChild(0);
+                }
                 if (ctx.getChildCount() >= 3) return ctx.getChild(1);
                 return null;
             }

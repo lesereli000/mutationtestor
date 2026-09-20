@@ -173,9 +173,31 @@ public class JavaScriptMutationScanner {
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 return ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(mslOperator);
             }
+
+            @Override
+            public boolean isUpdateExpressionFor(ParseTree ctx, String mslOperator) {
+                if (ctx instanceof JavaScriptParser.PostIncrementExpressionContext
+                        || ctx instanceof JavaScriptParser.PreIncrementExpressionContext) {
+                    return "++".equals(mslOperator);
+                }
+                if (ctx instanceof JavaScriptParser.PostDecreaseExpressionContext
+                        || ctx instanceof JavaScriptParser.PreDecreaseExpressionContext) {
+                    return "--".equals(mslOperator);
+                }
+                return false;
+            }
+
             @Override public ParseTree getLeftOperand(ParseTree ctx)  { return ctx.getChild(0); }
             @Override public ParseTree getRightOperand(ParseTree ctx) { return ctx.getChild(2); }
             @Override public ParseTree getOperatorToken(ParseTree ctx) {
+                if (ctx instanceof JavaScriptParser.PostIncrementExpressionContext
+                        || ctx instanceof JavaScriptParser.PostDecreaseExpressionContext) {
+                    return ctx.getChild(ctx.getChildCount() - 1);
+                }
+                if (ctx instanceof JavaScriptParser.PreIncrementExpressionContext
+                        || ctx instanceof JavaScriptParser.PreDecreaseExpressionContext) {
+                    return ctx.getChild(0);
+                }
                 return ctx.getChildCount() >= 3 ? ctx.getChild(1) : null;
             }
             @Override

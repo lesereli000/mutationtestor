@@ -198,10 +198,10 @@ public class MutationRuleGenerator {
             return new StringCallReplacementRule(funcName, suffix, label);
         }
 
-        BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);
-        BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
-        String label = groupLabel + ": " + fromExpr.getOperator()
-                + " \u2192 " + toExpr.getOperator();
+        MSLExpression fromExpr = MSLExpressionFactory.parse(fromPattern);
+        MSLExpression toExpr = MSLExpressionFactory.parse(toPattern);
+        String label = groupLabel + ": " + ReplacementRule.operatorOf(fromExpr)
+                + " \u2192 " + ReplacementRule.operatorOf(toExpr);
         return new ReplacementRule(fromExpr, toExpr, label, exceptPatterns);
     }
 }

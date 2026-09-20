@@ -124,6 +124,12 @@ public class PythonMutationScanner {
                 if (ctx instanceof PythonParser.Logical_testContext logCtx) {
                     return logCtx.op != null && logCtx.op.getText().equals(mslOperator);
                 }
+                // Augmented assignment: x += 1  (PIT Increments on Python)
+                if (ctx instanceof PythonParser.Expr_stmtContext stmt
+                        && stmt.assign_part() != null
+                        && stmt.assign_part().op != null) {
+                    return stmt.assign_part().op.getText().equals(mslOperator);
+                }
                 return false;
             }
 
@@ -134,11 +140,21 @@ public class PythonMutationScanner {
 
             @Override
             public ParseTree getRightOperand(ParseTree ctx) {
+                if (ctx instanceof PythonParser.Expr_stmtContext stmt
+                        && stmt.assign_part() != null
+                        && stmt.assign_part().getChildCount() >= 2) {
+                    return stmt.assign_part().getChild(stmt.assign_part().getChildCount() - 1);
+                }
                 return ctx.getChild(ctx.getChildCount() - 1);
             }
 
             @Override
             public ParseTree getOperatorToken(ParseTree ctx) {
+                if (ctx instanceof PythonParser.Expr_stmtContext stmt
+                        && stmt.assign_part() != null
+                        && stmt.assign_part().getChildCount() >= 1) {
+                    return stmt.assign_part().getChild(0);
+                }
                 if (ctx.getChildCount() >= 3) return ctx.getChild(1);
                 return null;
             }
@@ -157,6 +173,11 @@ public class PythonMutationScanner {
                            type == PythonLexer.NAME;
                 }
                 if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
+                String text = ctx.getText();
+                if (text != null && (text.matches("[A-Za-z_][A-Za-z0-9_]*")
+                        || text.matches("-?\\d+(\\.\\d+)?"))) {
+                    return true;
+                }
                 return false;
             }
 

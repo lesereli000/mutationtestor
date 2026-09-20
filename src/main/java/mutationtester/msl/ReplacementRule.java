@@ -20,18 +20,18 @@ import java.util.List;
  */
 public class ReplacementRule implements MutationRule {
 
-    private final BinaryOpNode fromExpr;
-    private final BinaryOpNode toExpr;
+    private final MSLExpression fromExpr;
+    private final MSLExpression toExpr;
     private final String label;
     private final List<ExceptPattern> exceptPatterns;
 
     /** Constructor for rules without any Except: clauses. */
-    public ReplacementRule(BinaryOpNode fromExpr, BinaryOpNode toExpr, String label) {
+    public ReplacementRule(MSLExpression fromExpr, MSLExpression toExpr, String label) {
         this(fromExpr, toExpr, label, List.of());
     }
 
     /** Constructor for rules with one or more Except: clauses. */
-    public ReplacementRule(BinaryOpNode fromExpr, BinaryOpNode toExpr,
+    public ReplacementRule(MSLExpression fromExpr, MSLExpression toExpr,
                            String label, List<ExceptPattern> exceptPatterns) {
         this.fromExpr = fromExpr;
         this.toExpr = toExpr;
@@ -63,10 +63,12 @@ public class ReplacementRule implements MutationRule {
     public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
         ParseTree opToken = scanner.getOperatorToken(ctx);
         int[] pos = scanner.getTokenPosition(opToken);
+        String fromOp = scanner.translateOperator(operatorOf(fromExpr));
+        String toOp = scanner.translateOperator(operatorOf(toExpr));
         return new MutationPoint(
                 sourceFile, pos[0], pos[1],
-                fromExpr.getOperator(),
-                toExpr.getOperator(),
+                fromOp,
+                toOp,
                 Mutator.MutatorType.CUSTOM,
                 label);
     }
@@ -78,5 +80,16 @@ public class ReplacementRule implements MutationRule {
 
     public List<ExceptPattern> getExceptPatterns() {
         return exceptPatterns;
+    }
+
+    static String operatorOf(MSLExpression expr) {
+        if (expr instanceof BinaryOpNode binary) {
+            return binary.getOperator();
+        }
+        if (expr instanceof UpdateNode update) {
+            return update.getOperator();
+        }
+        throw new IllegalArgumentException(
+                "ReplacementRule requires a binary or update pattern, got: " + expr);
     }
 }

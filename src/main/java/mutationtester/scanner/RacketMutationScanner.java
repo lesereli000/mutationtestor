@@ -577,6 +577,35 @@ public class RacketMutationScanner {
             }
 
             @Override
+            public boolean isUpdateExpressionFor(ParseTree ctx, String mslOperator) {
+                if (!(ctx instanceof ISLParser.ExprContext) || ctx.getChildCount() < 4) {
+                    return false;
+                }
+                if (!ctx.getChild(0).getText().equals("(")) {
+                    return false;
+                }
+                String name = ctx.getChild(1).getText();
+                if ("++".equals(mslOperator)) {
+                    return "add1".equals(name);
+                }
+                if ("--".equals(mslOperator)) {
+                    return "sub1".equals(name);
+                }
+                return false;
+            }
+
+            @Override
+            public String translateOperator(String mslOperator) {
+                if ("++".equals(mslOperator)) {
+                    return "add1";
+                }
+                if ("--".equals(mslOperator)) {
+                    return "sub1";
+                }
+                return mslOperator;
+            }
+
+            @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
                 return ctx.getChild(2);
             }

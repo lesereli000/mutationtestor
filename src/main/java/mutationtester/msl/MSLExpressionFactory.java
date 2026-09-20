@@ -21,7 +21,10 @@ public class MSLExpressionFactory {
     private static final Set<String> CANONICAL_OPERATORS = Set.of(
             "+", "-", "*", "/", "%", "//", "**",
             "<", "<=", ">", ">=", "==", "!=",
-            "&&", "||", "&", "|", "^", "<<", ">>", ">>>");
+            "&&", "||", "&", "|", "^", "<<", ">>", ">>>",
+            "+=", "-=");
+
+    private static final Set<String> CANONICAL_UPDATES = Set.of("++", "--");
 
     private MSLExpressionFactory() {
     }
@@ -34,20 +37,33 @@ public class MSLExpressionFactory {
             return new QuantityNode();
         }
 
-        // Binary: {quantity} <op> {quantity}
-        // Split on whitespace; tokens must be exactly 3
         String[] parts = trimmed.split("\\s+");
+
+        // Postfix update: {quantity} ++   /   {quantity} --
+        if (parts.length == 2
+                && parts[0].equals("{quantity}")
+                && CANONICAL_UPDATES.contains(parts[1])) {
+            return new UpdateNode(parts[1], new QuantityNode());
+        }
+
+        // Binary: {quantity} <op> {quantity}
         if (parts.length == 3
                 && parts[0].equals("{quantity}")
                 && parts[2].equals("{quantity}")) {
             String op = parts[1];
+            if (CANONICAL_UPDATES.contains(op)) {
+                throw new IllegalArgumentException(
+                        "Unsupported MSL operator \"" + op + "\" in \"" + pattern + "\"."
+                                + " Use the canonical postfix form \"{quantity} " + op + "\".");
+            }
             validateCanonicalOperator(op);
             return new BinaryOpNode(op, new QuantityNode(), new QuantityNode());
         }
 
         throw new IllegalArgumentException(
                 "Unrecognised MSL pattern: \"" + pattern + "\". " +
-                        "Expected \"{quantity}\" or \"{quantity} <op> {quantity}\".");
+                        "Expected \"{quantity}\", \"{quantity} ++\", \"{quantity} --\","
+                        + " or \"{quantity} <op> {quantity}\".");
     }
 
     private static void validateCanonicalOperator(String operator) {
@@ -64,6 +80,8 @@ public class MSLExpressionFactory {
             case "NE", "NEQ" -> "!=";
             case "AND" -> "&&";
             case "OR" -> "||";
+            case "INC", "PLUSPLUS", "ADD1" -> "++";
+            case "DEC", "MINUSMINUS", "SUB1" -> "--";
             default -> null;
         };
 

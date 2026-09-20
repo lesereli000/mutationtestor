@@ -249,6 +249,21 @@ public class JavaMutationScanner {
             }
 
             @Override
+            public boolean isUpdateExpressionFor(ParseTree ctx, String mslOperator) {
+                if (ctx instanceof JavaParser.PostIncrementDecrementOperatorExpressionContext post
+                        && post.postfix != null) {
+                    return post.postfix.getText().equals(mslOperator);
+                }
+                if (ctx instanceof JavaParser.UnaryOperatorExpressionContext unary
+                        && unary.prefix != null) {
+                    String prefix = unary.prefix.getText();
+                    return prefix.equals(mslOperator)
+                            && (prefix.equals("++") || prefix.equals("--"));
+                }
+                return false;
+            }
+
+            @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
                 return ctx.getChild(0);
             }
@@ -261,7 +276,17 @@ public class JavaMutationScanner {
 
             @Override
             public ParseTree getOperatorToken(ParseTree ctx) {
-                // For multi-token operators, we return the first token as the "point"
+                if (ctx instanceof JavaParser.PostIncrementDecrementOperatorExpressionContext
+                        && ctx.getChildCount() >= 2) {
+                    return ctx.getChild(ctx.getChildCount() - 1);
+                }
+                if (ctx instanceof JavaParser.UnaryOperatorExpressionContext unary
+                        && unary.prefix != null) {
+                    String prefix = unary.prefix.getText();
+                    if (prefix.equals("++") || prefix.equals("--")) {
+                        return ctx.getChild(0);
+                    }
+                }
                 if (ctx.getChildCount() >= 3) {
                     return ctx.getChild(1);
                 }
@@ -293,6 +318,11 @@ public class JavaMutationScanner {
                         prc.getChild(0).getText().equals("(") && 
                         prc.getChild(2).getText().equals(")")) {
                         return true; // Parenthesized expression is a quantity
+                    }
+                    String text = prc.getText();
+                    if (text.matches("[A-Za-z_][A-Za-z0-9_]*")
+                            || text.matches("-?\\d+(\\.\\d+)?")) {
+                        return true;
                     }
                 }
                 

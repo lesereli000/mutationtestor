@@ -272,6 +272,41 @@ public class MSLTests {
             () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
     }
 
+    @Test
+    void expressionFactoryParsesPostfixIncrement() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} ++");
+        assertInstanceOf(UpdateNode.class, expr);
+        assertEquals("++", ((UpdateNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryParsesAugmentedAssign() {
+        MSLExpression expr = MSLExpressionFactory.parse("{quantity} += {quantity}");
+        assertInstanceOf(BinaryOpNode.class, expr);
+        assertEquals("+=", ((BinaryOpNode) expr).getOperator());
+    }
+
+    @Test
+    void expressionFactoryRejectsIncAlias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} INC {quantity}"));
+        assertTrue(error.getMessage().contains("++"), error.getMessage());
+    }
+
+    @Test
+    void expressionFactoryRejectsAdd1Alias() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} add1 {quantity}"));
+        assertTrue(error.getMessage().contains("++"), error.getMessage());
+    }
+
+    @Test
+    void expressionFactoryRejectsIncrementWithExtraOperand() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> MSLExpressionFactory.parse("{quantity} ++ {quantity}"));
+        assertTrue(error.getMessage().contains("{quantity} ++"), error.getMessage());
+    }
+
     // ── Steps 9: ReplacementRule ─────────────────────────────────────────────────────
 
     @Test
