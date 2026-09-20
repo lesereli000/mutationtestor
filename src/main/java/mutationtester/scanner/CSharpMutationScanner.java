@@ -32,6 +32,12 @@ public class CSharpMutationScanner {
         if (type == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
             return scanVoidMethodCallMutations(file, sourceCode);
         }
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            return scanConstructorCallMutations(file, sourceCode);
+        }
+        if (type == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+            return scanNonVoidMethodCallMutations(file, sourceCode);
+        }
         if (type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT
                 || type == Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT) {
             return scanIncrementSwapMutations(file, sourceCode, type);
@@ -51,6 +57,9 @@ public class CSharpMutationScanner {
         }
         if (type == Mutator.MutatorType.CONDITIONAL_TRUE || type == Mutator.MutatorType.CONDITIONAL_FALSE) {
             return scanConditionalMutations(file, sourceCode, type);
+        }
+        if (isRemoveConditionalMutation(type)) {
+            return scanRemoveConditionalMutations(file, sourceCode, type);
         }
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -80,6 +89,138 @@ public class CSharpMutationScanner {
         }
 
         return points;
+    }
+
+    private static List<MutationPoint> scanRemoveConditionalMutations(File file, String sourceCode, Mutator.MutatorType type) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        String replacement = removeConditionalReplacement(type);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            addRemoveConditionalPoint(points, file, line, i + 1, type, replacement, "if");
+            addRemoveConditionalPoint(points, file, line, i + 1, type, replacement, "while");
+            addRemoveConditionalTernaryPoint(points, file, lines, i, type, replacement);
+        }
+
+        return points;
+    }
+
+    private static void addRemoveConditionalPoint(List<MutationPoint> points, File file, String line, int lineNumber,
+                                                  Mutator.MutatorType type, String replacement, String keyword) {
+        int searchFrom = 0;
+
+        while (searchFrom < line.length()) {
+            int keywordIndex = findKeywordOutsideStringOrComment(line, keyword, searchFrom);
+            if (keywordIndex < 0) {
+                return;
+            }
+
+            int openParen = line.indexOf('(', keywordIndex + keyword.length());
+            if (openParen < 0 || isInStringOrComment(line, openParen)) {
+                searchFrom = keywordIndex + keyword.length();
+                continue;
+            }
+
+            int closeParen = findMatchingParen(line, openParen);
+            if (closeParen < 0) {
+                searchFrom = openParen + 1;
+                continue;
+            }
+
+            String condition = line.substring(openParen + 1, closeParen).trim();
+            int conditionColumn = line.indexOf(condition, openParen + 1);
+
+            if (isValidConditionText(condition) && removeConditionalMatches(type, condition)) {
+                points.add(new MutationPoint(file, lineNumber, conditionColumn, condition, replacement, type));
+            }
+
+            searchFrom = closeParen + 1;
+        }
+    }
+
+    private static void addRemoveConditionalTernaryPoint(List<MutationPoint> points, File file, String[] lines, int lineIndex,
+                                                         Mutator.MutatorType type, String replacement) {
+        String line = lines[lineIndex];
+        int questionMark = findQuestionMarkOutsideStringOrComment(line);
+        ConditionSpan conditionSpan = null;
+
+        if (questionMark >= 0) {
+            conditionSpan = extractInlineTernaryCondition(line, questionMark);
+        } else if (lineIndex + 1 < lines.length && startsWithQuestionMark(lines[lineIndex + 1])) {
+            conditionSpan = extractTrailingTernaryCondition(line);
+        }
+
+        if (conditionSpan == null) {
+            return;
+        }
+
+        String condition = conditionSpan.text().trim();
+        if (isValidConditionText(condition) && removeConditionalMatches(type, condition)) {
+            points.add(new MutationPoint(
+                    file,
+                    lineIndex + 1,
+                    conditionSpan.startColumn(),
+                    condition,
+                    replacement,
+                    type
+            ));
+        }
+    }
+
+    private static boolean isRemoveConditionalMutation(Mutator.MutatorType type) {
+        return type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE
+                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF
+                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE;
+    }
+
+    private static String removeConditionalReplacement(Mutator.MutatorType type) {
+        return (type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF) ? "true" : "false";
+    }
+
+    private static boolean removeConditionalMatches(Mutator.MutatorType type, String condition) {
+        boolean equality = containsOperatorOutsideStringOrComment(condition, "==")
+                || containsOperatorOutsideStringOrComment(condition, "!=");
+        boolean order = containsOperatorOutsideStringOrComment(condition, "<=")
+                || containsOperatorOutsideStringOrComment(condition, ">=")
+                || containsStandaloneOrderOperator(condition, '<')
+                || containsStandaloneOrderOperator(condition, '>');
+
+        if (type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE) {
+            return equality;
+        }
+
+        return order;
+    }
+
+    private static boolean containsOperatorOutsideStringOrComment(String text, String operator) {
+        int index = text.indexOf(operator);
+        while (index >= 0) {
+            if (!isInStringOrComment(text, index)) {
+                return true;
+            }
+            index = text.indexOf(operator, index + operator.length());
+        }
+        return false;
+    }
+
+    private static boolean containsStandaloneOrderOperator(String text, char operator) {
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) != operator || isInStringOrComment(text, i)) {
+                continue;
+            }
+
+            char prev = i > 0 ? text.charAt(i - 1) : '\0';
+            char next = i + 1 < text.length() ? text.charAt(i + 1) : '\0';
+            if (prev != operator && next != operator && next != '=') {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void addParenthesizedCondition(List<MutationPoint> points, File file, String line, int lineNumber,
@@ -391,7 +532,8 @@ public class CSharpMutationScanner {
                 || type == Mutator.MutatorType.RVM_NONZERO_TO_ZERO
                 || type == Mutator.MutatorType.RVM_OBJECT_TO_NULL
                 || type == Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
-                || type == Mutator.MutatorType.RVM_STRING_TO_EMPTY;
+                || type == Mutator.MutatorType.RVM_STRING_TO_EMPTY
+                || type == Mutator.MutatorType.EMPTY_RETURNS;
     }
 
     private static List<MutationPoint> scanReturnValueMutations(File file, String sourceCode, Mutator.MutatorType type) {
@@ -451,8 +593,36 @@ public class CSharpMutationScanner {
             case RVM_PRIMITIVE_TO_ZERO -> isNonZeroNumericLiteral(value) ? "0" : null;
             case RVM_OBJECT_TO_NULL -> isReferenceReturnType(returnType) && isObjectLikeReturn(value) ? "null" : null;
             case RVM_STRING_TO_EMPTY -> isNonEmptyStringLiteral(value) ? "\"\"" : null;
+            case EMPTY_RETURNS -> getEmptyReturnReplacement(value, returnType);
             default -> null;
         };
+    }
+
+    private static String getEmptyReturnReplacement(String value, String returnType) {
+        if (returnType == null || returnType.isBlank() || returnType.equals("void")) {
+            return null;
+        }
+
+        String normalizedType = returnType.replace("?", "").trim();
+        String emptyValue = defaultValueForType(normalizedType, true);
+        if (emptyValue == null || value.equals(emptyValue)) {
+            return null;
+        }
+
+        if (normalizedType.equals("bool") && (value.equals("true") || value.equals("false"))) {
+            return emptyValue;
+        }
+        if (isNumericType(normalizedType) && !isZeroLiteral(value)) {
+            return emptyValue;
+        }
+        if (normalizedType.equals("string") && !value.equals("\"\"")) {
+            return emptyValue;
+        }
+        if (isEmptyCollectionReturnType(normalizedType) && !isAlreadyEmptyCollection(value)) {
+            return emptyValue;
+        }
+
+        return null;
     }
 
     private static String detectMethodReturnType(String line) {
@@ -521,6 +691,201 @@ public class CSharpMutationScanner {
         }
 
         return points;
+    }
+
+    private static List<MutationPoint> scanConstructorCallMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            int searchFrom = 0;
+
+            while (searchFrom < line.length()) {
+                int newIndex = findKeywordOutsideStringOrComment(line, "new", searchFrom);
+                if (newIndex < 0) {
+                    break;
+                }
+
+                int typeStart = skipLeadingTrivia(line, newIndex + "new".length());
+                ConstructorCall call = readConstructorCall(line, newIndex, typeStart);
+                if (call == null) {
+                    searchFrom = newIndex + "new".length();
+                    continue;
+                }
+
+                if (!isValueTypeConstructor(call.typeName())) {
+                    points.add(new MutationPoint(
+                            file,
+                            i + 1,
+                            newIndex,
+                            call.text(),
+                            "null",
+                            Mutator.MutatorType.CONSTRUCTOR_CALLS,
+                            "Constructor call mutation"
+                    ));
+                }
+
+                searchFrom = newIndex + call.text().length();
+            }
+        }
+
+        return points;
+    }
+
+    private static List<MutationPoint> scanNonVoidMethodCallMutations(File file, String sourceCode) {
+        List<MutationPoint> points = new ArrayList<>();
+        String[] lines = sourceCode.split("\n", -1);
+        String currentReturnType = "";
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String detectedReturnType = detectMethodReturnType(line);
+            if (detectedReturnType != null) {
+                currentReturnType = detectedReturnType;
+            }
+
+            addReturnMethodCallMutation(points, file, line, i + 1, currentReturnType);
+            addAssignmentMethodCallMutations(points, file, line, i + 1);
+        }
+
+        return points;
+    }
+
+    private static void addReturnMethodCallMutation(List<MutationPoint> points, File file, String line, int lineNumber,
+                                                    String currentReturnType) {
+        int returnIndex = findKeywordOutsideStringOrComment(line, "return", 0);
+        if (returnIndex < 0) {
+            return;
+        }
+
+        int expressionStart = skipLeadingTrivia(line, returnIndex + "return".length());
+        int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
+        if (expressionStart >= line.length() || semicolon < 0) {
+            return;
+        }
+
+        String expression = line.substring(expressionStart, semicolon).trim();
+        MethodCall call = findSingleMethodCallExpression(line, expressionStart, semicolon);
+        String replacement = defaultValueForType(currentReturnType, false);
+        if (call != null && replacement != null && expression.equals(call.text())) {
+            points.add(new MutationPoint(
+                    file,
+                    lineNumber,
+                    call.column(),
+                    call.text(),
+                    replacement,
+                    Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                    "Non-void method call mutation"
+            ));
+        }
+    }
+
+    private static void addAssignmentMethodCallMutations(List<MutationPoint> points, File file, String line, int lineNumber) {
+        Pattern declarationPattern = Pattern.compile(
+                "\\b(?<type>[A-Za-z_][A-Za-z0-9_<>?\\[\\]\\.]*|bool|byte|sbyte|short|ushort|int|uint|long|ulong|float|double|decimal|char|string)\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"
+        );
+        Matcher matcher = declarationPattern.matcher(line);
+
+        while (matcher.find()) {
+            if (isInStringOrComment(line, matcher.start())) {
+                continue;
+            }
+
+            int expressionStart = matcher.end();
+            int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
+            if (semicolon < 0) {
+                continue;
+            }
+
+            MethodCall call = findSingleMethodCallExpression(line, expressionStart, semicolon);
+            String replacement = defaultValueForType(matcher.group("type"), false);
+            if (call != null && replacement != null) {
+                points.add(new MutationPoint(
+                        file,
+                        lineNumber,
+                        call.column(),
+                        call.text(),
+                        replacement,
+                        Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                        "Non-void method call mutation"
+                ));
+            }
+        }
+    }
+
+    private static ConstructorCall readConstructorCall(String line, int newIndex, int typeStart) {
+        if (typeStart >= line.length() || isInStringOrComment(line, newIndex)) {
+            return null;
+        }
+
+        int typeEnd = typeStart;
+        int genericDepth = 0;
+        while (typeEnd < line.length()) {
+            char c = line.charAt(typeEnd);
+            if (c == '<') {
+                genericDepth++;
+            } else if (c == '>' && genericDepth > 0) {
+                genericDepth--;
+            } else if (genericDepth == 0 && !(Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '?' || c == '[' || c == ']')) {
+                break;
+            }
+            typeEnd++;
+        }
+
+        if (typeEnd == typeStart) {
+            return null;
+        }
+
+        int openParen = skipLeadingTrivia(line, typeEnd);
+        if (openParen >= line.length() || line.charAt(openParen) != '(' || isInStringOrComment(line, openParen)) {
+            return null;
+        }
+
+        int closeParen = findMatchingParen(line, openParen);
+        if (closeParen < 0) {
+            return null;
+        }
+
+        String text = line.substring(newIndex, closeParen + 1);
+        String typeName = line.substring(typeStart, typeEnd);
+        return new ConstructorCall(text, typeName);
+    }
+
+    private static MethodCall findSingleMethodCallExpression(String line, int expressionStart, int expressionEnd) {
+        int start = skipLeadingTrivia(line, expressionStart);
+        int end = expressionEnd;
+        while (end > start && Character.isWhitespace(line.charAt(end - 1))) {
+            end--;
+        }
+
+        if (start >= end || line.startsWith("new ", start)) {
+            return null;
+        }
+
+        int openParen = -1;
+        for (int i = start; i < end; i++) {
+            if (line.charAt(i) == '(' && !isInStringOrComment(line, i)) {
+                openParen = i;
+                break;
+            }
+        }
+
+        if (openParen < 0) {
+            return null;
+        }
+
+        int closeParen = findMatchingParen(line, openParen);
+        if (closeParen != end - 1) {
+            return null;
+        }
+
+        String callee = line.substring(start, openParen).trim();
+        if (!callee.matches("^(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*$") || startsWithControlKeyword(callee)) {
+            return null;
+        }
+
+        return new MethodCall(line.substring(start, end), start);
     }
 
     private static List<MutationPoint> scanIncrementSwapMutations(File file, String sourceCode, Mutator.MutatorType type) {
@@ -764,6 +1129,115 @@ public class CSharpMutationScanner {
                 || value.matches("^@?[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$");
     }
 
+    private static String defaultValueForType(String type, boolean emptyReturn) {
+        if (type == null || type.isBlank()) {
+            return null;
+        }
+
+        String normalized = type.replace("?", "").trim();
+        if (normalized.equals("void")) {
+            return null;
+        }
+
+        if (normalized.equals("bool")) {
+            return "false";
+        }
+        if (isNumericType(normalized)) {
+            return normalized.equals("float") ? "0.0f"
+                    : normalized.equals("double") ? "0.0"
+                    : normalized.equals("decimal") ? "0.0m"
+                    : normalized.equals("char") ? "'\\0'"
+                    : "0";
+        }
+        if (normalized.equals("string")) {
+            return emptyReturn ? "\"\"" : "null";
+        }
+        if (normalized.endsWith("[]")) {
+            String elementType = normalized.substring(0, normalized.length() - 2);
+            return emptyReturn ? "System.Array.Empty<" + elementType + ">()" : "null";
+        }
+        if (isListType(normalized)) {
+            return emptyReturn ? "new " + concreteGenericCollectionType(normalized, "List") : "null";
+        }
+        if (isSetType(normalized)) {
+            return emptyReturn ? "new " + concreteGenericCollectionType(normalized, "HashSet") : "null";
+        }
+        if (isEnumerableType(normalized)) {
+            String elementType = genericArgument(normalized);
+            return emptyReturn && elementType != null ? "System.Linq.Enumerable.Empty<" + elementType + ">()" : "null";
+        }
+
+        return emptyReturn ? null : "null";
+    }
+
+    private static boolean isNumericType(String type) {
+        return type.equals("byte")
+                || type.equals("sbyte")
+                || type.equals("short")
+                || type.equals("ushort")
+                || type.equals("int")
+                || type.equals("uint")
+                || type.equals("long")
+                || type.equals("ulong")
+                || type.equals("float")
+                || type.equals("double")
+                || type.equals("decimal")
+                || type.equals("char");
+    }
+
+    private static boolean isEmptyCollectionReturnType(String type) {
+        return type.endsWith("[]") || isListType(type) || isSetType(type) || isEnumerableType(type);
+    }
+
+    private static boolean isAlreadyEmptyCollection(String value) {
+        return value.startsWith("System.Array.Empty<")
+                || value.startsWith("System.Linq.Enumerable.Empty<")
+                || value.matches("^new\\s+(?:System\\.Collections\\.Generic\\.)?(?:List|HashSet)<.*>\\s*\\(\\s*\\)$");
+    }
+
+    private static boolean isListType(String type) {
+        return type.matches("^(?:System\\.Collections\\.Generic\\.)?(?:IList|List|IReadOnlyList|ICollection|Collection)<.*>$");
+    }
+
+    private static boolean isSetType(String type) {
+        return type.matches("^(?:System\\.Collections\\.Generic\\.)?(?:ISet|HashSet|IReadOnlySet|Set)<.*>$");
+    }
+
+    private static boolean isEnumerableType(String type) {
+        return type.matches("^(?:System\\.Collections\\.Generic\\.)?IEnumerable<.*>$");
+    }
+
+    private static String concreteGenericCollectionType(String type, String concreteName) {
+        String argument = genericArgument(type);
+        return "System.Collections.Generic." + concreteName + "<" + (argument == null ? "object" : argument) + ">()";
+    }
+
+    private static String genericArgument(String type) {
+        int open = type.indexOf('<');
+        int close = type.lastIndexOf('>');
+        if (open < 0 || close <= open) {
+            return null;
+        }
+        return type.substring(open + 1, close).trim();
+    }
+
+    private static boolean isValueTypeConstructor(String typeName) {
+        String normalized = typeName.replace("?", "").trim();
+        return normalized.equals("bool")
+                || normalized.equals("byte")
+                || normalized.equals("sbyte")
+                || normalized.equals("short")
+                || normalized.equals("ushort")
+                || normalized.equals("int")
+                || normalized.equals("uint")
+                || normalized.equals("long")
+                || normalized.equals("ulong")
+                || normalized.equals("float")
+                || normalized.equals("double")
+                || normalized.equals("decimal")
+                || normalized.equals("char");
+    }
+
     private static boolean startsWithControlKeyword(String statement) {
         return statement.startsWith("if ")
                 || statement.startsWith("if(")
@@ -855,6 +1329,8 @@ public class CSharpMutationScanner {
     }
 
     private record ConditionSpan(String text, int startColumn) {}
+    private record ConstructorCall(String text, String typeName) {}
+    private record MethodCall(String text, int column) {}
 
     private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
         return type == Mutator.MutatorType.TYPE_INT_TO_DOUBLE

@@ -66,4 +66,58 @@ public class TestPitStyleMutations
         Assert.NotNull(demo.SurvivedReturnsString());
         Assert.True(demo.SurvivedReturnsObject() == null || demo.SurvivedReturnsObject() != null);
     }
+
+    [Fact]
+    public void EmptyReturnsKilledGroupAssertsExactValues()
+    {
+        var demo = new PitEmptyReturnsDemo();
+
+        Assert.Equal("items", demo.KilledReturnsString());
+        Assert.Equal(7, demo.KilledReturnsInt());
+        Assert.Equal(new[] { 1, 2, 3 }, demo.KilledReturnsList());
+        Assert.Equal(new[] { "alpha", "beta" }, demo.KilledReturnsEnumerable());
+    }
+
+    [Fact]
+    public void EmptyReturnsSurvivedGroupUsesWeakAssertions()
+    {
+        var demo = new PitEmptyReturnsDemo();
+
+        Assert.NotNull(demo.SurvivedReturnsString());
+        Assert.NotNull(demo.SurvivedReturnsList());
+    }
+
+    [Fact]
+    public void ConstructorCallsKilledGroupAssertsValues()
+    {
+        var demo = new PitConstructorCallsDemo();
+
+        Assert.Equal("killed", demo.CreateKilledWidget().Name);
+    }
+
+    [Fact]
+    public void ConstructorCallsSurvivedGroupUsesWeakAssertions()
+    {
+        var demo = new PitConstructorCallsDemo();
+
+        Assert.True(demo.CreateSurvivedWidget() == null || demo.CreateSurvivedWidget() != null);
+    }
+
+    [Fact]
+    public void NonVoidMethodCallsKilledGroupAssertsValues()
+    {
+        var demo = new PitNonVoidMethodCallsDemo();
+
+        Assert.Equal(9, demo.ReadKilledValue());
+        Assert.Equal(9, demo.AssignKilledValue());
+    }
+
+    [Fact]
+    public void NonVoidMethodCallsSurvivedGroupUsesWeakAssertions()
+    {
+        var demo = new PitNonVoidMethodCallsDemo();
+
+        Assert.True(demo.ReadSurvivedValue() >= 0);
+        Assert.True(demo.AssignSurvivedValue() >= 0);
+    }
 }

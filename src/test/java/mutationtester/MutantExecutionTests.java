@@ -1,23 +1,21 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
-import mutationtester.model.*;
-import mutationtester.scanner.*;
-
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.AfterAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+
+import mutationtester.model.Mutator;
 
 public class MutantExecutionTests {
 
@@ -108,10 +106,34 @@ public class MutantExecutionTests {
         }
     }
 
+    private static void deleteDirectoryWithRetry(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
+        IOException last = null;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            try {
+                FileUtils.deleteDirectory(path.toFile());
+                return;
+            } catch (IOException e) {
+                last = e;
+                // In case the handle is one of ours on an unclosed stream.
+                System.gc();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+        throw last;
+    }
+
     private static void mutantTearDown(Path testPath) {
         // delete copied directory
         try {
-            FileUtils.deleteDirectory(testPath.toFile());
+            deleteDirectoryWithRetry(testPath);
         } catch (IOException e) {
             fail("Directory Tear Down Failed: " + e.getMessage());
         }
@@ -201,9 +223,7 @@ public class MutantExecutionTests {
     public static void tearDown() {
         Path testDirectory = Path.of("output/TestDir");
         try {
-            if (Files.exists(testDirectory)) {
-                FileUtils.deleteDirectory(testDirectory.toFile());
-            }
+            deleteDirectoryWithRetry(testDirectory);
         } catch (Exception e) {
             fail("Final tear down failed: " + e.getMessage());
         }

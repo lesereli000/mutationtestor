@@ -20,9 +20,10 @@ public class TestWhileLoopContextDemo
     }
 
     [Fact]
-    public void IsWithinLimitIncludesTheBoundary()
+    public void CountStepsThroughLimitIncludesTheBoundary()
     {
-        Assert.True(WhileLoopContextDemo.IsWithinLimit(10, 10));
-        Assert.False(WhileLoopContextDemo.IsWithinLimit(11, 10));
+        Assert.Equal(1, WhileLoopContextDemo.CountStepsThroughLimit(10, 10));
+        Assert.Equal(3, WhileLoopContextDemo.CountStepsThroughLimit(10, 12));
+        Assert.Equal(0, WhileLoopContextDemo.CountStepsThroughLimit(13, 12));
     }
 }

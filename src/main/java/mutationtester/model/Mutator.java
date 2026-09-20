@@ -51,9 +51,12 @@ public class Mutator {
         RVM_OBJECT_TO_NULL,
         RVM_PRIMITIVE_TO_ZERO,
         RVM_STRING_TO_EMPTY,
+        EMPTY_RETURNS,
 
         // Void Method Call removal
         VML_VOID_METHOD_CALL,
+        CONSTRUCTOR_CALLS,
+        NON_VOID_METHOD_CALLS,
 
         // Increment / Decrement swap
         AOR_INCREMENT_TO_DECREMENT,
@@ -84,6 +87,10 @@ public class Mutator {
 
         CONDITIONAL_TRUE,
         CONDITIONAL_FALSE,
+        REMOVE_CONDITIONALS_EQUAL_IF,
+        REMOVE_CONDITIONALS_EQUAL_ELSE,
+        REMOVE_CONDITIONALS_ORDER_IF,
+        REMOVE_CONDITIONALS_ORDER_ELSE,
         NEGATE_CONDITIONALS,
         STATEMENT_MUTATION,
         STRING_MUTATION_TO_NOT_NULL,

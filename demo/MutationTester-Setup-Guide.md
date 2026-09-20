@@ -36,43 +36,158 @@ cd mutationtestor
 
 ## 2. Install Dependencies
 
-From the project root, run the setup script in an **elevated (Administrator) PowerShell**:
+First, see what is already on the machine. This changes nothing:
+
+```powershell
+.\chocolatey-setup.ps1
+```
+
+Then install whatever came back missing:
 
 ```powershell
 .\chocolatey-setup.ps1 --install
 ```
 
-This installs Chocolatey (if needed) and then installs all required tools: Java 21, Maven, Git, Racket, Python 3, Node.js, and .NET SDK 10. **.NET 10 is required** - earlier versions will cause a build failure.
+Useful variations:
+
+| Command | Effect |
+|---------|--------|
+| `--install --minimal` | Skips the slow optional pieces (Racket, the ~170 MB Puppeteer Chrome download) |
+| `--install --portable` | Never calls Chocolatey; unpacks tools into `.tools\` instead. Use when you have no Administrator rights |
+| `--install --only dotnet,node` | Only touches the listed tools |
+| `--install --skip racket` | Leaves the listed tools alone |
+
+What the script will and will not do:
+
+- **It never upgrades or replaces anything you already have.** If a usable JDK, Maven, .NET SDK, Node, Python, or Racket is already installed, it is detected and used as-is. A pre-existing .NET 8 or 9 is fine — .NET SDKs install side by side, so adding 10 does not disturb them.
+- **It never edits your system PATH.** Instead it writes `demo-env.ps1` and `demo-env.cmd`, which put the detected tools on PATH for one shell session only.
+- **Administrator rights are optional.** Without them it skips Chocolatey and downloads the official upstream archives into `.tools\`.
+- **To undo everything:** delete `.tools\`, `demo-env.ps1`, and `demo-env.cmd`.
 
 > **If PowerShell blocks the script**, run it as a one-time bypass:
 >
 > ```powershell
-> powershell -ExecutionPolicy Bypass -File .\chocolatey-setup.ps1
+> powershell -ExecutionPolicy Bypass -File .\chocolatey-setup.ps1 --install
 > ```
 
 ---
 
 ## 3. Verify Dependencies
 
-When the script finishes, it prints a verification summary. All lines should read `[OK]` before proceeding. To re-run verification at any time:
+The script ends with a summary table. Re-run it at any time — it is safe and read-only without `--install`:
 
 ```powershell
 .\chocolatey-setup.ps1
 ```
 
 Expected output:
+![Dependency check showing all OK](dependency_verification.png)
 
 ```
-[OK] Java/JDK 17+:          openjdk 21.x.x ...
-[OK] Maven:                 Apache Maven 3.x.x ...
-[OK] .NET SDK (net10.0):    10.x.x
-[OK] Python 3:              Python 3.x.x
-[OK] Node.js/npm:           x.x.x
-[OK] Racket:                Racket v8.x ...
-[OK] Puppeteer (JSProject): x.x.x
+Tool     Status Version Required Location
+----     ------ ------- -------- --------
+JDK      OK     17.0    yes      C:\Program Files\Eclipse Adoptium\jdk-17...\bin\java.exe
+Maven    OK     3.9     yes      C:\ProgramData\chocolatey\lib\maven\...\bin\mvn.cmd
+.NET SDK OK     10.0    no       C:\Program Files\dotnet\dotnet.exe
+Node.js  OK     22.11   no       C:\Program Files\nodejs\node.exe
+Python   OK     3.11    no       C:\Python311\python.exe
+Racket   OK     8.12    no       C:\Program Files\Racket\Racket.exe
 ```
 
-![Dependency check showing all OK](dependency_check.png)
+Only **JDK** and **Maven** are required — they run the tester itself. Each of the others gates one language sample, so if `.NET SDK` is missing you lose the C# demo and nothing else.
+
+Before building or running, load the toolchain into your shell:
+
+```powershell
+. .\demo-env.ps1
+```
+
+```cmd
+:: cmd.exe
+demo-env.cmd
+```
+
+![Toolchain load](toolchain_load.png)
+
+---
+
+## 2b. Alternative: run it in Docker
+
+If you want one environment that behaves identically everywhere — and no installs at all on the presenting machine — build the image once, ahead of time. Works the same on Windows, macOS and Linux:
+
+```bash
+docker build -t mutationtester:demo .
+docker run --rm -it mutationtester:demo
+```
+
+The image is not published anywhere, so you must build it yourself. Running `docker run` without building first fails with `pull access denied` — that only means Docker looked on Docker Hub and found nothing.
+
+That drops you at a shell inside the container. From there, run any of the bundled samples:
+
+```bash
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/PytestProject samples/PytestProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/CSProject samples/CSProject/config-context.txt
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/RacketProject samples/RacketProject/config-context.txt
+```
+
+The image bakes in JDK 17, Maven, .NET 10, Node, Python + pytest, Racket, and Chrome for Puppeteer, and pre-builds the JAR and every package cache, so the demo needs no network.
+
+### Running it against your own project
+
+A container has its own filesystem. Nothing from your computer is visible inside it unless you say so, which is what *mounting* means — `-v` maps a folder on your machine to a path inside the container:
+
+```
+-v  C:\folder\on\your\machine  :  /path/inside/the/container
+```
+
+So `-v "${PWD}/myproject:/work"` makes your `myproject` folder appear as `/work` inside the container. Every path you pass to the tool after that (`/work/mutation.config`) is a path **inside** the container, not on your machine.
+
+Your project needs a config file in it. A complete, working example:
+
+```text
+myproject/
+  src/calc.py
+  tests/test_calc.py
+  mutation.config
+```
+
+```text
+source_code_directory=src/main/java/mutationtester/model
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=mvn -q -DskipTests compile
+test_command=mvn test
+```
+
+Then run it. Note the line-continuation character differs by shell — `\` on macOS/Linux, a backtick on PowerShell. Getting it wrong leaves the shell sitting at a `>` prompt waiting for you to finish the command; press Ctrl+C and try again.
+
+macOS / Linux:
+
+```bash
+docker run --rm -w /work -v "$PWD/myproject:/work" mutationtester:demo \
+  java -jar /opt/mutationtester/target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm -w /work -v "${PWD}/myproject:/work" mutationtester:demo `
+  java -jar /opt/mutationtester/target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar /work /work/mutation.config
+```
+
+**`-w /work` is not optional.** It makes the container write its output into the mounted folder, so the HTML report ends up at `myproject/output/report/mutation-report-demo.html` on your machine. Without it the report is written inside the container and `--rm` deletes it the moment the run finishes — the tool still prints "HTML report generated at...", but the file is gone. The jar path must be absolute for the same reason, since `/work` is now the working directory.
+
+To move the image to a machine with no registry access:
+
+```bash
+docker save mutationtester:demo | gzip > mutationtester-demo.tar.gz
+docker load < mutationtester-demo.tar.gz
+```
+
+> On an Apple Silicon Mac, build the image on that Mac rather than loading a tarball built on Windows — the transferred image would be x86 and run under emulation.
+
+> Build this image and run it end-to-end **before** you rely on it for a demo. It requires Docker Desktop, which on Windows needs Administrator rights, WSL2, and hardware virtualization.
 
 ---
 

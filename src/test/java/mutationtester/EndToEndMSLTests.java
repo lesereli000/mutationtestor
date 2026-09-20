@@ -6,6 +6,7 @@ import mutationtester.model.*;
 import mutationtester.scanner.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
@@ -196,6 +197,104 @@ public class EndToEndMSLTests {
         assertEquals("string.IsNullOrEmpty(name)", points.get(1).getOperator());
         assertEquals("(name != \"\")", points.get(1).getReplacement());
         assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not empty", points.get(1).getCustomLabel());
+    }
+
+    @Test
+    void testCustomMutationScanningForPitStyleScannerBackedRulesInCSharp() throws Exception {
+        Path emptyReturnsFile = tempDir.resolve("PitEmptyReturnsDemo.cs");
+        Files.writeString(emptyReturnsFile,
+            "public sealed class PitEmptyReturnsDemo {\n" +
+            "    public string Name() { return \"items\"; }\n" +
+            "}\n"
+        );
+
+        Path constructorFile = tempDir.resolve("PitConstructorCallsDemo.cs");
+        Files.writeString(constructorFile,
+            "public sealed class PitConstructorCallsDemo {\n" +
+            "    public Widget Create() { return new Widget(\"created\"); }\n" +
+            "}\n" +
+            "public sealed class Widget {\n" +
+            "    public Widget(string name) { Name = name; }\n" +
+            "    public string Name { get; }\n" +
+            "}\n"
+        );
+
+        Path nonVoidFile = tempDir.resolve("PitNonVoidMethodCallsDemo.cs");
+        Files.writeString(nonVoidFile,
+            "public sealed class PitNonVoidMethodCallsDemo {\n" +
+            "    public int Read() { return ComputeValue(); }\n" +
+            "    private int ComputeValue() { return 9; }\n" +
+            "}\n"
+        );
+
+        Path equalConditionFile = tempDir.resolve("PitRemoveEqualityConditionalsDemo.cs");
+        Files.writeString(equalConditionFile,
+            "public sealed class PitRemoveEqualityConditionalsDemo {\n" +
+            "    public int Check(int value) { if (value == 10) { return 1; } return 0; }\n" +
+            "}\n"
+        );
+
+        Path orderConditionFile = tempDir.resolve("PitRemoveOrderConditionalsDemo.cs");
+        Files.writeString(orderConditionFile,
+            "public sealed class PitRemoveOrderConditionalsDemo {\n" +
+            "    public int Check(int value) { if (value > 10) { return 1; } return 0; }\n" +
+            "}\n"
+        );
+
+        Path specFile = tempDir.resolve("pit-mutators.spec");
+        Files.writeString(specFile,
+            "PIT Built-in Mutations\n" +
+            "    Replace: {return_value}\n" +
+            "    With: {empty_value}\n" +
+            "    Replace: {constructor_call}\n" +
+            "    With: null\n" +
+            "    Replace: {non_void_method_call}\n" +
+            "    With: {default_value}\n" +
+            "    Replace: {equality_condition}\n" +
+            "    With: true\n" +
+            "    Replace: {equality_condition}\n" +
+            "    With: false\n" +
+            "    Replace: {order_condition}\n" +
+            "    With: true\n" +
+            "    Replace: {order_condition}\n" +
+            "    With: false\n" +
+            "End"
+        );
+
+        List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
+            tempDir,
+            Mutator.MutatorType.CUSTOM,
+            specFile.toString()
+        );
+
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.EMPTY_RETURNS
+                        && p.getOperator().equals("\"items\"")
+                        && p.getReplacement().equals("\"\"")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.CONSTRUCTOR_CALLS
+                        && p.getOperator().equals("new Widget(\"created\")")
+                        && p.getReplacement().equals("null")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                        && p.getOperator().equals("ComputeValue()")
+                        && p.getReplacement().equals("0")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                        && p.getOperator().equals("value == 10")
+                        && p.getReplacement().equals("true")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE
+                        && p.getOperator().equals("value == 10")
+                        && p.getReplacement().equals("false")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF
+                        && p.getOperator().equals("value > 10")
+                        && p.getReplacement().equals("true")));
+        assertTrue(points.stream().anyMatch(p ->
+                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE
+                        && p.getOperator().equals("value > 10")
+                        && p.getReplacement().equals("false")));
     }
 
     @Test
