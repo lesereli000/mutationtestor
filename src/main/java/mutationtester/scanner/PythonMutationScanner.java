@@ -108,27 +108,39 @@ public class PythonMutationScanner {
             );
 
             @Override
+            public String translateOperator(String mslOperator) {
+                if ("&&".equals(mslOperator)) {
+                    return "and";
+                }
+                if ("||".equals(mslOperator)) {
+                    return "or";
+                }
+                return mslOperator;
+            }
+
+            @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
+                String expected = translateOperator(mslOperator);
                 // Handle ExprContext (arithmetic, bitwise)
                 if (ctx instanceof PythonParser.ExprContext exprCtx) {
-                    return exprCtx.op != null && exprCtx.op.getText().equals(mslOperator);
+                    return exprCtx.op != null && exprCtx.op.getText().equals(expected);
                 }
                 // Handle ComparisonContext
                 if (ctx instanceof PythonParser.ComparisonContext compCtx) {
                     // Comparison can have multiple operators, but for MSL we likely want simple ones
                     if (compCtx.getChildCount() == 3) {
-                        return compCtx.getChild(1).getText().equals(mslOperator);
+                        return compCtx.getChild(1).getText().equals(expected);
                     }
                 }
                 // Handle logical_test
                 if (ctx instanceof PythonParser.Logical_testContext logCtx) {
-                    return logCtx.op != null && logCtx.op.getText().equals(mslOperator);
+                    return logCtx.op != null && logCtx.op.getText().equals(expected);
                 }
                 // Augmented assignment: x += 1  (PIT Increments on Python)
                 if (ctx instanceof PythonParser.Expr_stmtContext stmt
                         && stmt.assign_part() != null
                         && stmt.assign_part().op != null) {
-                    return stmt.assign_part().op.getText().equals(mslOperator);
+                    return stmt.assign_part().op.getText().equals(expected);
                 }
                 return false;
             }

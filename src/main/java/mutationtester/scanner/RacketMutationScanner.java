@@ -570,7 +570,7 @@ public class RacketMutationScanner {
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 if (ctx instanceof ISLParser.ExprContext && ctx.getChildCount() >= 4) {
                     if (ctx.getChild(0).getText().equals("(")) {
-                        return ctx.getChild(1).getText().equals(mslOperator);
+                        return ctx.getChild(1).getText().equals(translateOperator(mslOperator));
                     }
                 }
                 return false;
@@ -601,6 +601,12 @@ public class RacketMutationScanner {
                 }
                 if ("--".equals(mslOperator)) {
                     return "sub1";
+                }
+                if ("&&".equals(mslOperator)) {
+                    return "and";
+                }
+                if ("||".equals(mslOperator)) {
+                    return "or";
                 }
                 return mslOperator;
             }
