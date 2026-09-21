@@ -42,6 +42,10 @@ import java.util.regex.Pattern;
  *   CONDITIONAL_TRUE             : (if cond t f) → (if #t t f)
  *   CONDITIONAL_FALSE            : (if cond t f) → (if #f t f)
  *   NEGATE_CONDITIONALS          : (if cond ...) → (if (not cond) ...)
+ *   REMOVE_CONDITIONALS_EQUAL_IF   : equality condition in if/cond/when/unless → #t
+ *   REMOVE_CONDITIONALS_EQUAL_ELSE : equality condition in if/cond/when/unless → #f
+ *   REMOVE_CONDITIONALS_ORDER_IF   : order condition in if/cond/when/unless → #t
+ *   REMOVE_CONDITIONALS_ORDER_ELSE : order condition in if/cond/when/unless → #f
  *   STATEMENT_MUTATION           : (stmt ...) in begin → (void)
  *   VML_VOID_METHOD_CALL         : (stmt ...) in begin → removed entirely
  *   INEG_INVERT_NEGATIVE         : (- x) → x
@@ -102,6 +106,10 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.CONDITIONAL_TRUE,
                 Mutator.MutatorType.CONDITIONAL_FALSE,
                 Mutator.MutatorType.NEGATE_CONDITIONALS,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.VML_VOID_METHOD_CALL,
                 Mutator.MutatorType.INEG_INVERT_NEGATIVE,
@@ -157,6 +165,18 @@ public class RacketMutationScanner {
                 "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
                 "begin", "begin0", "define", "define-struct", "provide", "require",
                 "local", "shared", "recur", "delay", "set!", "time", "module+"
+        );
+
+        // Heads that make a condition an "equality" check (PIT REMOVE_CONDITIONALS_EQUAL_*).
+        // Names containing =, < or > (string=?, char<?, ...) are not single NAME
+        // tokens in the ISL lexer, so they can't be matched here.
+        private static final java.util.Set<String> EQUALITY_OPS = java.util.Set.of(
+                "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?"
+        );
+
+        // Heads that make a condition an "order" check (PIT REMOVE_CONDITIONALS_ORDER_*)
+        private static final java.util.Set<String> ORDER_OPS = java.util.Set.of(
+                "<", ">", "<=", ">=", "positive?", "negative?"
         );
 
         private boolean isStatementHead(String text) {
@@ -356,6 +376,10 @@ public class RacketMutationScanner {
                     if (text.equals("bitwise-ior"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-ior", "bitwise-and", mutationType));
                 }
+                case REMOVE_CONDITIONALS_EQUAL_IF, REMOVE_CONDITIONALS_EQUAL_ELSE,
+                     REMOVE_CONDITIONALS_ORDER_IF, REMOVE_CONDITIONALS_ORDER_ELSE -> {
+                    handleRemoveConditionals(text, ctx);
+                }
                 case CONDITIONAL_TRUE, CONDITIONAL_FALSE -> {
                     // ISL: (if cond then else) — child(2) is the condition
                     if (text.equals("if") && ctx.getChildCount() >= 6) {
@@ -369,6 +393,72 @@ public class RacketMutationScanner {
 
                 default -> { }
             }
+        }
+
+        /**
+         * PIT-style "Remove Conditionals": replaces a whole condition with #t or #f.
+         * EQUAL_* variants only fire on conditions that contain an equality check
+         * (=, equal?, ...); ORDER_* variants only on conditions that contain an
+         * order check (<, >, <=, >=, ...). Covers the condition of
+         * (if c t f), each non-else clause test of (cond [c e] ...), and the
+         * guard of (when c ...) / (unless c ...).
+         */
+        private void handleRemoveConditionals(String head, ISLParser.ExprContext ctx) {
+            switch (head) {
+                case "if", "when", "unless" -> {
+                    if (ctx.getChildCount() >= 4 && ctx.getChild(2) instanceof ISLParser.ExprContext cond)
+                        addRemoveConditionalPoint(cond);
+                }
+                case "cond" -> {
+                    // ( cond [ test expr ] ... [ else expr ] ) — test follows each '['
+                    for (int i = 2; i < ctx.getChildCount() - 1; i++) {
+                        if (ctx.getChild(i) instanceof TerminalNode tn
+                                && tn.getSymbol().getText().equals("[")
+                                && ctx.getChild(i + 1) instanceof ISLParser.ExprContext test) {
+                            addRemoveConditionalPoint(test);
+                        }
+                    }
+                }
+                default -> { }
+            }
+        }
+
+        private void addRemoveConditionalPoint(ISLParser.ExprContext cond) {
+            boolean equality = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                    || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE;
+            if (!containsHead(cond, equality ? EQUALITY_OPS : ORDER_OPS)) return;
+
+            // Main.applyMutation rewrites a single line, so a condition that spans
+            // lines cannot be replaced safely; skip it rather than emit a broken mutant.
+            if (cond.getStart() == null || cond.getStop() == null
+                    || cond.getStart().getLine() != cond.getStop().getLine()) return;
+
+            boolean toTrue = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                    || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF;
+            String replacement = toTrue ? "#t" : "#f";
+            String condText = extractSourceText(cond);
+            int[] pos = getExprPosition(cond);
+            String label = (equality ? "Remove conditionals (equal): " : "Remove conditionals (order): ")
+                    + condText + " → " + replacement;
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1], condText, replacement, mutationType, label));
+        }
+
+        /**
+         * True if the expression, or any nested paren application inside it,
+         * has a head token in {@code heads}. Handles conditions like
+         * (not (= a b)) and (and (> a 0) (< a 10)).
+         */
+        private boolean containsHead(ParseTree node, java.util.Set<String> heads) {
+            if (node instanceof ISLParser.ExprContext expr && expr.getChildCount() >= 3
+                    && expr.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token headTok = extractToken(expr.getChild(1));
+                if (headTok != null && heads.contains(headTok.getText())) return true;
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                if (containsHead(node.getChild(i), heads)) return true;
+            }
+            return false;
         }
 
         private String extractSourceText(ParseTree ctx) {
