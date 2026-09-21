@@ -761,8 +761,8 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_OBJECT_TO_NULL);
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
-        // negate-x, get-pair, get-id  → 6 points
-        assertEquals(6, points.size());
+        // negate-x, get-pair, get-id, describe-zero, sign  → 8 points
+        assertEquals(8, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -778,5 +778,108 @@ public class RacketScannerTests {
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // REMOVE_CONDITIONALS_*  (whole condition → #t / #f)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRemoveConditionalsEqualIf() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF);
+
+        // Only describe-zero has an equality condition: (= n 0)
+        assertEquals(1, points.size());
+        MutationPoint p = points.get(0);
+        assertEquals("(= n 0)", p.getOperator());
+        assertEquals("#t", p.getReplacement());
+        assertEquals(56, p.getLineNumber());
+        assertEquals(6, p.getColumnNumber());
+    }
+
+    @Test
+    public void testPitRemoveConditionalsEqualElse() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE);
+
+        assertEquals(1, points.size());
+        assertEquals("(= n 0)", points.get(0).getOperator());
+        assertEquals("#f", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testPitRemoveConditionalsOrderIf() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF);
+
+        // sign has two cond clauses with order checks; the else clause is skipped
+        assertEquals(2, points.size());
+        assertEquals("(< n 0)", points.get(0).getOperator());
+        assertEquals("(> n 0)", points.get(1).getOperator());
+        for (MutationPoint p : points) {
+            assertEquals("#t", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testPitRemoveConditionalsOrderElse() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE);
+
+        assertEquals(2, points.size());
+        for (MutationPoint p : points) {
+            assertEquals("#f", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testOperatorsRemoveConditionalsOrder() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF);
+
+        // if conditions with an order check: compare-gt, compare-ge, compare-lt,
+        // compare-le, check-logic (outer and + inner or), clamp-to-zero, under-limit?
+        assertEquals(8, points.size());
+        assertTrue(points.stream().anyMatch(p -> p.getOperator().equals("(and (> x 0) (> y 0))")),
+                "nested order checks inside and/or should be detected");
+        assertTrue(points.stream().noneMatch(p -> p.getOperator().equals("(= x y)")),
+                "equality condition must not match ORDER variants");
+    }
+
+    @Test
+    public void testOperatorsRemoveConditionalsEqual() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE);
+
+        // Only check-equal has an equality condition: (= x y)
+        assertEquals(1, points.size());
+        assertEquals("(= x y)", points.get(0).getOperator());
+        assertEquals("#f", points.get(0).getReplacement());
+    }
+
+    @Test
+    public void testRemoveConditionalsWhenUnlessAndNot() throws IOException {
+        File tmp = File.createTempFile("remove-cond", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f x)",
+                "  (when (not (equal? x 'a)) (display x))",
+                "  (unless (negative? x) (display x))",
+                "  (if (> x",
+                "         0) 1 2))",
+                ""));
+
+        List<MutationPoint> eq = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF);
+        assertEquals(1, eq.size());
+        assertEquals("(not (equal? x 'a))", eq.get(0).getOperator());
+        assertEquals(3, eq.get(0).getLineNumber());
+
+        // (negative? x) under unless is an order check; the multi-line (> x 0) is skipped
+        List<MutationPoint> ord = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE);
+        assertEquals(1, ord.size());
+        assertEquals("(negative? x)", ord.get(0).getOperator());
+        assertEquals("#f", ord.get(0).getReplacement());
     }
 }
