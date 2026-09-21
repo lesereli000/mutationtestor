@@ -70,6 +70,19 @@
     (check-equal? (get-id 42)  42)
     (check-equal? (get-id "hi") "hi")))
 
+; -------------------------------------------------------------------------
+; E. Remove Conditionals
+;    REMOVE_CONDITIONALS_EQUAL_IF/ELSE : (= n 0) -> #t / #f
+;    REMOVE_CONDITIONALS_ORDER_IF/ELSE : (< n 0), (> n 0) -> #t / #f
+; -------------------------------------------------------------------------
+(define remove-conditionals-suite
+  (test-suite "Remove conditionals: condition replaced with #t/#f"
+    (check-equal? (describe-zero 0)  "zero")
+    (check-equal? (describe-zero 1)  "non-zero")
+    (check-equal? (sign -5) "negative")
+    (check-equal? (sign  5) "positive")
+    (check-equal? (sign  0) "zero")))
+
 (define all-tests
   (test-suite "PIT Mutation Tests"
     vml-suite

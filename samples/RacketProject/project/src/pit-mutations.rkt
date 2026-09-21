@@ -6,7 +6,8 @@
   negate-x
   always-true always-false
   return-zero return-nonzero
-  get-pair get-id)
+  get-pair get-id
+  describe-zero sign)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -49,3 +50,13 @@
 ; RVM_OBJECT_TO_NULL: identifier -> '()
 (define (get-id x)
   x)
+
+; REMOVE_CONDITIONALS_EQUAL_IF / _ELSE: (= n 0) -> #t / #f
+(define (describe-zero n)
+  (if (= n 0) "zero" "non-zero"))
+
+; REMOVE_CONDITIONALS_ORDER_IF / _ELSE: (< n 0) and (> n 0) -> #t / #f
+(define (sign n)
+  (cond [(< n 0) "negative"]
+        [(> n 0) "positive"]
+        [else "zero"]))
