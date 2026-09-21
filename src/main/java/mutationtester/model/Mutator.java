@@ -65,6 +65,11 @@ public class Mutator {
         // Invert Negatives
         INEG_INVERT_NEGATIVE,
 
+        // JavaScript-focused PIT-style mutations
+        REMOVE_LOGICAL_NEGATION,
+        JS_STRICT_EQ_TO_LOOSE_EQ,
+        JS_STRICT_NE_TO_LOOSE_NE,
+
         // Logical Connector Replacement
         LCR_AND_TO_OR,          // && to ||
         LCR_OR_TO_AND,          // || to &&

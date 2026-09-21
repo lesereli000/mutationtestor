@@ -18,16 +18,20 @@ import java.util.List;
  * return nonzero     -> return 0      (RVM_NONZERO_TO_ZERO)
  * return object/ref  -> return null   (RVM_OBJECT_TO_NULL)
  * return primitive   -> return 0      (RVM_PRIMITIVE_TO_ZERO)
+ * return literal     -> empty literal (EMPTY_RETURNS)
  */
 public class JavaScriptRVMVisitor extends JavaScriptParserBaseVisitor<Void> {
 
     private final List<MutationPoint> mutations = new ArrayList<>();
     private final File sourceFile;
     private final Mutator.MutatorType mutationType;
+    private final String sourceCode;
 
-    public JavaScriptRVMVisitor(File sourceFile, Mutator.MutatorType mutationType) {
+    public JavaScriptRVMVisitor(File sourceFile, Mutator.MutatorType mutationType,
+                                String sourceCode) {
         this.sourceFile = sourceFile;
         this.mutationType = mutationType;
+        this.sourceCode = sourceCode;
     }
 
     public List<MutationPoint> getMutations() {
@@ -38,28 +42,34 @@ public class JavaScriptRVMVisitor extends JavaScriptParserBaseVisitor<Void> {
     public Void visitReturnStatement(JavaScriptParser.ReturnStatementContext ctx) {
         if (ctx.expressionSequence() == null) return visitChildren(ctx);
 
-        String returnedValue = ctx.expressionSequence().getText();
+        int startIndex = ctx.expressionSequence().getStart().getStartIndex();
+        int stopIndex = ctx.expressionSequence().getStop().getStopIndex();
+        String returnedValue = sourceCode.substring(startIndex, stopIndex + 1);
+        String compactValue = ctx.expressionSequence().getText();
         String replacement = null;
 
         switch (mutationType) {
             case RVM_TRUE_TO_FALSE:
-                if (returnedValue.equals("true"))  replacement = "false";
+                if (compactValue.equals("true"))  replacement = "false";
                 break;
             case RVM_FALSE_TO_TRUE:
-                if (returnedValue.equals("false")) replacement = "true";
+                if (compactValue.equals("false")) replacement = "true";
                 break;
             case RVM_ZERO_TO_ONE:
-                if (returnedValue.equals("0"))     replacement = "1";
+                if (compactValue.equals("0"))     replacement = "1";
                 break;
             case RVM_NONZERO_TO_ZERO:
-                if (returnedValue.matches("^[1-9]\\d*$")) replacement = "0";
+                if (compactValue.matches("^[1-9]\\d*$")) replacement = "0";
                 break;
             case RVM_OBJECT_TO_NULL:
-                if (isObjectReturn(returnedValue)) replacement = "null";
+                if (isObjectReturn(compactValue)) replacement = "null";
                 break;
             case RVM_PRIMITIVE_TO_ZERO:
-                if (returnedValue.matches("^-?\\d+\\.?\\d*$") && !returnedValue.equals("0"))
+                if (compactValue.matches("^-?\\d+\\.?\\d*$") && !compactValue.equals("0"))
                     replacement = "0";
+                break;
+            case EMPTY_RETURNS:
+                replacement = emptyReplacement(compactValue);
                 break;
             default:
                 break;
@@ -73,6 +83,22 @@ public class JavaScriptRVMVisitor extends JavaScriptParserBaseVisitor<Void> {
         }
 
         return visitChildren(ctx);
+    }
+
+    private String emptyReplacement(String value) {
+        if ((value.startsWith("\"") && value.endsWith("\""))
+                || (value.startsWith("'") && value.endsWith("'"))
+                || (value.startsWith("`") && value.endsWith("`"))) {
+            return value.equals("\"\"") || value.equals("''") || value.equals("``")
+                    ? null : "\"\"";
+        }
+        if (value.startsWith("[") && value.endsWith("]")) {
+            return value.equals("[]") ? null : "[]";
+        }
+        if (value.startsWith("{") && value.endsWith("}")) {
+            return value.equals("{}") ? null : "{}";
+        }
+        return null;
     }
 
     /**

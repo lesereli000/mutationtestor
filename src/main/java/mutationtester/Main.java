@@ -806,11 +806,7 @@ public class Main {
             Mutator.MutatorType type) throws IOException {
 
         String name = type.name();
-            if (file.getName().endsWith(".js") &&
-                (name.startsWith("ROR_") || name.startsWith("LCR_") ||
-                name.startsWith("RVM_") || name.startsWith("AOR_") ||
-                name.startsWith("NLT_") || name.startsWith("VML_") ||
-                name.startsWith("INEG_"))) {
+            if (file.getName().endsWith(".js")) {
                 System.out.println("  [AST] Scanning " + file.getName());
                 return JavaScriptMutationScanner.scanFile(file, type);
             }
