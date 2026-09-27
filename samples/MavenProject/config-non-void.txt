@@ -1,0 +1,5 @@
+source_code_directory=src/main/java
+mutator_type=CUSTOM
+custom_mutation_spec=specs/non-void-calls.spec
+compile_command=mvn -q -DskipTests compile
+test_command=mvn -q -Dtest=TestNonVoidCall test

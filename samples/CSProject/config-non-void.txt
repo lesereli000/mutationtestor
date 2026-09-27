@@ -1,0 +1,5 @@
+source_code_directory=src/CSProject
+mutator_type=CUSTOM
+custom_mutation_spec=specs/non-void-calls.spec
+compile_command=dotnet build tests/CSProject.Tests/CSProject.Tests.csproj
+test_command=dotnet test tests/CSProject.Tests/CSProject.Tests.csproj --filter FullyQualifiedName~NonVoidMethodCalls

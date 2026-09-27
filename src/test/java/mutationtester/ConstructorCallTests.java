@@ -14,9 +14,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
+import mutationtester.scanner.CSharpMutationScanner;
 import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
+import mutationtester.scanner.RacketMutationScanner;
 
 /**
  * S03 constructor-call replacement.
@@ -170,5 +172,67 @@ class ConstructorCallTests {
         assertEquals("None", points.get(0).getReplacement());
         assertFalse(points.get(0).getReplacement().equals("pass")
                 || points.get(0).getReplacement().isEmpty());
+    }
+
+    @Test
+    @DisplayName("C#: new produces S03 mutations with replacement null")
+    void csharpConstructorProducesMutations() throws Exception {
+        Path file = tempDir.resolve("Value.cs");
+        Files.writeString(file, """
+                class Value {
+                    public Widget Make() { return new Widget(); }
+                }
+                class Widget {}
+                """);
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(
+                file.toFile(), Mutator.MutatorType.CONSTRUCTOR_CALLS);
+        assertEquals(1, points.size(), points.toString());
+        assertTrue(points.get(0).getOperator().contains("new"), points.toString());
+        assertEquals("null", points.get(0).getReplacement());
+    }
+
+    @Test
+    @DisplayName("C#: normal method call produces zero S03 mutations")
+    void csharpMethodCallProducesZero() throws Exception {
+        Path file = tempDir.resolve("Call.cs");
+        Files.writeString(file, """
+                class Call {
+                    public int Read() { return Compute(); }
+                    private int Compute() { return 9; }
+                }
+                """);
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(
+                file.toFile(), Mutator.MutatorType.CONSTRUCTOR_CALLS);
+        assertTrue(points.isEmpty(), points.toString());
+    }
+
+    @Test
+    @DisplayName("C#: S03 replacement is null, not a deleted statement")
+    void csharpReplacementIsNull() throws Exception {
+        Path file = tempDir.resolve("Assign.cs");
+        Files.writeString(file, """
+                class Assign {
+                    public Widget Make() { Widget o = new Widget(); return o; }
+                }
+                class Widget {}
+                """);
+        List<MutationPoint> points = CSharpMutationScanner.scanFile(
+                file.toFile(), Mutator.MutatorType.CONSTRUCTOR_CALLS);
+        assertEquals(1, points.size(), points.toString());
+        assertEquals("null", points.get(0).getReplacement());
+        assertFalse(points.get(0).getReplacement().isBlank());
+    }
+
+    @Test
+    @DisplayName("Racket: S03 is unsupported (no constructor node)")
+    void racketUnsupportedProducesZero() throws Exception {
+        Path file = tempDir.resolve("value.rkt");
+        Files.writeString(file, """
+                #lang racket
+                (define (make) (list 1 2))
+                """);
+        List<MutationPoint> points = RacketMutationScanner.scanFile(
+                file.toFile(), Mutator.MutatorType.CONSTRUCTOR_CALLS);
+        assertTrue(points.isEmpty(), points.toString());
     }
 }

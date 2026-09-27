@@ -1,0 +1,5 @@
+source_code_directory=src/main/java
+mutator_type=CUSTOM
+custom_mutation_spec=specs/constructor-calls.spec
+compile_command=mvn -q -DskipTests compile
+test_command=mvn -q -Dtest=TestConstructorCall test
