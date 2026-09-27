@@ -69,6 +69,18 @@ public class JavaScriptMutationScanner {
             v.visit(tree); return v.getMutations();
         }
 
+        if (type == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+            JavaScriptNonVoidCallVisitor v = new JavaScriptNonVoidCallVisitor(file, type);
+            v.visit(tree);
+            return v.getMutations();
+        }
+
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            JavaScriptConstructorCallVisitor v = new JavaScriptConstructorCallVisitor(file, type, sourceCode);
+            v.visit(tree);
+            return v.getMutations();
+        }
+
         // NLT — Numeric Literal Transformations
         NLTVisitor visitor = new NLTVisitor(file, type);
         visitor.visit(tree);

@@ -44,7 +44,8 @@ public class JavaMutationScanner {
         }
 
         // Create visitor based on mutation type
-        JavaMutationScanner.JavaMutationVisitor visitor = new JavaMutationScanner.JavaMutationVisitor(file, type);
+        JavaMutationScanner.JavaMutationVisitor visitor =
+                new JavaMutationScanner.JavaMutationVisitor(file, type, sourceCode);
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
@@ -57,11 +58,13 @@ public class JavaMutationScanner {
 
         private final File sourceFile;
         private final Mutator.MutatorType mutationType;
+        private final String sourceCode;
         private final List<MutationPoint> mutationPoints;
 
-        public JavaMutationVisitor(File sourceFile, Mutator.MutatorType mutationType) {
+        public JavaMutationVisitor(File sourceFile, Mutator.MutatorType mutationType, String sourceCode) {
             this.sourceFile = sourceFile;
             this.mutationType = mutationType;
+            this.sourceCode = sourceCode;
             this.mutationPoints = new ArrayList<>();
         }
 
@@ -186,6 +189,168 @@ public class JavaMutationScanner {
             }
 
             return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitMethodCallExpression(JavaParser.MethodCallExpressionContext ctx) {
+            maybeAddNonVoidCall(ctx);
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitMemberReferenceExpression(JavaParser.MemberReferenceExpressionContext ctx) {
+            if (ctx.methodCall() != null) {
+                maybeAddNonVoidCall(ctx);
+            }
+            return visitChildren(ctx);
+        }
+
+        @Override
+        public Void visitObjectCreationExpression(JavaParser.ObjectCreationExpressionContext ctx) {
+            maybeAddConstructorCall(ctx);
+            return visitChildren(ctx);
+        }
+
+        private void maybeAddConstructorCall(JavaParser.ObjectCreationExpressionContext ctx) {
+            if (mutationType != Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+                return;
+            }
+            if (ctx.creator() != null && ctx.creator().arrayCreatorRest() != null) {
+                return;
+            }
+            String text = sourceSpan(ctx);
+            if (text.startsWith("super") || text.contains(".super(")) {
+                return;
+            }
+            if (!isJavaValueCallSite(ctx)) {
+                return;
+            }
+            Token start = ctx.getStart();
+            mutationPoints.add(new MutationPoint(
+                    sourceFile,
+                    start.getLine(),
+                    start.getCharPositionInLine(),
+                    sourceSpan(ctx),
+                    "null",
+                    mutationType));
+        }
+
+        private String sourceSpan(ParserRuleContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            if (start != null && stop != null
+                    && start.getStartIndex() >= 0
+                    && stop.getStopIndex() >= start.getStartIndex()
+                    && stop.getStopIndex() < sourceCode.length()) {
+                return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+            }
+            return ctx.getText();
+        }
+
+        private void maybeAddNonVoidCall(ParserRuleContext call) {
+            if (mutationType != Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                return;
+            }
+            if (call.getParent() instanceof JavaParser.MemberReferenceExpressionContext) {
+                return;
+            }
+            if (!isJavaValueCallSite(call)) {
+                return;
+            }
+            Token start = call.getStart();
+            mutationPoints.add(new MutationPoint(
+                    sourceFile,
+                    start.getLine(),
+                    start.getCharPositionInLine(),
+                    call.getText(),
+                    javaDefaultForEnclosingType(call),
+                    mutationType));
+        }
+
+        private boolean isJavaValueCallSite(ParserRuleContext call) {
+            JavaParser.StatementContext statement = ancestor(call, JavaParser.StatementContext.class);
+            if (statement != null && statement.statementExpression != null
+                    && sameSpan(statement.statementExpression, call)) {
+                return false;
+            }
+            if (statement != null && statement.getStart() != null
+                    && "return".equals(statement.getStart().getText())
+                    && statement.expression() != null
+                    && !statement.expression().isEmpty()
+                    && sameSpan(statement.expression().get(statement.expression().size() - 1), call)) {
+                return true;
+            }
+            JavaParser.LocalVariableDeclarationContext local =
+                    ancestor(call, JavaParser.LocalVariableDeclarationContext.class);
+            if (local != null && local.expression() != null && sameSpan(local.expression(), call)) {
+                return true;
+            }
+            if (local != null) {
+                for (JavaParser.VariableDeclaratorContext declarator : local.variableDeclarators() == null
+                        ? java.util.List.<JavaParser.VariableDeclaratorContext>of()
+                        : local.variableDeclarators().variableDeclarator()) {
+                    if (declarator.variableInitializer() != null
+                            && declarator.variableInitializer().expression() != null
+                            && sameSpan(declarator.variableInitializer().expression(), call)) {
+                        return true;
+                    }
+                }
+            }
+            JavaParser.BinaryOperatorExpressionContext assignment =
+                    ancestor(call, JavaParser.BinaryOperatorExpressionContext.class);
+            return assignment != null
+                    && assignment.bop != null
+                    && "=".equals(assignment.bop.getText())
+                    && assignment.expression().size() >= 2
+                    && sameSpan(assignment.expression(1), call);
+        }
+
+        private String javaDefaultForEnclosingType(ParserRuleContext call) {
+            JavaParser.LocalVariableDeclarationContext local =
+                    ancestor(call, JavaParser.LocalVariableDeclarationContext.class);
+            if (local != null && local.typeType() != null) {
+                return javaDefaultForType(local.typeType().getText());
+            }
+            JavaParser.MethodDeclarationContext method =
+                    ancestor(call, JavaParser.MethodDeclarationContext.class);
+            if (method != null && method.typeTypeOrVoid() != null) {
+                return javaDefaultForType(method.typeTypeOrVoid().getText());
+            }
+            return "null";
+        }
+
+        private String javaDefaultForType(String type) {
+            String normalized = type == null ? "" : type.trim();
+            if (normalized.equals("boolean")) {
+                return "false";
+            }
+            if (normalized.equals("int") || normalized.equals("long")
+                    || normalized.equals("short") || normalized.equals("byte")
+                    || normalized.equals("char")) {
+                return "0";
+            }
+            if (normalized.equals("float") || normalized.equals("double")) {
+                return "0.0";
+            }
+            return "null";
+        }
+
+        private <T> T ancestor(ParseTree ctx, Class<T> type) {
+            for (ParseTree parent = ctx.getParent(); parent != null; parent = parent.getParent()) {
+                if (type.isInstance(parent)) {
+                    return type.cast(parent);
+                }
+            }
+            return null;
+        }
+
+        private boolean sameSpan(ParseTree left, ParseTree right) {
+            if (!(left instanceof ParserRuleContext leftCtx)
+                    || !(right instanceof ParserRuleContext rightCtx)) {
+                return left == right;
+            }
+            return leftCtx.getStart() == rightCtx.getStart()
+                    && leftCtx.getStop() == rightCtx.getStop();
         }
 
         private void addMutation(Token token, String operator, String replacement) {

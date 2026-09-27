@@ -3,6 +3,9 @@ package mutationtester.msl;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import mutationtester.scanner.CSharpMutationScanner;
+import mutationtester.scanner.JavaMutationScanner;
+import mutationtester.scanner.JavaScriptMutationScanner;
+import mutationtester.scanner.PythonMutationScanner;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -37,17 +40,25 @@ public class ScannerBackedRule implements MutationRule {
 
     @Override
     public List<MutationPoint> findMutationPoints(MSLScannerAdapter scanner, File sourceFile) {
-        if (!sourceFile.getName().endsWith(".cs")) {
-            return Collections.emptyList();
-        }
-
+        String fileName = sourceFile.getName();
         try {
-            return CSharpMutationScanner.scanFile(sourceFile, mutatorType);
+            if (fileName.endsWith(".cs")) {
+                return CSharpMutationScanner.scanFile(sourceFile, mutatorType);
+            }
+            if (fileName.endsWith(".java")) {
+                return JavaMutationScanner.scanFile(sourceFile, mutatorType);
+            }
+            if (fileName.endsWith(".js")) {
+                return JavaScriptMutationScanner.scanFile(sourceFile, mutatorType);
+            }
+            if (fileName.endsWith(".py")) {
+                return PythonMutationScanner.scanFile(sourceFile, mutatorType);
+            }
         } catch (IOException e) {
             System.err.println("Warning: Failed to apply MSL scanner-backed rule "
                     + label + " to " + sourceFile + ": " + e.getMessage());
-            return Collections.emptyList();
         }
+        return Collections.emptyList();
     }
 
     @Override

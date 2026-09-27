@@ -30,15 +30,6 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
     }
 
     @Override
-    public Void visitExpr_stmt(PythonParser.Expr_stmtContext ctx) {
-        if (ctx.assign_part() != null && ctx.assign_part().COLON() != null && ctx.assign_part().test() != null) {
-            maybeAddTypeSwapMutation(ctx.assign_part().test().getText().trim(), ctx.assign_part().test().getStart());
-        }
-
-        return visitChildren(ctx);
-    }
-
-    @Override
     public Void visitNamed_parameter(PythonParser.Named_parameterContext ctx) {
         if (ctx.test() != null) {
             maybeAddTypeSwapMutation(ctx.test().getText().trim(), ctx.test().getStart());
@@ -65,6 +56,36 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
                 maybeAddTypeSwapMutation(returnType.getText().trim(), returnType.getStart());
             }
             break;
+        }
+
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitReturn_stmt(PythonParser.Return_stmtContext ctx) {
+        if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                && ctx.testlist() != null) {
+            maybeAddNonVoidCall(findDirectCall(ctx.testlist(), false), ctx.testlist());
+        }
+        if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS
+                && ctx.testlist() != null) {
+            maybeAddConstructorCall(findDirectCall(ctx.testlist(), true));
+        }
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitExpr_stmt(PythonParser.Expr_stmtContext ctx) {
+        if (ctx.assign_part() != null && ctx.assign_part().COLON() != null && ctx.assign_part().test() != null) {
+            maybeAddTypeSwapMutation(ctx.assign_part().test().getText().trim(), ctx.assign_part().test().getStart());
+        }
+        if (isPlainPythonAssignment(ctx.assign_part())) {
+            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                maybeAddNonVoidCall(findDirectCall(ctx.assign_part(), false), ctx.assign_part());
+            }
+            if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+                maybeAddConstructorCall(findDirectCall(ctx.assign_part(), true));
+            }
         }
 
         return visitChildren(ctx);
@@ -157,6 +178,70 @@ public class PythonMutationVisitor extends PythonParserBaseVisitor<Void> {
         }
 
         return visitChildren(ctx);
+    }
+
+    private void maybeAddNonVoidCall(PythonParser.ExprContext call, ParseTree ignoredContainer) {
+        if (call == null || call.getStart() == null || call.getStop() == null) {
+            return;
+        }
+        int start = call.getStart().getStartIndex();
+        int stop = call.getStop().getStopIndex();
+        if (start < 0 || stop < start || stop >= sourceCode.length()) {
+            return;
+        }
+        String text = sourceCode.substring(start, stop + 1);
+        addMutation(call.getStart(), text, "None");
+    }
+
+    private boolean isPlainPythonAssignment(PythonParser.Assign_partContext assign) {
+        return assign != null && assign.op == null && assign.ASSIGN() != null;
+    }
+
+    private void maybeAddConstructorCall(PythonParser.ExprContext call) {
+        if (call == null || call.getStart() == null || call.getStop() == null) {
+            return;
+        }
+        int start = call.getStart().getStartIndex();
+        int stop = call.getStop().getStopIndex();
+        if (start < 0 || stop < start || stop >= sourceCode.length()) {
+            return;
+        }
+        String text = sourceCode.substring(start, stop + 1);
+        addMutation(call.getStart(), text, "None");
+    }
+
+    private PythonParser.ExprContext findDirectCall(ParseTree node, boolean constructor) {
+        ParseTree current = node;
+        if (node instanceof PythonParser.Assign_partContext assign) {
+            current = assign.getChild(assign.getChildCount() - 1);
+        }
+        while (current != null
+                && current.getChildCount() == 1
+                && !isNamedCall(current, constructor)) {
+            current = current.getChild(0);
+        }
+        if (current instanceof PythonParser.ExprContext expr && isNamedCall(expr, constructor)) {
+            return expr;
+        }
+        return null;
+    }
+
+    private boolean isNamedCall(ParseTree node, boolean constructor) {
+        if (!(node instanceof PythonParser.ExprContext expr)
+                || expr.atom() == null
+                || expr.atom().name() == null
+                || expr.trailer() == null
+                || expr.trailer().size() != 1
+                || expr.trailer(0).arguments() == null
+                || expr.trailer(0).arguments().OPEN_PAREN() == null) {
+            return false;
+        }
+        String name = expr.atom().name().getText();
+        if (name.isEmpty()) {
+            return false;
+        }
+        boolean uppercase = Character.isUpperCase(name.charAt(0));
+        return constructor ? uppercase : !uppercase;
     }
 
     private void maybeAddTypeSwapMutation(String annotatedType, Token token) {

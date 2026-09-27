@@ -61,7 +61,9 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.LOGICAL_AND_TO_OR,
                 Mutator.MutatorType.LOGICAL_OR_TO_AND,
                 Mutator.MutatorType.TYPE_INT_TO_FLOAT,
-                Mutator.MutatorType.TYPE_FLOAT_TO_INT
+                Mutator.MutatorType.TYPE_FLOAT_TO_INT,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                Mutator.MutatorType.CONSTRUCTOR_CALLS
         );
     }
 
@@ -88,7 +90,9 @@ public class PythonMutationScanner {
                 || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
                 || type == Mutator.MutatorType.LOGICAL_OR_TO_AND
                 || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
-                || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT;
+                || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT
+                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS;
     }
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());

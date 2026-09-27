@@ -1,0 +1,5 @@
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=specs/constructor-calls.spec
+compile_command=
+test_command=python3 -m pytest ./tests/TestConstructorCall.py

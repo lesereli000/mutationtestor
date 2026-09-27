@@ -1,0 +1,5 @@
+source_code_directory=src
+mutator_type=CUSTOM
+custom_mutation_spec=specs/non-void-calls.spec
+compile_command=
+test_command=python3 -m pytest ./tests/TestNonVoidCall.py
