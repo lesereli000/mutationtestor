@@ -58,6 +58,7 @@ import java.util.regex.Pattern;
  *   RVM_OBJECT_TO_NULL           : function returning expression/identifier → '()
  *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
  *   EMPTY_RETURNS                : function returning a string/list → "" / '()
+ *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
  */
 public class RacketMutationScanner {
 
@@ -122,7 +123,8 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.RVM_NONZERO_TO_ZERO,
                 Mutator.MutatorType.RVM_OBJECT_TO_NULL,
                 Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO,
-                Mutator.MutatorType.EMPTY_RETURNS
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS
         );
     }
 
@@ -217,6 +219,11 @@ public class RacketMutationScanner {
                     Token headToken = extractToken(second);
                     if (headToken != null) {
                         checkOperatorToken(headToken, ctx);
+
+                        if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                            checkNonVoidCall(headToken, ctx);
+                            markStatementExprs(headToken.getText(), ctx);
+                        }
 
                         // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
                         if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
@@ -522,6 +529,15 @@ public class RacketMutationScanner {
 
         @Override
         public Void visitDefinition(ISLParser.DefinitionContext ctx) {
+            // A function body's non-last exprs run only for their side effects
+            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                    && ctx.getChildCount() >= 6
+                    && ctx.getChild(2) instanceof TerminalNode paren
+                    && paren.getText().equals("(")) {
+                List<ISLParser.ExprContext> bodyExprs = ctx.expr();
+                statementExprs.addAll(bodyExprs.subList(0, Math.max(0, bodyExprs.size() - 1)));
+            }
+
             boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
             if ((isRVMMutation() || emptyReturns) && ctx.getChildCount() >= 6) {
                 // Function definition: '(' 'define' '(' name NAME* ')' expr+ ')'
@@ -656,6 +672,81 @@ public class RacketMutationScanner {
                 if (LIST_BUILDERS.contains(head.getText()) && hasArgs) return "'()";
             }
             return null;
+        }
+
+        // -------------------------------------------------------------------------
+        // NON_VOID_METHOD_CALLS — PIT-style: replace a call whose result is used
+        // with a default value for what it returns
+        // -------------------------------------------------------------------------
+
+        // Identifier heads that are macros/keywords rather than function calls.
+        // (Grammar keywords like if/let/define and operators like + and < are
+        // separate token types, so they never reach this check.)
+        private static final java.util.Set<String> NON_CALL_HEADS = java.util.Set.of(
+                "when", "unless", "quote", "not", "struct", "case", "match",
+                "for", "do", "parameterize", "with-handlers"
+        );
+
+        // Calls made for their side effect — VML_VOID_METHOD_CALL's territory
+        private static final java.util.Set<String> VOID_CALLS = java.util.Set.of(
+                "display", "displayln", "print", "println", "printf", "write", "writeln",
+                "newline", "fprintf", "eprintf", "void", "error", "raise", "exit", "sleep"
+        );
+
+        // Calls whose result is a number
+        private static final java.util.Set<String> NUMBER_CALLS = java.util.Set.of(
+                "add1", "sub1", "abs", "max", "min", "sqr", "sqrt", "expt", "exp", "log",
+                "quotient", "remainder", "modulo", "floor", "ceiling", "round", "truncate",
+                "gcd", "lcm", "length", "string-length", "vector-length", "random",
+                "bitwise-and", "bitwise-ior", "bitwise-xor", "arithmetic-shift"
+        );
+
+        // Exprs whose value is discarded; filled in by the enclosing form before
+        // its children are visited
+        private final java.util.Set<ParseTree> statementExprs = new java.util.HashSet<>();
+
+        private void checkNonVoidCall(Token head, ISLParser.ExprContext call) {
+            if (head.getType() != ISLLexer.NAME || statementExprs.contains(call)) return;
+
+            String name = head.getText();
+            if (NON_CALL_HEADS.contains(name) || VOID_CALLS.contains(name) || name.endsWith("!")) return;
+
+            // Main.applyMutation rewrites a single line; skip calls that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), defaultValueForCall(name), mutationType,
+                    "Non-void method call mutation"));
+        }
+
+        /**
+         * Racket has no declared return types, so the default is inferred from the
+         * callee's name, mirroring PIT's per-type defaults.
+         */
+        private String defaultValueForCall(String name) {
+            if (name.endsWith("?")) return "#f";
+            if (NUMBER_CALLS.contains(name)) return "0";
+            if (STRING_BUILDERS.contains(name)) return "\"\"";
+            // Lists, and anything whose result can't be told from the name:
+            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            return "'()";
+        }
+
+        /** Marks the sub-exprs of begin/begin0/when/unless whose values are discarded. */
+        private void markStatementExprs(String head, ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> exprs = ctx.expr();
+            switch (head) {
+                // ( begin stmt... value )
+                case "begin" -> statementExprs.addAll(exprs.subList(0, Math.max(0, exprs.size() - 1)));
+                // ( begin0 value stmt... )
+                case "begin0" -> statementExprs.addAll(exprs.subList(Math.min(1, exprs.size()), exprs.size()));
+                // ( when cond stmt... value ) — parsed as an application, so exprs(0) is the head
+                case "when", "unless" -> {
+                    if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
+                }
+                default -> { }
+            }
         }
 
         private boolean isRVMMutation() {
