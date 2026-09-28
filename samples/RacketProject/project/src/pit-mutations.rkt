@@ -8,7 +8,7 @@
   return-zero return-nonzero
   get-pair get-id
   describe-zero sign
-  greeting vowels pair-list)
+  greeting vowels pair-list sum-of-squares parity)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -73,3 +73,11 @@
 ; EMPTY_RETURNS: list-building call -> '()
 (define (pair-list x y)
   (list x y))
+
+; NON_VOID_METHOD_CALLS: numeric call result -> 0
+(define (sum-of-squares a b)
+  (+ (sqr a) (sqr b)))
+
+; NON_VOID_METHOD_CALLS: predicate call result -> #f
+(define (parity n)
+  (if (even? n) "even" "odd"))
