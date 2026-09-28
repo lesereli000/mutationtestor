@@ -57,6 +57,7 @@ import java.util.regex.Pattern;
  *   RVM_NONZERO_TO_ZERO          : function returning non-zero integer → 0
  *   RVM_OBJECT_TO_NULL           : function returning expression/identifier → '()
  *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
+ *   EMPTY_RETURNS                : function returning a string/list → "" / '()
  */
 public class RacketMutationScanner {
 
@@ -120,7 +121,8 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.RVM_ZERO_TO_ONE,
                 Mutator.MutatorType.RVM_NONZERO_TO_ZERO,
                 Mutator.MutatorType.RVM_OBJECT_TO_NULL,
-                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
+                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO,
+                Mutator.MutatorType.EMPTY_RETURNS
         );
     }
 
@@ -520,18 +522,140 @@ public class RacketMutationScanner {
 
         @Override
         public Void visitDefinition(ISLParser.DefinitionContext ctx) {
-            if (isRVMMutation() && ctx.getChildCount() >= 6) {
+            boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
+            if ((isRVMMutation() || emptyReturns) && ctx.getChildCount() >= 6) {
                 // Function definition: '(' 'define' '(' name NAME* ')' expr+ ')'
                 // Distinguish from value definition by checking child(2) == '('
                 ParseTree thirdChild = ctx.getChild(2);
                 if (thirdChild instanceof TerminalNode tn3 && tn3.getText().equals("(")) {
                     List<ISLParser.ExprContext> bodyExprs = ctx.expr();
                     if (!bodyExprs.isEmpty()) {
-                        checkReturnValueMutation(bodyExprs.get(bodyExprs.size() - 1));
+                        ISLParser.ExprContext body = bodyExprs.get(bodyExprs.size() - 1);
+                        if (emptyReturns) {
+                            List<ISLParser.ExprContext> tails = new ArrayList<>();
+                            collectTailExprs(body, tails);
+                            tails.forEach(this::checkEmptyReturn);
+                        } else {
+                            checkReturnValueMutation(body);
+                        }
                     }
                 }
             }
             return visitChildren(ctx);
+        }
+
+        // -------------------------------------------------------------------------
+        // EMPTY_RETURNS — PIT-style: replace a returned string/list with "" / '()
+        // -------------------------------------------------------------------------
+
+        // Calls whose result is a string. Names containing <, > or = (number->string,
+        // list->string) are not single NAME tokens in the ISL lexer, so they're omitted.
+        private static final java.util.Set<String> STRING_BUILDERS = java.util.Set.of(
+                "string-append", "substring", "format", "string", "make-string",
+                "string-upcase", "string-downcase", "string-titlecase",
+                "string-join", "string-trim", "~a"
+        );
+
+        // Calls whose result is a list
+        private static final java.util.Set<String> LIST_BUILDERS = java.util.Set.of(
+                "list", "append", "reverse", "map", "filter", "sort", "build-list"
+        );
+
+        /**
+         * Racket has no return statement: a function's result is whatever its tail
+         * expressions evaluate to. Collects those, descending through the branches
+         * of if and cond and into the body of let, let*, letrec, local and begin,
+         * so each tail position is mutated like a separate return in PIT.
+         */
+        private void collectTailExprs(ISLParser.ExprContext expr, List<ISLParser.ExprContext> out) {
+            Token head = (expr.getChildCount() >= 3
+                    && expr.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("("))
+                    ? extractToken(expr.getChild(1)) : null;
+            String headText = head == null ? "" : head.getText();
+            List<ISLParser.ExprContext> subExprs = expr.expr();
+
+            switch (headText) {
+                case "if" -> {
+                    // ( if cond then else )
+                    if (subExprs.size() == 3) {
+                        collectTailExprs(subExprs.get(1), out);
+                        collectTailExprs(subExprs.get(2), out);
+                        return;
+                    }
+                }
+                case "cond" -> {
+                    // ( cond [ test body ] ... [ else body ] ) — a clause body is the expr just before ']'
+                    for (int i = 0; i < expr.getChildCount() - 1; i++) {
+                        if (expr.getChild(i) instanceof ISLParser.ExprContext clauseBody
+                                && expr.getChild(i + 1) instanceof TerminalNode close
+                                && close.getSymbol().getText().equals("]")) {
+                            collectTailExprs(clauseBody, out);
+                        }
+                    }
+                    return;
+                }
+                case "let", "let*", "letrec", "local", "begin" -> {
+                    // bindings/statements come first; the body is the last expr
+                    if (!subExprs.isEmpty()) {
+                        collectTailExprs(subExprs.get(subExprs.size() - 1), out);
+                        return;
+                    }
+                }
+                default -> { }
+            }
+            out.add(expr);
+        }
+
+        private void checkEmptyReturn(ISLParser.ExprContext returnExpr) {
+            String replacement = emptyReplacement(returnExpr);
+            if (replacement == null) return;
+
+            // Main.applyMutation rewrites a single line; skip values that span lines.
+            if (returnExpr.getStart() == null || returnExpr.getStop() == null
+                    || returnExpr.getStart().getLine() != returnExpr.getStop().getLine()) return;
+
+            int[] pos = getExprPosition(returnExpr);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(returnExpr), replacement, mutationType));
+        }
+
+        /**
+         * Returns the empty value for a returned string or list, or null when the
+         * expression isn't one (or is already empty):
+         *   "text"                     → ""
+         *   (string-append ...) etc.   → ""
+         *   '(a b c)                   → '()
+         *   (list x ...), (map ...)    → '()
+         */
+        private String emptyReplacement(ISLParser.ExprContext ctx) {
+            Token tok = getSingleExprToken(ctx);
+            if (tok != null) {
+                return tok.getType() == ISLLexer.STRING && !tok.getText().equals("\"\"") ? "\"\"" : null;
+            }
+
+            // '(a b c) parses as  ' quoted  with quoted = ( quoted* ); '() is a separate '()' token
+            if (ctx.getChildCount() == 2
+                    && ctx.getChild(0) instanceof TerminalNode quote
+                    && quote.getSymbol().getText().equals("'")
+                    && ctx.getChild(1) instanceof ISLParser.QuotedContext quoted
+                    && quoted.getChildCount() > 2
+                    && quoted.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                return "'()";
+            }
+
+            if (ctx.getChildCount() >= 3
+                    && ctx.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token head = extractToken(ctx.getChild(1));
+                if (head == null) return null;
+                if (STRING_BUILDERS.contains(head.getText())) return "\"\"";
+                // (list) with no arguments is already empty
+                boolean hasArgs = ctx.getChildCount() > 3;
+                if (LIST_BUILDERS.contains(head.getText()) && hasArgs) return "'()";
+            }
+            return null;
         }
 
         private boolean isRVMMutation() {
