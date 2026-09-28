@@ -101,6 +101,19 @@ public class JavaScriptPitStyleVisitor extends JavaScriptParserBaseVisitor<Void>
         return visitChildren(ctx);
     }
 
+    @Override
+    public Void visitBitAndExpression(JavaScriptParser.BitAndExpressionContext ctx) {
+        if (mutationType == Mutator.MutatorType.BOR_AND_TO_OR) {
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+                if (child instanceof TerminalNode && child.getText().equals("&")) {
+                    addToken(child, "|");
+                }
+            }
+        }
+        return visitChildren(ctx);
+    }
+
     private void addWholeNode(ParserRuleContext ctx, String replacement) {
         if (ctx == null || ctx.getStart() == null || ctx.getStop() == null) return;
         Token start = ctx.getStart();

@@ -19,6 +19,15 @@ import java.util.regex.Pattern;
 public class PythonMutationScanner {
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
+        if (type == Mutator.MutatorType.CONDITIONAL_TRUE
+                || type == Mutator.MutatorType.CONDITIONAL_FALSE
+                || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
+                || type == Mutator.MutatorType.EMPTY_RETURNS
+                || type == Mutator.MutatorType.VML_VOID_METHOD_CALL
+                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            return UniversalPitMutationScanner.scan(file, type);
+        }
         if (!supportsMutation(type)) {
             return Collections.emptyList();
         }
@@ -61,7 +70,14 @@ public class PythonMutationScanner {
                 Mutator.MutatorType.LOGICAL_AND_TO_OR,
                 Mutator.MutatorType.LOGICAL_OR_TO_AND,
                 Mutator.MutatorType.TYPE_INT_TO_FLOAT,
-                Mutator.MutatorType.TYPE_FLOAT_TO_INT
+                Mutator.MutatorType.TYPE_FLOAT_TO_INT,
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                Mutator.MutatorType.CONDITIONAL_FALSE,
+                Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                Mutator.MutatorType.CONSTRUCTOR_CALLS
         );
     }
 

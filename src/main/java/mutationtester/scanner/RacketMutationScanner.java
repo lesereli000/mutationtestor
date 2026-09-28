@@ -112,6 +112,10 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                Mutator.MutatorType.CONSTRUCTOR_CALLS,
                 Mutator.MutatorType.INEG_INVERT_NEGATIVE,
                 Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
                 Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
@@ -129,6 +133,12 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
+        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
+                || type == Mutator.MutatorType.EMPTY_RETURNS
+                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            return UniversalPitMutationScanner.scan(file, type);
+        }
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);

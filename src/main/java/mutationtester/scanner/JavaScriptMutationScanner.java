@@ -34,7 +34,9 @@ public class JavaScriptMutationScanner {
         }
 
         // LCR — Logical Connector Replacement
-        if (name.startsWith("LCR_")) {
+        if (name.startsWith("LCR_")
+                || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
+                || type == Mutator.MutatorType.LOGICAL_OR_TO_AND) {
             JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type);
             v.visit(tree); return v.getMutations();
         }
@@ -77,6 +79,11 @@ public class JavaScriptMutationScanner {
                 || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
                 || type == Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ
                 || type == Mutator.MutatorType.JS_STRICT_NE_TO_LOOSE_NE) {
+            JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
+            v.visit(tree); return v.getMutations();
+        }
+
+        if (type == Mutator.MutatorType.BOR_AND_TO_OR) {
             JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
             v.visit(tree); return v.getMutations();
         }
