@@ -7,7 +7,8 @@
   always-true always-false
   return-zero return-nonzero
   get-pair get-id
-  describe-zero sign)
+  describe-zero sign
+  greeting vowels pair-list)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -60,3 +61,15 @@
   (cond [(< n 0) "negative"]
         [(> n 0) "positive"]
         [else "zero"]))
+
+; EMPTY_RETURNS: string-building call -> ""
+(define (greeting name)
+  (string-append "Hello, " name))
+
+; EMPTY_RETURNS: quoted list literal -> '()
+(define (vowels)
+  '(a e i o u))
+
+; EMPTY_RETURNS: list-building call -> '()
+(define (pair-list x y)
+  (list x y))

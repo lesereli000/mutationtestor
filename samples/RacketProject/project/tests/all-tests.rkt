@@ -62,6 +62,16 @@
     (check-equal? (sign  0) "zero")))
 
 ; -------------------------------------------------------------------------
+; F. Empty Returns
+;    EMPTY_RETURNS : returned string -> "", returned list -> '()
+; -------------------------------------------------------------------------
+(define empty-returns-suite
+  (test-suite "Empty returns: string/list result replaced with empty value"
+    (check-equal? (greeting "Ada") "Hello, Ada")
+    (check-equal? (vowels) '(a e i o u))
+    (check-equal? (pair-list 1 2) '(1 2))))
+
+; -------------------------------------------------------------------------
 ; add1.rkt / add2.rkt
 ; -------------------------------------------------------------------------
 (define add1-suite
@@ -150,6 +160,7 @@
     ineg-suite
     rvm-suite
     remove-conditionals-suite
+    empty-returns-suite
     add1-suite
     add2-suite
     operators-suite
