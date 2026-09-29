@@ -761,8 +761,10 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.RVM_OBJECT_TO_NULL);
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
-        // negate-x, get-pair, get-id, describe-zero, sign  → 8 points
-        assertEquals(8, points.size());
+        // negate-x, get-pair, get-id, describe-zero, sign, greeting, pair-list,
+        // sum-of-squares, parity  → 12 points
+        // (vowels returns a quoted literal, which is not an object return)
+        assertEquals(12, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -794,7 +796,7 @@ public class RacketScannerTests {
         MutationPoint p = points.get(0);
         assertEquals("(= n 0)", p.getOperator());
         assertEquals("#t", p.getReplacement());
-        assertEquals(56, p.getLineNumber());
+        assertEquals(57, p.getLineNumber());
         assertEquals(6, p.getColumnNumber());
     }
 
@@ -881,5 +883,132 @@ public class RacketScannerTests {
         assertEquals(1, ord.size());
         assertEquals("(negative? x)", ord.get(0).getOperator());
         assertEquals("#f", ord.get(0).getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // EMPTY_RETURNS  (returned string → "", returned list → '())
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitEmptyReturns() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.EMPTY_RETURNS);
+
+        // describe-zero: 2 if branches, sign: 3 cond clauses (incl. else),
+        // greeting, vowels, pair-list, parity: 2 if branches  → 10 points
+        assertEquals(10, points.size());
+
+        MutationPoint greeting = findByOperator(points, "(string-append \"Hello, \" name)");
+        assertEquals("\"\"", greeting.getReplacement());
+
+        MutationPoint vowels = findByOperator(points, "'(a e i o u)");
+        assertEquals("'()", vowels.getReplacement());
+        assertEquals(71, vowels.getLineNumber());
+        assertEquals(2, vowels.getColumnNumber());
+
+        assertEquals("'()", findByOperator(points, "(list x y)").getReplacement());
+        assertEquals(2, points.stream().filter(p -> p.getOperator().equals("\"zero\"")).count(),
+                "\"zero\" is returned from both describe-zero and sign's else clause");
+    }
+
+    @Test
+    public void testOperatorsEmptyReturnsInBranches() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.EMPTY_RETURNS);
+
+        // 5 two-branch string ifs + check-logic's nested if (3 string results)
+        assertEquals(13, points.size());
+        for (MutationPoint p : points) {
+            assertTrue(p.getOperator().startsWith("\""));
+            assertEquals("\"\"", p.getReplacement());
+        }
+        assertTrue(points.stream().anyMatch(p -> p.getOperator().equals("\"neither-positive\"")),
+                "string in a nested if's else branch should be found");
+    }
+
+    @Test
+    public void testEmptyReturnsSkipsNonEmptiableAndAlreadyEmpty() throws IOException {
+        File tmp = File.createTempFile("empty-returns", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (a) \"\")",
+                "(define (b) '())",
+                "(define (c) (list))",
+                "(define (d x) (+ x 1))",
+                "(define (e) #t)",
+                "(define (f x) (let ([y x]) (map add1 y)))",
+                "(define (g x) (begin (display x) (format \"~a\" x)))",
+                "(define (h) (list 1",
+                "                  2))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.EMPTY_RETURNS);
+
+        // a/b/c already empty, d/e not a string or list, h spans two lines;
+        // only the let body in f and the last begin expr in g are mutated
+        assertEquals(2, points.size());
+        assertEquals("(map add1 y)", points.get(0).getOperator());
+        assertEquals("'()", points.get(0).getReplacement());
+        assertEquals("(format \"~a\" x)", points.get(1).getOperator());
+        assertEquals("\"\"", points.get(1).getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // NON_VOID_METHOD_CALLS  (call whose result is used → default value)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitNonVoidMethodCalls() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // length, add1, sub1, cons, string-append, list, sqr x2, even?  → 9 points
+        // (display items) is excluded: void call, and in statement position
+        assertEquals(9, points.size());
+        assertTrue(points.stream().noneMatch(p -> p.getOperator().startsWith("(display")));
+
+        MutationPoint sqr = findByOperator(points, "(sqr a)");
+        assertEquals("0", sqr.getReplacement());
+        assertEquals(79, sqr.getLineNumber());
+        assertEquals(5, sqr.getColumnNumber());
+
+        assertEquals("#f", findByOperator(points, "(even? n)").getReplacement());
+        assertEquals("\"\"", findByOperator(points, "(string-append \"Hello, \" name)").getReplacement());
+        assertEquals("'()", findByOperator(points, "(cons x y)").getReplacement());
+    }
+
+    @Test
+    public void testNonVoidCallsSkipsDiscardedAndVoidCalls() throws IOException {
+        File tmp = File.createTempFile("non-void-calls", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f x)",
+                "  (helper x)",
+                "  (list (begin (log-it x) (compute x))",
+                "        (begin0 (first-val x) (after x))",
+                "        (when (ready? x) (prep x) (finish x))",
+                "        (set-box! x 1)",
+                "        (printf \"~a\" x)",
+                "        (outer (inner x))))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // Skipped: helper/log-it/after/prep (result discarded), set-box!/printf (void),
+        // when (macro, not a call), list (spans several lines)
+        List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertEquals(List.of("(compute x)", "(first-val x)", "(ready? x)", "(finish x)",
+                "(outer (inner x))", "(inner x)"), mutated);
+        assertEquals("#f", findByOperator(points, "(ready? x)").getReplacement());
+        assertEquals("'()", findByOperator(points, "(inner x)").getReplacement());
+    }
+
+    private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
+        return points.stream()
+                .filter(p -> p.getOperator().equals(operator))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no mutation point for " + operator));
     }
 }

@@ -1,0 +1,4 @@
+source_code_directory=project/src
+mutator_type=REMOVE_CONDITIONALS_EQUAL_IF,REMOVE_CONDITIONALS_EQUAL_ELSE,REMOVE_CONDITIONALS_ORDER_IF,REMOVE_CONDITIONALS_ORDER_ELSE
+compile_command=
+test_command=racket ./project/tests/all-tests.rkt

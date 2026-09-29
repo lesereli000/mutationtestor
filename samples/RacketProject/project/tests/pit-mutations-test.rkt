@@ -83,12 +83,35 @@
     (check-equal? (sign  5) "positive")
     (check-equal? (sign  0) "zero")))
 
+; -------------------------------------------------------------------------
+; F. Empty Returns
+;    EMPTY_RETURNS : returned string -> "", returned list -> '()
+; -------------------------------------------------------------------------
+(define empty-returns-suite
+  (test-suite "Empty returns: string/list result replaced with empty value"
+    (check-equal? (greeting "Ada") "Hello, Ada")
+    (check-equal? (vowels) '(a e i o u))
+    (check-equal? (pair-list 1 2) '(1 2))))
+
+; -------------------------------------------------------------------------
+; G. Non-void Method Calls
+;    NON_VOID_METHOD_CALLS : (sqr a) -> 0, (even? n) -> #f
+; -------------------------------------------------------------------------
+(define non-void-calls-suite
+  (test-suite "Non-void calls: call result replaced with default value"
+    (check-equal? (sum-of-squares 3 4) 25)
+    (check-equal? (parity 2) "even")
+    (check-equal? (parity 3) "odd")))
+
 (define all-tests
   (test-suite "PIT Mutation Tests"
     vml-suite
     increment-suite
     ineg-suite
-    rvm-suite))
+    rvm-suite
+    remove-conditionals-suite
+    empty-returns-suite
+    non-void-calls-suite))
 
 (module+ main
   (void (run-tests all-tests)))
