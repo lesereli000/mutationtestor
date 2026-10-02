@@ -28,9 +28,11 @@ public class PitStyleReportGenerator {
         String mutantId;
         Set<String> candidateMutantIds;
         String customLabel;
+        String mutationType;
+        String language;
 
         LineMutation(int line, int colStart, int colEnd, String orig, String mut, MutantResult.MutantStatus status, String mutantId,
-                     Set<String> candidateMutantIds, String customLabel) {
+                     Set<String> candidateMutantIds, String customLabel, String mutationType, String language) {
             this.lineNumber = line;
             this.columnStart = colStart;
             this.columnEnd = colEnd;
@@ -40,6 +42,8 @@ public class PitStyleReportGenerator {
             this.mutantId = mutantId;
             this.candidateMutantIds = candidateMutantIds;
             this.customLabel = customLabel;
+            this.mutationType = mutationType;
+            this.language = language;
         }
     }
 
@@ -90,7 +94,9 @@ public class PitStyleReportGenerator {
                             result.getStatus(),
                             EquivalentMutantStore.buildMutantId(result),
                             EquivalentMutantStore.buildCandidateMutantIds(result),
-                            point.getCustomLabel()
+                            point.getCustomLabel(),
+                            point.getType().name(),
+                            languageFor(point.getSourceFile().getName())
                     ));
                 }
             } catch (Exception e) {
@@ -99,6 +105,16 @@ public class PitStyleReportGenerator {
         }
 
         return mutations;
+    }
+
+    private static String languageFor(String fileName) {
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".js")) return "JavaScript";
+        if (lower.endsWith(".java")) return "Java";
+        if (lower.endsWith(".py")) return "Python";
+        if (lower.endsWith(".cs")) return "C#";
+        if (lower.endsWith(".rkt")) return "Racket";
+        return "Unknown";
     }
 
     private static boolean isInString(String line, int position) {
@@ -177,11 +193,13 @@ public class PitStyleReportGenerator {
         sb.append("        .mutation-entry.killed { background: #d4edda; border-color: #28a745; }\n");
         sb.append("        .mutation-entry.survived { background: #f8d7da; border-color: #dc3545; }\n");
         sb.append("        .mutation-entry.no-coverage { background: #fff7ed; border-color: #f59e0b; }\n");
+        sb.append("        .mutation-entry.compile-error, .mutation-entry.timeout { background: #e2e8f0; border-color: #64748b; }\n");
         sb.append("        .mutation-entry strong { font-family: 'Consolas', monospace; }\n");
         sb.append("        .mutation-status { font-size: 11px; margin-top: 3px; font-weight: bold; }\n");
         sb.append("        .mutation-status.killed { color: #28a745; }\n");
         sb.append("        .mutation-status.survived { color: #dc3545; }\n");
         sb.append("        .mutation-status.no-coverage { color: #f59e0b; }\n");
+        sb.append("        .mutation-status.compile-error, .mutation-status.timeout { color: #475569; }\n");
         sb.append("        .legend { margin-top: 20px; padding: 12px; background: #f8f9fa; border-radius: 5px; }\n");
         sb.append("        .legend h4 { margin-bottom: 8px; color: #2c3e50; font-size: 14px; }\n");
         sb.append("        .legend-items { display: flex; gap: 15px; flex-wrap: wrap; }\n");
@@ -271,15 +289,19 @@ public class PitStyleReportGenerator {
             String statusClass = statusClass(m.status);
             String statusText = statusText(m.status);
             String statusIcon = statusIcon(m.status);
-            String operatorName = m.customLabel != null ? m.customLabel : getMutationOperatorName(m.original, m.mutated);
+            String operatorName = m.customLabel != null ? m.customLabel : m.mutationType;
 
             tooltip.append("<div class=\"mutation-entry ").append(statusClass)
                     .append("\" data-mutant-id=\"").append(escapeHtml(m.mutantId))
                     .append("\" data-mutant-ids=\"").append(escapeHtml(toJsonArray(m.candidateMutantIds))).append("\">")
                     .append("<div>").append(statusIcon).append(" ")
                     .append("<strong>").append(escapeHtml(operatorName)).append("</strong>")
-                    .append(" (").append(escapeHtml(m.original)).append(" -> ").append(escapeHtml(m.mutated)).append(")")
-                    .append(" at column ").append(m.columnStart)
+                    .append("</div>")
+                    .append("<div><b>Language:</b> ").append(escapeHtml(m.language)).append("</div>")
+                    .append("<div><b>Shared type:</b> ").append(escapeHtml(m.mutationType)).append("</div>")
+                    .append("<div><b>Original:</b> <code>").append(escapeHtml(m.original)).append("</code></div>")
+                    .append("<div><b>Replacement:</b> <code>").append(escapeHtml(m.mutated)).append("</code></div>")
+                    .append("<div><b>Column:</b> ").append(m.columnStart).append("</div>")
                     .append("</div>")
                     .append("<div class=\"mutation-status ").append(statusClass).append("\">")
                     .append(statusText)
@@ -294,7 +316,9 @@ public class PitStyleReportGenerator {
         return switch (status) {
             case KILLED -> "killed";
             case NO_COVERAGE -> "no-coverage";
-            default -> "survived";
+            case COMPILE_ERROR -> "compile-error";
+            case TIMEOUT -> "timeout";
+            case SURVIVED -> "survived";
         };
     }
 
@@ -302,7 +326,9 @@ public class PitStyleReportGenerator {
         return switch (status) {
             case KILLED -> "KILLED";
             case NO_COVERAGE -> "NO COVERAGE";
-            default -> "SURVIVED";
+            case COMPILE_ERROR -> "COMPILE ERROR";
+            case TIMEOUT -> "TIMEOUT";
+            case SURVIVED -> "SURVIVED";
         };
     }
 

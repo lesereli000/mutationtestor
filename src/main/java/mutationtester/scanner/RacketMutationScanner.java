@@ -138,8 +138,6 @@ public class RacketMutationScanner {
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
         if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
-                || type == Mutator.MutatorType.EMPTY_RETURNS
-                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
                 || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
             return UniversalPitMutationScanner.scan(file, type);
         }

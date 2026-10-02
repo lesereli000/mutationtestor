@@ -2,6 +2,7 @@ package mutationtester;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -107,6 +108,54 @@ class UniversalPitBehaviorTests {
             verify(name, file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
             verify(name, file, Mutator.MutatorType.CONSTRUCTOR_CALLS);
         }
+    }
+
+    @Test
+    void checkedInSamplesDemonstrateEverySharedBehavior() throws Exception {
+        Map<String, File> samples = new LinkedHashMap<>();
+        Path sampleDir = Path.of("samples", "SharedPitProject");
+        samples.put("JavaScript", sampleDir.resolve("shared-pit.js").toFile());
+        samples.put("Java", sampleDir.resolve("SharedPit.java").toFile());
+        samples.put("Python", sampleDir.resolve("shared_pit.py").toFile());
+        samples.put("C#", sampleDir.resolve("SharedPit.cs").toFile());
+        samples.put("Racket", sampleDir.resolve("shared-pit.rkt").toFile());
+
+        for (Map.Entry<String, File> language : samples.entrySet()) {
+            assertTrue(language.getValue().isFile(), "Missing sample for " + language.getKey());
+            for (Mutator.MutatorType type : sharedTypes()) {
+                verify(language.getKey(), language.getValue(), type);
+            }
+        }
+    }
+
+    @Test
+    void regexFallbacksSkipCommentsAndUseCompileSafeJavaDefaults() throws Exception {
+        File java = write("ContextSafe.java", """
+                class ContextSafe {
+                    // if (ignored) return hidden();
+                    // return new Hidden();
+                    int number() { return calculate(); }
+                    boolean enabled() { return check(); }
+                    String name() { return loadName(); }
+                }
+                """);
+
+        assertTrue(scan(java, Mutator.MutatorType.CONDITIONAL_TRUE).isEmpty());
+        assertTrue(scan(java, Mutator.MutatorType.CONSTRUCTOR_CALLS).isEmpty());
+        List<MutationPoint> calls = scan(java, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+        assertEquals(List.of("0", "false", "null"),
+                calls.stream().map(MutationPoint::getReplacement).toList());
+    }
+
+    private List<Mutator.MutatorType> sharedTypes() {
+        return List.of(
+                Mutator.MutatorType.CONDITIONAL_TRUE,
+                Mutator.MutatorType.CONDITIONAL_FALSE,
+                Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                Mutator.MutatorType.CONSTRUCTOR_CALLS);
     }
 
     private void verify(String language, File file, Mutator.MutatorType type) throws Exception {

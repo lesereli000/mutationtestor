@@ -62,6 +62,7 @@ final class UniversalPitMutationScanner {
         List<MutationPoint> points = new ArrayList<>();
         Matcher matcher = pattern.matcher(source);
         while (matcher.find()) {
+            if (isIgnoredPosition(source, matcher.start(), ext)) continue;
             add(file, source, type, points, matcher.start(), matcher.group(), matcher.group(1));
         }
         return points;
@@ -106,7 +107,10 @@ final class UniversalPitMutationScanner {
             if (matcher.matches()) {
                 String call = matcher.group(2);
                 String replacement = ext.equals("py") ? "pass" : ";";
-                add(file, source, type, points, offset + matcher.start(2), call, replacement);
+                int callOffset = offset + matcher.start(2);
+                if (!isIgnoredPosition(source, callOffset, ext)) {
+                    add(file, source, type, points, callOffset, call, replacement);
+                }
             }
             offset += line.length() + 1;
         }
@@ -126,8 +130,11 @@ final class UniversalPitMutationScanner {
                 "\\breturn\\s+([a-z_$][A-Za-z0-9_$.]*\\([^;\\r\\n]*\\))\\s*;?");
         Matcher matcher = pattern.matcher(source);
         while (matcher.find()) {
-            String replacement = ext.equals("py") ? "None" : "null";
-            add(file, source, type, points, matcher.start(1), matcher.group(1), replacement);
+            if (isIgnoredPosition(source, matcher.start(), ext)) continue;
+            String replacement = ext.equals("py") ? "None" : javaDefaultForEnclosingMethod(source, matcher.start());
+            if (replacement != null) {
+                add(file, source, type, points, matcher.start(1), matcher.group(1), replacement);
+            }
         }
         return points;
     }
@@ -161,8 +168,67 @@ final class UniversalPitMutationScanner {
                                    int group, String replacement) {
         Matcher matcher = pattern.matcher(source);
         while (matcher.find()) {
+            if (isIgnoredPosition(source, matcher.start(), extension(file.getName()))) continue;
             add(file, source, type, points, matcher.start(group), matcher.group(group), replacement);
         }
+    }
+
+    /** Returns a compile-safe default for the Java method containing the return statement. */
+    private static String javaDefaultForEnclosingMethod(String source, int returnOffset) {
+        Pattern declaration = Pattern.compile(
+                "(?m)(?:public|protected|private|static|final|synchronized|native|abstract|\\s)+"
+                        + "([A-Za-z_$][A-Za-z0-9_$<>.?\\[\\]]*)\\s+"
+                        + "[A-Za-z_$][A-Za-z0-9_$]*\\s*\\([^;{}]*\\)\\s*\\{");
+        Matcher matcher = declaration.matcher(source.substring(0, returnOffset));
+        String returnType = null;
+        while (matcher.find()) returnType = matcher.group(1);
+        if (returnType == null || returnType.equals("void")) return null;
+        return switch (returnType) {
+            case "boolean" -> "false";
+            case "byte", "short", "int", "long", "float", "double" -> "0";
+            case "char" -> "'\\0'";
+            default -> "null";
+        };
+    }
+
+    /** Prevents regex fallbacks from generating mutations in comments or string literals. */
+    private static boolean isIgnoredPosition(String source, int target, String ext) {
+        boolean inString = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+        char quote = 0;
+        for (int i = 0; i < target; i++) {
+            char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+            if (inLineComment) {
+                if (c == '\n') inLineComment = false;
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') { inBlockComment = false; i++; }
+                continue;
+            }
+            if (inString) {
+                if (c == '\\') { i++; continue; }
+                if (c == quote) inString = false;
+                continue;
+            }
+            if (c == '"' || c == '\'' || (ext.equals("js") && c == '`')) {
+                inString = true;
+                quote = c;
+            } else if ((ext.equals("java") || ext.equals("js") || ext.equals("cs")) && c == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+            } else if ((ext.equals("java") || ext.equals("js") || ext.equals("cs")) && c == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+            } else if (ext.equals("py") && c == '#') {
+                inLineComment = true;
+            } else if (ext.equals("rkt") && c == ';') {
+                inLineComment = true;
+            }
+        }
+        return inString || inLineComment || inBlockComment;
     }
 
     private static void add(File file, String source, Mutator.MutatorType type,
