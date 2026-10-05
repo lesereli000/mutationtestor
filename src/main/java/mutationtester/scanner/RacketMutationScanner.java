@@ -59,6 +59,7 @@ import java.util.regex.Pattern;
  *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
  *   EMPTY_RETURNS                : function returning a string/list → "" / '()
  *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
+ *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
  */
 public class RacketMutationScanner {
 
@@ -137,8 +138,7 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
-                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
             return UniversalPitMutationScanner.scan(file, type);
         }
         String sourceCode = Files.readString(file.toPath());
@@ -157,6 +157,10 @@ public class RacketMutationScanner {
 
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            // Structs may be defined after their first use, so collect them up front
+            visitor.collectStructConstructors(tree);
+        }
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
@@ -231,6 +235,10 @@ public class RacketMutationScanner {
                         if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
                             checkNonVoidCall(headToken, ctx);
                             markStatementExprs(headToken.getText(), ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+                            checkConstructorCall(headToken, ctx);
                         }
 
                         // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
@@ -755,6 +763,59 @@ public class RacketMutationScanner {
                 }
                 default -> { }
             }
+        }
+
+        // -------------------------------------------------------------------------
+        // CONSTRUCTOR_CALLS — PIT-style: replace a constructor call (new Foo()) with
+        // null. Racket's equivalent of `new` is a struct constructor call.
+        // -------------------------------------------------------------------------
+
+        // Constructor names of the structs declared in this file
+        private final java.util.Set<String> structConstructors = new java.util.HashSet<>();
+
+        /**
+         * Records the constructors bound by struct declarations:
+         *   (struct posn (x y))         → posn
+         *   (define-struct posn (x y))  → make-posn
+         */
+        void collectStructConstructors(ParseTree node) {
+            if (node instanceof ISLParser.DefinitionContext def
+                    && def.getChild(1).getText().equals("define-struct")) {
+                structConstructors.add("make-" + def.name(0).getText());
+            }
+            // (struct ...) isn't a grammar keyword, so it parses as an application:
+            // exprs(0) is the head, exprs(1) the struct name
+            if (node instanceof ISLParser.ExprContext expr && expr.expr().size() >= 3) {
+                Token head = extractToken(expr.expr(0));
+                Token name = extractToken(expr.expr(1));
+                if (head != null && head.getText().equals("struct")
+                        && name != null && name.getType() == ISLLexer.NAME) {
+                    structConstructors.add(name.getText());
+                }
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                collectStructConstructors(node.getChild(i));
+            }
+        }
+
+        private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
+            if (head.getType() != ISLLexer.NAME) return;
+
+            // make-NAME is Racket's naming convention for constructors, which also
+            // covers structs declared in other modules and built-ins like make-hash
+            String name = head.getText();
+            boolean isConstructor = structConstructors.contains(name)
+                    || (name.startsWith("make-") && name.length() > "make-".length());
+            if (!isConstructor) return;
+
+            // Main.applyMutation rewrites a single line; skip calls that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), "'()", mutationType,
+                    "Constructor call mutation"));
         }
 
         private boolean isRVMMutation() {
