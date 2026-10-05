@@ -53,8 +53,6 @@ final class UniversalPitMutationScanner {
         Pattern pattern;
         if (ext.equals("py")) {
             pattern = Pattern.compile("\\bnot\\s+([A-Za-z_][A-Za-z0-9_.]*)");
-        } else if (ext.equals("rkt")) {
-            pattern = Pattern.compile("\\(not\\s+([A-Za-z_][A-Za-z0-9_?!-]*)\\)");
         } else {
             pattern = Pattern.compile("!(?!=)\\s*([A-Za-z_$][A-Za-z0-9_$.]*)");
         }
