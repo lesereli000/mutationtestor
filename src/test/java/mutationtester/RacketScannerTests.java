@@ -762,9 +762,9 @@ public class RacketScannerTests {
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
         // negate-x, get-pair, get-id, describe-zero, sign, greeting, pair-list,
-        // sum-of-squares, parity  → 12 points
+        // sum-of-squares, parity, origin, empty-table  → 14 points
         // (vowels returns a quoted literal, which is not an object return)
-        assertEquals(12, points.size());
+        assertEquals(14, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -963,9 +963,10 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
 
-        // length, add1, sub1, cons, string-append, list, sqr x2, even?  → 9 points
+        // length, add1, sub1, cons, string-append, list, sqr x2, even?,
+        // make-point, make-hash  → 11 points
         // (display items) is excluded: void call, and in statement position
-        assertEquals(9, points.size());
+        assertEquals(11, points.size());
         assertTrue(points.stream().noneMatch(p -> p.getOperator().startsWith("(display")));
 
         MutationPoint sqr = findByOperator(points, "(sqr a)");
@@ -1003,6 +1004,54 @@ public class RacketScannerTests {
                 "(outer (inner x))", "(inner x)"), mutated);
         assertEquals("#f", findByOperator(points, "(ready? x)").getReplacement());
         assertEquals("'()", findByOperator(points, "(inner x)").getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // CONSTRUCTOR_CALLS  (struct constructor call → '())
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitConstructorCalls() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONSTRUCTOR_CALLS);
+
+        // (make-point 0 0) from define-struct, (make-hash) built-in  → 2 points
+        assertEquals(2, points.size());
+
+        MutationPoint point = findByOperator(points, "(make-point 0 0)");
+        assertEquals("'()", point.getReplacement());
+        assertEquals(89, point.getLineNumber());
+        assertEquals(2, point.getColumnNumber());
+
+        assertEquals("'()", findByOperator(points, "(make-hash)").getReplacement());
+    }
+
+    @Test
+    public void testConstructorCallsFindsDeclaredStructsAndSkipsOtherCalls() throws IOException {
+        File tmp = File.createTempFile("constructor-calls", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (build a)",
+                "  (list (posn a 1) (make-hash) (helper a)))",
+                "(define (nested) (wrap (posn (posn 1 2) 3)))",
+                "(define (spread)",
+                "  (posn 1",
+                "        2))",
+                "(struct posn (x y))",
+                "(define-struct box (v))",
+                "(define (boxed) (make-box 5))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.CONSTRUCTOR_CALLS);
+
+        // posn is found although its struct is declared after the calls.
+        // Skipped: list/helper/wrap (not constructors), the (struct ...) declaration,
+        // and the posn call that spans several lines
+        List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertEquals(List.of("(posn a 1)", "(make-hash)", "(posn (posn 1 2) 3)", "(posn 1 2)",
+                "(make-box 5)"), mutated);
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("'()")));
     }
 
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
