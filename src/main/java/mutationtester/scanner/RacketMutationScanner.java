@@ -60,6 +60,7 @@ import java.util.regex.Pattern;
  *   EMPTY_RETURNS                : function returning a string/list → "" / '()
  *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
  *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
+ *   REMOVE_LOGICAL_NEGATION      : (not p) → p
  */
 public class RacketMutationScanner {
 
@@ -138,9 +139,6 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
-            return UniversalPitMutationScanner.scan(file, type);
-        }
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -239,6 +237,10 @@ public class RacketMutationScanner {
 
                         if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
                             checkConstructorCall(headToken, ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
+                            checkLogicalNegation(headToken, ctx);
                         }
 
                         // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
@@ -816,6 +818,26 @@ public class RacketMutationScanner {
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(call), "'()", mutationType,
                     "Constructor call mutation"));
+        }
+
+        // -------------------------------------------------------------------------
+        // REMOVE_LOGICAL_NEGATION — PIT-style: drop the negation (!p → p).
+        // Racket negates with the not function, so (not p) → p.
+        // -------------------------------------------------------------------------
+
+        private void checkLogicalNegation(Token head, ISLParser.ExprContext call) {
+            // (not p) parses as an application: exprs(0) is the head, exprs(1) the operand
+            if (head.getType() != ISLLexer.NAME || !head.getText().equals("not")
+                    || call.expr().size() != 2) return;
+
+            // Main.applyMutation rewrites a single line; skip negations that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            ISLParser.ExprContext operand = call.expr(1);
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), extractSourceText(operand), mutationType,
+                    "Remove logical negation"));
         }
 
         private boolean isRVMMutation() {
