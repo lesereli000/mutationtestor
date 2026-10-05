@@ -762,9 +762,9 @@ public class RacketScannerTests {
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
         // negate-x, get-pair, get-id, describe-zero, sign, greeting, pair-list,
-        // sum-of-squares, parity, origin, empty-table  → 14 points
+        // sum-of-squares, parity, origin, empty-table, non-empty?  → 15 points
         // (vowels returns a quoted literal, which is not an object return)
-        assertEquals(14, points.size());
+        assertEquals(15, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -964,9 +964,9 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
 
         // length, add1, sub1, cons, string-append, list, sqr x2, even?,
-        // make-point, make-hash  → 11 points
+        // make-point, make-hash, empty?  → 12 points
         // (display items) is excluded: void call, and in statement position
-        assertEquals(11, points.size());
+        assertEquals(12, points.size());
         assertTrue(points.stream().noneMatch(p -> p.getOperator().startsWith("(display")));
 
         MutationPoint sqr = findByOperator(points, "(sqr a)");
@@ -1052,6 +1052,53 @@ public class RacketScannerTests {
         assertEquals(List.of("(posn a 1)", "(make-hash)", "(posn (posn 1 2) 3)", "(posn 1 2)",
                 "(make-box 5)"), mutated);
         assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("'()")));
+    }
+
+    // -------------------------------------------------------------------------
+    // REMOVE_LOGICAL_NEGATION  ((not p) → p)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRemoveLogicalNegation() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_LOGICAL_NEGATION);
+
+        // (not (empty? items)) in non-empty?  → 1 point
+        assertEquals(1, points.size());
+
+        MutationPoint point = points.get(0);
+        assertEquals("(not (empty? items))", point.getOperator());
+        assertEquals("(empty? items)", point.getReplacement());
+        assertEquals(97, point.getLineNumber());
+        assertEquals(2, point.getColumnNumber());
+    }
+
+    @Test
+    public void testRemoveLogicalNegationUnwrapsOperandAndSkipsOtherForms() throws IOException {
+        File tmp = File.createTempFile("remove-negation", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f a b)",
+                "  (if (not a) (not (not b)) (and (not (= a b)) b)))",
+                "(define (bad) (not))",
+                "(define (two) (not 1 2))",
+                "(define (spread x)",
+                "  (not",
+                "    x))",
+                "; (not hidden)",
+                "(define (s) \"(not quoted)\")",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.REMOVE_LOGICAL_NEGATION);
+
+        // Nested negations each get their own point. Skipped: (not) and (not 1 2)
+        // (not single-operand negations), the multi-line negation, and the
+        // comment/string, which aren't code
+        List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertEquals(List.of("(not a)", "(not (not b))", "(not b)", "(not (= a b))"), mutated);
+        List<String> replacements = points.stream().map(MutationPoint::getReplacement).toList();
+        assertEquals(List.of("a", "(not b)", "b", "(= a b)"), replacements);
     }
 
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
