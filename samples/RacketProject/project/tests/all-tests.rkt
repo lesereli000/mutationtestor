@@ -82,6 +82,17 @@
     (check-equal? (parity 3) "odd")))
 
 ; -------------------------------------------------------------------------
+; H. Constructor Calls
+;    CONSTRUCTOR_CALLS : (make-point 0 0) -> '(), (make-hash) -> '()
+; -------------------------------------------------------------------------
+(define constructor-calls-suite
+  (test-suite "Constructor calls: constructed value replaced with '()"
+    (check-true (point? (origin)))
+    (check-equal? (point-x (origin)) 0)
+    (check-equal? (point-y (origin)) 0)
+    (check-true (hash? (empty-table)))))
+
+; -------------------------------------------------------------------------
 ; add1.rkt / add2.rkt
 ; -------------------------------------------------------------------------
 (define add1-suite
@@ -172,6 +183,7 @@
     remove-conditionals-suite
     empty-returns-suite
     non-void-calls-suite
+    constructor-calls-suite
     add1-suite
     add2-suite
     operators-suite

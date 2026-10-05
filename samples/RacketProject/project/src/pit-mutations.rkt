@@ -8,7 +8,7 @@
   return-zero return-nonzero
   get-pair get-id
   describe-zero sign
-  greeting vowels pair-list sum-of-squares parity)
+  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -81,3 +81,13 @@
 ; NON_VOID_METHOD_CALLS: predicate call result -> #f
 (define (parity n)
   (if (even? n) "even" "odd"))
+
+; CONSTRUCTOR_CALLS: struct constructor call -> '()
+(define-struct point (x y))
+
+(define (origin)
+  (make-point 0 0))
+
+; CONSTRUCTOR_CALLS: built-in make- constructor -> '()
+(define (empty-table)
+  (make-hash))

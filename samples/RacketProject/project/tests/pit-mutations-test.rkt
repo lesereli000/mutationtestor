@@ -103,6 +103,17 @@
     (check-equal? (parity 2) "even")
     (check-equal? (parity 3) "odd")))
 
+; -------------------------------------------------------------------------
+; H. Constructor Calls
+;    CONSTRUCTOR_CALLS : (make-point 0 0) -> '(), (make-hash) -> '()
+; -------------------------------------------------------------------------
+(define constructor-calls-suite
+  (test-suite "Constructor calls: constructed value replaced with '()"
+    (check-true (point? (origin)))
+    (check-equal? (point-x (origin)) 0)
+    (check-equal? (point-y (origin)) 0)
+    (check-true (hash? (empty-table)))))
+
 (define all-tests
   (test-suite "PIT Mutation Tests"
     vml-suite
@@ -111,7 +122,8 @@
     rvm-suite
     remove-conditionals-suite
     empty-returns-suite
-    non-void-calls-suite))
+    non-void-calls-suite
+    constructor-calls-suite))
 
 (module+ main
   (void (run-tests all-tests)))
