@@ -61,6 +61,7 @@ import java.util.regex.Pattern;
  *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
  *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
  *   REMOVE_LOGICAL_NEGATION      : (not p) → p
+ *   JS_STRICT_EQ_TO_LOOSE_EQ     : (eq? a b) or (eqv? a b) → (equal? a b)
  */
 public class RacketMutationScanner {
 
@@ -117,6 +118,7 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.VML_VOID_METHOD_CALL,
                 Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ,
                 Mutator.MutatorType.EMPTY_RETURNS,
                 Mutator.MutatorType.NON_VOID_METHOD_CALLS,
                 Mutator.MutatorType.CONSTRUCTOR_CALLS,
@@ -358,6 +360,12 @@ public class RacketMutationScanner {
                 case LOGICAL_OR_TO_AND -> {
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
+                }
+                case JS_STRICT_EQ_TO_LOOSE_EQ -> {
+                    // eq? (identity) and eqv? are Racket's strict checks; equal? is the
+                    // loose, structural one, like === → == in JavaScript
+                    if (text.equals("eq?") || text.equals("eqv?"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "equal?", mutationType));
                 }
                 case AOR_MULTIPLY_TO_DIVIDE -> {
                     if (text.equals("*"))
