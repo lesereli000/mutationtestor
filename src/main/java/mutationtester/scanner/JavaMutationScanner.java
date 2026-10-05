@@ -1,21 +1,27 @@
 package mutationtester.scanner;
 
-import mutationtester.*;
-import mutationtester.model.Mutation;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-
-import mutationtester.msl.MSLScannerAdapter;
-import org.antlr.v4.gui.TreeViewer;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.antlr.v4.gui.TreeViewer;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import mutationtester.JavaLexer;
+import mutationtester.JavaParser;
+import mutationtester.JavaParserBaseVisitor;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
 
 public class JavaMutationScanner {
     /**
@@ -245,8 +251,87 @@ public class JavaMutationScanner {
         ParseTree tree = parser.compilationUnit();
 
         return new MSLScannerAdapter() {
+
+            // Java has no // or ** operator. The library calls that compute the
+            // same values stand in for them: Math.floorDiv(a, b) is a // b and
+            // Math.pow(a, b) is a ** b.
+            private static final java.util.Map<String, String> CALL_OPERATORS =
+                    java.util.Map.of("//", "floorDiv", "**", "pow");
+            private static final java.util.Set<String> MATH_CLASSES =
+                    java.util.Set.of("Math", "StrictMath", "java.lang.Math", "java.lang.StrictMath");
+
+            /** The two arguments of Math.floorDiv / Math.pow when ctx spells the operator, else null. */
+            private List<JavaParser.ExpressionContext> callOperands(ParseTree ctx, String mslOperator) {
+                String method = CALL_OPERATORS.get(mslOperator);
+                if (method == null
+                        || !(ctx instanceof JavaParser.MemberReferenceExpressionContext member)
+                        || member.methodCall() == null
+                        || member.methodCall().identifier() == null
+                        || !member.methodCall().identifier().getText().equals(method)
+                        || !MATH_CLASSES.contains(member.expression().getText())
+                        || member.methodCall().arguments().expressionList() == null) {
+                    return null;
+                }
+                List<JavaParser.ExpressionContext> args = member.methodCall().arguments().expressionList().expression();
+                return args.size() == 2 ? args : null;
+            }
+
+            private List<JavaParser.ExpressionContext> anyCallOperands(ParseTree ctx) {
+                for (String op : CALL_OPERATORS.keySet()) {
+                    List<JavaParser.ExpressionContext> args = callOperands(ctx, op);
+                    if (args != null) return args;
+                }
+                return null;
+            }
+
+            // Java compares values with a.equals(b) / Objects.equals(a, b), the
+            // counterpart of == in C# and Python and equal? in Racket, and
+            // !a.equals(b) is the matching !=.
+
+            /** [a, b] for a.equals(b) or Objects.equals(a, b), else null. */
+            private List<ParseTree> equalsOperands(ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.MemberReferenceExpressionContext member)
+                        || member.methodCall() == null
+                        || member.methodCall().identifier() == null
+                        || !member.methodCall().identifier().getText().equals("equals")
+                        || member.methodCall().arguments().expressionList() == null) {
+                    return null;
+                }
+                List<JavaParser.ExpressionContext> args = member.methodCall().arguments().expressionList().expression();
+                String target = member.expression().getText();
+                if (args.size() == 2 && (target.equals("Objects") || target.equals("java.util.Objects"))) {
+                    return List.of(args.get(0), args.get(1));
+                }
+                return args.size() == 1 ? List.of(member.expression(), args.get(0)) : null;
+            }
+
+            /** The a.equals(b) inside !a.equals(b), else null. */
+            private ParseTree negatedEquals(ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.UnaryOperatorExpressionContext unary)
+                        || unary.prefix == null || !unary.prefix.getText().equals("!")) {
+                    return null;
+                }
+                ParseTree inner = unary.expression();
+                while (inner.getChildCount() == 1
+                        || (inner.getChildCount() == 3 && inner.getChild(0).getText().equals("(")
+                            && inner.getChild(2).getText().equals(")"))) {
+                    inner = inner.getChildCount() == 1 ? inner.getChild(0) : inner.getChild(1);
+                }
+                return equalsOperands(inner) != null ? inner : null;
+            }
+
+            /** Operands of an equals call or its negation, else null. */
+            private List<ParseTree> anyEqualsOperands(ParseTree ctx) {
+                List<ParseTree> operands = equalsOperands(ctx);
+                ParseTree inner = operands == null ? negatedEquals(ctx) : null;
+                return inner != null ? equalsOperands(inner) : operands;
+            }
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
+                if (CALL_OPERATORS.containsKey(mslOperator)) return callOperands(ctx, mslOperator) != null;
+                if (mslOperator.equals("==") && equalsOperands(ctx) != null) return true;
+                if (mslOperator.equals("!=") && negatedEquals(ctx) != null) return true;
                 if (!(ctx instanceof JavaParser.BinaryOperatorExpressionContext binCtx)) return false;
                 
                 // Case 1: Operator is a single token (bop is set)
@@ -264,14 +349,77 @@ public class JavaMutationScanner {
             }
 
             @Override
+            public String toLanguageOperator(String canonicalOperator, ParseTree ctx) {
+                // // and ** exist only as library calls (see CALL_OPERATORS).
+                return switch (canonicalOperator) {
+                    case "//", "**" -> null;
+                    default -> canonicalOperator;
+                };
+            }
+
+            @Override
+            public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                List<ParseTree> equals = ("==".equals(fromOperator) || "!=".equals(fromOperator))
+                        && !(ctx instanceof JavaParser.BinaryOperatorExpressionContext) ? anyEqualsOperands(ctx) : null;
+                if (equals != null) {
+                    // a.equals(b) <-> !a.equals(b), like Racket's (= a b) <-> (not (= a b)).
+                    int[] pos = getTokenPosition(ctx);
+                    String text = getNodeText(ctx);
+                    String replacement;
+                    if ("==".equals(fromOperator) && "!=".equals(toOperator)) {
+                        replacement = "!" + text;
+                    } else if ("!=".equals(fromOperator) && "==".equals(toOperator)) {
+                        replacement = getNodeText(negatedEquals(ctx));
+                    } else {
+                        String op = toLanguageOperator(toOperator, ctx);
+                        if (op == null) return null;
+                        replacement = MSLScannerAdapter.infix(getNodeText(equals.get(0)), op, getNodeText(equals.get(1)));
+                    }
+                    return new OperatorEdit(pos[0], pos[1], text, replacement);
+                }
+                List<JavaParser.ExpressionContext> call = callOperands(ctx, fromOperator);
+                if (call != null) {
+                    // Math.floorDiv(a, b) -> (a / b). Turning one library call into
+                    // the other isn't type-safe (floorDiv takes integers, pow returns
+                    // double), so only plain operators are targets.
+                    String op = toLanguageOperator(toOperator, ctx);
+                    if (op == null) return null;
+                    int[] pos = getTokenPosition(ctx);
+                    return new OperatorEdit(pos[0], pos[1], getNodeText(ctx),
+                            MSLScannerAdapter.infix(getNodeText(call.get(0)), op, getNodeText(call.get(1))));
+                }
+                // An operator can't become Math.floorDiv/Math.pow either: the
+                // operands may be doubles (floorDiv) or the result an int (pow).
+                String replacement = toLanguageOperator(toOperator, ctx);
+                if (replacement == null
+                        || !(ctx instanceof JavaParser.BinaryOperatorExpressionContext binCtx)
+                        || !(binCtx.getChild(1) instanceof TerminalNode firstOp)
+                        || !(binCtx.getChild(binCtx.getChildCount() - 2) instanceof TerminalNode lastOp)) {
+                    return null;
+                }
+                // Shift operators are lexed as separate tokens ('>' '>'), so the
+                // edit spans every token between the two operands.
+                Token first = firstOp.getSymbol();
+                Token last = lastOp.getSymbol();
+                String original = sourceCode.substring(first.getStartIndex(), last.getStopIndex() + 1);
+                return new OperatorEdit(first.getLine(), first.getCharPositionInLine(), original, replacement);
+            }
+
+            @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(0);
+                List<JavaParser.ExpressionContext> call = anyCallOperands(ctx);
+                if (call != null) return call.get(0);
+                List<ParseTree> equals = anyEqualsOperands(ctx);
+                return equals != null ? equals.get(0) : ctx.getChild(0);
             }
 
             @Override
             public ParseTree getRightOperand(ParseTree ctx) {
-                // Right operand is always the last child
-                return ctx.getChild(ctx.getChildCount() - 1);
+                List<JavaParser.ExpressionContext> call = anyCallOperands(ctx);
+                if (call != null) return call.get(1);
+                List<ParseTree> equals = anyEqualsOperands(ctx);
+                // Otherwise the right operand is always the last child
+                return equals != null ? equals.get(1) : ctx.getChild(ctx.getChildCount() - 1);
             }
 
             @Override
@@ -286,37 +434,157 @@ public class JavaMutationScanner {
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
-                
-                // If it's a TerminalNode, check if it's a literal or identifier
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == JavaLexer.DECIMAL_LITERAL || 
-                           type == JavaLexer.FLOAT_LITERAL ||
-                           type == JavaLexer.HEX_LITERAL ||
-                           type == JavaLexer.OCT_LITERAL ||
-                           type == JavaLexer.BINARY_LITERAL ||
-                           type == JavaLexer.IDENTIFIER;
-                }
-                
-                // Handle wrapper contexts: if it has 1 child, recurse
-                if (ctx instanceof ParserRuleContext prc) {
-                    if (prc.getChildCount() == 1) return isQuantity(prc.getChild(0));
-                    
-                    // ( expression )
-                    if (prc.getChildCount() == 3 && 
-                        prc.getChild(0).getText().equals("(") && 
-                        prc.getChild(2).getText().equals(")")) {
-                        return true; // Parenthesized expression is a quantity
-                    }
-                }
-                
-                return false;
+                return MSLScannerAdapter.isQuantityText(getNodeText(ctx), ctx instanceof TerminalNode);
+            }
+
+            @Override
+            public boolean isStringLiteral(ParseTree ctx) {
+                return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), false);
             }
 
             @Override
             public String getNodeText(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceCode.length()) {
+                        return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
                 return ctx.getText();
+            }
+
+            // Java spells string.IsNullOrEmpty(s) as s == null || s.isEmpty() and
+            // variants (Guava's and Commons' library calls are matched as calls).
+            private static final List<java.util.regex.Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.isEmpty\\(\\)"),
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.length\\(\\)\\s*==\\s*0"),
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.equals\\(\"\"\\)"),
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\"\"\\.equals\\(\\1\\)"));
+
+            @Override
+            public String getNullOrEmptySubject(ParseTree ctx) {
+                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            }
+
+            @Override
+            public String notEmptyStringCheck(String subject) {
+                // s != "" compares references in Java; compare values as C# does.
+                return "(!\"\".equals(" + subject + "))";
+            }
+
+            @Override
+            public boolean isInvocationStatement(ParseTree ctx) {
+                // An expression statement whose expression is a method call:
+                // foo(); or obj.foo(); - not a declaration such as void foo();
+                if (!(ctx instanceof JavaParser.StatementContext stmt) || stmt.statementExpression == null) {
+                    return false;
+                }
+                JavaParser.ExpressionContext expr = stmt.statementExpression;
+                boolean isCall = expr instanceof JavaParser.MethodCallExpressionContext
+                        || (expr instanceof JavaParser.MemberReferenceExpressionContext member
+                            && member.methodCall() != null);
+                return isCall && !isOnlyStatementOfTryWithCatch(stmt);
+            }
+
+            /**
+             * In try { foo(); } catch (SomeCheckedException e), removing foo()
+             * leaves a catch javac rejects as unreachable.
+             */
+            private boolean isOnlyStatementOfTryWithCatch(JavaParser.StatementContext stmt) {
+                if (!(stmt.getParent() instanceof JavaParser.BlockStatementContext blockStmt)
+                        || !(blockStmt.getParent() instanceof JavaParser.BlockContext block)
+                        || !(block.getParent() instanceof JavaParser.StatementContext tryStmt)) {
+                    return false;
+                }
+                return tryStmt.TRY() != null && !tryStmt.catchClause().isEmpty()
+                        && block.blockStatement().size() == 1;
+            }
+
+            @Override
+            public String getEmptyStatement(ParseTree statement) {
+                // "case X -> foo();" needs a block; a bare ';' isn't allowed there.
+                for (ParseTree p = statement.getParent(); p != null; p = p.getParent()) {
+                    if (p instanceof JavaParser.BlockContext) return ";";
+                    if (p instanceof JavaParser.SwitchRuleOutcomeContext) return "{}";
+                }
+                return ";";
+            }
+
+            @Override
+            public String getSingleArgumentText(ParseTree ctx, String functionName) {
+                String text = getNodeText(ctx);
+                if (text == null) return null;
+                String compact = text.replaceAll("\\s+", "");
+                String prefix = functionName.replaceAll("\\s+", "") + "(";
+                if (!compact.startsWith(prefix) || !compact.endsWith(")")) {
+                    return null;
+                }
+                String inner = compact.substring(prefix.length(), compact.length() - 1).trim();
+                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                    return null;
+                }
+                return inner;
+            }
+
+            @Override
+            public List<String> getFunctionAliases(String canonicalFunctionName) {
+                if ("string.IsNullOrEmpty".equals(canonicalFunctionName)) {
+                    return List.of(
+                            "string.IsNullOrEmpty",
+                            "String.IsNullOrEmpty",
+                            "Strings.isNullOrEmpty",
+                            "StringUtils.isEmpty",
+                            "isNullOrEmpty"
+                    );
+                }
+                return List.of(canonicalFunctionName);
+            }
+
+            private boolean hasTopLevelComma(String text) {
+                int parenDepth = 0;
+                int bracketDepth = 0;
+                int braceDepth = 0;
+                boolean inString = false;
+                char stringDelimiter = '\0';
+
+                for (int i = 0; i < text.length(); i++) {
+                    char c = text.charAt(i);
+                    if (i > 0 && text.charAt(i - 1) == '\\') {
+                        continue;
+                    }
+                    if (inString) {
+                        if (c == stringDelimiter) {
+                            inString = false;
+                            stringDelimiter = '\0';
+                        }
+                        continue;
+                    }
+                    if (c == '"' || c == '\'') {
+                        inString = true;
+                        stringDelimiter = c;
+                        continue;
+                    }
+                    switch (c) {
+                        case '(' -> parenDepth++;
+                        case ')' -> parenDepth--;
+                        case '[' -> bracketDepth++;
+                        case ']' -> bracketDepth--;
+                        case '{' -> braceDepth++;
+                        case '}' -> braceDepth--;
+                        case ',' -> {
+                            if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+                                return true;
+                            }
+                        }
+                        default -> {
+                        }
+                    }
+                }
+                return false;
             }
 
             @Override

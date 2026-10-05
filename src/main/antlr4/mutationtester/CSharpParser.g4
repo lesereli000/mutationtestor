@@ -139,6 +139,15 @@ right_shift_assignment
     : '>' '>='
     ;
 
+// C# 11 unsigned right shift
+unsigned_right_shift
+    : '>' '>' '>'
+    ;
+
+unsigned_right_shift_assignment
+    : '>' '>' '>='
+    ;
+
 // Source: §7.8.1 General
 namespace_name
     : namespace_or_type_name
@@ -907,6 +916,7 @@ shift_expression
     : additive_expression
     | shift_expression '<<' additive_expression
     | shift_expression right_shift additive_expression
+    | shift_expression unsigned_right_shift additive_expression
     ;
 
 // Source: §12.14.1 General
@@ -1121,6 +1131,7 @@ assignment_operator
     : '=' 'ref'? | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^=' |
       '<<=' | '??='
     | right_shift_assignment
+    | unsigned_right_shift_assignment
     ;
 
 // Source: §12.24 Expression

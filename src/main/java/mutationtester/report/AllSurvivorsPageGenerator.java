@@ -1,15 +1,15 @@
 package mutationtester.report;
 
-import mutationtester.model.MutantResult;
-import mutationtester.model.MutationPoint;
-import mutationtester.equivalent.EquivalentMutantStore;
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import mutationtester.equivalent.EquivalentMutantStore;
+import mutationtester.model.MutantResult;
+import mutationtester.model.MutationPoint;
 
 /**
  * Generates an "All Survivors" HTML page with filtering and search
@@ -86,8 +86,9 @@ public class AllSurvivorsPageGenerator {
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
                     String sourceSnippet = readSourceLine(point.getSourceFile().toPath(), line);
-                    String operatorName = point.getCustomLabel() != null ? point.getCustomLabel()
-                            : getMutationOperatorName(operator, replacement);
+                        String operatorName = normalizeMutationLabel(
+                            point.getCustomLabel() != null ? point.getCustomLabel()
+                                : getMutationOperatorName(operator, replacement));
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                     String mutantId = EquivalentMutantStore.buildMutantId(result);
                     Set<String> candidateMutantIds = EquivalentMutantStore.buildCandidateMutantIds(result);
@@ -116,8 +117,9 @@ public class AllSurvivorsPageGenerator {
                     customLabel = (String) mutant.getClass().getField("customLabel").get(mutant);
                 } catch (Exception e) {
                 }
-                String operatorName = customLabel != null ? customLabel
-                        : getMutationOperatorName(operator, replacement);
+                String operatorName = normalizeMutationLabel(
+                    customLabel != null ? customLabel
+                        : getMutationOperatorName(operator, replacement));
                 String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                 String mutantId = file + ":" + line + ":" + column + ":UNKNOWN:" + operator + ":" + replacement;
 
@@ -156,6 +158,13 @@ public class AllSurvivorsPageGenerator {
         } catch (Exception e) {
         }
         return "";
+    }
+
+    private static String normalizeMutationLabel(String label) {
+        if (label == null) {
+            return null;
+        }
+        return label.replace(" ? ", " -> ").replace(" → ", " -> ");
     }
 
     private static String getMutationOperatorName(String original, String mutated) {
@@ -323,7 +332,7 @@ public class AllSurvivorsPageGenerator {
 
             sb.append("                <td class=\"transformation\">")
                     .append("<code>").append(escapeHtml(s.operator)).append("</code>")
-                    .append(" → ")
+                    .append(" -> ")
                     .append("<code>").append(escapeHtml(s.replacement)).append("</code>")
                     .append("</td>\n");
 

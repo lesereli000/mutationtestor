@@ -2,19 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-enum Status { Started, Running, Finished }
+public enum Status { Started, Running, Finished }
 
-interface IGreeter
+public interface IGreeter
 {
     void Greet(string name);
 }
 
-abstract class Animal
+public abstract class Animal
 {
     public abstract void MakeSound();
 }
 
-class Dog : Animal
+public class Dog : Animal
 {
     public string Breed { get; }
     public static int DogCount = 0;
@@ -30,27 +30,27 @@ class Dog : Animal
     public override void MakeSound() => Console.WriteLine("Woof!");
 }
 
-class Box<T>
+public class Box<T>
 {
     public T Value;
     public Box(T value) { Value = value; }
 }
 
-class AllSyntaxDemo
+public class AllSyntaxDemo
 {
     static int counter = 0;
     readonly int max = 10;
 
-    static void StaticMethod() => Console.WriteLine("Static called");
+    public static void StaticMethod() => Console.WriteLine("Static called");
 
-    int Sum(params int[] nums)
+    public int Sum(params int[] nums)
     {
         int result = 0;
         foreach (int n in nums) result += n;
         return result;
     }
 
-    static void Main()
+    public static void RunDemo()
     {
         int a = 5, b = 10;
         bool flag = true;
@@ -149,10 +149,42 @@ class AllSyntaxDemo
 
         // lock (synchronized)
         lock (typeof(AllSyntaxDemo)) counter++;
+        
+        // C# Specifics
+        var specifics = new CSharpSpecifics();
+        specifics.ProcessCompleted += () => Console.WriteLine("Event fired");
+        specifics.StartProcess();
+        specifics.MyProperty = "Updated";
+        foreach(var n in specifics.GetNumbers()) { }
+        specifics.DoAsyncWork().Wait();
     }
 }
 
-class ConsoleGreeter : IGreeter
+public class ConsoleGreeter : IGreeter
 {
     public void Greet(string name) => Console.WriteLine("Hello " + name);
+}
+
+public class CSharpSpecifics
+{
+    public string MyProperty { get; set; } = "Initial";
+
+    public delegate void Notify();
+    public event Notify ProcessCompleted;
+
+    public void StartProcess()
+    {
+        ProcessCompleted?.Invoke();
+    }
+
+    public async System.Threading.Tasks.Task DoAsyncWork()
+    {
+        await System.Threading.Tasks.Task.Delay(1);
+    }
+
+    public IEnumerable<int> GetNumbers()
+    {
+        yield return 1;
+        yield return 2;
+    }
 }

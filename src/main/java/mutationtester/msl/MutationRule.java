@@ -15,7 +15,8 @@ public interface MutationRule {
 
     /**
      * Produces the MutationPoint for this rule applied to the given node.
-     * Only call this when matches() returns true.
+     * Only call this when matches() returns true. May return null when the
+     * match cannot be turned into a valid mutant.
      */
     MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile);
 
@@ -36,7 +37,10 @@ public interface MutationRule {
         if (ctx == null) return;
         
         if (matches(scanner, ctx)) {
-            points.add(apply(scanner, ctx, sourceFile));
+            MutationPoint point = apply(scanner, ctx, sourceFile);
+            if (point != null) {
+                points.add(point);
+            }
         }
         
         for (int i = 0; i < ctx.getChildCount(); i++) {

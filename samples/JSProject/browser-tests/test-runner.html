@@ -79,6 +79,7 @@
     <script src="../src/mixedTypes.js"></script>
     <script src="../src/BoundaryCheck.js"></script>
     <script src="../src/Comparisons.js"></script>
+    <script src="../src/prototypeSample.js"></script>
 
     <!-- Test framework and tests -->
       <script>
@@ -391,6 +392,32 @@
         runner.test('isInRange(1, 1, 10) should return true - boundary', () => {
             runner.assertEquals(isInRange(1, 1, 10), true);
         });
+
+        runner.suite('prototypeSample Tests');
+        runner.test('AllSyntaxDemo.main() should run without throwing', () => {
+            AllSyntaxDemo.main();
+        });
+        runner.test('AllSyntaxDemo.staticMethod() should run without throwing', () => {
+            AllSyntaxDemo.staticMethod();
+        });
+        runner.test('AllSyntaxDemo sum() should return 6', () => {
+            const demo = new AllSyntaxDemo();
+            runner.assertEquals(demo.sum(1, 2, 3), 6);
+        });
+        runner.test('Dog constructor and makeSound should run', () => {
+            const dog = new Dog('Pug');
+            runner.assertEquals(dog.breed, 'Pug');
+            dog.makeSound();
+        });
+        runner.test('Box should hold a value', () => {
+            const box = new Box(99);
+            runner.assertEquals(box.value, 99);
+        });
+        runner.test('ConsoleGreeter.greet() should run', () => {
+            const g = new ConsoleGreeter();
+            g.greet('World');
+        });
+        runner.endSuite();
 
         // Render results
         runner.render();

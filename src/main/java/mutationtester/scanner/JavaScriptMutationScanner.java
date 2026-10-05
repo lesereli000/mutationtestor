@@ -1,19 +1,26 @@
 package mutationtester.scanner;
 
-import mutationtester.*;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-import mutationtester.JavaScriptParserBaseVisitor;
-import mutationtester.JavaScriptParser;
-import mutationtester.msl.MSLScannerAdapter;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import mutationtester.JavaScriptAORVisitor;
+import mutationtester.JavaScriptLexer;
+import mutationtester.JavaScriptParser;
+import mutationtester.JavaScriptParserBaseVisitor;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
 
 public class JavaScriptMutationScanner {
 
@@ -193,28 +200,115 @@ public class JavaScriptMutationScanner {
         ParseTree tree = parser.program();
 
         return new MSLScannerAdapter() {
+            private final java.util.regex.Pattern invocationStatement = java.util.regex.Pattern.compile(
+                    "^(await)?[A-Za-z_$][A-Za-z0-9_$\\.\\[\\]]*\\(.*\\);$",
+                    java.util.regex.Pattern.DOTALL
+            );
+
+            // JavaScript has no // operator; Math.floor(a / b) is how floor
+            // division is written, so it stands in for a // b. Its inner "/" is
+            // part of that operator, not a separate division to mutate.
+
+            /** The a / b inside Math.floor(a / b), or null if ctx isn't that idiom. */
+            private ParseTree floorDivision(ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext call)
+                        || !call.singleExpression().getText().equals("Math.floor")
+                        || call.arguments().argument().size() != 1) {
+                    return null;
+                }
+                JavaScriptParser.ArgumentContext arg = call.arguments().argument(0);
+                if (arg.Ellipsis() != null || arg.singleExpression() == null) return null;
+                ParseTree inner = stripParens(arg.singleExpression());
+                return inner instanceof JavaScriptParser.MultiplicativeExpressionContext
+                        && inner.getChild(1).getText().equals("/") ? inner : null;
+            }
+
+            private ParseTree stripParens(ParseTree expr) {
+                while (expr instanceof JavaScriptParser.ParenthesizedExpressionContext paren
+                        && paren.expressionSequence().singleExpression().size() == 1) {
+                    expr = paren.expressionSequence().singleExpression(0);
+                }
+                return expr;
+            }
+
+            private boolean isInsideFloorDivision(ParseTree division) {
+                ParseTree p = division.getParent();
+                while (p instanceof JavaScriptParser.ParenthesizedExpressionContext
+                        || p instanceof JavaScriptParser.ExpressionSequenceContext) {
+                    p = p.getParent();
+                }
+                if (!(p instanceof JavaScriptParser.ArgumentContext) || p.getParent() == null) return false;
+                ParseTree call = p.getParent().getParent();
+                return call != null && floorDivision(call) == division;
+            }
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                return ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(mslOperator);
+                if (mslOperator.equals("//")) return floorDivision(ctx) != null;
+                return ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(mslOperator)
+                        && !(mslOperator.equals("/") && isInsideFloorDivision(ctx));
             }
-            @Override public ParseTree getLeftOperand(ParseTree ctx)  { return ctx.getChild(0); }
-            @Override public ParseTree getRightOperand(ParseTree ctx) { return ctx.getChild(2); }
+
+            @Override
+            public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                ParseTree floor = floorDivision(ctx);
+                boolean fromFloor = fromOperator.equals("//") && floor != null;
+                if (!fromFloor && !toOperator.equals("//")) {
+                    return MSLScannerAdapter.super.createOperatorEdit(ctx, fromOperator, toOperator);
+                }
+                ParseTree binary = fromFloor ? floor : ctx;
+                String left = getNodeText(binary.getChild(0));
+                String right = getNodeText(binary.getChild(2));
+                String replacement = toOperator.equals("//")
+                        ? "Math.floor(" + left + " / " + right + ")"
+                        : MSLScannerAdapter.infix(left, toLanguageOperator(toOperator, binary), right);
+                int[] pos = getTokenPosition(ctx);
+                return new OperatorEdit(pos[0], pos[1], getNodeText(ctx), replacement);
+            }
+            @Override
+            public List<String> getOperatorAliases(String canonicalOperator) {
+                // Equality covers both the loose and strict spellings.
+                return switch (canonicalOperator) {
+                    case "==" -> List.of("==", "===");
+                    case "!=" -> List.of("!=", "!==");
+                    default -> List.of(canonicalOperator);
+                };
+            }
+            @Override
+            public String toLanguageOperator(String canonicalOperator, ParseTree ctx) {
+                return switch (canonicalOperator) {
+                    // Written as Math.floor(a / b); see createOperatorEdit.
+                    case "//" -> null;
+                    // Keep strictness: === becomes !== rather than !=.
+                    case "==", "!=" -> isStrictEquality(ctx) ? canonicalOperator + "=" : canonicalOperator;
+                    default -> canonicalOperator;
+                };
+            }
+            private boolean isStrictEquality(ParseTree ctx) {
+                if (ctx == null || ctx.getChildCount() != 3) return false;
+                String op = ctx.getChild(1).getText();
+                return op.equals("===") || op.equals("!==");
+            }
+            @Override public ParseTree getLeftOperand(ParseTree ctx) {
+                ParseTree floor = floorDivision(ctx);
+                return (floor != null ? floor : ctx).getChild(0);
+            }
+            @Override public ParseTree getRightOperand(ParseTree ctx) {
+                ParseTree floor = floorDivision(ctx);
+                return (floor != null ? floor : ctx).getChild(2);
+            }
             @Override public ParseTree getOperatorToken(ParseTree ctx) {
                 return ctx.getChildCount() >= 3 ? ctx.getChild(1) : null;
             }
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
-                if (ctx instanceof TerminalNode tn) {
-                    int type = tn.getSymbol().getType();
-                    return type == JavaScriptLexer.DecimalLiteral
-                            || type == JavaScriptLexer.HexIntegerLiteral
-                            || type == JavaScriptLexer.OctalIntegerLiteral
-                            || type == JavaScriptLexer.BinaryIntegerLiteral
-                            || type == JavaScriptLexer.Identifier;
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
+                return MSLScannerAdapter.isQuantityText(getNodeText(ctx), ctx instanceof TerminalNode);
+            }
+
+            @Override
+            public boolean isStringLiteral(ParseTree ctx) {
+                return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), true);
             }
             @Override
             public String getSourceLine(ParseTree ctx) {
@@ -223,7 +317,116 @@ public class JavaScriptMutationScanner {
                 if (lineIndex >= 0 && lineIndex < sourceLines.length) return sourceLines[lineIndex];
                 return "";
             }
-            @Override public String getNodeText(ParseTree ctx) { return ctx.getText(); }
+
+            @Override
+            public String getNodeText(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null
+                            && start.getStartIndex() >= 0
+                            && stop.getStopIndex() >= start.getStartIndex()
+                            && stop.getStopIndex() < sourceCode.length()) {
+                        return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                }
+                return ctx.getText();
+            }
+
+            // JavaScript has no IsNullOrEmpty; s == null || s === "" is the check.
+            private static final List<java.util.regex.Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*===?\\s*(?:null|undefined)\\s*\\|\\|\\s*\\1\\s*===?\\s*(?:\"\"|'')"),
+                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*===?\\s*(?:null|undefined)\\s*\\|\\|\\s*\\1\\.length\\s*===?\\s*0"));
+
+            @Override
+            public String getNullOrEmptySubject(ParseTree ctx) {
+                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            }
+
+            @Override
+            public String notEmptyStringCheck(String subject) {
+                return "(" + subject + " !== \"\")";
+            }
+
+            @Override
+            public boolean isInvocationStatement(ParseTree ctx) {
+                if (ctx instanceof ParserRuleContext prc) {
+                    Token start = prc.getStart();
+                    Token stop = prc.getStop();
+                    if (start != null && stop != null && start.getLine() != stop.getLine()) {
+                        return false;
+                    }
+                }
+                String text = getNodeText(ctx);
+                if (text == null || text.isBlank()) {
+                    return false;
+                }
+                String compact = text.replaceAll("\\s+", "");
+                if (compact.startsWith("return") || compact.startsWith("throw")) {
+                    return false;
+                }
+                return invocationStatement.matcher(compact).matches();
+            }
+
+            @Override
+            public String getSingleArgumentText(ParseTree ctx, String functionName) {
+                String text = getNodeText(ctx);
+                if (text == null) return null;
+                String compact = text.replaceAll("\\s+", "");
+                String prefix = functionName.replaceAll("\\s+", "") + "(";
+                if (!compact.startsWith(prefix) || !compact.endsWith(")")) {
+                    return null;
+                }
+                String inner = compact.substring(prefix.length(), compact.length() - 1).trim();
+                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                    return null;
+                }
+                return inner;
+            }
+
+            private boolean hasTopLevelComma(String text) {
+                int parenDepth = 0;
+                int bracketDepth = 0;
+                int braceDepth = 0;
+                boolean inString = false;
+                char stringDelimiter = '\0';
+
+                for (int i = 0; i < text.length(); i++) {
+                    char c = text.charAt(i);
+                    if (i > 0 && text.charAt(i - 1) == '\\') {
+                        continue;
+                    }
+                    if (inString) {
+                        if (c == stringDelimiter) {
+                            inString = false;
+                            stringDelimiter = '\0';
+                        }
+                        continue;
+                    }
+                    if (c == '"' || c == '\'') {
+                        inString = true;
+                        stringDelimiter = c;
+                        continue;
+                    }
+                    switch (c) {
+                        case '(' -> parenDepth++;
+                        case ')' -> parenDepth--;
+                        case '[' -> bracketDepth++;
+                        case ']' -> bracketDepth--;
+                        case '{' -> braceDepth++;
+                        case '}' -> braceDepth--;
+                        case ',' -> {
+                            if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+                                return true;
+                            }
+                        }
+                        default -> {
+                        }
+                    }
+                }
+                return false;
+            }
+
             @Override
             public int[] getTokenPosition(ParseTree ctx) {
                 if (ctx instanceof TerminalNode tn) {

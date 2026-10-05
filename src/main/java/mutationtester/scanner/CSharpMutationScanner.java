@@ -1,21 +1,30 @@
 package mutationtester.scanner;
 
-import mutationtester.*;
-import mutationtester.model.Mutation;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-
-import mutationtester.msl.MSLScannerAdapter;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonToken;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.antlr.v4.runtime.tree.TerminalNodeImpl;
+
+import mutationtester.CSharpLexer;
+import mutationtester.CSharpParser;
+import mutationtester.CSharpParserBaseVisitor;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
 
 public class CSharpMutationScanner {
 
@@ -323,7 +332,30 @@ public class CSharpMutationScanner {
     }
 
     private static int findConditionStart(String text) {
-        int start = skipLeadingTrivia(text, 0);
+        // The condition begins after the nearest top-level boundary before it:
+        // an assignment (int t = cond ? ...), an open paren, a comma, etc.
+        int boundary = 0;
+        int depth = 0;
+        for (int i = text.length() - 1; i >= 0; i--) {
+            char ch = text.charAt(i);
+            if (isInStringOrComment(text, i)) continue;
+            if (ch == ')' || ch == ']') {
+                depth++;
+            } else if (ch == '(' || ch == '[') {
+                if (depth == 0) { boundary = i + 1; break; }
+                depth--;
+            } else if (depth == 0 && (ch == ',' || ch == ';' || ch == '{')) {
+                boundary = i + 1;
+                break;
+            } else if (depth == 0 && ch == '=') {
+                char prev = i > 0 ? text.charAt(i - 1) : '\0';
+                char next = i + 1 < text.length() ? text.charAt(i + 1) : '\0';
+                if (next == '>') { boundary = i + 2; break; }
+                if (next != '=' && "=!<>".indexOf(prev) < 0) { boundary = i + 1; break; }
+            }
+        }
+
+        int start = skipLeadingTrivia(text, boundary);
 
         if (text.startsWith("=>", start)) {
             return skipLeadingTrivia(text, start + 2);
@@ -573,7 +605,13 @@ public class CSharpMutationScanner {
 
                 String expression = line.substring(expressionStart, semicolon).trim();
                 int column = line.indexOf(expression, expressionStart);
-                String replacement = getReturnValueReplacement(expression, type, currentReturnType);
+                // "yield return x" yields one element, so the method's declared
+                // (IEnumerable) return type doesn't describe x.
+                boolean yieldReturn = line.substring(0, returnIndex).strip().endsWith("yield");
+                String replacement = yieldReturn && (type == Mutator.MutatorType.EMPTY_RETURNS
+                                || type == Mutator.MutatorType.RVM_OBJECT_TO_NULL)
+                        ? null
+                        : getReturnValueReplacement(expression, type, currentReturnType);
 
                 if (replacement != null && column >= 0) {
                     points.add(new MutationPoint(file, i + 1, column, expression, replacement, type));
@@ -719,12 +757,16 @@ public class CSharpMutationScanner {
                 }
 
                 if (!isValueTypeConstructor(call.typeName())) {
+                    // "var x = null;" doesn't compile; default(T) keeps the type.
+                    String replacement = isImplicitlyTypedDeclaration(line.substring(0, newIndex))
+                            ? "default(" + call.typeName() + ")"
+                            : "null";
                     points.add(new MutationPoint(
                             file,
                             i + 1,
                             newIndex,
                             call.text(),
-                            "null",
+                            replacement,
                             Mutator.MutatorType.CONSTRUCTOR_CALLS,
                             "Constructor call mutation"
                     ));
@@ -803,7 +845,9 @@ public class CSharpMutationScanner {
             }
 
             MethodCall call = findSingleMethodCallExpression(line, expressionStart, semicolon);
-            String replacement = defaultValueForType(matcher.group("type"), false);
+            // With var the call's type is unknown, and "var x = null;" doesn't compile.
+            String type = matcher.group("type");
+            String replacement = type.equals("var") ? null : defaultValueForType(type, false);
             if (call != null && replacement != null) {
                 points.add(new MutationPoint(
                         file,
@@ -1334,6 +1378,11 @@ public class CSharpMutationScanner {
 
     private record ConditionSpan(String text, int startColumn) {}
     private record ConstructorCall(String text, String typeName) {}
+
+    /** True when text ends with "var name =", i.e. the value sets the variable's type. */
+    private static boolean isImplicitlyTypedDeclaration(String textBeforeValue) {
+        return Pattern.compile("\\bvar\\s+@?[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*$").matcher(textBeforeValue).find();
+    }
     private record MethodCall(String text, int column) {}
 
     private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
@@ -1760,43 +1809,277 @@ public class CSharpMutationScanner {
             );
             private final Pattern csharpIdentifier = Pattern.compile("@?[A-Za-z_][A-Za-z0-9_]*");
 
+            // C# has no // or ** operator. The calls that compute them stand in:
+            // Math.Pow(a, b) is a ** b and Math.Floor(a / b) is a // b (whose
+            // inner "/" is part of that operator, not a separate division).
+
+            private boolean isCall(ParseTree ctx) {
+                return ctx instanceof CSharpParser.Invocation_expressionContext
+                        && ctx.getChildCount() >= 3
+                        && ctx.getChild(1).getText().equals("(")
+                        && ctx.getChild(ctx.getChildCount() - 1).getText().equals(")");
+            }
+
+            private boolean isMathCall(ParseTree ctx, String method) {
+                if (!isCall(ctx)) return false;
+                String callee = getNodeText(ctx.getChild(0)).replaceAll("\\s+", "");
+                return callee.equals("Math." + method) || callee.equals("System.Math." + method);
+            }
+
+            /** The plain expressions passed to a call (no named, ref or out arguments). */
+            private List<ParseTree> callArguments(ParseTree call) {
+                List<ParseTree> args = new ArrayList<>();
+                if (call.getChildCount() != 4) return args;
+                ParseTree list = call.getChild(2);
+                for (int i = 0; i < list.getChildCount(); i++) {
+                    if (list.getChild(i) instanceof CSharpParser.ArgumentContext arg) {
+                        if (arg.argument_name() != null || arg.argument_value().expression() == null) return List.of();
+                        args.add(arg.argument_value().expression());
+                    }
+                }
+                return args;
+            }
+
+            /** Descends through single-child wrappers and parentheses. */
+            private ParseTree unwrap(ParseTree expr) {
+                while (true) {
+                    if (expr.getChildCount() == 1) {
+                        expr = expr.getChild(0);
+                    } else if (expr instanceof CSharpParser.Parenthesized_expressionContext paren) {
+                        expr = paren.expression();
+                    } else {
+                        return expr;
+                    }
+                }
+            }
+
+            /** [left, right] when ctx is Math.Pow(a, b) (for **) or Math.Floor(a / b) (for //). */
+            private ParseTree[] callOperands(ParseTree ctx, String mslOperator) {
+                if ("**".equals(mslOperator) && isMathCall(ctx, "Pow")) {
+                    List<ParseTree> args = callArguments(ctx);
+                    return args.size() == 2 ? new ParseTree[]{args.get(0), args.get(1)} : null;
+                }
+                ParseTree division = "//".equals(mslOperator) ? floorDivision(ctx) : null;
+                return division == null ? null
+                        : new ParseTree[]{division.getChild(0), division.getChild(2)};
+            }
+
+            private ParseTree[] anyCallOperands(ParseTree ctx) {
+                ParseTree[] operands = callOperands(ctx, "**");
+                return operands != null ? operands : callOperands(ctx, "//");
+            }
+
+            /** The a / b inside Math.Floor(a / b), or null. */
+            private ParseTree floorDivision(ParseTree ctx) {
+                if (!isMathCall(ctx, "Floor")) return null;
+                List<ParseTree> args = callArguments(ctx);
+                if (args.size() != 1) return null;
+                ParseTree inner = unwrap(args.get(0));
+                return inner instanceof CSharpParser.Multiplicative_expressionContext
+                        && inner.getChildCount() == 3 && inner.getChild(1).getText().equals("/") ? inner : null;
+            }
+
+            private boolean isInsideFloorDivision(ParseTree division) {
+                // The grammar re-parents an invocation's arguments, so their parent
+                // may be the expression wrapping the call rather than the call.
+                for (ParseTree p = division.getParent(); p != null; p = p.getParent()) {
+                    ParseTree call = isCall(p) ? p
+                            : p.getChildCount() > 0 && isCall(p.getChild(0)) ? p.getChild(0) : null;
+                    if (call != null) return floorDivision(call) == division;
+                }
+                return false;
+            }
+
+            // The grammar builds invocation nodes after the fact, without their
+            // own start/stop tokens, so a call's position and text come from its
+            // callee's first token and its closing ')'.
+
+            private Token callStart(ParseTree call) {
+                return ((ParserRuleContext) call.getChild(0)).getStart();
+            }
+
+            private String callText(ParseTree call) {
+                int stop = ((TerminalNode) call.getChild(call.getChildCount() - 1)).getSymbol().getStopIndex();
+                return sourceText.substring(callStart(call).getStartIndex(), stop + 1);
+            }
+
+            // C# also compares values with a.Equals(b) / Equals(a, b), the
+            // counterpart of Java's a.equals(b) and Racket's equal?;
+            // !a.Equals(b) is the matching !=.
+            private static final Set<String> STATIC_EQUALS =
+                    Set.of("Equals", "object.Equals", "Object.Equals", "string.Equals", "String.Equals");
+
+            /** {left text, right text} for a.Equals(b) or Equals(a, b), else null. */
+            private String[] equalsOperands(ParseTree ctx) {
+                if (!isCall(ctx)) return null;
+                String callee = getNodeText(ctx.getChild(0)).replaceAll("\\s+", "");
+                List<ParseTree> args = callArguments(ctx);
+                if (args.size() == 2 && STATIC_EQUALS.contains(callee)) {
+                    return new String[]{getNodeText(args.get(0)), getNodeText(args.get(1))};
+                }
+                if (args.size() == 1 && callee.endsWith(".Equals") && !STATIC_EQUALS.contains(callee)) {
+                    String receiver = getNodeText(ctx.getChild(0)).strip();
+                    return new String[]{receiver.substring(0, receiver.length() - ".Equals".length()).strip(),
+                            getNodeText(args.get(0))};
+                }
+                return null;
+            }
+
+            /** The Equals call inside !a.Equals(b), else null. */
+            private ParseTree negatedEquals(ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Unary_expressionContext) || ctx.getChildCount() != 2
+                        || !ctx.getChild(0).getText().equals("!")) {
+                    return null;
+                }
+                ParseTree inner = unwrap(ctx.getChild(1));
+                return equalsOperands(inner) != null ? inner : null;
+            }
+
+            /** Operand nodes of an Equals call or its negation: receiver (or first arg) and last arg. */
+            private ParseTree[] equalsOperandNodes(ParseTree ctx) {
+                ParseTree inner = negatedEquals(ctx);
+                ParseTree call = inner != null ? inner : ctx;
+                if (equalsOperands(call) == null) return null;
+                List<ParseTree> args = callArguments(call);
+                ParseTree left = args.size() == 2 ? args.get(0) : call.getChild(0);
+                return new ParseTree[]{left, args.get(args.size() - 1)};
+            }
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                if (ctx.getChildCount() == 3) {
-                    return ctx.getChild(1).getText().equals(mslOperator);
+                if ("**".equals(mslOperator) || "//".equals(mslOperator)) {
+                    return callOperands(ctx, mslOperator) != null;
+                }
+                if ("==".equals(mslOperator) && equalsOperands(ctx) != null) return true;
+                if ("!=".equals(mslOperator) && negatedEquals(ctx) != null) return true;
+                if ("/".equals(mslOperator) && isInsideFloorDivision(ctx)) {
+                    return false;
+                }
+                if ("*".equals(mslOperator) && isAmbiguousMultiplyExpression(ctx)) {
+                    return true;
+                }
+                if (ctx.getChildCount() >= 3) {
+                    for (int i = 1; i < ctx.getChildCount() - 1; i++) {
+                        if (ctx.getChild(i).getText().equals(mslOperator)) {
+                            return true;
+                        }
+                    }
                 }
                 return false;
             }
 
             @Override
+            public List<String> getOperatorAliases(String canonicalOperator) {
+                return List.of(canonicalOperator);
+            }
+
+            @Override
+            public String toLanguageOperator(String canonicalOperator, ParseTree ctx) {
+                // // and ** are calls (see callOperands). An operator can't become
+                // one: Math.Pow and Math.Floor return double, which an int
+                // context won't accept.
+                return switch (canonicalOperator) {
+                    case "//", "**" -> null;
+                    default -> canonicalOperator;
+                };
+            }
+
+            @Override
+            public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                ParseTree negated = "!=".equals(fromOperator) ? negatedEquals(ctx) : null;
+                ParseTree equalsCall = negated != null ? negated
+                        : "==".equals(fromOperator) && equalsOperands(ctx) != null ? ctx : null;
+                if (equalsCall != null) {
+                    // a.Equals(b) <-> !a.Equals(b); the call node's own text is unreliable.
+                    Token start = negated != null ? ((ParserRuleContext) ctx).getStart() : callStart(equalsCall);
+                    int stop = ((TerminalNode) equalsCall.getChild(equalsCall.getChildCount() - 1)).getSymbol().getStopIndex();
+                    String text = sourceText.substring(start.getStartIndex(), stop + 1);
+                    String replacement;
+                    if (negated == null && "!=".equals(toOperator)) {
+                        replacement = "!" + text;
+                    } else if (negated != null && "==".equals(toOperator)) {
+                        replacement = callText(negated);
+                    } else {
+                        String op = toLanguageOperator(toOperator, ctx);
+                        if (op == null) return null;
+                        String[] operands = equalsOperands(equalsCall);
+                        replacement = MSLScannerAdapter.infix(operands[0], op, operands[1]);
+                    }
+                    return new OperatorEdit(start.getLine(), start.getCharPositionInLine(), text, replacement);
+                }
+                ParseTree[] call = callOperands(ctx, fromOperator);
+                if (call == null) {
+                    return MSLScannerAdapter.super.createOperatorEdit(ctx, fromOperator, toOperator);
+                }
+                // Math.Pow(a, b) -> (a * b)
+                String op = toLanguageOperator(toOperator, ctx);
+                if (op == null) return null;
+                Token start = callStart(ctx);
+                return new OperatorEdit(start.getLine(), start.getCharPositionInLine(), callText(ctx),
+                        MSLScannerAdapter.infix(getNodeText(call[0]), op, getNodeText(call[1])));
+            }
+
+            @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
+                ParseTree[] call = anyCallOperands(ctx);
+                if (call == null) call = equalsOperandNodes(ctx);
+                if (call != null) {
+                    return call[0];
+                }
+                ParseTree syntheticLeft = getAmbiguousMultiplyLeftOperand(ctx);
+                if (syntheticLeft != null) {
+                    return syntheticLeft;
+                }
                 return ctx.getChild(0);
             }
 
             @Override
             public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(2);
+                ParseTree[] call = anyCallOperands(ctx);
+                if (call == null) call = equalsOperandNodes(ctx);
+                if (call != null) {
+                    return call[1];
+                }
+                ParseTree syntheticRight = getAmbiguousMultiplyRightOperand(ctx);
+                if (syntheticRight != null) {
+                    return syntheticRight;
+                }
+                return ctx.getChild(ctx.getChildCount() - 1);
             }
 
             @Override
             public ParseTree getOperatorToken(ParseTree ctx) {
-                if (ctx.getChildCount() >= 3) return ctx.getChild(1);
+                ParseTree syntheticOperator = getAmbiguousMultiplyOperatorToken(ctx);
+                if (syntheticOperator != null) {
+                    return syntheticOperator;
+                }
+                if (ctx.getChildCount() >= 3) {
+                    for (int i = 1; i < ctx.getChildCount() - 1; i++) {
+                        String text = ctx.getChild(i).getText();
+                        if ("+".equals(text) || "-".equals(text) || "*".equals(text)
+                                || "/".equals(text) || "%".equals(text)
+                                || "&".equals(text) || "|".equals(text) || "^".equals(text)
+                                || "<<".equals(text) || ">>".equals(text) || ">>>".equals(text)
+                                || "<".equals(text) || ">".equals(text) || "<=".equals(text) || ">=".equals(text)
+                                || "==".equals(text) || "!=".equals(text)
+                                || "&&".equals(text) || "||".equals(text)) {
+                            return ctx.getChild(i);
+                        }
+                    }
+                    return ctx.getChild(1);
+                }
                 return null;
             }
 
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == CSharpLexer.Integer_Literal ||
-                            type == CSharpLexer.Real_Literal ||
-                            type == CSharpLexer.Simple_Identifier ||
-                            csharpIdentifier.matcher(symbol.getText()).matches();
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
+                return MSLScannerAdapter.isQuantityText(getNodeText(ctx), ctx instanceof TerminalNode);
+            }
+
+            @Override
+            public boolean isStringLiteral(ParseTree ctx) {
+                return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), false);
             }
 
             @Override
@@ -1841,7 +2124,33 @@ public class CSharpMutationScanner {
             }
 
             @Override
+            public List<String> getFunctionAliases(String canonicalFunctionName) {
+                if ("string.IsNullOrEmpty".equals(canonicalFunctionName)) {
+                    return List.of(
+                            "string.IsNullOrEmpty",
+                            "String.IsNullOrEmpty"
+                    );
+                }
+                return List.of(canonicalFunctionName);
+            }
+
+            // Besides string.IsNullOrEmpty(s), C# code writes the check out.
+            private static final List<Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
+                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\s*==\\s*\"\""),
+                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\s*==\\s*(?:string|String)\\.Empty"),
+                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.Length\\s*==\\s*0"));
+
+            @Override
+            public String getNullOrEmptySubject(ParseTree ctx) {
+                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            }
+
+            @Override
             public boolean isInvocationStatement(ParseTree ctx) {
+                // Only real statements: "delegate void Notify();" also looks like a call.
+                if (!(ctx instanceof CSharpParser.Expression_statementContext)) {
+                    return false;
+                }
                 if (ctx instanceof ParserRuleContext prc) {
                     Token start = prc.getStart();
                     Token stop = prc.getStop();
@@ -1901,6 +2210,92 @@ public class CSharpMutationScanner {
             @Override
             public ParseTree getRootContext() {
                 return tree;
+            }
+
+            private boolean isAmbiguousMultiplyExpression(ParseTree ctx) {
+                return getAmbiguousMultiplyLeftOperand(ctx) != null;
+            }
+
+            private ParseTree getAmbiguousMultiplyLeftOperand(ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Declaration_expressionContext) || ctx.getChildCount() != 2) {
+                    return null;
+                }
+
+                String leftText = compactNodeText(ctx.getChild(0));
+                String rightText = compactNodeText(ctx.getChild(1));
+                if (!leftText.endsWith("*") || !csharpIdentifier.matcher(rightText).matches()) {
+                    return null;
+                }
+
+                String leftOperand = leftText.substring(0, leftText.length() - 1);
+                if (!csharpIdentifier.matcher(leftOperand).matches()) {
+                    return null;
+                }
+
+                Token baseToken = getStartToken(ctx.getChild(0));
+                if (baseToken == null) {
+                    return null;
+                }
+
+                return createSyntheticTerminal(leftOperand, baseToken, 0);
+            }
+
+            private ParseTree getAmbiguousMultiplyRightOperand(ParseTree ctx) {
+                if (!isAmbiguousMultiplyExpression(ctx)) {
+                    return null;
+                }
+                return ctx.getChild(1);
+            }
+
+            private ParseTree getAmbiguousMultiplyOperatorToken(ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Declaration_expressionContext) || ctx.getChildCount() != 2) {
+                    return null;
+                }
+
+                String originalLeftText = getNodeText(ctx.getChild(0));
+                String compactLeftText = compactNodeText(ctx.getChild(0));
+                String rightText = compactNodeText(ctx.getChild(1));
+                if (!compactLeftText.endsWith("*") || !csharpIdentifier.matcher(rightText).matches()) {
+                    return null;
+                }
+
+                String leftOperand = compactLeftText.substring(0, compactLeftText.length() - 1);
+                if (!csharpIdentifier.matcher(leftOperand).matches()) {
+                    return null;
+                }
+
+                Token baseToken = getStartToken(ctx.getChild(0));
+                if (baseToken == null) {
+                    return null;
+                }
+
+                int operatorOffset = originalLeftText.lastIndexOf('*');
+                if (operatorOffset < 0) {
+                    operatorOffset = leftOperand.length();
+                }
+                return createSyntheticTerminal("*", baseToken, operatorOffset);
+            }
+
+            private Token getStartToken(ParseTree ctx) {
+                if (ctx instanceof TerminalNode tn) {
+                    return tn.getSymbol();
+                }
+                if (ctx instanceof ParserRuleContext prc) {
+                    return prc.getStart();
+                }
+                return null;
+            }
+
+            private ParseTree createSyntheticTerminal(String text, Token baseToken, int offset) {
+                CommonToken token = new CommonToken(0, text);
+                token.setLine(baseToken.getLine());
+                token.setCharPositionInLine(baseToken.getCharPositionInLine() + Math.max(offset, 0));
+                return new TerminalNodeImpl(token);
+            }
+
+            private String compactNodeText(ParseTree ctx) {
+                String text = getNodeText(ctx);
+                return text == null ? "" : text.replaceAll("\\s+", "");
             }
         };
     }

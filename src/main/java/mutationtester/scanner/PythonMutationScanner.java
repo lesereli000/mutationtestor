@@ -1,20 +1,25 @@
 package mutationtester.scanner;
 
-import mutationtester.*;
-import mutationtester.model.Mutation;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-
-import mutationtester.msl.MSLScannerAdapter;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import mutationtester.PythonLexer;
+import mutationtester.PythonParser;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
 
 public class PythonMutationScanner {
 
@@ -123,24 +128,156 @@ public class PythonMutationScanner {
                     Pattern.DOTALL
             );
 
+            // Python has no >>> (its ints are unbounded); x >>> n is written as
+            // (x & 0xFFFFFFFF) >> n. That shift is matched as >>>, and its mask
+            // and shift are part of it rather than separate & and >> operators.
+
+            /** For (x & MASK) >> n returns the x & MASK node, else null. */
+            private ParseTree unsignedShiftMask(ParseTree ctx) {
+                if (!isBinaryOp(ctx, ">>")) return null;
+                ParseTree masked = unwrapParens(ctx.getChild(0));
+                if (isBinaryOp(masked, "&")
+                        && (MSLScannerAdapter.isUnsignedShiftMask(masked.getChild(2).getText())
+                            || MSLScannerAdapter.isUnsignedShiftMask(masked.getChild(0).getText()))) {
+                    return masked;
+                }
+                return null;
+            }
+
+            private boolean isBinaryOp(ParseTree ctx, String op) {
+                return ctx instanceof PythonParser.ExprContext expr && expr.getChildCount() == 3
+                        && expr.op != null && expr.op.getText().equals(op);
+            }
+
+            private ParseTree unwrapParens(ParseTree expr) {
+                while (true) {
+                    if (expr.getChildCount() == 1) {
+                        expr = expr.getChild(0);
+                    } else if (expr.getChildCount() == 3 && expr.getChild(0).getText().equals("(")
+                            && expr.getChild(2).getText().equals(")")) {
+                        expr = expr.getChild(1);
+                    } else {
+                        return expr;
+                    }
+                }
+            }
+
+            private boolean isMaskOfUnsignedShift(ParseTree and) {
+                ParseTree p = and.getParent();
+                for (int depth = 0; p != null && depth < 12; depth++, p = p.getParent()) {
+                    if (unsignedShiftMask(p) == and) return true;
+                }
+                return false;
+            }
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
                 // Handle ExprContext (arithmetic, bitwise)
-                if (ctx instanceof PythonParser.ExprContext exprCtx) {
-                    return exprCtx.op != null && exprCtx.op.getText().equals(mslOperator);
+                // (unary forms such as -x also carry an op, so require two operands)
+                if (ctx instanceof PythonParser.ExprContext) {
+                    return switch (mslOperator) {
+                        case ">>>" -> unsignedShiftMask(ctx) != null;
+                        case ">>" -> isBinaryOp(ctx, ">>") && unsignedShiftMask(ctx) == null;
+                        case "&" -> isBinaryOp(ctx, "&") && !isMaskOfUnsignedShift(ctx);
+                        default -> isBinaryOp(ctx, mslOperator);
+                    };
                 }
                 // Handle ComparisonContext
-                if (ctx instanceof PythonParser.ComparisonContext compCtx) {
-                    // Comparison can have multiple operators, but for MSL we likely want simple ones
-                    if (compCtx.getChildCount() == 3) {
-                        return compCtx.getChild(1).getText().equals(mslOperator);
-                    }
+                if (ctx instanceof PythonParser.ComparisonContext) {
+                    return mslOperator.equals(comparisonOperator(ctx));
                 }
                 // Handle logical_test
                 if (ctx instanceof PythonParser.Logical_testContext logCtx) {
                     return logCtx.op != null && logCtx.op.getText().equals(mslOperator);
                 }
                 return false;
+            }
+
+            /**
+             * The operator of a single comparison ("<", "is", "is not"), or null.
+             * "is not" and "not in" are two tokens.
+             */
+            private String comparisonOperator(ParseTree ctx) {
+                if (!(ctx instanceof PythonParser.ComparisonContext)) return null;
+                if (ctx.getChildCount() == 3) return ctx.getChild(1).getText();
+                if (ctx.getChildCount() == 4) return ctx.getChild(1).getText() + " " + ctx.getChild(2).getText();
+                return null;
+            }
+
+            @Override
+            public List<String> getOperatorAliases(String canonicalOperator) {
+                // is / is not compare identity, as == / != do for references
+                // in Java and C# (s is None <-> s == null).
+                return switch (canonicalOperator) {
+                    case "&&" -> List.of("and");
+                    case "||" -> List.of("or");
+                    case "==" -> List.of("==", "is");
+                    case "!=" -> List.of("!=", "is not");
+                    default -> List.of(canonicalOperator);
+                };
+            }
+
+            @Override
+            public String toLanguageOperator(String canonicalOperator, ParseTree ctx) {
+                String source = comparisonOperator(ctx);
+                boolean identity = "is".equals(source) || "is not".equals(source);
+                return switch (canonicalOperator) {
+                    case "&&" -> "and";
+                    case "||" -> "or";
+                    // Keep the identity form: s is None becomes s is not None.
+                    case "==" -> identity ? "is" : "==";
+                    case "!=" -> identity ? "is not" : "!=";
+                    // Written as (x & 0xFFFFFFFF) >> n; see createOperatorEdit.
+                    case ">>>" -> null;
+                    default -> canonicalOperator;
+                };
+            }
+
+            @Override
+            public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                if (ctx instanceof PythonParser.ComparisonContext && ctx.getChildCount() == 4) {
+                    // "is not" spans two tokens; replace both.
+                    String op = toLanguageOperator(toOperator, ctx);
+                    if (op == null) return null;
+                    Token first = ((TerminalNode) ctx.getChild(1)).getSymbol();
+                    Token last = ((TerminalNode) ctx.getChild(2)).getSymbol();
+                    return new OperatorEdit(first.getLine(), first.getCharPositionInLine(),
+                            sourceCode.substring(first.getStartIndex(), last.getStopIndex() + 1), op);
+                }
+                boolean fromUnsigned = ">>>".equals(fromOperator);
+                if (">>>".equals(toOperator) || (fromUnsigned && ">>".equals(toOperator))) {
+                    // Into or out of the masked form: rebuild the expression.
+                    String left = getNodeText(ctx.getChild(0));
+                    String right = getNodeText(ctx.getChild(2));
+                    String replacement = fromUnsigned
+                            ? getNodeText(unsignedShiftMask(ctx).getChild(0)) + " >> " + right
+                            : "(" + left + " & 0xFFFFFFFF) >> " + right;
+                    int[] pos = getTokenPosition(ctx);
+                    return new OperatorEdit(pos[0], pos[1], getNodeText(ctx), replacement);
+                }
+                // Otherwise the default token swap: (x & 0xFFFFFFFF) >> n becomes
+                // (x & 0xFFFFFFFF) << n.
+                return MSLScannerAdapter.super.createOperatorEdit(ctx, fromOperator, toOperator);
+            }
+
+            // Python has no IsNullOrEmpty; s is None or s == "" is the check.
+            private static final List<Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
+                    Pattern.compile("([A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)\\s+is\\s+None\\s+or\\s+\\1\\s*==\\s*(?:\"\"|'')"),
+                    Pattern.compile("([A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)\\s+is\\s+None\\s+or\\s+len\\(\\1\\)\\s*==\\s*0"));
+
+            @Override
+            public String getNullOrEmptySubject(ParseTree ctx) {
+                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            }
+
+            @Override
+            public String notNullCheck(String subject) {
+                return "(" + subject + " is not None)";
+            }
+
+            @Override
+            public String getEmptyStatement(ParseTree statement) {
+                return "pass";
             }
 
             @Override
@@ -162,18 +299,12 @@ public class PythonMutationScanner {
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    int type = symbol.getType();
-                    return type == PythonLexer.DECIMAL_INTEGER ||
-                           type == PythonLexer.FLOAT_NUMBER ||
-                           type == PythonLexer.OCT_INTEGER ||
-                           type == PythonLexer.HEX_INTEGER ||
-                           type == PythonLexer.BIN_INTEGER ||
-                           type == PythonLexer.NAME;
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
+                return MSLScannerAdapter.isQuantityText(getNodeText(ctx), ctx instanceof TerminalNode);
+            }
+
+            @Override
+            public boolean isStringLiteral(ParseTree ctx) {
+                return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), true);
             }
 
             @Override

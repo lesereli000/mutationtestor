@@ -152,7 +152,46 @@ class AllSyntaxDemo {
             max: new AllSyntaxDemo().max,
             counter: AllSyntaxDemo.counter
         })
+
+        // JS specific features
+        const specifics = new JSSpecifics()
+        specifics.runSpecifics()
     }
 }
 
-AllSyntaxDemo.main()
+class JSSpecifics {
+    async runSpecifics() {
+        // Closure
+        const makeCounter = () => {
+            let count = 0
+            return () => ++count
+        }
+        const counter = makeCounter()
+        counter()
+
+        // Promise (async/await)
+        const asyncWork = new Promise(resolve => setTimeout(() => resolve("done"), 1))
+        await asyncWork
+
+        // Prototype-based inheritance
+        function Person(name) { this.name = name }
+        Person.prototype.greet = function() { console.log(this.name) }
+        const p = new Person("JS")
+        p.greet()
+
+        // Dynamic properties
+        const obj = {}
+        obj["dynamic_prop"] = 42
+        delete obj.dynamic_prop
+    }
+}
+
+// Export for testing
+module.exports = {
+    Status, Animal, Dog, Box, ConsoleGreeter, AllSyntaxDemo, JSSpecifics
+}
+
+// Run if main
+if (require.main === module) {
+    AllSyntaxDemo.main()
+}
