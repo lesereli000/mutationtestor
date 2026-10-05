@@ -762,9 +762,9 @@ public class RacketScannerTests {
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
         // negate-x, get-pair, get-id, describe-zero, sign, greeting, pair-list,
-        // sum-of-squares, parity, origin, empty-table, non-empty?  → 15 points
+        // sum-of-squares, parity, origin, empty-table, non-empty?, same-object?  → 16 points
         // (vowels returns a quoted literal, which is not an object return)
-        assertEquals(15, points.size());
+        assertEquals(16, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -964,9 +964,9 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
 
         // length, add1, sub1, cons, string-append, list, sqr x2, even?,
-        // make-point, make-hash, empty?  → 12 points
+        // make-point, make-hash, empty?, eq?  → 13 points
         // (display items) is excluded: void call, and in statement position
-        assertEquals(12, points.size());
+        assertEquals(13, points.size());
         assertTrue(points.stream().noneMatch(p -> p.getOperator().startsWith("(display")));
 
         MutationPoint sqr = findByOperator(points, "(sqr a)");
@@ -1099,6 +1099,47 @@ public class RacketScannerTests {
         assertEquals(List.of("(not a)", "(not (not b))", "(not b)", "(not (= a b))"), mutated);
         List<String> replacements = points.stream().map(MutationPoint::getReplacement).toList();
         assertEquals(List.of("a", "(not b)", "b", "(= a b)"), replacements);
+    }
+
+    // -------------------------------------------------------------------------
+    // JS_STRICT_EQ_TO_LOOSE_EQ  (eq? / eqv? → equal?)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitStrictEquality() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ);
+
+        // (eq? a b) in same-object?  → 1 point
+        assertEquals(1, points.size());
+
+        MutationPoint point = points.get(0);
+        assertEquals("eq?", point.getOperator());
+        assertEquals("equal?", point.getReplacement());
+        assertEquals(101, point.getLineNumber());
+        assertEquals(3, point.getColumnNumber());
+    }
+
+    @Test
+    public void testStrictEqualityWeakensEqAndEqvOnly() throws IOException {
+        File tmp = File.createTempFile("strict-equality", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f a b)",
+                "  (and (eq? a b) (eqv? a 1) (equal? a b) (= a b)))",
+                "(define (g x) (memq x '(eq? eqv?)))",
+                "; (eq? hidden 1)",
+                "(define (s) \"(eqv? 1 2)\")",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ);
+
+        // Skipped: equal? (already loose), = (numeric, not identity), the quoted
+        // symbols, and the comment/string, which aren't code
+        assertEquals(List.of("eq?", "eqv?"), points.stream().map(MutationPoint::getOperator).toList());
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("equal?")));
+        assertTrue(points.stream().allMatch(p -> p.getLineNumber() == 3));
     }
 
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
