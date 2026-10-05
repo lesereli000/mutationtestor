@@ -1,0 +1,4 @@
+source_code_directory=project/src
+mutator_type=JS_STRICT_EQ_TO_LOOSE_EQ
+compile_command=
+test_command=racket ./project/tests/all-tests.rkt

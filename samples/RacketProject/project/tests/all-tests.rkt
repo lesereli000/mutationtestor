@@ -102,6 +102,18 @@
     (check-false (non-empty? '()))))
 
 ; -------------------------------------------------------------------------
+; J. Strict Equality
+;    JS_STRICT_EQ_TO_LOOSE_EQ : (eq? a b) -> (equal? a b)
+;    Two separately built lists are equal? but not eq?
+; -------------------------------------------------------------------------
+(define strict-equality-suite
+  (test-suite "Strict equality: eq? replaced with equal?"
+    (test-case "same-object? is true only for the very same object"
+      (define items (list 1 2))
+      (check-true (same-object? items items))
+      (check-false (same-object? (list 1 2) (list 1 2))))))
+
+; -------------------------------------------------------------------------
 ; add1.rkt / add2.rkt
 ; -------------------------------------------------------------------------
 (define add1-suite
@@ -194,6 +206,7 @@
     non-void-calls-suite
     constructor-calls-suite
     remove-negation-suite
+    strict-equality-suite
     add1-suite
     add2-suite
     operators-suite

@@ -8,7 +8,7 @@
   return-zero return-nonzero
   get-pair get-id
   describe-zero sign
-  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table non-empty?)
+  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table non-empty? same-object?)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -95,3 +95,7 @@
 ; REMOVE_LOGICAL_NEGATION: (not p) -> p
 (define (non-empty? items)
   (not (empty? items)))
+
+; JS_STRICT_EQ_TO_LOOSE_EQ: eq? -> equal?
+(define (same-object? a b)
+  (eq? a b))
