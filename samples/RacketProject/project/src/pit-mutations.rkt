@@ -8,7 +8,7 @@
   return-zero return-nonzero
   get-pair get-id
   describe-zero sign
-  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table)
+  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table non-empty?)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -91,3 +91,7 @@
 ; CONSTRUCTOR_CALLS: built-in make- constructor -> '()
 (define (empty-table)
   (make-hash))
+
+; REMOVE_LOGICAL_NEGATION: (not p) -> p
+(define (non-empty? items)
+  (not (empty? items)))

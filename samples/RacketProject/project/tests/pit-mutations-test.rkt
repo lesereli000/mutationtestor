@@ -114,6 +114,15 @@
     (check-equal? (point-y (origin)) 0)
     (check-true (hash? (empty-table)))))
 
+; -------------------------------------------------------------------------
+; I. Remove Logical Negation
+;    REMOVE_LOGICAL_NEGATION : (not (empty? items)) -> (empty? items)
+; -------------------------------------------------------------------------
+(define remove-negation-suite
+  (test-suite "Remove logical negation: (not p) replaced with p"
+    (check-true (non-empty? '(1 2)))
+    (check-false (non-empty? '()))))
+
 (define all-tests
   (test-suite "PIT Mutation Tests"
     vml-suite
@@ -123,7 +132,8 @@
     remove-conditionals-suite
     empty-returns-suite
     non-void-calls-suite
-    constructor-calls-suite))
+    constructor-calls-suite
+    remove-negation-suite))
 
 (module+ main
   (void (run-tests all-tests)))

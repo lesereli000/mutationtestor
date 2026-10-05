@@ -93,6 +93,15 @@
     (check-true (hash? (empty-table)))))
 
 ; -------------------------------------------------------------------------
+; I. Remove Logical Negation
+;    REMOVE_LOGICAL_NEGATION : (not (empty? items)) -> (empty? items)
+; -------------------------------------------------------------------------
+(define remove-negation-suite
+  (test-suite "Remove logical negation: (not p) replaced with p"
+    (check-true (non-empty? '(1 2)))
+    (check-false (non-empty? '()))))
+
+; -------------------------------------------------------------------------
 ; add1.rkt / add2.rkt
 ; -------------------------------------------------------------------------
 (define add1-suite
@@ -184,6 +193,7 @@
     empty-returns-suite
     non-void-calls-suite
     constructor-calls-suite
+    remove-negation-suite
     add1-suite
     add2-suite
     operators-suite
