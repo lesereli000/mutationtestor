@@ -1992,7 +1992,9 @@ public class CSharpMutationScanner {
                 if (equalsCall != null) {
                     // a.Equals(b) <-> !a.Equals(b); the call node's own text is unreliable.
                     Token start = negated != null ? ((ParserRuleContext) ctx).getStart() : callStart(equalsCall);
-                    int stop = ((TerminalNode) equalsCall.getChild(equalsCall.getChildCount() - 1)).getSymbol().getStopIndex();
+                    int stop = negated != null
+                            ? ((ParserRuleContext) ctx).getStop().getStopIndex()
+                            : ((TerminalNode) equalsCall.getChild(equalsCall.getChildCount() - 1)).getSymbol().getStopIndex();
                     String text = sourceText.substring(start.getStartIndex(), stop + 1);
                     String replacement;
                     if (negated == null && "!=".equals(toOperator)) {

@@ -47,22 +47,44 @@ public class ScannerBackedRule implements MutationRule {
     @Override
     public List<MutationPoint> findMutationPoints(MSLScannerAdapter scanner, File sourceFile) {
         try {
-            List<MutationPoint> nativePoints = scanWithNativeScanner(sourceFile);
-            if (!nativePoints.isEmpty()) {
-                // Native scanners don't know which spec rule asked for them;
-                // label their points so reports group them under this rule.
-                return nativePoints.stream()
-                        .map(p -> new MutationPoint(p.getSourceFile(), p.getLineNumber(),
-                                p.getColumnNumber(), p.getOperator(), p.getReplacement(),
-                                p.getType(), label))
-                        .toList();
+            List<MutationPoint> points = new ArrayList<>();
+            // Native scanners don't know which spec rule asked for them;
+            // label their points so reports group them under this rule.
+            for (MutationPoint p : scanWithNativeScanner(sourceFile)) {
+                points.add(new MutationPoint(p.getSourceFile(), p.getLineNumber(),
+                        p.getColumnNumber(), p.getOperator(), p.getReplacement(),
+                        p.getType(), label));
             }
-            return scanPortable(sourceFile);
+            // Supplement the native points with portable ones for sites the
+            // native scanner doesn't cover, so coverage doesn't depend on
+            // whether an unrelated site happened to be found natively.
+            for (MutationPoint portable : scanPortable(sourceFile)) {
+                if (points.stream().noneMatch(n -> overlaps(n, portable))) {
+                    points.add(portable);
+                }
+            }
+            return points;
         } catch (IOException e) {
             System.err.println("Warning: Failed to apply MSL scanner-backed rule "
                     + label + " to " + sourceFile + ": " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private static boolean overlaps(MutationPoint a, MutationPoint b) {
+        if (a.getLineNumber() != b.getLineNumber()) {
+            return multiLineOverlaps(a, b);
+        }
+        int aEnd = a.getColumnNumber() + a.getOperator().length();
+        int bEnd = b.getColumnNumber() + b.getOperator().length();
+        return a.getColumnNumber() < bEnd && b.getColumnNumber() < aEnd;
+    }
+
+    private static boolean multiLineOverlaps(MutationPoint a, MutationPoint b) {
+        MutationPoint first = a.getLineNumber() < b.getLineNumber() ? a : b;
+        MutationPoint second = first == a ? b : a;
+        String[] lines = first.getOperator().split("\n", -1);
+        return first.getLineNumber() + lines.length - 1 >= second.getLineNumber();
     }
 
     @Override
@@ -94,7 +116,7 @@ public class ScannerBackedRule implements MutationRule {
         String source = Files.readString(sourceFile.toPath());
         String[] lines = source.split("\n", -1);
 
-        return switch (mutatorType) {
+        List<MutationPoint> found = switch (mutatorType) {
             case EMPTY_RETURNS -> scanEmptyReturns(sourceFile, lines, lower);
             case CONSTRUCTOR_CALLS -> scanConstructorCalls(sourceFile, lines, lower);
             case NON_VOID_METHOD_CALLS -> scanNonVoidMethodCalls(sourceFile, lines, lower);
@@ -104,6 +126,84 @@ public class ScannerBackedRule implements MutationRule {
                  REMOVE_CONDITIONALS_ORDER_ELSE -> scanConditionalRemovals(sourceFile, lines, lower);
             default -> Collections.emptyList();
         };
+        if (found.isEmpty()) {
+            return found;
+        }
+
+        // Drop matches that sit inside comments or string literals.
+        boolean[] skipped = nonCodeMask(source, lower);
+        int[] lineStarts = new int[lines.length + 1];
+        for (int i = 0; i < lines.length; i++) {
+            lineStarts[i + 1] = lineStarts[i] + lines[i].length() + 1;
+        }
+        List<MutationPoint> code = new ArrayList<>();
+        for (MutationPoint point : found) {
+            int line = point.getLineNumber() - 1;
+            int offset = line >= 0 && line < lines.length ? lineStarts[line] + point.getColumnNumber() : -1;
+            if (offset < 0 || offset >= skipped.length || !skipped[offset]) {
+                code.add(point);
+            }
+        }
+        return code;
+    }
+
+    /**
+     * Marks every offset inside a comment or inside a string literal's quotes
+     * (the quote characters themselves count as code, so an expression that
+     * is a string literal can still be mutated).
+     */
+    private static boolean[] nonCodeMask(String src, String extension) {
+        boolean[] mask = new boolean[src.length()];
+        boolean racket = extension.endsWith(".rkt");
+        boolean python = extension.endsWith(".py");
+        boolean js = extension.endsWith(".js");
+        int i = 0;
+        int n = src.length();
+        while (i < n) {
+            char ch = src.charAt(i);
+            if (racket && ch == '#' && i + 1 < n && src.charAt(i + 1) == '\\') {
+                i += 3;
+            } else if (racket && ch == '#' && i + 1 < n && src.charAt(i + 1) == '|') {
+                int end = src.indexOf("|#", i + 2);
+                int stop = end < 0 ? n : end + 2;
+                java.util.Arrays.fill(mask, i, stop, true);
+                i = stop;
+            } else if ((racket && ch == ';') || (python && ch == '#')
+                    || (!racket && !python && ch == '/' && i + 1 < n && src.charAt(i + 1) == '/')) {
+                int end = src.indexOf('\n', i);
+                int stop = end < 0 ? n : end;
+                java.util.Arrays.fill(mask, i, stop, true);
+                i = stop;
+            } else if (!racket && !python && ch == '/' && i + 1 < n && src.charAt(i + 1) == '*') {
+                int end = src.indexOf("*/", i + 2);
+                int stop = end < 0 ? n : end + 2;
+                java.util.Arrays.fill(mask, i, stop, true);
+                i = stop;
+            } else if (ch == '"' || (!racket && ch == '\'') || (js && ch == '`')) {
+                String delimiter = String.valueOf(ch);
+                if (!racket && ch != '`' && src.startsWith(delimiter.repeat(3), i)) {
+                    delimiter = delimiter.repeat(3);
+                }
+                int j = i + delimiter.length();
+                while (j < n && !src.startsWith(delimiter, j)) {
+                    if (src.charAt(j) == '\\') {
+                        j++;
+                    } else if (delimiter.length() == 1 && ch != '`' && src.charAt(j) == '\n') {
+                        break;
+                    }
+                    j++;
+                }
+                j = Math.min(j, n);
+                java.util.Arrays.fill(mask, Math.min(i + delimiter.length(), n), j, true);
+                i = Math.min(j + delimiter.length(), n);
+                if (j < n && !src.startsWith(delimiter, j)) {
+                    i = j;
+                }
+            } else {
+                i++;
+            }
+        }
+        return mask;
     }
 
     private List<MutationPoint> scanEmptyReturns(File sourceFile, String[] lines, String extension) {

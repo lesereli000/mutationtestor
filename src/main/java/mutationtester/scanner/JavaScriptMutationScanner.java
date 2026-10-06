@@ -100,6 +100,11 @@ public class JavaScriptMutationScanner {
             v.visit(tree); return v.getMutations();
         }
 
+        // Types without an AST visitor keep their dictionary-based scanning.
+        if (!name.startsWith("NLT_")) {
+            return DictionaryMutationScanner.scanFile(file, type);
+        }
+
         // NLT — Numeric Literal Transformations
         NLTVisitor visitor = new NLTVisitor(file, type);
         visitor.visit(tree);
@@ -372,13 +377,8 @@ public class JavaScriptMutationScanner {
             public String getSingleArgumentText(ParseTree ctx, String functionName) {
                 String text = getNodeText(ctx);
                 if (text == null) return null;
-                String compact = text.replaceAll("\\s+", "");
-                String prefix = functionName.replaceAll("\\s+", "") + "(";
-                if (!compact.startsWith(prefix) || !compact.endsWith(")")) {
-                    return null;
-                }
-                String inner = compact.substring(prefix.length(), compact.length() - 1).trim();
-                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                String inner = MSLScannerAdapter.argumentText(text, functionName);
+                if (inner == null || inner.isEmpty() || hasTopLevelComma(inner)) {
                     return null;
                 }
                 return inner;

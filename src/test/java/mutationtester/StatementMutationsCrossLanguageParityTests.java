@@ -135,15 +135,12 @@ class StatementMutationsCrossLanguageParityTests {
 
     @Test
     void s04ReplacesCallResultsWithTypedDefaults() throws Exception {
-        // TODO: This test was failing before the pull; commented out pending investigation
-        /*
         List<MutationPoint> rule = rule("non-void method call \u2192 default value");
         assertEquals(s("int v = 0;"), mutatedLines(rule, ".java"));
         assertEquals(s("let v = null;"), mutatedLines(rule, ".js"));
         assertEquals(s("o = None", "v = None"), mutatedLines(rule, ".py"));
         assertEquals(s("int v = 0;"), mutatedLines(rule, ".cs"));
-        assertEquals(s("(define p #f)", "(define v #f)"), mutatedLines(rule, ".rkt"));
-        */
+        assertEquals(s("(define p '())", "(define v '())"), mutatedLines(rule, ".rkt"));
     }
 
     @Test

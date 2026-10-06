@@ -302,7 +302,6 @@ public class PitStyleReportGenerator {
                     .append("<div><b>Original:</b> <code>").append(escapeHtml(m.original)).append("</code></div>")
                     .append("<div><b>Replacement:</b> <code>").append(escapeHtml(m.mutated)).append("</code></div>")
                     .append("<div><b>Column:</b> ").append(m.columnStart).append("</div>")
-                    .append("</div>")
                     .append("<div class=\"mutation-status ").append(statusClass).append("\">")
                     .append(statusText)
                     .append("</div></div>\n");

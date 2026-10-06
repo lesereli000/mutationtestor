@@ -762,6 +762,8 @@ public class RacketMutationScanner {
                 case "when", "unless" -> {
                     if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
                 }
+                // ( struct name (field ...) ) — the field list is not a call
+                case "struct", "define-struct" -> statementExprs.addAll(exprs);
                 default -> { }
             }
         }

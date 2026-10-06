@@ -144,6 +144,26 @@ public interface MSLScannerAdapter {
     }
 
     /**
+     * The text between the parentheses of a call to functionName, taken from
+     * the original source so string literals keep their whitespace. Whitespace
+     * is ignored only in the callee; null when text isn't such a call.
+     */
+    static String argumentText(String text, String functionName) {
+        String callee = functionName.replaceAll("\\s+", "") + "(";
+        int matched = 0;
+        int i = 0;
+        for (; i < text.length() && matched < callee.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isWhitespace(c)) continue;
+            if (c != callee.charAt(matched)) return null;
+            matched++;
+        }
+        String rest = text.substring(i).stripTrailing();
+        if (matched < callee.length() || !rest.endsWith(")")) return null;
+        return rest.substring(0, rest.length() - 1).strip();
+    }
+
+    /**
      * Returns language-local spellings that should be treated as aliases
      * for a canonical function name used in specs.
      */

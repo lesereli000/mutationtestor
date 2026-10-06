@@ -249,8 +249,13 @@ public class PythonMutationScanner {
                     // Into or out of the masked form: rebuild the expression.
                     String left = getNodeText(ctx.getChild(0));
                     String right = getNodeText(ctx.getChild(2));
+                    ParseTree masked = fromUnsigned ? unsignedShiftMask(ctx) : null;
+                    // The mask may sit on either side of &; keep the other operand.
+                    ParseTree value = masked == null ? null
+                            : MSLScannerAdapter.isUnsignedShiftMask(masked.getChild(2).getText())
+                                    ? masked.getChild(0) : masked.getChild(2);
                     String replacement = fromUnsigned
-                            ? getNodeText(unsignedShiftMask(ctx).getChild(0)) + " >> " + right
+                            ? getNodeText(value) + " >> " + right
                             : "(" + left + " & 0xFFFFFFFF) >> " + right;
                     int[] pos = getTokenPosition(ctx);
                     return new OperatorEdit(pos[0], pos[1], getNodeText(ctx), replacement);
