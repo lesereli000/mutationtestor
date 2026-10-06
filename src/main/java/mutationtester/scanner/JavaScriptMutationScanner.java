@@ -34,14 +34,16 @@ public class JavaScriptMutationScanner {
         }
 
         // LCR — Logical Connector Replacement
-        if (name.startsWith("LCR_")) {
+        if (name.startsWith("LCR_")
+                || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
+                || type == Mutator.MutatorType.LOGICAL_OR_TO_AND) {
             JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type);
             v.visit(tree); return v.getMutations();
         }
 
         // RVM — Return Value Mutations (all variants)
         if (name.startsWith("RVM_")) {
-            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type);
+            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type, sourceCode);
             v.visit(tree); return v.getMutations();
         }
 
@@ -66,6 +68,28 @@ public class JavaScriptMutationScanner {
         // INEG — Invert Negatives
         if (name.startsWith("INEG_")) {
             JavaScriptINEGVisitor v = new JavaScriptINEGVisitor(file, type);
+            v.visit(tree); return v.getMutations();
+        }
+
+        // Additional PIT-style mutations for JavaScript.
+        if (type == Mutator.MutatorType.CONDITIONAL_TRUE
+                || type == Mutator.MutatorType.CONDITIONAL_FALSE
+                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS
+                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
+                || type == Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ
+                || type == Mutator.MutatorType.JS_STRICT_NE_TO_LOOSE_NE) {
+            JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
+            v.visit(tree); return v.getMutations();
+        }
+
+        if (type == Mutator.MutatorType.BOR_AND_TO_OR) {
+            JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
+            v.visit(tree); return v.getMutations();
+        }
+
+        if (type == Mutator.MutatorType.EMPTY_RETURNS) {
+            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type, sourceCode);
             v.visit(tree); return v.getMutations();
         }
 

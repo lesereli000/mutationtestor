@@ -1,0 +1,4 @@
+source_code_directory=project/src
+mutator_type=REMOVE_LOGICAL_NEGATION
+compile_command=
+test_command=racket ./project/tests/all-tests.rkt

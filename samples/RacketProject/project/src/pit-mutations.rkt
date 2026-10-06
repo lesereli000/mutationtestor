@@ -6,7 +6,9 @@
   negate-x
   always-true always-false
   return-zero return-nonzero
-  get-pair get-id)
+  get-pair get-id
+  describe-zero sign
+  greeting vowels pair-list sum-of-squares parity origin point? point-x point-y empty-table non-empty? same-object?)
 
 ; VML_VOID_METHOD_CALL: void side-effecting call in begin block
 (define (log-and-count items)
@@ -49,3 +51,51 @@
 ; RVM_OBJECT_TO_NULL: identifier -> '()
 (define (get-id x)
   x)
+
+; REMOVE_CONDITIONALS_EQUAL_IF / _ELSE: (= n 0) -> #t / #f
+(define (describe-zero n)
+  (if (= n 0) "zero" "non-zero"))
+
+; REMOVE_CONDITIONALS_ORDER_IF / _ELSE: (< n 0) and (> n 0) -> #t / #f
+(define (sign n)
+  (cond [(< n 0) "negative"]
+        [(> n 0) "positive"]
+        [else "zero"]))
+
+; EMPTY_RETURNS: string-building call -> ""
+(define (greeting name)
+  (string-append "Hello, " name))
+
+; EMPTY_RETURNS: quoted list literal -> '()
+(define (vowels)
+  '(a e i o u))
+
+; EMPTY_RETURNS: list-building call -> '()
+(define (pair-list x y)
+  (list x y))
+
+; NON_VOID_METHOD_CALLS: numeric call result -> 0
+(define (sum-of-squares a b)
+  (+ (sqr a) (sqr b)))
+
+; NON_VOID_METHOD_CALLS: predicate call result -> #f
+(define (parity n)
+  (if (even? n) "even" "odd"))
+
+; CONSTRUCTOR_CALLS: struct constructor call -> '()
+(define-struct point (x y))
+
+(define (origin)
+  (make-point 0 0))
+
+; CONSTRUCTOR_CALLS: built-in make- constructor -> '()
+(define (empty-table)
+  (make-hash))
+
+; REMOVE_LOGICAL_NEGATION: (not p) -> p
+(define (non-empty? items)
+  (not (empty? items)))
+
+; JS_STRICT_EQ_TO_LOOSE_EQ: eq? -> equal?
+(define (same-object? a b)
+  (eq? a b))

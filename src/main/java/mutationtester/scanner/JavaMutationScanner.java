@@ -27,6 +27,15 @@ public class JavaMutationScanner {
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type, boolean showViewer)
             throws IOException {
+        if (type == Mutator.MutatorType.CONDITIONAL_TRUE
+                || type == Mutator.MutatorType.CONDITIONAL_FALSE
+                || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
+                || type == Mutator.MutatorType.EMPTY_RETURNS
+                || type == Mutator.MutatorType.VML_VOID_METHOD_CALL
+                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            return UniversalPitMutationScanner.scan(file, type);
+        }
         String sourceCode = Files.readString(file.toPath());
 
         // Parse Java using ANTLR (same as MyParser)
@@ -138,17 +147,23 @@ public class JavaMutationScanner {
                             }
                             break;
 
-                        // case "<":
-                        // if (mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
-                        // addMutation(token, "<", "<=");
-                        // }
-                        // break;
-                        //
-                        // case "<=":
-                        // if (mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
-                        // addMutation(token, "<=", "<");
-                        // }
-                        // break;
+                        case "<":
+                            if (mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
+                                addMutation(token, "<", "<=");
+                            }
+                            break;
+
+                        case "<=":
+                            if (mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
+                                addMutation(token, "<=", "<");
+                            }
+                            break;
+
+                        case "&":
+                            if (mutationType == Mutator.MutatorType.BOR_AND_TO_OR) {
+                                addMutation(token, "&", "|");
+                            }
+                            break;
 
                         default:
                             System.out.println("Unrecognized operator: " + operator);

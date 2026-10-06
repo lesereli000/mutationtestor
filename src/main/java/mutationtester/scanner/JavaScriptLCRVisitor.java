@@ -38,7 +38,9 @@ public class JavaScriptLCRVisitor extends JavaScriptParserBaseVisitor<Void> {
                 TerminalNode termNode = (TerminalNode) child;
                 String operator = termNode.getText();
  
-                if (operator.equals("&&") && mutationType == Mutator.MutatorType.LCR_AND_TO_OR) {
+                if (operator.equals("&&")
+                        && (mutationType == Mutator.MutatorType.LCR_AND_TO_OR
+                        || mutationType == Mutator.MutatorType.LOGICAL_AND_TO_OR)) {
                     mutations.add(new MutationPoint(
                             sourceFile,
                             termNode.getSymbol().getLine(),
@@ -61,7 +63,9 @@ public class JavaScriptLCRVisitor extends JavaScriptParserBaseVisitor<Void> {
                 TerminalNode termNode = (TerminalNode) child;
                 String operator = termNode.getText();
  
-                if (operator.equals("||") && mutationType == Mutator.MutatorType.LCR_OR_TO_AND) {
+                if (operator.equals("||")
+                        && (mutationType == Mutator.MutatorType.LCR_OR_TO_AND
+                        || mutationType == Mutator.MutatorType.LOGICAL_OR_TO_AND)) {
                     mutations.add(new MutationPoint(
                             sourceFile,
                             termNode.getSymbol().getLine(),

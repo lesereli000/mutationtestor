@@ -70,12 +70,83 @@
     (check-equal? (get-id 42)  42)
     (check-equal? (get-id "hi") "hi")))
 
+; -------------------------------------------------------------------------
+; E. Remove Conditionals
+;    REMOVE_CONDITIONALS_EQUAL_IF/ELSE : (= n 0) -> #t / #f
+;    REMOVE_CONDITIONALS_ORDER_IF/ELSE : (< n 0), (> n 0) -> #t / #f
+; -------------------------------------------------------------------------
+(define remove-conditionals-suite
+  (test-suite "Remove conditionals: condition replaced with #t/#f"
+    (check-equal? (describe-zero 0)  "zero")
+    (check-equal? (describe-zero 1)  "non-zero")
+    (check-equal? (sign -5) "negative")
+    (check-equal? (sign  5) "positive")
+    (check-equal? (sign  0) "zero")))
+
+; -------------------------------------------------------------------------
+; F. Empty Returns
+;    EMPTY_RETURNS : returned string -> "", returned list -> '()
+; -------------------------------------------------------------------------
+(define empty-returns-suite
+  (test-suite "Empty returns: string/list result replaced with empty value"
+    (check-equal? (greeting "Ada") "Hello, Ada")
+    (check-equal? (vowels) '(a e i o u))
+    (check-equal? (pair-list 1 2) '(1 2))))
+
+; -------------------------------------------------------------------------
+; G. Non-void Method Calls
+;    NON_VOID_METHOD_CALLS : (sqr a) -> 0, (even? n) -> #f
+; -------------------------------------------------------------------------
+(define non-void-calls-suite
+  (test-suite "Non-void calls: call result replaced with default value"
+    (check-equal? (sum-of-squares 3 4) 25)
+    (check-equal? (parity 2) "even")
+    (check-equal? (parity 3) "odd")))
+
+; -------------------------------------------------------------------------
+; H. Constructor Calls
+;    CONSTRUCTOR_CALLS : (make-point 0 0) -> '(), (make-hash) -> '()
+; -------------------------------------------------------------------------
+(define constructor-calls-suite
+  (test-suite "Constructor calls: constructed value replaced with '()"
+    (check-true (point? (origin)))
+    (check-equal? (point-x (origin)) 0)
+    (check-equal? (point-y (origin)) 0)
+    (check-true (hash? (empty-table)))))
+
+; -------------------------------------------------------------------------
+; I. Remove Logical Negation
+;    REMOVE_LOGICAL_NEGATION : (not (empty? items)) -> (empty? items)
+; -------------------------------------------------------------------------
+(define remove-negation-suite
+  (test-suite "Remove logical negation: (not p) replaced with p"
+    (check-true (non-empty? '(1 2)))
+    (check-false (non-empty? '()))))
+
+; -------------------------------------------------------------------------
+; J. Strict Equality
+;    JS_STRICT_EQ_TO_LOOSE_EQ : (eq? a b) -> (equal? a b)
+;    Two separately built lists are equal? but not eq?
+; -------------------------------------------------------------------------
+(define strict-equality-suite
+  (test-suite "Strict equality: eq? replaced with equal?"
+    (test-case "same-object? is true only for the very same object"
+      (define items (list 1 2))
+      (check-true (same-object? items items))
+      (check-false (same-object? (list 1 2) (list 1 2))))))
+
 (define all-tests
   (test-suite "PIT Mutation Tests"
     vml-suite
     increment-suite
     ineg-suite
-    rvm-suite))
+    rvm-suite
+    remove-conditionals-suite
+    empty-returns-suite
+    non-void-calls-suite
+    constructor-calls-suite
+    remove-negation-suite
+    strict-equality-suite))
 
 (module+ main
   (void (run-tests all-tests)))

@@ -23,6 +23,10 @@ public class CSharpMutationScanner {
         String sourceCode = Files.readString(file.toPath());
         sourceCode = removeBom(sourceCode);
 
+        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
+            return UniversalPitMutationScanner.scan(file, type);
+        }
+
         if (isTypeSwapMutation(type)) {
             return scanTypeSwapMutations(file, sourceCode, type);
         }

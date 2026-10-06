@@ -42,6 +42,10 @@ import java.util.regex.Pattern;
  *   CONDITIONAL_TRUE             : (if cond t f) → (if #t t f)
  *   CONDITIONAL_FALSE            : (if cond t f) → (if #f t f)
  *   NEGATE_CONDITIONALS          : (if cond ...) → (if (not cond) ...)
+ *   REMOVE_CONDITIONALS_EQUAL_IF   : equality condition in if/cond/when/unless → #t
+ *   REMOVE_CONDITIONALS_EQUAL_ELSE : equality condition in if/cond/when/unless → #f
+ *   REMOVE_CONDITIONALS_ORDER_IF   : order condition in if/cond/when/unless → #t
+ *   REMOVE_CONDITIONALS_ORDER_ELSE : order condition in if/cond/when/unless → #f
  *   STATEMENT_MUTATION           : (stmt ...) in begin → (void)
  *   VML_VOID_METHOD_CALL         : (stmt ...) in begin → removed entirely
  *   INEG_INVERT_NEGATIVE         : (- x) → x
@@ -53,6 +57,11 @@ import java.util.regex.Pattern;
  *   RVM_NONZERO_TO_ZERO          : function returning non-zero integer → 0
  *   RVM_OBJECT_TO_NULL           : function returning expression/identifier → '()
  *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
+ *   EMPTY_RETURNS                : function returning a string/list → "" / '()
+ *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
+ *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
+ *   REMOVE_LOGICAL_NEGATION      : (not p) → p
+ *   JS_STRICT_EQ_TO_LOOSE_EQ     : (eq? a b) or (eqv? a b) → (equal? a b)
  */
 public class RacketMutationScanner {
 
@@ -102,8 +111,17 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.CONDITIONAL_TRUE,
                 Mutator.MutatorType.CONDITIONAL_FALSE,
                 Mutator.MutatorType.NEGATE_CONDITIONALS,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.VML_VOID_METHOD_CALL,
+                Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ,
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
+                Mutator.MutatorType.CONSTRUCTOR_CALLS,
                 Mutator.MutatorType.INEG_INVERT_NEGATIVE,
                 Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
                 Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
@@ -112,7 +130,9 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.RVM_ZERO_TO_ONE,
                 Mutator.MutatorType.RVM_NONZERO_TO_ZERO,
                 Mutator.MutatorType.RVM_OBJECT_TO_NULL,
-                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
+                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO,
+                Mutator.MutatorType.EMPTY_RETURNS,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS
         );
     }
 
@@ -137,6 +157,10 @@ public class RacketMutationScanner {
 
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            // Structs may be defined after their first use, so collect them up front
+            visitor.collectStructConstructors(tree);
+        }
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
@@ -157,6 +181,18 @@ public class RacketMutationScanner {
                 "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
                 "begin", "begin0", "define", "define-struct", "provide", "require",
                 "local", "shared", "recur", "delay", "set!", "time", "module+"
+        );
+
+        // Heads that make a condition an "equality" check (PIT REMOVE_CONDITIONALS_EQUAL_*).
+        // Names containing =, < or > (string=?, char<?, ...) are not single NAME
+        // tokens in the ISL lexer, so they can't be matched here.
+        private static final java.util.Set<String> EQUALITY_OPS = java.util.Set.of(
+                "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?"
+        );
+
+        // Heads that make a condition an "order" check (PIT REMOVE_CONDITIONALS_ORDER_*)
+        private static final java.util.Set<String> ORDER_OPS = java.util.Set.of(
+                "<", ">", "<=", ">=", "positive?", "negative?"
         );
 
         private boolean isStatementHead(String text) {
@@ -195,6 +231,19 @@ public class RacketMutationScanner {
                     Token headToken = extractToken(second);
                     if (headToken != null) {
                         checkOperatorToken(headToken, ctx);
+
+                        if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                            checkNonVoidCall(headToken, ctx);
+                            markStatementExprs(headToken.getText(), ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+                            checkConstructorCall(headToken, ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
+                            checkLogicalNegation(headToken, ctx);
+                        }
 
                         // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
                         if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
@@ -312,6 +361,12 @@ public class RacketMutationScanner {
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
                 }
+                case JS_STRICT_EQ_TO_LOOSE_EQ -> {
+                    // eq? (identity) and eqv? are Racket's strict checks; equal? is the
+                    // loose, structural one, like === → == in JavaScript
+                    if (text.equals("eq?") || text.equals("eqv?"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "equal?", mutationType));
+                }
                 case AOR_MULTIPLY_TO_DIVIDE -> {
                     if (text.equals("*"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "*", "/", mutationType));
@@ -356,6 +411,10 @@ public class RacketMutationScanner {
                     if (text.equals("bitwise-ior"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-ior", "bitwise-and", mutationType));
                 }
+                case REMOVE_CONDITIONALS_EQUAL_IF, REMOVE_CONDITIONALS_EQUAL_ELSE,
+                     REMOVE_CONDITIONALS_ORDER_IF, REMOVE_CONDITIONALS_ORDER_ELSE -> {
+                    handleRemoveConditionals(text, ctx);
+                }
                 case CONDITIONAL_TRUE, CONDITIONAL_FALSE -> {
                     // ISL: (if cond then else) — child(2) is the condition
                     if (text.equals("if") && ctx.getChildCount() >= 6) {
@@ -369,6 +428,72 @@ public class RacketMutationScanner {
 
                 default -> { }
             }
+        }
+
+        /**
+         * PIT-style "Remove Conditionals": replaces a whole condition with #t or #f.
+         * EQUAL_* variants only fire on conditions that contain an equality check
+         * (=, equal?, ...); ORDER_* variants only on conditions that contain an
+         * order check (<, >, <=, >=, ...). Covers the condition of
+         * (if c t f), each non-else clause test of (cond [c e] ...), and the
+         * guard of (when c ...) / (unless c ...).
+         */
+        private void handleRemoveConditionals(String head, ISLParser.ExprContext ctx) {
+            switch (head) {
+                case "if", "when", "unless" -> {
+                    if (ctx.getChildCount() >= 4 && ctx.getChild(2) instanceof ISLParser.ExprContext cond)
+                        addRemoveConditionalPoint(cond);
+                }
+                case "cond" -> {
+                    // ( cond [ test expr ] ... [ else expr ] ) — test follows each '['
+                    for (int i = 2; i < ctx.getChildCount() - 1; i++) {
+                        if (ctx.getChild(i) instanceof TerminalNode tn
+                                && tn.getSymbol().getText().equals("[")
+                                && ctx.getChild(i + 1) instanceof ISLParser.ExprContext test) {
+                            addRemoveConditionalPoint(test);
+                        }
+                    }
+                }
+                default -> { }
+            }
+        }
+
+        private void addRemoveConditionalPoint(ISLParser.ExprContext cond) {
+            boolean equality = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                    || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE;
+            if (!containsHead(cond, equality ? EQUALITY_OPS : ORDER_OPS)) return;
+
+            // Main.applyMutation rewrites a single line, so a condition that spans
+            // lines cannot be replaced safely; skip it rather than emit a broken mutant.
+            if (cond.getStart() == null || cond.getStop() == null
+                    || cond.getStart().getLine() != cond.getStop().getLine()) return;
+
+            boolean toTrue = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                    || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF;
+            String replacement = toTrue ? "#t" : "#f";
+            String condText = extractSourceText(cond);
+            int[] pos = getExprPosition(cond);
+            String label = (equality ? "Remove conditionals (equal): " : "Remove conditionals (order): ")
+                    + condText + " → " + replacement;
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1], condText, replacement, mutationType, label));
+        }
+
+        /**
+         * True if the expression, or any nested paren application inside it,
+         * has a head token in {@code heads}. Handles conditions like
+         * (not (= a b)) and (and (> a 0) (< a 10)).
+         */
+        private boolean containsHead(ParseTree node, java.util.Set<String> heads) {
+            if (node instanceof ISLParser.ExprContext expr && expr.getChildCount() >= 3
+                    && expr.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token headTok = extractToken(expr.getChild(1));
+                if (headTok != null && heads.contains(headTok.getText())) return true;
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                if (containsHead(node.getChild(i), heads)) return true;
+            }
+            return false;
         }
 
         private String extractSourceText(ParseTree ctx) {
@@ -430,18 +555,297 @@ public class RacketMutationScanner {
 
         @Override
         public Void visitDefinition(ISLParser.DefinitionContext ctx) {
-            if (isRVMMutation() && ctx.getChildCount() >= 6) {
+            // A function body's non-last exprs run only for their side effects
+            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                    && ctx.getChildCount() >= 6
+                    && ctx.getChild(2) instanceof TerminalNode paren
+                    && paren.getText().equals("(")) {
+                List<ISLParser.ExprContext> bodyExprs = ctx.expr();
+                statementExprs.addAll(bodyExprs.subList(0, Math.max(0, bodyExprs.size() - 1)));
+            }
+
+            boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
+            if ((isRVMMutation() || emptyReturns) && ctx.getChildCount() >= 6) {
                 // Function definition: '(' 'define' '(' name NAME* ')' expr+ ')'
                 // Distinguish from value definition by checking child(2) == '('
                 ParseTree thirdChild = ctx.getChild(2);
                 if (thirdChild instanceof TerminalNode tn3 && tn3.getText().equals("(")) {
                     List<ISLParser.ExprContext> bodyExprs = ctx.expr();
                     if (!bodyExprs.isEmpty()) {
-                        checkReturnValueMutation(bodyExprs.get(bodyExprs.size() - 1));
+                        ISLParser.ExprContext body = bodyExprs.get(bodyExprs.size() - 1);
+                        if (emptyReturns) {
+                            List<ISLParser.ExprContext> tails = new ArrayList<>();
+                            collectTailExprs(body, tails);
+                            tails.forEach(this::checkEmptyReturn);
+                        } else {
+                            checkReturnValueMutation(body);
+                        }
                     }
                 }
             }
             return visitChildren(ctx);
+        }
+
+        // -------------------------------------------------------------------------
+        // EMPTY_RETURNS — PIT-style: replace a returned string/list with "" / '()
+        // -------------------------------------------------------------------------
+
+        // Calls whose result is a string. Names containing <, > or = (number->string,
+        // list->string) are not single NAME tokens in the ISL lexer, so they're omitted.
+        private static final java.util.Set<String> STRING_BUILDERS = java.util.Set.of(
+                "string-append", "substring", "format", "string", "make-string",
+                "string-upcase", "string-downcase", "string-titlecase",
+                "string-join", "string-trim", "~a"
+        );
+
+        // Calls whose result is a list
+        private static final java.util.Set<String> LIST_BUILDERS = java.util.Set.of(
+                "list", "append", "reverse", "map", "filter", "sort", "build-list"
+        );
+
+        /**
+         * Racket has no return statement: a function's result is whatever its tail
+         * expressions evaluate to. Collects those, descending through the branches
+         * of if and cond and into the body of let, let*, letrec, local and begin,
+         * so each tail position is mutated like a separate return in PIT.
+         */
+        private void collectTailExprs(ISLParser.ExprContext expr, List<ISLParser.ExprContext> out) {
+            Token head = (expr.getChildCount() >= 3
+                    && expr.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("("))
+                    ? extractToken(expr.getChild(1)) : null;
+            String headText = head == null ? "" : head.getText();
+            List<ISLParser.ExprContext> subExprs = expr.expr();
+
+            switch (headText) {
+                case "if" -> {
+                    // ( if cond then else )
+                    if (subExprs.size() == 3) {
+                        collectTailExprs(subExprs.get(1), out);
+                        collectTailExprs(subExprs.get(2), out);
+                        return;
+                    }
+                }
+                case "cond" -> {
+                    // ( cond [ test body ] ... [ else body ] ) — a clause body is the expr just before ']'
+                    for (int i = 0; i < expr.getChildCount() - 1; i++) {
+                        if (expr.getChild(i) instanceof ISLParser.ExprContext clauseBody
+                                && expr.getChild(i + 1) instanceof TerminalNode close
+                                && close.getSymbol().getText().equals("]")) {
+                            collectTailExprs(clauseBody, out);
+                        }
+                    }
+                    return;
+                }
+                case "let", "let*", "letrec", "local", "begin" -> {
+                    // bindings/statements come first; the body is the last expr
+                    if (!subExprs.isEmpty()) {
+                        collectTailExprs(subExprs.get(subExprs.size() - 1), out);
+                        return;
+                    }
+                }
+                default -> { }
+            }
+            out.add(expr);
+        }
+
+        private void checkEmptyReturn(ISLParser.ExprContext returnExpr) {
+            String replacement = emptyReplacement(returnExpr);
+            if (replacement == null) return;
+
+            // Main.applyMutation rewrites a single line; skip values that span lines.
+            if (returnExpr.getStart() == null || returnExpr.getStop() == null
+                    || returnExpr.getStart().getLine() != returnExpr.getStop().getLine()) return;
+
+            int[] pos = getExprPosition(returnExpr);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(returnExpr), replacement, mutationType));
+        }
+
+        /**
+         * Returns the empty value for a returned string or list, or null when the
+         * expression isn't one (or is already empty):
+         *   "text"                     → ""
+         *   (string-append ...) etc.   → ""
+         *   '(a b c)                   → '()
+         *   (list x ...), (map ...)    → '()
+         */
+        private String emptyReplacement(ISLParser.ExprContext ctx) {
+            Token tok = getSingleExprToken(ctx);
+            if (tok != null) {
+                return tok.getType() == ISLLexer.STRING && !tok.getText().equals("\"\"") ? "\"\"" : null;
+            }
+
+            // '(a b c) parses as  ' quoted  with quoted = ( quoted* ); '() is a separate '()' token
+            if (ctx.getChildCount() == 2
+                    && ctx.getChild(0) instanceof TerminalNode quote
+                    && quote.getSymbol().getText().equals("'")
+                    && ctx.getChild(1) instanceof ISLParser.QuotedContext quoted
+                    && quoted.getChildCount() > 2
+                    && quoted.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                return "'()";
+            }
+
+            if (ctx.getChildCount() >= 3
+                    && ctx.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token head = extractToken(ctx.getChild(1));
+                if (head == null) return null;
+                if (STRING_BUILDERS.contains(head.getText())) return "\"\"";
+                // (list) with no arguments is already empty
+                boolean hasArgs = ctx.getChildCount() > 3;
+                if (LIST_BUILDERS.contains(head.getText()) && hasArgs) return "'()";
+            }
+            return null;
+        }
+
+        // -------------------------------------------------------------------------
+        // NON_VOID_METHOD_CALLS — PIT-style: replace a call whose result is used
+        // with a default value for what it returns
+        // -------------------------------------------------------------------------
+
+        // Identifier heads that are macros/keywords rather than function calls.
+        // (Grammar keywords like if/let/define and operators like + and < are
+        // separate token types, so they never reach this check.)
+        private static final java.util.Set<String> NON_CALL_HEADS = java.util.Set.of(
+                "when", "unless", "quote", "not", "struct", "case", "match",
+                "for", "do", "parameterize", "with-handlers"
+        );
+
+        // Calls made for their side effect — VML_VOID_METHOD_CALL's territory
+        private static final java.util.Set<String> VOID_CALLS = java.util.Set.of(
+                "display", "displayln", "print", "println", "printf", "write", "writeln",
+                "newline", "fprintf", "eprintf", "void", "error", "raise", "exit", "sleep"
+        );
+
+        // Calls whose result is a number
+        private static final java.util.Set<String> NUMBER_CALLS = java.util.Set.of(
+                "add1", "sub1", "abs", "max", "min", "sqr", "sqrt", "expt", "exp", "log",
+                "quotient", "remainder", "modulo", "floor", "ceiling", "round", "truncate",
+                "gcd", "lcm", "length", "string-length", "vector-length", "random",
+                "bitwise-and", "bitwise-ior", "bitwise-xor", "arithmetic-shift"
+        );
+
+        // Exprs whose value is discarded; filled in by the enclosing form before
+        // its children are visited
+        private final java.util.Set<ParseTree> statementExprs = new java.util.HashSet<>();
+
+        private void checkNonVoidCall(Token head, ISLParser.ExprContext call) {
+            if (head.getType() != ISLLexer.NAME || statementExprs.contains(call)) return;
+
+            String name = head.getText();
+            if (NON_CALL_HEADS.contains(name) || VOID_CALLS.contains(name) || name.endsWith("!")) return;
+
+            // Main.applyMutation rewrites a single line; skip calls that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), defaultValueForCall(name), mutationType,
+                    "Non-void method call mutation"));
+        }
+
+        /**
+         * Racket has no declared return types, so the default is inferred from the
+         * callee's name, mirroring PIT's per-type defaults.
+         */
+        private String defaultValueForCall(String name) {
+            if (name.endsWith("?")) return "#f";
+            if (NUMBER_CALLS.contains(name)) return "0";
+            if (STRING_BUILDERS.contains(name)) return "\"\"";
+            // Lists, and anything whose result can't be told from the name:
+            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            return "'()";
+        }
+
+        /** Marks the sub-exprs of begin/begin0/when/unless whose values are discarded. */
+        private void markStatementExprs(String head, ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> exprs = ctx.expr();
+            switch (head) {
+                // ( begin stmt... value )
+                case "begin" -> statementExprs.addAll(exprs.subList(0, Math.max(0, exprs.size() - 1)));
+                // ( begin0 value stmt... )
+                case "begin0" -> statementExprs.addAll(exprs.subList(Math.min(1, exprs.size()), exprs.size()));
+                // ( when cond stmt... value ) — parsed as an application, so exprs(0) is the head
+                case "when", "unless" -> {
+                    if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
+                }
+                default -> { }
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // CONSTRUCTOR_CALLS — PIT-style: replace a constructor call (new Foo()) with
+        // null. Racket's equivalent of `new` is a struct constructor call.
+        // -------------------------------------------------------------------------
+
+        // Constructor names of the structs declared in this file
+        private final java.util.Set<String> structConstructors = new java.util.HashSet<>();
+
+        /**
+         * Records the constructors bound by struct declarations:
+         *   (struct posn (x y))         → posn
+         *   (define-struct posn (x y))  → make-posn
+         */
+        void collectStructConstructors(ParseTree node) {
+            if (node instanceof ISLParser.DefinitionContext def
+                    && def.getChild(1).getText().equals("define-struct")) {
+                structConstructors.add("make-" + def.name(0).getText());
+            }
+            // (struct ...) isn't a grammar keyword, so it parses as an application:
+            // exprs(0) is the head, exprs(1) the struct name
+            if (node instanceof ISLParser.ExprContext expr && expr.expr().size() >= 3) {
+                Token head = extractToken(expr.expr(0));
+                Token name = extractToken(expr.expr(1));
+                if (head != null && head.getText().equals("struct")
+                        && name != null && name.getType() == ISLLexer.NAME) {
+                    structConstructors.add(name.getText());
+                }
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                collectStructConstructors(node.getChild(i));
+            }
+        }
+
+        private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
+            if (head.getType() != ISLLexer.NAME) return;
+
+            // make-NAME is Racket's naming convention for constructors, which also
+            // covers structs declared in other modules and built-ins like make-hash
+            String name = head.getText();
+            boolean isConstructor = structConstructors.contains(name)
+                    || (name.startsWith("make-") && name.length() > "make-".length());
+            if (!isConstructor) return;
+
+            // Main.applyMutation rewrites a single line; skip calls that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), "'()", mutationType,
+                    "Constructor call mutation"));
+        }
+
+        // -------------------------------------------------------------------------
+        // REMOVE_LOGICAL_NEGATION — PIT-style: drop the negation (!p → p).
+        // Racket negates with the not function, so (not p) → p.
+        // -------------------------------------------------------------------------
+
+        private void checkLogicalNegation(Token head, ISLParser.ExprContext call) {
+            // (not p) parses as an application: exprs(0) is the head, exprs(1) the operand
+            if (head.getType() != ISLLexer.NAME || !head.getText().equals("not")
+                    || call.expr().size() != 2) return;
+
+            // Main.applyMutation rewrites a single line; skip negations that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            ISLParser.ExprContext operand = call.expr(1);
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), extractSourceText(operand), mutationType,
+                    "Remove logical negation"));
         }
 
         private boolean isRVMMutation() {

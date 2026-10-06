@@ -53,7 +53,8 @@ public class JavaScriptRORVisitor extends JavaScriptParserBaseVisitor<Void> {
                     case "<":
                         if (mutationType == Mutator.MutatorType.ROR_LT_TO_GT) {
                             replacement = ">";
-                        } else if (mutationType == Mutator.MutatorType.ROR_LT_TO_LTE) {
+                        } else if (mutationType == Mutator.MutatorType.ROR_LT_TO_LTE
+                                || mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
                             replacement = "<=";
                         }
                         break;
@@ -67,7 +68,8 @@ public class JavaScriptRORVisitor extends JavaScriptParserBaseVisitor<Void> {
                         break;
                         
                     case "<=":
-                        if (mutationType == Mutator.MutatorType.ROR_LTE_TO_LT) {
+                        if (mutationType == Mutator.MutatorType.ROR_LTE_TO_LT
+                                || mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
                             replacement = "<";
                         } else if (mutationType == Mutator.MutatorType.ROR_LTE_TO_GT) {
                             replacement = ">";
