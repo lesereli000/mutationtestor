@@ -1,0 +1,4 @@
+source_code_directory=project/src
+mutator_type=CONSTRUCTOR_CALLS
+compile_command=
+test_command=racket ./project/tests/all-tests.rkt

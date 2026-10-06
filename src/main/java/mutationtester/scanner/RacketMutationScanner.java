@@ -68,6 +68,9 @@ import mutationtester.msl.MSLScannerAdapter;
  *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
  *   EMPTY_RETURNS                : function returning a string/list → "" / '()
  *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
+ *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
+ *   REMOVE_LOGICAL_NEGATION      : (not p) → p
+ *   JS_STRICT_EQ_TO_LOOSE_EQ     : (eq? a b) or (eqv? a b) → (equal? a b)
  */
 public class RacketMutationScanner {
 
@@ -124,6 +127,7 @@ public class RacketMutationScanner {
                 Mutator.MutatorType.STATEMENT_MUTATION,
                 Mutator.MutatorType.VML_VOID_METHOD_CALL,
                 Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
+                Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ,
                 Mutator.MutatorType.EMPTY_RETURNS,
                 Mutator.MutatorType.NON_VOID_METHOD_CALLS,
                 Mutator.MutatorType.CONSTRUCTOR_CALLS,
@@ -146,10 +150,6 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
-                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
-            return UniversalPitMutationScanner.scan(file, type);
-        }
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -166,6 +166,10 @@ public class RacketMutationScanner {
 
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            // Structs may be defined after their first use, so collect them up front
+            visitor.collectStructConstructors(tree);
+        }
         visitor.visit(tree);
 
         return visitor.getMutationPoints();
@@ -240,6 +244,14 @@ public class RacketMutationScanner {
                         if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
                             checkNonVoidCall(headToken, ctx);
                             markStatementExprs(headToken.getText(), ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+                            checkConstructorCall(headToken, ctx);
+                        }
+
+                        if (mutationType == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
+                            checkLogicalNegation(headToken, ctx);
                         }
 
                         // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
@@ -357,6 +369,12 @@ public class RacketMutationScanner {
                 case LOGICAL_OR_TO_AND -> {
                     if (text.equals("or"))
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
+                }
+                case JS_STRICT_EQ_TO_LOOSE_EQ -> {
+                    // eq? (identity) and eqv? are Racket's strict checks; equal? is the
+                    // loose, structural one, like === → == in JavaScript
+                    if (text.equals("eq?") || text.equals("eqv?"))
+                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "equal?", mutationType));
                 }
                 case AOR_MULTIPLY_TO_DIVIDE -> {
                     if (text.equals("*"))
@@ -766,6 +784,79 @@ public class RacketMutationScanner {
                 case "struct", "define-struct" -> statementExprs.addAll(exprs);
                 default -> { }
             }
+        }
+
+        // -------------------------------------------------------------------------
+        // CONSTRUCTOR_CALLS — PIT-style: replace a constructor call (new Foo()) with
+        // null. Racket's equivalent of `new` is a struct constructor call.
+        // -------------------------------------------------------------------------
+
+        // Constructor names of the structs declared in this file
+        private final java.util.Set<String> structConstructors = new java.util.HashSet<>();
+
+        /**
+         * Records the constructors bound by struct declarations:
+         *   (struct posn (x y))         → posn
+         *   (define-struct posn (x y))  → make-posn
+         */
+        void collectStructConstructors(ParseTree node) {
+            if (node instanceof ISLParser.DefinitionContext def
+                    && def.getChild(1).getText().equals("define-struct")) {
+                structConstructors.add("make-" + def.name(0).getText());
+            }
+            // (struct ...) isn't a grammar keyword, so it parses as an application:
+            // exprs(0) is the head, exprs(1) the struct name
+            if (node instanceof ISLParser.ExprContext expr && expr.expr().size() >= 3) {
+                Token head = extractToken(expr.expr(0));
+                Token name = extractToken(expr.expr(1));
+                if (head != null && head.getText().equals("struct")
+                        && name != null && name.getType() == ISLLexer.NAME) {
+                    structConstructors.add(name.getText());
+                }
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                collectStructConstructors(node.getChild(i));
+            }
+        }
+
+        private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
+            if (head.getType() != ISLLexer.NAME) return;
+
+            // make-NAME is Racket's naming convention for constructors, which also
+            // covers structs declared in other modules and built-ins like make-hash
+            String name = head.getText();
+            boolean isConstructor = structConstructors.contains(name)
+                    || (name.startsWith("make-") && name.length() > "make-".length());
+            if (!isConstructor) return;
+
+            // Main.applyMutation rewrites a single line; skip calls that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), "'()", mutationType,
+                    "Constructor call mutation"));
+        }
+
+        // -------------------------------------------------------------------------
+        // REMOVE_LOGICAL_NEGATION — PIT-style: drop the negation (!p → p).
+        // Racket negates with the not function, so (not p) → p.
+        // -------------------------------------------------------------------------
+
+        private void checkLogicalNegation(Token head, ISLParser.ExprContext call) {
+            // (not p) parses as an application: exprs(0) is the head, exprs(1) the operand
+            if (head.getType() != ISLLexer.NAME || !head.getText().equals("not")
+                    || call.expr().size() != 2) return;
+
+            // Main.applyMutation rewrites a single line; skip negations that span lines.
+            if (call.getStart().getLine() != call.getStop().getLine()) return;
+
+            ISLParser.ExprContext operand = call.expr(1);
+            int[] pos = getExprPosition(call);
+            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                    extractSourceText(call), extractSourceText(operand), mutationType,
+                    "Remove logical negation"));
         }
 
         private boolean isRVMMutation() {

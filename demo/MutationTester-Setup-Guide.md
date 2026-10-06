@@ -153,10 +153,11 @@ myproject/
 ```
 
 ```text
-source_code_directory=src
-mutator_type=AOR_PLUS_TO_MINUS
-compile_command=
-test_command=python3 -m pytest ./tests
+source_code_directory=src/main/java/mutationtester/model
+mutator_type=CUSTOM
+custom_mutation_spec=OperatorMutations.txt
+compile_command=mvn -q -DskipTests compile
+test_command=mvn test
 ```
 
 Then run it. Note the line-continuation character differs by shell — `\` on macOS/Linux, a backtick on PowerShell. Getting it wrong leaves the shell sitting at a `>` prompt waiting for you to finish the command; press Ctrl+C and try again.

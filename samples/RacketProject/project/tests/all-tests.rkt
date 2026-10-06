@@ -82,6 +82,38 @@
     (check-equal? (parity 3) "odd")))
 
 ; -------------------------------------------------------------------------
+; H. Constructor Calls
+;    CONSTRUCTOR_CALLS : (make-point 0 0) -> '(), (make-hash) -> '()
+; -------------------------------------------------------------------------
+(define constructor-calls-suite
+  (test-suite "Constructor calls: constructed value replaced with '()"
+    (check-true (point? (origin)))
+    (check-equal? (point-x (origin)) 0)
+    (check-equal? (point-y (origin)) 0)
+    (check-true (hash? (empty-table)))))
+
+; -------------------------------------------------------------------------
+; I. Remove Logical Negation
+;    REMOVE_LOGICAL_NEGATION : (not (empty? items)) -> (empty? items)
+; -------------------------------------------------------------------------
+(define remove-negation-suite
+  (test-suite "Remove logical negation: (not p) replaced with p"
+    (check-true (non-empty? '(1 2)))
+    (check-false (non-empty? '()))))
+
+; -------------------------------------------------------------------------
+; J. Strict Equality
+;    JS_STRICT_EQ_TO_LOOSE_EQ : (eq? a b) -> (equal? a b)
+;    Two separately built lists are equal? but not eq?
+; -------------------------------------------------------------------------
+(define strict-equality-suite
+  (test-suite "Strict equality: eq? replaced with equal?"
+    (test-case "same-object? is true only for the very same object"
+      (define items (list 1 2))
+      (check-true (same-object? items items))
+      (check-false (same-object? (list 1 2) (list 1 2))))))
+
+; -------------------------------------------------------------------------
 ; add1.rkt / add2.rkt
 ; -------------------------------------------------------------------------
 (define add1-suite
@@ -172,6 +204,9 @@
     remove-conditionals-suite
     empty-returns-suite
     non-void-calls-suite
+    constructor-calls-suite
+    remove-negation-suite
+    strict-equality-suite
     add1-suite
     add2-suite
     operators-suite

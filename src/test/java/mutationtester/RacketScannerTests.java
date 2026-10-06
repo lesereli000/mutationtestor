@@ -762,9 +762,9 @@ public class RacketScannerTests {
 
         // Functions with non-literal returns: log-and-count, increment-x, decrement-x,
         // negate-x, get-pair, get-id, describe-zero, sign, greeting, pair-list,
-        // sum-of-squares, parity  → 12 points
+        // sum-of-squares, parity, origin, empty-table, non-empty?, same-object?  → 16 points
         // (vowels returns a quoted literal, which is not an object return)
-        assertEquals(12, points.size());
+        assertEquals(16, points.size());
         for (MutationPoint p : points) {
             assertEquals("'()", p.getReplacement());
         }
@@ -963,9 +963,10 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
 
-        // length, add1, sub1, cons, string-append, list, sqr x2, even?  → 9 points
+        // length, add1, sub1, cons, string-append, list, sqr x2, even?,
+        // make-point, make-hash, empty?, eq?  → 13 points
         // (display items) is excluded: void call, and in statement position
-        assertEquals(9, points.size());
+        assertEquals(13, points.size());
         assertTrue(points.stream().noneMatch(p -> p.getOperator().startsWith("(display")));
 
         MutationPoint sqr = findByOperator(points, "(sqr a)");
@@ -1003,6 +1004,142 @@ public class RacketScannerTests {
                 "(outer (inner x))", "(inner x)"), mutated);
         assertEquals("#f", findByOperator(points, "(ready? x)").getReplacement());
         assertEquals("'()", findByOperator(points, "(inner x)").getReplacement());
+    }
+
+    // -------------------------------------------------------------------------
+    // CONSTRUCTOR_CALLS  (struct constructor call → '())
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitConstructorCalls() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONSTRUCTOR_CALLS);
+
+        // (make-point 0 0) from define-struct, (make-hash) built-in  → 2 points
+        assertEquals(2, points.size());
+
+        MutationPoint point = findByOperator(points, "(make-point 0 0)");
+        assertEquals("'()", point.getReplacement());
+        assertEquals(89, point.getLineNumber());
+        assertEquals(2, point.getColumnNumber());
+
+        assertEquals("'()", findByOperator(points, "(make-hash)").getReplacement());
+    }
+
+    @Test
+    public void testConstructorCallsFindsDeclaredStructsAndSkipsOtherCalls() throws IOException {
+        File tmp = File.createTempFile("constructor-calls", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (build a)",
+                "  (list (posn a 1) (make-hash) (helper a)))",
+                "(define (nested) (wrap (posn (posn 1 2) 3)))",
+                "(define (spread)",
+                "  (posn 1",
+                "        2))",
+                "(struct posn (x y))",
+                "(define-struct box (v))",
+                "(define (boxed) (make-box 5))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.CONSTRUCTOR_CALLS);
+
+        // posn is found although its struct is declared after the calls.
+        // Skipped: list/helper/wrap (not constructors), the (struct ...) declaration,
+        // and the posn call that spans several lines
+        List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertEquals(List.of("(posn a 1)", "(make-hash)", "(posn (posn 1 2) 3)", "(posn 1 2)",
+                "(make-box 5)"), mutated);
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("'()")));
+    }
+
+    // -------------------------------------------------------------------------
+    // REMOVE_LOGICAL_NEGATION  ((not p) → p)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitRemoveLogicalNegation() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.REMOVE_LOGICAL_NEGATION);
+
+        // (not (empty? items)) in non-empty?  → 1 point
+        assertEquals(1, points.size());
+
+        MutationPoint point = points.get(0);
+        assertEquals("(not (empty? items))", point.getOperator());
+        assertEquals("(empty? items)", point.getReplacement());
+        assertEquals(97, point.getLineNumber());
+        assertEquals(2, point.getColumnNumber());
+    }
+
+    @Test
+    public void testRemoveLogicalNegationUnwrapsOperandAndSkipsOtherForms() throws IOException {
+        File tmp = File.createTempFile("remove-negation", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f a b)",
+                "  (if (not a) (not (not b)) (and (not (= a b)) b)))",
+                "(define (bad) (not))",
+                "(define (two) (not 1 2))",
+                "(define (spread x)",
+                "  (not",
+                "    x))",
+                "; (not hidden)",
+                "(define (s) \"(not quoted)\")",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.REMOVE_LOGICAL_NEGATION);
+
+        // Nested negations each get their own point. Skipped: (not) and (not 1 2)
+        // (not single-operand negations), the multi-line negation, and the
+        // comment/string, which aren't code
+        List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertEquals(List.of("(not a)", "(not (not b))", "(not b)", "(not (= a b))"), mutated);
+        List<String> replacements = points.stream().map(MutationPoint::getReplacement).toList();
+        assertEquals(List.of("a", "(not b)", "b", "(= a b)"), replacements);
+    }
+
+    // -------------------------------------------------------------------------
+    // JS_STRICT_EQ_TO_LOOSE_EQ  (eq? / eqv? → equal?)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPitStrictEquality() throws IOException {
+        File file = new File("samples/RacketProject/project/src/pit-mutations.rkt");
+        List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ);
+
+        // (eq? a b) in same-object?  → 1 point
+        assertEquals(1, points.size());
+
+        MutationPoint point = points.get(0);
+        assertEquals("eq?", point.getOperator());
+        assertEquals("equal?", point.getReplacement());
+        assertEquals(101, point.getLineNumber());
+        assertEquals(3, point.getColumnNumber());
+    }
+
+    @Test
+    public void testStrictEqualityWeakensEqAndEqvOnly() throws IOException {
+        File tmp = File.createTempFile("strict-equality", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f a b)",
+                "  (and (eq? a b) (eqv? a 1) (equal? a b) (= a b)))",
+                "(define (g x) (memq x '(eq? eqv?)))",
+                "; (eq? hidden 1)",
+                "(define (s) \"(eqv? 1 2)\")",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ);
+
+        // Skipped: equal? (already loose), = (numeric, not identity), the quoted
+        // symbols, and the comment/string, which aren't code
+        assertEquals(List.of("eq?", "eqv?"), points.stream().map(MutationPoint::getOperator).toList());
+        assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("equal?")));
+        assertTrue(points.stream().allMatch(p -> p.getLineNumber() == 3));
     }
 
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
