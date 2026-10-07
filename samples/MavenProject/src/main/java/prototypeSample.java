@@ -213,7 +213,7 @@ class MutationTestDemo {
         }
 
         // Try-with-resources
-        try (Scanner scanner = new Scanner(System.in)) {
+        try (Scanner scanner = new Scanner("Dummy input")) {
             System.out.println("Scanner ready (no input needed)");
         } catch (Exception e) {
             e.printStackTrace();

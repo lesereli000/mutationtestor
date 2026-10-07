@@ -547,7 +547,11 @@ public class Main {
                 && !coverageData.isLineCovered(sourceFile, point.getLineNumber());
     }
 
-    private static String applyMutation(String content, MutationPoint point) {
+    static String applyMutation(String content, MutationPoint point) {
+        if (point.getOperator().contains("\n")) {
+            return applyMultiLineMutation(content, point);
+        }
+
         String[] lines = content.split("\n", -1);
         int lineIndex = point.getLineNumber() - 1;
 
@@ -601,6 +605,33 @@ public class Main {
         lines[lineIndex] = newLine;
 
         return String.join("\n", lines);
+    }
+
+    /**
+     * Applies a mutation whose original text spans several lines (e.g. a
+     * Racket (= a b) form wrapped in (not ...)). The original text must sit
+     * exactly at the point's line/column, otherwise the content is unchanged.
+     */
+    private static String applyMultiLineMutation(String content, MutationPoint point) {
+        int offset = 0;
+        for (int line = 1; line < point.getLineNumber(); line++) {
+            int newline = content.indexOf('\n', offset);
+            if (newline < 0) {
+                System.err.println("Warning: Line number " + point.getLineNumber() + " out of bounds");
+                return content;
+            }
+            offset = newline + 1;
+        }
+        offset += point.getColumnNumber();
+
+        if (!content.startsWith(point.getOperator(), offset)) {
+            System.err.println("Warning: Mutation text not found at line "
+                    + point.getLineNumber() + ", column " + point.getColumnNumber());
+            return content;
+        }
+        return content.substring(0, offset)
+                + point.getReplacement()
+                + content.substring(offset + point.getOperator().length());
     }
 
     private static String mutateRemoveIncrementLine(String line, MutationPoint point) {

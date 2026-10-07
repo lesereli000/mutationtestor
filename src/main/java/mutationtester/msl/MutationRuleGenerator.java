@@ -47,18 +47,32 @@ public class MutationRuleGenerator {
         while (i < lines.size() && lines.get(i).isEmpty())
             i++;
         if (i < lines.size()) {
-            groupLabel = lines.get(i);
+            groupLabel = toGroupLabel(lines.get(i));
             i++;
         }
 
-        // Parse Replace blocks until "End" or EOF
+        // Parse Replace blocks. A spec may hold several groups, each closed by
+        // "End"; the first non-blank line after an "End" names the next group.
+        boolean groupEnded = false;
         while (i < lines.size()) {
             String line = lines.get(i);
 
-            if (line.equalsIgnoreCase("End") || line.isEmpty()) {
+            if (line.equalsIgnoreCase("End")) {
+                groupEnded = true;
                 i++;
                 continue;
             }
+            if (line.isEmpty()) {
+                i++;
+                continue;
+            }
+            if (groupEnded && !line.startsWith("Replace:")) {
+                groupLabel = toGroupLabel(line);
+                groupEnded = false;
+                i++;
+                continue;
+            }
+            groupEnded = false;
 
             if (line.startsWith("Replace:")) {
                 String fromPattern = line.substring("Replace:".length()).strip();
@@ -115,6 +129,12 @@ public class MutationRuleGenerator {
         }
 
         return rules;
+    }
+
+    /** Group headings may be written with a trailing colon ("Math Operators:"). */
+    private static String toGroupLabel(String heading) {
+        String label = heading.strip();
+        return label.endsWith(":") ? label.substring(0, label.length() - 1).strip() : label;
     }
 
     private static final java.util.regex.Pattern FUNC_CALL_PATTERN =

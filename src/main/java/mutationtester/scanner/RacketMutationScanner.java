@@ -1,12 +1,5 @@
 package mutationtester.scanner;
 
-import mutationtester.*;
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-import mutationtester.msl.MSLScannerAdapter;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,6 +7,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import mutationtester.ISLBaseVisitor;
+import mutationtester.ISLLexer;
+import mutationtester.ISLParser;
+import mutationtester.QuietAntlrErrorListener;
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.msl.MSLScannerAdapter;
 
 /**
  * Scans Racket (.rkt) source files for mutation points using the ISL ANTLR
@@ -771,6 +780,8 @@ public class RacketMutationScanner {
                 case "when", "unless" -> {
                     if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
                 }
+                // ( struct name (field ...) ) — the field list is not a call
+                case "struct", "define-struct" -> statementExprs.addAll(exprs);
                 default -> { }
             }
         }
@@ -961,6 +972,14 @@ public class RacketMutationScanner {
             return null;
         }
     }
+    /** Racket equality tests that MSL's == (and the inner form of !=) stand for. */
+    private static final List<String> EQUALITY_FUNCTIONS = List.of("=", "equal?", "eqv?", "eq?", "string=?", "char=?");
+
+    /** Forms that define or declare something; removing them isn't a call removal. */
+    private static final java.util.Set<String> NON_STATEMENT_FORMS = java.util.Set.of(
+            "define", "define-values", "define-syntax", "define-struct", "struct",
+            "require", "provide", "module", "module+", "set!");
+
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
         CharStream input = CharStreams.fromString(sourceCode);
@@ -970,24 +989,255 @@ public class RacketMutationScanner {
         ParseTree tree = parser.program();
 
         return new MSLScannerAdapter() {
+            // Racket spells most MSL operators as a prefix function name. Shifts
+            // and inequality have no single name, so they get special handling:
+            //   a << b   is (arithmetic-shift a b)
+            //   a >> b   is (arithmetic-shift a (- b))
+            //   a != b   is (not (= a b))
+            //   a // b   is (quotient a b) or (floor (/ a b))
+            //   a >>> b  is (arithmetic-shift (bitwise-and a #xFFFFFFFF) (- b)):
+            //            Racket integers are unbounded, so an unsigned shift
+            //            masks the value to the word size first.
+            // The inner / of (floor (/ a b)) and the bitwise-and mask of >>> are
+            // part of those operators, so the / and & rules don't match them.
+
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
-                if (ctx instanceof ISLParser.ExprContext && ctx.getChildCount() >= 4) {
-                    if (ctx.getChild(0).getText().equals("(")) {
-                        return ctx.getChild(1).getText().equals(mslOperator);
-                    }
+                return switch (mslOperator) {
+                    case "<<" -> isShift(ctx) && !isNegatedAmount(ctx.getChild(3));
+                    case ">>" -> isShift(ctx) && isNegatedAmount(ctx.getChild(3)) && !isUnsignedShift(ctx);
+                    case ">>>" -> isUnsignedShift(ctx);
+                    case "!=" -> negatedEquality(ctx) != null;
+                    case "//" -> (isApplication(ctx, 2) && head(ctx).equals("quotient")) || floorDivision(ctx) != null;
+                    case "/" -> isApplication(ctx, 2) && head(ctx).equals("/") && !isInsideFloorDivision(ctx);
+                    case "bitwise-and" -> isApplication(ctx, 2) && head(ctx).equals("bitwise-and")
+                            && !isMaskOfUnsignedShift(ctx);
+                    default -> isApplication(ctx, 2) && head(ctx).equals(mslOperator);
+                };
+            }
+
+            /** The (/ a b) inside (floor (/ a b)), or null. */
+            private ParseTree floorDivision(ParseTree ctx) {
+                if (!isApplication(ctx, 1) || ctx.getChildCount() != 4 || !head(ctx).equals("floor")) return null;
+                ParseTree inner = unwrapSingle(ctx.getChild(2));
+                return isApplication(inner, 2) && inner.getChildCount() == 5 && head(inner).equals("/") ? inner : null;
+            }
+
+            private boolean isInsideFloorDivision(ParseTree division) {
+                ParseTree p = division.getParent();
+                while (p != null && !isApplication(p, 0)) p = p.getParent();
+                return p != null && floorDivision(p) == division;
+            }
+
+            /** (arithmetic-shift (bitwise-and x MASK) (- n)) */
+            private boolean isUnsignedShift(ParseTree ctx) {
+                if (!isShift(ctx) || !isNegatedAmount(ctx.getChild(3))) return false;
+                ParseTree value = unwrapSingle(ctx.getChild(2));
+                return isApplication(value, 2) && value.getChildCount() == 5 && head(value).equals("bitwise-and")
+                        && (isMask(value.getChild(3)) || isMask(value.getChild(2)));
+            }
+
+            private boolean isMask(ParseTree node) {
+                return MSLScannerAdapter.isUnsignedShiftMask(getNodeText(node));
+            }
+
+            private boolean isMaskOfUnsignedShift(ParseTree and) {
+                ParseTree p = and.getParent();
+                while (p != null && !isApplication(p, 0)) p = p.getParent();
+                return p != null && isUnsignedShift(p) && unwrapSingle(p.getChild(2)) == and;
+            }
+
+            private ParseTree unwrapSingle(ParseTree node) {
+                while (node != null && !isApplication(node, 0) && node.getChildCount() == 1) node = node.getChild(0);
+                return node;
+            }
+
+            @Override
+            public List<String> getOperatorAliases(String canonicalOperator) {
+                return switch (canonicalOperator) {
+                    case "%" -> List.of("modulo", "remainder");
+                    case "//" -> List.of("//");
+                    case "**" -> List.of("expt");
+                    case "&" -> List.of("bitwise-and");  // the mask of a >>> is excluded
+                    case "|" -> List.of("bitwise-ior");
+                    case "^" -> List.of("bitwise-xor");
+                    case "==" -> EQUALITY_FUNCTIONS;
+                    case "&&" -> List.of("and");
+                    case "||" -> List.of("or");
+                    default -> List.of(canonicalOperator);
+                };
+            }
+
+            @Override
+            public String toLanguageOperator(String canonicalOperator, ParseTree ctx) {
+                return switch (canonicalOperator) {
+                    case "%" -> "modulo";
+                    case "//" -> "quotient";
+                    case "**" -> "expt";
+                    case "&" -> "bitwise-and";
+                    case "|" -> "bitwise-ior";
+                    case "^" -> "bitwise-xor";
+                    case "==" -> "=";
+                    case "&&" -> "and";
+                    case "||" -> "or";
+                    default -> canonicalOperator;
+                };
+            }
+
+            @Override
+            public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                int[] pos = getTokenPosition(ctx);
+                String text = getNodeText(ctx);
+                ParseTree inner = "!=".equals(fromOperator) ? negatedEquality(ctx) : null;
+
+                // (= a b) <-> (not (= a b)): wrap or unwrap, keeping the original form.
+                if (inner != null && "==".equals(toOperator)) {
+                    return new OperatorEdit(pos[0], pos[1], text, getNodeText(inner));
                 }
-                return false;
+                if ("==".equals(fromOperator) && "!=".equals(toOperator)) {
+                    return new OperatorEdit(pos[0], pos[1], text, "(not " + text + ")");
+                }
+
+                // Shift direction flips by negating the shift amount. A >>> keeps
+                // its mask, as (x & 0xFFFFFFFF) >> n -> (x & 0xFFFFFFFF) << n does in Python.
+                boolean fromShift = "<<".equals(fromOperator) || ">>".equals(fromOperator) || ">>>".equals(fromOperator);
+                boolean toShift = "<<".equals(toOperator) || ">>".equals(toOperator) || ">>>".equals(toOperator);
+                boolean flipsDirection = ("<<".equals(fromOperator) && ">>".equals(toOperator))
+                        || (!"<<".equals(fromOperator) && fromShift && "<<".equals(toOperator));
+                if (flipsDirection) {
+                    ParseTree amount = ctx.getChild(3);
+                    int[] amountPos = getTokenPosition(amount);
+                    String amountText = getNodeText(amount);
+                    String flipped = "<<".equals(fromOperator) ? "(- " + amountText + ")" : unnegate(amount);
+                    return new OperatorEdit(amountPos[0], amountPos[1], amountText, flipped);
+                }
+
+                // Any other change into or out of a special form rebuilds the call.
+                boolean fromFloor = "//".equals(fromOperator) && floorDivision(ctx) != null;
+                if (inner != null || fromShift || toShift || fromFloor
+                        || "!=".equals(toOperator) || "//".equals(toOperator)) {
+                    List<String> operands = operandTexts(ctx, fromOperator, inner);
+                    if (">>>".equals(fromOperator) && ">>".equals(toOperator)) {
+                        // Unsigned -> signed shift drops the mask.
+                        ParseTree masked = unwrapSingle(ctx.getChild(2));
+                        ParseTree value = isMask(masked.getChild(3)) ? masked.getChild(2) : masked.getChild(3);
+                        operands = List.of(getNodeText(value), operands.get(1));
+                    }
+                    String rebuilt = buildCall(toOperator, operands);
+                    return rebuilt == null ? null : new OperatorEdit(pos[0], pos[1], text, rebuilt);
+                }
+
+                // Plain prefix functions: swap the function name.
+                String replacement = toLanguageOperator(toOperator, ctx);
+                if (replacement == null) return null;
+                ParseTree headNode = ctx.getChild(1);
+                int[] headPos = getTokenPosition(headNode);
+                return new OperatorEdit(headPos[0], headPos[1], getNodeText(headNode), replacement);
+            }
+
+            /**
+             * The operands as MSL sees them: a and b for (- b) shifts, (floor (/ a b))
+             * and (not (= a b)) alike.
+             */
+            private List<String> operandTexts(ParseTree ctx, String fromOperator, ParseTree negatedInner) {
+                if (negatedInner != null) return argumentTexts(negatedInner);
+                ParseTree floor = "//".equals(fromOperator) ? floorDivision(ctx) : null;
+                if (floor != null) return argumentTexts(floor);
+                if (">>".equals(fromOperator) || ">>>".equals(fromOperator)) {
+                    return List.of(getNodeText(ctx.getChild(2)), unnegate(ctx.getChild(3)));
+                }
+                return argumentTexts(ctx);
+            }
+
+            private String buildCall(String canonicalOperator, List<String> args) {
+                String joined = String.join(" ", args);
+                switch (canonicalOperator) {
+                    case "!=":
+                        return "(not (= " + joined + "))";
+                    case "//":
+                        return args.size() == 2 ? "(floor (/ " + joined + "))" : null;
+                    case ">>>":
+                        return args.size() == 2
+                                ? "(arithmetic-shift (bitwise-and " + args.get(0) + " #xFFFFFFFF) (- " + args.get(1) + "))"
+                                : null;
+                    case "<<":
+                        return args.size() == 2 ? "(arithmetic-shift " + joined + ")" : null;
+                    case ">>":
+                        return args.size() == 2
+                                ? "(arithmetic-shift " + args.get(0) + " (- " + args.get(1) + "))"
+                                : null;
+                    default:
+                        String name = toLanguageOperator(canonicalOperator, null);
+                        return name == null ? null : "(" + name + " " + joined + ")";
+                }
+            }
+
+            /** (f a b ...) with at least minArgs arguments. */
+            private boolean isApplication(ParseTree ctx, int minArgs) {
+                if (!(ctx instanceof ISLParser.ExprContext) || ctx.getChildCount() < minArgs + 3) {
+                    return false;
+                }
+                String open = ctx.getChild(0).getText();
+                String close = ctx.getChild(ctx.getChildCount() - 1).getText();
+                return (open.equals("(") && close.equals(")")) || (open.equals("[") && close.equals("]"));
+            }
+
+            private String head(ParseTree ctx) {
+                return ctx.getChild(1).getText();
+            }
+
+            private boolean isShift(ParseTree ctx) {
+                return isApplication(ctx, 2) && ctx.getChildCount() == 5
+                        && head(ctx).equals("arithmetic-shift");
+            }
+
+            /** A shift amount written as (- n) or a negative literal shifts right. */
+            private boolean isNegatedAmount(ParseTree amount) {
+                if (amount.getText().matches("-\\d+")) return true;
+                return isApplication(amount, 1) && amount.getChildCount() == 4 && head(amount).equals("-");
+            }
+
+            private String unnegate(ParseTree amount) {
+                String text = getNodeText(amount);
+                if (text.matches("-\\d+")) return text.substring(1);
+                return getNodeText(amount.getChild(2));
+            }
+
+            /** For (not (= a b)) returns the inner (= a b); otherwise null. */
+            private ParseTree negatedEquality(ParseTree ctx) {
+                if (!isApplication(ctx, 1) || ctx.getChildCount() != 4 || !head(ctx).equals("not")) {
+                    return null;
+                }
+                ParseTree inner = ctx.getChild(2);
+                while (inner != null && !isApplication(inner, 0) && inner.getChildCount() == 1) {
+                    inner = inner.getChild(0);
+                }
+                return isApplication(inner, 2) && EQUALITY_FUNCTIONS.contains(head(inner)) ? inner : null;
+            }
+
+            private List<String> argumentTexts(ParseTree call) {
+                List<String> args = new ArrayList<>();
+                for (int i = 2; i < call.getChildCount() - 1; i++) {
+                    args.add(getNodeText(call.getChild(i)));
+                }
+                return args;
             }
 
             @Override
             public ParseTree getLeftOperand(ParseTree ctx) {
-                return ctx.getChild(2);
+                return operandSource(ctx).getChild(2);
             }
 
             @Override
             public ParseTree getRightOperand(ParseTree ctx) {
-                return ctx.getChild(3);
+                return operandSource(ctx).getChild(3);
+            }
+
+            /** The call whose arguments are the operands: the inner call of (not (= ..)) or (floor (/ ..)). */
+            private ParseTree operandSource(ParseTree ctx) {
+                ParseTree inner = negatedEquality(ctx);
+                if (inner == null) inner = floorDivision(ctx);
+                return inner != null ? inner : ctx;
             }
 
             @Override
@@ -998,14 +1248,14 @@ public class RacketMutationScanner {
             @Override
             public boolean isQuantity(ParseTree ctx) {
                 if (ctx == null) return false;
-                String text = ctx.getText();
+                String text = getNodeText(ctx).strip();
+                // Any expression except bracket or quote punctuation.
+                return !text.isEmpty() && !text.matches("[()\\[\\]']");
+            }
 
-                if (ctx instanceof TerminalNode tn) {
-                    Token symbol = tn.getSymbol();
-                    return text.matches("-?\\d+(\\.\\d+)?") || text.matches("[a-zA-Z][a-zA-Z0-9-]*");
-                }
-                if (ctx.getChildCount() == 1) return isQuantity(ctx.getChild(0));
-                return false;
+            @Override
+            public boolean isStringLiteral(ParseTree ctx) {
+                return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), false);
             }
 
             @Override
@@ -1054,22 +1304,90 @@ public class RacketMutationScanner {
                 return ctx.getText();
             }
 
+            /**
+             * A Racket "statement" is a call evaluated only for its effect: one in
+             * a body (define, lambda, let, when, unless, begin) that is not the
+             * body's last form, since the last form is the return value.
+             * Definitions are never removed.
+             */
+            // Racket has no IsNullOrEmpty; with #f as "no string" the check is
+            // (or (not s) (string=? s "")) or a variant.
+            private static final List<Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
+                    Pattern.compile("\\(or\\s+\\(not\\s+([^\\s()\\[\\]\"]+)\\)\\s+\\((?:string=\\?|equal\\?)\\s+\\1\\s+\"\"\\)\\)"),
+                    Pattern.compile("\\(or\\s+\\(not\\s+([^\\s()\\[\\]\"]+)\\)\\s+\\(zero\\?\\s+\\(string-length\\s+\\1\\)\\)\\)"));
+
+            @Override
+            public String getNullOrEmptySubject(ParseTree ctx) {
+                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            }
+
+            @Override
+            public String notNullCheck(String subject) {
+                return "(not (eq? " + subject + " #f))";
+            }
+
+            @Override
+            public String notEmptyStringCheck(String subject) {
+                return "(not (equal? " + subject + " \"\"))";
+            }
+
             @Override
             public boolean isInvocationStatement(ParseTree ctx) {
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token start = prc.getStart();
-                    Token stop = prc.getStop();
-                    if (start != null && stop != null && start.getLine() != stop.getLine())
-                        return false;
+                if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))) {
+                    return false;
                 }
-                String text = getNodeText(ctx);
-                if (text == null || text.isBlank()) return false;
-                if (!text.startsWith("(") || !text.endsWith(")")) return false;
-                String inner = text.substring(1, text.length() - 1).trim();
-                if (inner.isEmpty()) return false;
-                int spaceIdx = inner.indexOf(' ');
-                String head = spaceIdx < 0 ? inner : inner.substring(0, spaceIdx);
-                return head.matches("[a-zA-Z_$%&!~^][a-zA-Z0-9_\\-?!.~^]*");
+                ParseTree parent = ctx.getParent();
+                if (parent == null || !isApplicationOrDefinition(parent)) {
+                    return false;
+                }
+                int index = indexInParent(ctx);
+                int bodyStart = bodyStartIndex(parent);
+                int lastForm = parent.getChildCount() - 2;
+                return bodyStart > 0 && index >= bodyStart && index < lastForm;
+            }
+
+            @Override
+            public String getEmptyStatement(ParseTree statement) {
+                return "(void)";
+            }
+
+            private boolean isApplicationOrDefinition(ParseTree ctx) {
+                return (ctx instanceof ISLParser.ExprContext || ctx instanceof ISLParser.DefinitionContext)
+                        && ctx.getChildCount() >= 3 && ctx.getChild(0).getText().equals("(");
+            }
+
+            private int indexInParent(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    if (parent.getChild(i) == ctx) return i;
+                }
+                return -1;
+            }
+
+            /** Index of the first body form, or -1 if the form has no body. */
+            private int bodyStartIndex(ParseTree form) {
+                switch (form.getChild(1).getText()) {
+                    case "begin":
+                        return 2;
+                    case "lambda", "λ", "let*", "letrec", "when", "unless":
+                        return 3;
+                    case "let":
+                        // Named let: (let loop ([i 0]) body...)
+                        return form.getChild(2).getText().startsWith("(")
+                                || form.getChild(2).getText().startsWith("[") ? 3 : 4;
+                    case "define":
+                        // (define (f x) body...) - a grammar definition lists the
+                        // header tokens flat, so the body starts after its ')'.
+                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
+                            for (int i = 3; i < form.getChildCount(); i++) {
+                                if (form.getChild(i).getText().equals(")")) return i + 1;
+                            }
+                            return -1;
+                        }
+                        return form.getChild(2).getText().startsWith("(") ? 3 : -1;
+                    default:
+                        return -1;
+                }
             }
 
             @Override

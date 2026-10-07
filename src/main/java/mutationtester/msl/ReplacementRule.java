@@ -1,10 +1,12 @@
 package mutationtester.msl;
 
-import mutationtester.model.MutationPoint;
-import mutationtester.model.Mutator;
-import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.File;
 import java.util.List;
+
+import org.antlr.v4.runtime.tree.ParseTree;
+
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
 
 /**
  * A MutationRule that replaces one operator with another.
@@ -61,12 +63,17 @@ public class ReplacementRule implements MutationRule {
 
     @Override
     public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
-        ParseTree opToken = scanner.getOperatorToken(ctx);
-        int[] pos = scanner.getTokenPosition(opToken);
+        MSLScannerAdapter.OperatorEdit edit = scanner.createOperatorEdit(
+                ctx, fromExpr.getOperator(), toExpr.getOperator());
+        // No mutant when the target can't be written in this language, or when
+        // the edit would leave the source unchanged (an equivalent mutant).
+        if (edit == null || edit.original().equals(edit.replacement())) {
+            return null;
+        }
         return new MutationPoint(
-                sourceFile, pos[0], pos[1],
-                fromExpr.getOperator(),
-                toExpr.getOperator(),
+                sourceFile, edit.line(), edit.column(),
+                edit.original(),
+                edit.replacement(),
                 Mutator.MutatorType.CUSTOM,
                 label);
     }

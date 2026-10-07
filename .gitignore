@@ -60,3 +60,5 @@ demo-output/
 /.tools/
 /demo-env.ps1
 /demo-env.cmd
+
+/.github

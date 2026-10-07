@@ -137,15 +137,14 @@ class MutationTestDemo:
         else:
             print("a zero")
         
-        # Match statement 
+        # Conditional dispatch (equivalent to match/case)
         status = Status.RUNNING
-        match status:
-            case Status.STARTED:
-                print("Started")
-            case Status.RUNNING:
-                print("Running")
-            case Status.FINISHED:
-                print("Finished")
+        if status == Status.STARTED:
+            print("Started")
+        elif status == Status.RUNNING:
+            print("Running")
+        elif status == Status.FINISHED:
+            print("Finished")
         
         # Loops
         for i in range(3):
@@ -250,6 +249,41 @@ Summary:
 - max: {demo.max}
 - counter: {MutationTestDemo.counter}
         """)
+
+        # Python specific features
+        specifics = PythonSpecifics()
+        specifics.run_specifics()
+
+# Decorator example
+def my_decorator(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+class PythonSpecifics:
+    @my_decorator
+    def run_specifics(self):
+        # Dict comprehension
+        squares = {x: x*x for x in range(3)}
+        
+        # Generator
+        def my_gen():
+            yield 1
+            yield 2
+        
+        for v in my_gen():
+            pass
+            
+        # Duck typing
+        class Duck:
+            def quack(self):
+                pass
+        
+        def make_it_quack(obj):
+            if hasattr(obj, 'quack'):
+                obj.quack()
+                
+        make_it_quack(Duck())
 
 # Run
 if __name__ == "__main__":

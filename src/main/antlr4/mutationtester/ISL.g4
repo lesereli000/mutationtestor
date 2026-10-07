@@ -122,10 +122,10 @@ SYMBOL
     ;
 
 // NAME: identifiers that do NOT start with operator characters
-// Racket identifiers can contain letters, digits, and: - _ ? ! . ~
-// but must START with a letter, _, $, %, &, !, ~, or ^
-// Operators (+, -, *, /, >, <, >=, <=, =) are separate tokens above
-// and must NOT be included in the NAME start/continue sets
+// Racket identifiers must START with a letter, _, $, %, &, !, ~, or ^, so
+// operators (+, -, *, /, >, <, >=, <=, =) stay separate tokens. After the
+// first character they may contain operator characters too: string=?,
+// string->number, char<?, list*.
 NAME
     : NAME_START NAME_CONTINUE*
     ;
@@ -135,12 +135,15 @@ fragment NAME_START
     ;
 
 fragment NAME_CONTINUE
-    : [a-zA-Z0-9_\-?!.~^]
+    : [a-zA-Z0-9_\-?!.~^=<>*/+:%&$]
     ;
 
 // Numbers — integers, decimals, rationals, negatives
 NUMBER
-    : SIGN? INT
+    : '#' [xX] [0-9a-fA-F]+     // #xFFFFFFFF
+    | '#' [bB] [01]+
+    | '#' [oO] [0-7]+
+    | SIGN? INT
     | SIGN? INT '.' [0-9]+
     | SIGN? INT '/' INT
     ;

@@ -506,16 +506,17 @@ public class MSLTests {
     }
 
     @Test
-    void javaAdapterIsQuantityFalseForStringLiteral(
+    void javaAdapterFlagsStringLiteralsSoArithmeticSkipsThem(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        // String literals are operands (s == "" is mutated), but the adapter
+        // flags them so arithmetic rules skip concatenation like "a" + b.
         java.nio.file.Path src = tmp.resolve("A.java");
         java.nio.file.Files.writeString(src, "class A { String s = \"hello\"; }");
 
         MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
         org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
 
-        boolean anyStringIsQuantity = anyStringLiteralIsQuantity(adapter, root);
-        assertFalse(anyStringIsQuantity, "String literals should NOT be quantities");
+        assertTrue(anyStringLiteralIsFlagged(adapter, root), "String literals should be flagged as strings");
     }
 
     @Test
@@ -596,14 +597,14 @@ public class MSLTests {
     }
 
     /** Returns true if any string-literal TerminalNode is considered a quantity. */
-    private boolean anyStringLiteralIsQuantity(MSLScannerAdapter adapter,
-                                                org.antlr.v4.runtime.tree.ParseTree node) {
+    private boolean anyStringLiteralIsFlagged(MSLScannerAdapter adapter,
+                                              org.antlr.v4.runtime.tree.ParseTree node) {
         if (node instanceof org.antlr.v4.runtime.tree.TerminalNode tn) {
             String txt = tn.getText();
-            if (txt.startsWith("\"") && adapter.isQuantity(node)) return true;
+            if (txt.startsWith("\"") && adapter.isStringLiteral(node)) return true;
         }
         for (int i = 0; i < node.getChildCount(); i++) {
-            if (anyStringLiteralIsQuantity(adapter, node.getChild(i))) return true;
+            if (anyStringLiteralIsFlagged(adapter, node.getChild(i))) return true;
         }
         return false;
     }

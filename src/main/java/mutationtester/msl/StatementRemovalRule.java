@@ -7,7 +7,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.File;
 
 /**
- * Removes an invocation statement by replacing the full statement text with ";".
+ * Removes an invocation statement by replacing the full statement text with the
+ * language's empty statement (";", "pass", "(void)").
  * Intended for language-specific statement mutators such as C# method-call removal.
  */
 public class StatementRemovalRule implements MutationRule {
@@ -31,13 +32,12 @@ public class StatementRemovalRule implements MutationRule {
     public MutationPoint apply(MSLScannerAdapter scanner, ParseTree ctx, File sourceFile) {
         int[] pos = scanner.getTokenPosition(ctx);
         String statement = scanner.getNodeText(ctx);
-        String replacement = sourceFile.getName().endsWith(".py") ? "pass" : ";";
         return new MutationPoint(
                 sourceFile,
                 pos[0],
                 pos[1],
                 statement,
-                replacement,
+                scanner.getEmptyStatement(ctx),
                 Mutator.MutatorType.CUSTOM,
                 label
         );
