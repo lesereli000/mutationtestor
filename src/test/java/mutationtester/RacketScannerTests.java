@@ -1,15 +1,17 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
-import mutationtester.model.*;
-import mutationtester.scanner.*;
-
-import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.scanner.RacketMutationScanner;
 
 /**
  * Tests for SchemeMutationScanner (Racket/.rkt files).
