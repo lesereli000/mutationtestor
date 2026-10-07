@@ -130,7 +130,8 @@ class StatementMutationsCrossLanguageParityTests {
         assertEquals(s("o = None"), mutatedLines(rule, ".py"));
         // "var o = null;" doesn't compile, so a var keeps its type via default(T).
         assertEquals(s("var o = default(object);"), mutatedLines(rule, ".cs"));
-        assertEquals(s("(define p #f)"), mutatedLines(rule, ".rkt"));
+        // '() is Racket's null, as in the other Racket null-value mutators.
+        assertEquals(s("(define p '())"), mutatedLines(rule, ".rkt"));
     }
 
     @Test

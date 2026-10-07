@@ -435,12 +435,13 @@ public class ScannerBackedRule implements MutationRule {
                     int close = findMatchingParen(line, open);
                     if (open < 0 || close < 0) continue;
                     String call = line.substring(open, close + 1);
+                    // '() matches what RacketMutationScanner uses for constructor calls
                     points.add(new MutationPoint(
                             sourceFile,
                             i + 1,
                             open,
                             call,
-                            "#f",
+                            "'()",
                             mutatorType,
                             label
                     ));
