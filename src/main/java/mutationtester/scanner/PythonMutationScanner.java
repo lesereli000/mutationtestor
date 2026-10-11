@@ -3,8 +3,11 @@ package mutationtester.scanner;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CharStream;
@@ -121,6 +124,8 @@ public class PythonMutationScanner {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         PythonParser parser = new PythonParser(tokens);
         ParseTree tree = parser.root();
+        Map<org.antlr.v4.runtime.CharStream, Integer> snippetFileOffset = new IdentityHashMap<>();
+        ParseTree root = treeWithFStringFields(sourceCode, tokens, tree, snippetFileOffset);
 
         return new MSLScannerAdapter() {
             private final Pattern invocationPattern = Pattern.compile(
@@ -355,9 +360,17 @@ public class PythonMutationScanner {
                     Token stop = prc.getStop();
                     if (start != null && stop != null
                             && start.getStartIndex() >= 0
-                            && stop.getStopIndex() >= start.getStartIndex()
-                            && stop.getStopIndex() < sourceCode.length()) {
-                        return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                            && stop.getStopIndex() >= start.getStartIndex()) {
+                        Integer snippetOffset = snippetFileOffset.get(start.getInputStream());
+                        if (snippetOffset != null) {
+                            int from = snippetOffset + start.getStartIndex();
+                            int to = snippetOffset + stop.getStopIndex() + 1;
+                            if (from >= 0 && to <= sourceCode.length() && to >= from) {
+                                return sourceCode.substring(from, to);
+                            }
+                        } else if (stop.getStopIndex() < sourceCode.length()) {
+                            return sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                        }
                     }
                 }
                 return ctx.getText();
@@ -365,17 +378,20 @@ public class PythonMutationScanner {
 
             @Override
             public int[] getTokenPosition(ParseTree ctx) {
+                Token s = null;
                 if (ctx instanceof TerminalNode tn) {
-                    Token s = tn.getSymbol();
-                    return new int[]{s.getLine(), s.getCharPositionInLine()};
+                    s = tn.getSymbol();
+                } else if (ctx instanceof ParserRuleContext prc) {
+                    s = prc.getStart();
                 }
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token s = prc.getStart();
-                    if (s != null) {
-                        return new int[]{s.getLine(), s.getCharPositionInLine()};
-                    }
+                if (s == null) {
+                    return new int[]{0, 0};
                 }
-                return new int[]{0, 0};
+                Integer snippetOffset = snippetFileOffset.get(s.getInputStream());
+                if (snippetOffset != null) {
+                    return lineAndColumn(sourceCode, snippetOffset + s.getStartIndex());
+                }
+                return new int[]{s.getLine(), s.getCharPositionInLine()};
             }
 
             /**
@@ -394,7 +410,7 @@ public class PythonMutationScanner {
 
             @Override
             public ParseTree getRootContext() {
-                return tree;
+                return root;
             }
 
             private boolean hasTopLevelComma(String text) {
@@ -440,5 +456,83 @@ public class PythonMutationScanner {
                 return false;
             }
         };
+    }
+
+    /**
+     * f-string bodies are a single STRING token. Parse each {@code {expr}} so
+     * shared MSL rules can mutate the executed expression, with positions
+     * mapped back into the original file.
+     */
+    private static ParseTree treeWithFStringFields(
+            String sourceCode,
+            CommonTokenStream tokens,
+            ParseTree mainTree,
+            Map<org.antlr.v4.runtime.CharStream, Integer> snippetFileOffset) {
+        List<ParseTree> extras = new ArrayList<>();
+        for (int i = 0; i < tokens.size(); i++) {
+            Token token = tokens.get(i);
+            if (token.getType() != PythonLexer.STRING) {
+                continue;
+            }
+            for (PythonFStringInterpolations.Field field
+                    : PythonFStringInterpolations.fieldsInToken(token.getText(), token.getStartIndex())) {
+                ParseTree snippet = parsePythonSnippet(field.expression(), field.fileOffset(), snippetFileOffset);
+                if (snippet != null) {
+                    extras.add(snippet);
+                }
+            }
+        }
+        if (extras.isEmpty()) {
+            return mainTree;
+        }
+        ParserRuleContext composite = new ParserRuleContext();
+        attachChild(composite, mainTree);
+        for (ParseTree extra : extras) {
+            attachChild(composite, extra);
+        }
+        return composite;
+    }
+
+    private static ParseTree parsePythonSnippet(
+            String expression,
+            int fileOffset,
+            Map<org.antlr.v4.runtime.CharStream, Integer> snippetFileOffset) {
+        try {
+            CharStream chars = CharStreams.fromString(expression);
+            PythonLexer lexer = new PythonLexer(chars);
+            lexer.removeErrorListeners();
+            CommonTokenStream snippetTokens = new CommonTokenStream(lexer);
+            PythonParser snippetParser = new PythonParser(snippetTokens);
+            snippetParser.removeErrorListeners();
+            ParseTree tree = snippetParser.eval_input();
+            if (snippetParser.getNumberOfSyntaxErrors() > 0 || tree == null) {
+                return null;
+            }
+            snippetFileOffset.put(chars, fileOffset);
+            return tree;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static void attachChild(ParserRuleContext parent, ParseTree child) {
+        if (child instanceof ParserRuleContext rule) {
+            parent.addChild(rule);
+        }
+    }
+
+    private static int[] lineAndColumn(String source, int offset) {
+        int line = 1;
+        int column = 0;
+        int n = Math.min(offset, source.length());
+        for (int i = 0; i < n; i++) {
+            if (source.charAt(i) == '\n') {
+                line++;
+                column = 0;
+            } else {
+                column++;
+            }
+        }
+        return new int[]{line, column};
     }
 }
