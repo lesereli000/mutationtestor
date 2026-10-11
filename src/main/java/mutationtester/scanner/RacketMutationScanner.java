@@ -150,6 +150,22 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
+        return scan(file, type, false);
+    }
+
+    /**
+     * EMPTY_RETURNS for every returned value, not just strings and lists: each
+     * tail value becomes the empty value of its inferred type (0, "", '(), #f,
+     * or '() when the type can't be told). This is MSL's
+     * {return_value} → {empty_value}, which Java and C# apply to every return
+     * using the declared type.
+     */
+    public static List<MutationPoint> scanTypedEmptyReturns(File file) throws IOException {
+        return scan(file, Mutator.MutatorType.EMPTY_RETURNS, true);
+    }
+
+    private static List<MutationPoint> scan(File file, Mutator.MutatorType type, boolean typedEmptyValues)
+            throws IOException {
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -166,6 +182,7 @@ public class RacketMutationScanner {
 
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        visitor.typedEmptyValues = typedEmptyValues;
         if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
             // Structs may be defined after their first use, so collect them up front
             visitor.collectStructConstructors(tree);
@@ -185,6 +202,10 @@ public class RacketMutationScanner {
         private final Mutator.MutatorType mutationType;
         private final String sourceCode;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
+
+        // EMPTY_RETURNS: mutate every returned value by its inferred type
+        // (see scanTypedEmptyReturns), not only strings and lists
+        private boolean typedEmptyValues;
 
         private static final java.util.Set<String> SPECIAL_FORMS = java.util.Set.of(
                 "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
@@ -659,7 +680,7 @@ public class RacketMutationScanner {
         }
 
         private void checkEmptyReturn(ISLParser.ExprContext returnExpr) {
-            String replacement = emptyReplacement(returnExpr);
+            String replacement = typedEmptyValues ? typedEmptyValue(returnExpr) : emptyReplacement(returnExpr);
             if (replacement == null) return;
 
             // Main.applyMutation rewrites a single line; skip values that span lines.
@@ -707,6 +728,58 @@ public class RacketMutationScanner {
                 if (LIST_BUILDERS.contains(head.getText()) && hasArgs) return "'()";
             }
             return null;
+        }
+
+        /**
+         * The empty value for any returned expression, inferred from its form,
+         * or null when it is already that value:
+         *   strings and lists              → "" / '()   (as emptyReplacement)
+         *   numbers, (+ ...), (sqr ...)    → 0
+         *   #t, (< ...), (and ...), (p? x) → #f
+         *   anything else                  → '()  (Racket's null, as in RVM_OBJECT_TO_NULL)
+         */
+        private String typedEmptyValue(ISLParser.ExprContext ctx) {
+            String stringOrList = emptyReplacement(ctx);
+            if (stringOrList != null) return stringOrList;
+
+            Token tok = getSingleExprToken(ctx);
+            if (tok != null) {
+                String text = tok.getText();
+                return switch (tok.getType()) {
+                    case ISLLexer.STRING -> null;  // already ""
+                    case ISLLexer.NUMBER -> isZeroLiteral(text) ? null : "0";
+                    case ISLLexer.BOOLEAN -> text.equalsIgnoreCase("#f") || text.equals("#false") ? null : "#f";
+                    default -> "'()";
+                };
+            }
+            if (extractSourceText(ctx).replaceAll("\\s", "").equals("'()")) return null;
+
+            if (ctx.getChildCount() >= 3
+                    && ctx.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token head = extractToken(ctx.getChild(1));
+                if (head != null) {
+                    String name = head.getText();
+                    int type = head.getType();
+                    if (type == ISLLexer.PLUS || type == ISLLexer.MINUS || type == ISLLexer.STAR
+                            || type == ISLLexer.SLASH || NUMBER_CALLS.contains(name)) return "0";
+                    if (type == ISLLexer.GT || type == ISLLexer.LT || type == ISLLexer.GEQ
+                            || type == ISLLexer.LEQ || type == ISLLexer.EQ
+                            || name.equals("and") || name.equals("or") || name.equals("not")
+                            || name.endsWith("?")) return "#f";
+                    // (list) with no arguments is already empty
+                    if (LIST_BUILDERS.contains(name)) return null;
+                }
+            }
+            return "'()";
+        }
+
+        private static boolean isZeroLiteral(String number) {
+            try {
+                return Double.parseDouble(number) == 0;
+            } catch (NumberFormatException e) {
+                return false;  // rationals like 1/2 are never zero
+            }
         }
 
         // -------------------------------------------------------------------------

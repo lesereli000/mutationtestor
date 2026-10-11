@@ -206,9 +206,17 @@ public class ScannerBackedRule implements MutationRule {
         return mask;
     }
 
-    private List<MutationPoint> scanEmptyReturns(File sourceFile, String[] lines, String extension) {
+    private List<MutationPoint> scanEmptyReturns(File sourceFile, String[] lines, String extension)
+            throws IOException {
         if (extension.endsWith(".rkt")) {
-            return scanRacketReturnValues(sourceFile, String.join("\n", lines));
+            // Each returned value becomes the empty value of its inferred type,
+            // as Java and C# use the declared return type.
+            List<MutationPoint> points = new ArrayList<>();
+            for (MutationPoint p : RacketMutationScanner.scanTypedEmptyReturns(sourceFile)) {
+                points.add(new MutationPoint(p.getSourceFile(), p.getLineNumber(), p.getColumnNumber(),
+                        p.getOperator(), p.getReplacement(), mutatorType, label));
+            }
+            return points;
         }
 
         List<MutationPoint> points = new ArrayList<>();
@@ -255,95 +263,6 @@ public class ScannerBackedRule implements MutationRule {
             lineOffset += line.length() + 1;
         }
         return points;
-    }
-
-    /**
-     * Racket has no return statement: a function returns its last body form.
-     * Mutates that form in each (define (f ...) ...) to an empty value.
-     */
-    private List<MutationPoint> scanRacketReturnValues(File sourceFile, String source) {
-        List<MutationPoint> points = new ArrayList<>();
-        Matcher define = Pattern.compile("\\(define\\s*\\(").matcher(source);
-
-        while (define.find()) {
-            int open = define.start();
-            int headerOpen = define.end() - 1;
-            int headerClose = findMatchingParen(source, headerOpen);
-            int close = findMatchingParen(source, open);
-            if (headerClose < 0 || close < 0 || isInRacketComment(source, open)) continue;
-
-            int[] last = lastRacketForm(source, headerClose + 1, close);
-            if (last == null) continue;
-
-            String expr = source.substring(last[0], last[1]);
-            String replacement = emptyValueForExpression(expr, ".rkt");
-            if (replacement.equals(expr)) continue;
-
-            int line = 1 + (int) source.substring(0, last[0]).chars().filter(c -> c == '\n').count();
-            int column = last[0] - (source.lastIndexOf('\n', last[0] - 1) + 1);
-            points.add(new MutationPoint(sourceFile, line, column, expr, replacement, mutatorType, label));
-        }
-        return points;
-    }
-
-    /** Start/end offsets of the last top-level form in source[from, to), or null. */
-    private static int[] lastRacketForm(String source, int from, int to) {
-        int[] last = null;
-        int i = from;
-        while (i < to) {
-            char ch = source.charAt(i);
-            if (Character.isWhitespace(ch)) {
-                i++;
-            } else if (ch == ';') {
-                int newline = source.indexOf('\n', i);
-                i = newline < 0 ? to : newline + 1;
-            } else {
-                int start = i;
-                while (i < to && (source.charAt(i) == '\'' || source.charAt(i) == '`' || source.charAt(i) == ',')) i++;
-                if (i >= to) break;
-                char first = source.charAt(i);
-                if (first == '(' || first == '[') {
-                    int end = findMatchingBracket(source, i);
-                    if (end < 0 || end >= to) return last;
-                    i = end + 1;
-                } else if (first == '"') {
-                    i++;
-                    while (i < to && source.charAt(i) != '"') i += source.charAt(i) == '\\' ? 2 : 1;
-                    i++;
-                } else {
-                    while (i < to && !Character.isWhitespace(source.charAt(i))
-                            && "()[];".indexOf(source.charAt(i)) < 0) i++;
-                }
-                last = new int[]{start, Math.min(i, to)};
-            }
-        }
-        return last;
-    }
-
-    private static boolean isInRacketComment(String source, int offset) {
-        int lineStart = source.lastIndexOf('\n', offset - 1) + 1;
-        return source.substring(lineStart, offset).contains(";");
-    }
-
-    private static int findMatchingBracket(String text, int openIndex) {
-        int depth = 0;
-        for (int i = openIndex; i < text.length(); i++) {
-            char ch = text.charAt(i);
-            if (ch == '"') {
-                i++;
-                while (i < text.length() && text.charAt(i) != '"') i += text.charAt(i) == '\\' ? 2 : 1;
-            } else if (ch == ';') {
-                int newline = text.indexOf('\n', i);
-                if (newline < 0) return -1;
-                i = newline;
-            } else if (ch == '(' || ch == '[') {
-                depth++;
-            } else if (ch == ')' || ch == ']') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
     }
 
     // Modifiers that may precede a Java or C# method's return type.

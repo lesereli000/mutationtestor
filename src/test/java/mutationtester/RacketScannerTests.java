@@ -919,8 +919,13 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.EMPTY_RETURNS);
 
         // 5 two-branch string ifs + check-logic's nested if (3 string results)
-        assertEquals(13, points.size());
+        // + check-floats' (list a b c), after its internal defines
+        assertEquals(14, points.size());
         for (MutationPoint p : points) {
+            if (p.getOperator().equals("(list a b c)")) {
+                assertEquals("'()", p.getReplacement());
+                continue;
+            }
             assertTrue(p.getOperator().startsWith("\""));
             assertEquals("\"\"", p.getReplacement());
         }
@@ -954,6 +959,50 @@ public class RacketScannerTests {
         assertEquals("'()", points.get(0).getReplacement());
         assertEquals("(format \"~a\" x)", points.get(1).getOperator());
         assertEquals("\"\"", points.get(1).getReplacement());
+    }
+
+    @Test
+    public void testTypedEmptyReturnsUseTheValuesInferredType() throws IOException {
+        File tmp = File.createTempFile("typed-empty-returns", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (num x) (+ x 1))",
+                "(define (call x) (sqr x))",
+                "(define (lit) 42)",
+                "(define (cmp a b) (< a b))",
+                "(define (pred? x) (zero? x))",
+                "(define (yes) #t)",
+                "(define (str) \"hi\")",
+                "(define (lst x) (list x))",
+                "(define (unknown x) (helper x))",
+                "(define (branches x) (if (> x 0) 1 0))",
+                "(define (inner x)",
+                "  (define y (add1 x))",
+                "  (- y))",
+                "(define (empty) '())",
+                "(define (none) #f)",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanTypedEmptyReturns(tmp);
+
+        // Each tail value becomes the empty value of its type; the 0 branch,
+        // '() and #f are already empty, and the internal define isn't a return.
+        java.util.Map<String, String> mutated = new java.util.LinkedHashMap<>();
+        for (MutationPoint p : points) mutated.put(p.getOperator(), p.getReplacement());
+        java.util.Map<String, String> expected = new java.util.LinkedHashMap<>();
+        expected.put("(+ x 1)", "0");
+        expected.put("(sqr x)", "0");
+        expected.put("42", "0");
+        expected.put("(< a b)", "#f");
+        expected.put("(zero? x)", "#f");
+        expected.put("#t", "#f");
+        expected.put("\"hi\"", "\"\"");
+        expected.put("(list x)", "'()");
+        expected.put("(helper x)", "'()");
+        expected.put("1", "0");
+        expected.put("(- y)", "0");
+        assertEquals(expected, mutated);
     }
 
     // -------------------------------------------------------------------------

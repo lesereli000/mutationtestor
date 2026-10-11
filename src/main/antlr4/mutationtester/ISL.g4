@@ -18,7 +18,7 @@ defOrExpr
     ;
 
 definition
-    : '(' 'define' '(' name NAME* ')' expr+ ')'
+    : '(' 'define' '(' name NAME* ')' (definition | expr)+ ')'  // #lang racket allows internal defines
     | '(' 'define' name expr ')'
     | '(' 'define-struct' name '(' name* ')' ')'
     | '(' 'provide' name+ ')'
