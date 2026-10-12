@@ -1193,6 +1193,28 @@ public class RacketScannerTests {
         assertTrue(points.stream().allMatch(p -> p.getLineNumber() == 3));
     }
 
+    @Test
+    public void testQuotedListsWithNumbersBooleansAndOperatorsParse() throws IOException {
+        File tmp = File.createTempFile("quoted-lists", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (nums) (length '(1 2.5 3)))",
+                "(define (bools) (length '(#t #f)))",
+                "(define (ops) (length '(+ - < >=)))",
+                "(define (nested) (length '(1 () (2 3))))",
+                "(define (after x) (add1 x))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // Each call is captured whole (a quoted number used to end the parse
+        // early, cutting off the closing paren), and parsing continues past them.
+        assertEquals(List.of("(length '(1 2.5 3))", "(length '(#t #f))", "(length '(+ - < >=))",
+                "(length '(1 () (2 3)))", "(add1 x)"),
+                points.stream().map(MutationPoint::getOperator).toList());
+    }
+
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
         return points.stream()
                 .filter(p -> p.getOperator().equals(operator))

@@ -57,9 +57,13 @@ expr
 
 quoted
     : NAME
+    | SYMBOL
     | STRING
     | CHARACTER
-    | '(' quoted* ')'
+    | NUMBER
+    | BOOLEAN
+    | PLUS | MINUS | STAR | SLASH | GT | LT | GEQ | LEQ | EQ  // '(+ -) quotes the symbols
+    | '(' (quoted | '()')* ')'  // the lexer reads a nested () as one '()' token
     | '\'' quoted
     | ',' quoted
     | ',@' quoted
