@@ -2,6 +2,7 @@ package mutationtester.report;
 
 import mutationtester.model.MutantResult;
 import mutationtester.equivalent.EquivalentMutantStore;
+import mutationtester.equivalent.EquivalentsBranch;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -17,12 +18,16 @@ import org.apache.commons.io.FileUtils;
 public class HtmlReportGenerator {
 
     public static void generateHtmlReport(MutationReport report, List<MutantResult> results) throws IOException {
+        generateHtmlReport(report, results, EquivalentsPageData.empty());
+    }
+
+    public static void generateHtmlReport(MutationReport report, List<MutantResult> results,
+            EquivalentsPageData equivalents) throws IOException {
         FileUtils.createParentDirectories(Path.of("./output/report/mutation-report-demo.html").toFile());
         FileUtils.deleteDirectory(Path.of("./output/report/allFiles").toFile());
         FileUtils.forceMkdir(Path.of("./output/report/allFiles").toFile());
 
-        Set<String> hiddenMutantIds = EquivalentMutantStore.loadHiddenMutantIds();
-
+        // Counts start from every mutant; the page script hides equivalents on load.
         MutationReport visibleReport = new MutationReport(results);
 
         List<MutantResult> survivedMutants = results.stream()
@@ -63,13 +68,15 @@ public class HtmlReportGenerator {
                     killed,
                     survived,
                     noCoverage,
-                    score
+                    score,
+                    equivalents
             );
         }
 
         AllSurvivorsPageGenerator.generateAllSurvivorsPage(
                 survivedMutants,
-                "./output/report/all-survivors.html"
+                "./output/report/all-survivors.html",
+                equivalents
         );
 
         StringBuilder html = new StringBuilder();
@@ -112,8 +119,8 @@ public class HtmlReportGenerator {
         html.append("    <div class=\"container\">\n");
         html.append("        <div class=\"header\">\n");
         html.append("            <h1>Mutation Testing Report</h1>\n");
-        html.append("            <div class=\"store-note\">Equivalent store: ")
-                .append(escapeHtml(EquivalentMutantStore.getStorePath().toString()))
+        html.append("            <div class=\"store-note\">Equivalent mutants: ")
+                .append(escapeHtml(describeSource(equivalents)))
                 .append("</div>\n");
         html.append("        </div>\n");
 
@@ -197,6 +204,8 @@ public class HtmlReportGenerator {
         html.append("        </div>\n");
         html.append("    </div>\n");
 
+        html.append(equivalents.toDataScript());
+        html.append(EquivalentsPageData.sharedScript());
         html.append("<script>\n");
         html.append("function parseIds(row, name) {\n");
         html.append("    try { return JSON.parse(row.dataset[name] || '[]'); } catch (e) { return []; }\n");
@@ -207,10 +216,7 @@ public class HtmlReportGenerator {
         html.append("\n");
         html.append("async function applyEquivalentFilteringToSummary() {\n");
         html.append("    try {\n");
-        html.append("        const res = await fetch('http://localhost:8081/api/equivalent-mutants');\n");
-        html.append("        if (!res.ok) throw new Error('HTTP ' + res.status);\n");
-        html.append("        const data = await res.json();\n");
-        html.append("        const hiddenIds = new Set(data.hiddenMutantIds || []);\n");
+        html.append("        const hiddenIds = await loadHiddenMutantIds();\n");
         html.append("\n");
         html.append("        let visibleSurvivedTotal = 0;\n");
         html.append("        let visibleTotal = 0;\n");
@@ -285,6 +291,17 @@ public class HtmlReportGenerator {
        try (FileWriter writer = new FileWriter("./output/report/mutation-report-demo.html", java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(html.toString());
         }
+    }
+
+    private static String describeSource(EquivalentsPageData equivalents) {
+        int count = equivalents.hiddenIds().size();
+        return switch (equivalents.source()) {
+            case "branch" -> count + " from the " + EquivalentsBranch.BRANCH + " branch";
+            case "local" -> count + " from " + EquivalentMutantStore.getStorePath();
+            default -> equivalents.repoUrl() != null
+                    ? "none yet (marks you save are kept on the " + EquivalentsBranch.BRANCH + " branch)"
+                    : "local API server or " + EquivalentMutantStore.getStorePath();
+        };
     }
 
     private static String stripExtension(String fileName) {

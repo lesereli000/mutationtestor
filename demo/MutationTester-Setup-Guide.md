@@ -289,10 +289,11 @@ test_command=mvn test
 
 - `source_code_directory` - path to source files, relative to the project root
 - `mutator_type` - `ALL`, a specific operator like `AOR_PLUS_TO_MINUS`, or `CUSTOM` (to use a spec file)
-- `custom_mutation_spec` - path to a `.txt` or `.spec` MSL spec file defining custom mutation rules; only used when `mutator_type=CUSTOM`
+- `custom_mutation_spec` - path to a `.txt` or `.spec` MSL spec file defining custom mutation rules; only used when `mutator_type=CUSTOM`. If no file exists at that path, the copy of the same name bundled in the jar is used (`OperatorMutations.txt`, `StatementMutation.txt`, `StringMutation.txt`)
 - `compile_command` - command to build the project before testing; leave blank if no compile step is needed
 - `test_command` - command to run the test suite (must pass on the original code before mutation begins)
 - `coverage_command` / `coverage_report` - optional; used to attach a coverage report to the output
+- `min_mutation_score` - optional, 0-100. The tool exits with code 2 when the score is below it (code 1 means it could not run, 0 means it passed), so CI can fail on it. See [Running MutationTester in GitHub Actions](../docs/ci/README.md)
 
 **Language-specific examples:**
 
@@ -421,7 +422,7 @@ The report includes:
 - **Survivor list** - click a surviving mutant to jump to the corresponding line
 - **Equivalent mutant marking** - surviving mutants can be flagged via the UI
 
-> Equivalent mutant marking requires the API server running on `localhost:8081`.
+> Marking works without a server. With the API server running on `localhost:8081`, marks are saved immediately; without it, the page offers a download of the updated list. Reports from GitHub Actions save marks to the project's `mutation-data` branch instead (see [Running MutationTester in GitHub Actions](../docs/ci/README.md)).
 
 ![HTML mutation report showing 83.3% score](mutation_report.png)
 

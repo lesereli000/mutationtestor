@@ -57,6 +57,21 @@ public class PitStyleReportGenerator {
             int noCoverage,
             double mutationScore
     ) throws IOException {
+        generatePitStyleReport(sourceFilePath, outputPath, allMutants, totalMutants, killed, survived, noCoverage,
+                mutationScore, EquivalentsPageData.empty());
+    }
+
+    public static void generatePitStyleReport(
+            String sourceFilePath,
+            String outputPath,
+            List<?> allMutants,
+            int totalMutants,
+            int killed,
+            int survived,
+            int noCoverage,
+            double mutationScore,
+            EquivalentsPageData equivalents
+    ) throws IOException {
 
         List<String> sourceLines = Files.readAllLines(Path.of(sourceFilePath));
         List<LineMutation> mutations = convertMutations(allMutants);
@@ -71,6 +86,8 @@ public class PitStyleReportGenerator {
         html.append(generateHeader());
         html.append(generateSummaryBar(totalMutants, killed, survived, noCoverage, mutationScore));
         html.append(generateSourceCodeView(sourceLines, mutationsByLine, sourceFilePath));
+        html.append(equivalents.toDataScript());
+        html.append(EquivalentsPageData.sharedScript());
         html.append(generateFooter());
 
         try (FileWriter writer = new FileWriter(outputPath, java.nio.charset.StandardCharsets.UTF_8)) {
@@ -436,10 +453,7 @@ public class PitStyleReportGenerator {
         sb.append("<script>\n");
         sb.append("async function applyEquivalentFilteringToFilePage() {\n");
         sb.append("    try {\n");
-        sb.append("        const res = await fetch('http://localhost:8081/api/equivalent-mutants');\n");
-        sb.append("        if (!res.ok) throw new Error('HTTP ' + res.status);\n");
-        sb.append("        const data = await res.json();\n");
-        sb.append("        const hiddenIds = new Set(data.hiddenMutantIds || []);\n");
+        sb.append("        const hiddenIds = await loadHiddenMutantIds();\n");
         sb.append("\n");
         sb.append("        function getMutantIds(entry) {\n");
         sb.append("            try {\n");

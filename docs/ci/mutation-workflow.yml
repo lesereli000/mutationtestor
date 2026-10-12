@@ -1,0 +1,100 @@
+# Mutation testing for a project, using a released MutationTester jar.
+# Copy this file to .github/workflows/mutation.yml in the project; it is the
+# only file the tool needs in the project's main branch. See docs/ci/README.md.
+#
+# One-time setup in the project:
+#   - Add a secret MUTATION_TOOL_TOKEN that can read EllieJin04/mutationtestor
+#     (needed while that repository is private).
+#   - If a branch ruleset covers all branches, let github-actions[bot] push to
+#     the mutation-data branch.
+#
+# Edit the "Write config" step and the toolchain setup step for the project.
+
+name: Mutation testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      min_score:
+        description: Minimum mutation score (0-100)
+        default: '70'
+
+env:
+  TOOL_VERSION: v0.1.0-rc.1
+  TOOL_REPO: EllieJin04/mutationtestor
+
+jobs:
+  # Creates the mutation-data branch if needed and folds equivalent-mutant
+  # marks saved from reports into equivalents.json. Kept apart from the
+  # mutation job so the project's tests never run with a token that can push.
+  sync-equivalents:
+    if: github.event.pull_request.head.repo.fork != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: mutation-data
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download mutation tester
+        env:
+          GH_TOKEN: ${{ secrets.MUTATION_TOOL_TOKEN }}
+        run: |
+          gh release download "$TOOL_VERSION" --repo "$TOOL_REPO" \
+            --pattern "mutationtester-$TOOL_VERSION.jar" --output "$RUNNER_TEMP/mutationtester.jar"
+
+      - name: Sync equivalent mutants
+        run: java -cp "$RUNNER_TEMP/mutationtester.jar" mutationtester.ci.EquivalentsSync
+
+  mutation:
+    needs: sync-equivalents
+    if: ${{ !cancelled() && needs.sync-equivalents.result != 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      MIN_SCORE: ${{ inputs.min_score || '70' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Replace with whatever the project's own tests need.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Download mutation tester
+        env:
+          GH_TOKEN: ${{ secrets.MUTATION_TOOL_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/mt"
+          gh release download "$TOOL_VERSION" --repo "$TOOL_REPO" \
+            --pattern "mutationtester-$TOOL_VERSION.jar" --output "$RUNNER_TEMP/mt/mutationtester.jar"
+
+      - name: Write config
+        run: |
+          cat > "$RUNNER_TEMP/mt/mutation.config" <<EOF
+          source_code_directory=src/main/java
+          mutator_type=CUSTOM
+          custom_mutation_spec=OperatorMutations.txt
+          test_command=mvn -q clean test
+          min_mutation_score=$MIN_SCORE
+          EOF
+
+      # Runs from a temp folder so output/ stays out of the checkout.
+      # Exit code 1 = could not run, 2 = score below min_mutation_score.
+      - name: Run mutation testing
+        working-directory: ${{ runner.temp }}/mt
+        run: java -jar mutationtester.jar "$GITHUB_WORKSPACE" mutation.config
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/mt/output/report/

@@ -46,6 +46,29 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Bundle the mutation specs so a deployed jar can load them by name
+                 (custom_mutation_spec=OperatorMutations.txt) from any directory. -->
+            <resource>
+                <directory>${project.basedir}</directory>
+                <targetPath>specs</targetPath>
+                <includes>
+                    <include>OperatorMutations.txt</include>
+                    <include>StatementMutation.txt</include>
+                    <include>StringMutation.txt</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/specs</directory>
+                <targetPath>specs</targetPath>
+                <includes>
+                    <include>*.spec</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <!-- Pinned so the build doesn't depend on which Maven is installed.
                  Older Maven defaults to compiler plugin 3.1, which predates the

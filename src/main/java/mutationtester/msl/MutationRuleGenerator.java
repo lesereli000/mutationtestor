@@ -34,7 +34,11 @@ import mutationtester.model.Mutator;
 public class MutationRuleGenerator {
 
     public static List<MutationRule> generateRules(File specFile) throws IOException {
-        List<String> rawLines = Files.readAllLines(specFile.toPath());
+        return generateRules(Files.readAllLines(specFile.toPath()));
+    }
+
+    /** Parses spec text that is already in memory (e.g. a spec bundled in the jar). */
+    public static List<MutationRule> generateRules(List<String> rawLines) throws IOException {
         List<String> lines = rawLines.stream()
                 .map(String::strip)
                 .toList();

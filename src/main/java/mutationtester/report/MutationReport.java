@@ -1,9 +1,12 @@
 package mutationtester.report;
 
+import mutationtester.equivalent.EquivalentMutantStore;
 import mutationtester.model.MutantResult;
 import mutationtester.model.MutationPoint;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MutationReport {
@@ -12,10 +15,27 @@ public class MutationReport {
     private int killed;
     private int survived;
     private int noCoverage;
+    private int equivalent;
     private double mutationScore;
 
     public MutationReport(List<MutantResult> results) {
-        this.results = results;
+        this(results, Set.of());
+    }
+
+    /**
+     * Mutants matching an equivalent ID are left out of every count and the
+     * score, the same way the HTML report hides them.
+     */
+    public MutationReport(List<MutantResult> results, Set<String> equivalentIds) {
+        List<MutantResult> scored = new ArrayList<>();
+        for (MutantResult result : results) {
+            if (!equivalentIds.isEmpty() && EquivalentMutantStore.matchesHiddenMutant(equivalentIds, result)) {
+                equivalent++;
+            } else {
+                scored.add(result);
+            }
+        }
+        this.results = scored;
         calculateStatistics();
     }
 
@@ -49,6 +69,9 @@ public class MutationReport {
                 survived, totalMutants > 0 ? (survived / (double) totalMutants) * 100 : 0.0);
         System.out.printf("No Coverage:      %d (%.1f%%)\n",
                 noCoverage, totalMutants > 0 ? (noCoverage / (double) totalMutants) * 100 : 0.0);
+        if (equivalent > 0) {
+            System.out.printf("Equivalent:       %d (excluded from all counts and the score)\n", equivalent);
+        }
         System.out.println("-".repeat(80));
         System.out.printf("MUTATION SCORE:   %.1f%%\n", mutationScore);
         System.out.println("=".repeat(80));
@@ -157,5 +180,16 @@ public class MutationReport {
 
     public int getNoCoverage() {
         return noCoverage;
+    }
+
+    public int getEquivalent() {
+        return equivalent;
+    }
+
+    /** Scored survivors, in run order (equivalent mutants are not included). */
+    public List<MutantResult> getSurvivedResults() {
+        return results.stream()
+                .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
+                .toList();
     }
 }
