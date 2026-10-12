@@ -13,6 +13,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL=false
+MISSING=0
 
 if [[ "${1:-}" == "--install" ]]; then
   INSTALL=true
@@ -100,10 +101,18 @@ require_tool() {
 
   fail "$label is not installed or not on PATH."
   if [[ "$INSTALL" == true ]]; then
-    install_with_manager "$label" "$brew_package" "$apt_package" "$choco_package" || warn "$install_note"
+    install_with_manager "$label" "$brew_package" "$apt_package" "$choco_package" || true
+    if have "$command_name"; then
+      ok "$label installed: $($command_name --version 2>/dev/null | head -n 1)"
+      return 0
+    fi
+    warn "$install_note"
   else
     warn "$install_note"
   fi
+
+  MISSING=$((MISSING + 1))
+  return 0
 }
 
 download_maven_dependencies() {
@@ -188,6 +197,7 @@ check_racket() {
   else
     fail "Racket is not installed or not on PATH."
     warn "Install Racket from https://download.racket-lang.org/ or with your package manager."
+    MISSING=$((MISSING + 1))
   fi
 }
 
@@ -201,8 +211,15 @@ require_tool java "Java/JDK 17+" openjdk openjdk-17-jdk openjdk17 "Install JDK 1
 require_tool mvn "Maven" maven maven maven "Install Maven."
 require_tool dotnet ".NET SDK for net10.0 sample" dotnet-sdk dotnet-sdk-10.0 dotnet-sdk "Install a .NET SDK that supports net10.0."
 require_tool python3 "Python 3" python python3 python "Install Python 3."
-require_tool npm "Node.js/npm" node nodejs nodejs "Install Node.js and npm."
+require_tool node "Node.js" node nodejs nodejs "Install Node.js."
+require_tool npm "npm" node npm nodejs "Install npm."
 check_racket
+
+if [[ "$MISSING" -gt 0 ]]; then
+  echo
+  fail "$MISSING required tool(s) are still missing."
+  exit 1
+fi
 
 if [[ "$INSTALL" == true ]]; then
   echo
