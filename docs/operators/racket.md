@@ -6,6 +6,9 @@ grammar (`ISL.g4`), adapted for `#lang racket`.
 Racket has no `null`, so operators that replace a value with "null" use `'()`,
 the empty list. Booleans are `#t` and `#f`.
 
+Nothing inside a macro definition (`define-syntax-rule`, `define-syntax`,
+`let-syntax` and similar) is mutated, by built-in operators or spec rules.
+
 ## Built-in operators
 
 Use these names in `mutator_type`. `ALL` runs every one of them.

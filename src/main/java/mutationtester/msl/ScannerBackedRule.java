@@ -130,8 +130,12 @@ public class ScannerBackedRule implements MutationRule {
             return found;
         }
 
-        // Drop matches that sit inside comments or string literals.
+        // Drop matches that sit inside comments or string literals, and inside
+        // Racket macro definitions, which the native scanner skips too.
         boolean[] skipped = nonCodeMask(source, lower);
+        if (lower.endsWith(".rkt")) {
+            maskRacketMacroDefinitions(source, skipped);
+        }
         int[] lineStarts = new int[lines.length + 1];
         for (int i = 0; i < lines.length; i++) {
             lineStarts[i + 1] = lineStarts[i] + lines[i].length() + 1;
@@ -145,6 +149,33 @@ public class ScannerBackedRule implements MutationRule {
             }
         }
         return code;
+    }
+
+    /**
+     * Marks every offset of each (define-syntax-rule ...) or other macro
+     * definition, using the same form names as RacketMutationScanner. Parens
+     * in comments and strings (already marked) don't count toward nesting.
+     */
+    private static void maskRacketMacroDefinitions(String src, boolean[] mask) {
+        for (int open = 0; open < src.length(); open++) {
+            if (src.charAt(open) != '(' || mask[open]) continue;
+            int headEnd = open + 1;
+            while (headEnd < src.length() && !Character.isWhitespace(src.charAt(headEnd))
+                    && "()[]".indexOf(src.charAt(headEnd)) < 0) headEnd++;
+            if (!RacketMutationScanner.isMacroDefinitionForm(src.substring(open + 1, headEnd))) continue;
+
+            int depth = 0;
+            int close = open;
+            for (; close < src.length(); close++) {
+                if (mask[close]) continue;
+                char ch = src.charAt(close);
+                if (ch == '(' || ch == '[') depth++;
+                else if ((ch == ')' || ch == ']') && --depth == 0) break;
+            }
+            int stop = Math.min(close + 1, src.length());
+            java.util.Arrays.fill(mask, open, stop, true);
+            open = stop - 1;
+        }
     }
 
     /**

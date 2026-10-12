@@ -1215,6 +1215,57 @@ public class RacketScannerTests {
                 points.stream().map(MutationPoint::getOperator).toList());
     }
 
+    // -------------------------------------------------------------------------
+    // Macro definitions are never mutated
+    // -------------------------------------------------------------------------
+
+    /** Two macros, then an ordinary function on line 9. */
+    private static File writeMacroFile() throws IOException {
+        File tmp = File.createTempFile("macros", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define-syntax-rule (when-positive n body ...)",
+                "  (when (> n 0) (displayln n) (make-widget n) body ...))",
+                "(define-syntax swap!",
+                "  (syntax-rules ()",
+                "    [(swap! a b) (let ([tmp a]) (set! a b) (set! b tmp))]))",
+                "(define-syntax-rule (with-value v e)",
+                "  (let () (define v (compute 1)) e))",
+                "(define (after x) (if (> x 0) (+ x 1) (make-widget x)))",
+                ""));
+        return tmp;
+    }
+
+    @Test
+    public void testBuiltInOperatorsSkipMacroDefinitions() throws IOException {
+        File file = writeMacroFile();
+        for (Mutator.MutatorType type : RacketMutationScanner.getSupportedTypes()) {
+            for (MutationPoint p : RacketMutationScanner.scanFile(file, type)) {
+                assertEquals(9, p.getLineNumber(), type + " mutated a macro: " + p.getOperator());
+            }
+        }
+        // The function after the macros is still mutated
+        assertEquals(1, RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS).size());
+        assertEquals(1, RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONSTRUCTOR_CALLS).size());
+    }
+
+    @Test
+    public void testSpecRulesSkipMacroDefinitions() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("macro-spec");
+        java.nio.file.Files.copy(writeMacroFile().toPath(), dir.resolve("macros.rkt"));
+
+        // Covers both the adapter-based rules and the scanner-backed rules'
+        // regex fallbacks, which match (make-widget n) and (define v (compute 1))
+        for (String spec : List.of("OperatorMutations.txt", "StatementMutation.txt")) {
+            List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, spec);
+            assertFalse(points.isEmpty(), spec + " should still mutate the function after the macros");
+            for (MutationPoint p : points) {
+                assertEquals(9, p.getLineNumber(), spec + " mutated a macro: " + p.getOperator());
+            }
+        }
+    }
+
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
         return points.stream()
                 .filter(p -> p.getOperator().equals(operator))

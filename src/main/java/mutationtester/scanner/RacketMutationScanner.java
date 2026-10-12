@@ -246,6 +246,7 @@ public class RacketMutationScanner {
          */
         @Override
         public Void visitExpr(ISLParser.ExprContext ctx) {
+            if (isMacroDefinition(ctx)) return null;  // nothing inside a macro is mutated
 
             // Operator/keyword mutations
             if (ctx.getChildCount() >= 3) {
@@ -1048,6 +1049,27 @@ public class RacketMutationScanner {
     /** Racket equality tests that MSL's == (and the inner form of !=) stand for. */
     private static final List<String> EQUALITY_FUNCTIONS = List.of("=", "equal?", "eqv?", "eq?", "string=?", "char=?");
 
+    /**
+     * Forms that define macros. Their patterns ((when-positive n body ...)) and
+     * templates aren't ordinary expressions, so nothing inside them is mutated.
+     */
+    private static final java.util.Set<String> MACRO_DEFINITION_FORMS = java.util.Set.of(
+            "define-syntax-rule", "define-syntax", "define-syntaxes",
+            "let-syntax", "letrec-syntax", "define-simple-macro");
+
+    /** True for define-syntax-rule and the other macro-defining form names above. */
+    public static boolean isMacroDefinitionForm(String head) {
+        return MACRO_DEFINITION_FORMS.contains(head);
+    }
+
+    /** True for (define-syntax-rule ...) and the other forms above. */
+    static boolean isMacroDefinition(ParseTree ctx) {
+        return ctx instanceof ISLParser.ExprContext
+                && ctx.getChildCount() >= 3
+                && ctx.getChild(0).getText().equals("(")
+                && isMacroDefinitionForm(ctx.getChild(1).getText());
+    }
+
     /** Forms that define or declare something; removing them isn't a call removal. */
     private static final java.util.Set<String> NON_STATEMENT_FORMS = java.util.Set.of(
             "define", "define-values", "define-syntax", "define-struct", "struct",
@@ -1073,6 +1095,11 @@ public class RacketMutationScanner {
             //            masks the value to the word size first.
             // The inner / of (floor (/ a b)) and the bitwise-and mask of >>> are
             // part of those operators, so the / and & rules don't match them.
+
+            @Override
+            public boolean skipsSubtree(ParseTree ctx) {
+                return isMacroDefinition(ctx);
+            }
 
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
