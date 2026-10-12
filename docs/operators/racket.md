@@ -149,8 +149,10 @@ and find nothing in Racket.
   in `OperatorMutations.txt`, until it is fixed.
 - **Names that contain `<`, `>` or `=`** (`string=?`, `char<?`,
   `number->string`) aren't read as one name by the grammar, so operators that
-  look for specific names miss them. For example, `REMOVE_CONDITIONALS_EQUAL_*`
-  and `EQ_NEGATE` don't treat `(string=? a b)` as an equality test.
+  look for specific names miss them. For example, the built-in
+  `REMOVE_CONDITIONALS_EQUAL_*` and `EQ_NEGATE` don't treat `(string=? a b)` as
+  an equality test. The spec condition rules (`{equality_condition}`,
+  `{order_condition}`) do recognize `string=?`, `char<?` and similar names.
 - **Calls and values that span several lines** are skipped by
   `NON_VOID_METHOD_CALLS`, `CONSTRUCTOR_CALLS` and `EMPTY_RETURNS`.
 - **Any function named `make-…`** is treated as a constructor, including your

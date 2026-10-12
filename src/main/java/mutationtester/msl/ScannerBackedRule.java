@@ -563,6 +563,10 @@ public class ScannerBackedRule implements MutationRule {
                 mutatorType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
                         || mutatorType == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF);
 
+        if (extension.endsWith(".rkt")) {
+            return scanRacketConditionalRemovals(sourceFile, lines, replacement);
+        }
+
         // javac rejects while (false) and code after while (true) as
         // unreachable, so Java only gets if-conditions.
         Pattern cStyle = Pattern.compile(extension.endsWith(".java") ? "\\b(if)\\s*\\(" : "\\b(if|while)\\s*\\(");
@@ -611,6 +615,40 @@ public class ScannerBackedRule implements MutationRule {
             }
         }
 
+        return points;
+    }
+
+    /**
+     * Racket conditions are whole forms: the test of (if test ...), (when test ...),
+     * (unless test ...) and each [test ...] cond clause. The test is classified by
+     * its function name and replaced whole, so (if (string<? s t) ...) becomes
+     * (if #t ...). This finds names like string<? that the native scanner can't.
+     */
+    private List<MutationPoint> scanRacketConditionalRemovals(File sourceFile, String[] lines,
+                                                              String replacement) {
+        boolean equality = mutatorType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                || mutatorType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE;
+        // The '(' that opens a test: after if/when/unless, or first in a cond clause
+        Pattern testStart = Pattern.compile("(?:\\((?:if|when|unless)\\s+|\\[\\s*)\\(");
+        List<MutationPoint> points = new ArrayList<>();
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            Matcher m = testStart.matcher(line);
+            while (m.find()) {
+                int open = m.end() - 1;
+                int close = findMatchingParen(line, open);
+                if (close < 0) continue;
+                String test = line.substring(open, close + 1);
+                String head = test.substring(1).split("[\\s()\\[\\]]", 2)[0];
+                boolean matches = equality
+                        ? RacketMutationScanner.isEqualityTest(head)
+                        : RacketMutationScanner.isOrderTest(head);
+                if (matches) {
+                    points.add(new MutationPoint(sourceFile, i + 1, open, test, replacement, mutatorType, label));
+                }
+            }
+        }
         return points;
     }
 

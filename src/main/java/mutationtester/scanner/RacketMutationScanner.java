@@ -213,17 +213,10 @@ public class RacketMutationScanner {
                 "local", "shared", "recur", "delay", "set!", "time", "module+"
         );
 
-        // Heads that make a condition an "equality" check (PIT REMOVE_CONDITIONALS_EQUAL_*).
-        // Names containing =, < or > (string=?, char<?, ...) are not single NAME
-        // tokens in the ISL lexer, so they can't be matched here.
-        private static final java.util.Set<String> EQUALITY_OPS = java.util.Set.of(
-                "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?"
-        );
-
-        // Heads that make a condition an "order" check (PIT REMOVE_CONDITIONALS_ORDER_*)
-        private static final java.util.Set<String> ORDER_OPS = java.util.Set.of(
-                "<", ">", "<=", ">=", "positive?", "negative?"
-        );
+        // Condition heads for REMOVE_CONDITIONALS_* are EQUALITY_TESTS and ORDER_TESTS
+        // (outer class). Names containing =, < or > (string=?, char<?, ...) are not
+        // single NAME tokens in the ISL lexer, so only the plain ones match here;
+        // ScannerBackedRule's text fallback finds the rest for spec rules.
 
         private boolean isStatementHead(String text) {
             if (SPECIAL_FORMS.contains(text)) return false;
@@ -492,7 +485,7 @@ public class RacketMutationScanner {
         private void addRemoveConditionalPoint(ISLParser.ExprContext cond) {
             boolean equality = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
                     || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE;
-            if (!containsHead(cond, equality ? EQUALITY_OPS : ORDER_OPS)) return;
+            if (!containsHead(cond, equality ? EQUALITY_TESTS : ORDER_TESTS)) return;
 
             // Main.applyMutation rewrites a single line, so a condition that spans
             // lines cannot be replaced safely; skip it rather than emit a broken mutant.
@@ -1080,6 +1073,29 @@ public class RacketMutationScanner {
     private static final java.util.Set<String> MACRO_DEFINITION_FORMS = java.util.Set.of(
             "define-syntax-rule", "define-syntax", "define-syntaxes",
             "let-syntax", "letrec-syntax", "define-simple-macro");
+
+    /** Functions whose call is an equality test (PIT REMOVE_CONDITIONALS_EQUAL_*). */
+    private static final java.util.Set<String> EQUALITY_TESTS = java.util.Set.of(
+            "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?",
+            "string=?", "string-ci=?", "char=?", "char-ci=?");
+
+    /** Functions whose call is an order test (PIT REMOVE_CONDITIONALS_ORDER_*). */
+    private static final java.util.Set<String> ORDER_TESTS = java.util.Set.of(
+            "<", ">", "<=", ">=", "positive?", "negative?",
+            "string<?", "string>?", "string<=?", "string>=?",
+            "string-ci<?", "string-ci>?", "string-ci<=?", "string-ci>=?",
+            "char<?", "char>?", "char<=?", "char>=?",
+            "char-ci<?", "char-ci>?", "char-ci<=?", "char-ci>=?");
+
+    /** True if a call to this function is an equality test. */
+    public static boolean isEqualityTest(String head) {
+        return EQUALITY_TESTS.contains(head);
+    }
+
+    /** True if a call to this function is an order test. */
+    public static boolean isOrderTest(String head) {
+        return ORDER_TESTS.contains(head);
+    }
 
     /** True for define-syntax-rule and the other macro-defining form names above. */
     public static boolean isMacroDefinitionForm(String head) {

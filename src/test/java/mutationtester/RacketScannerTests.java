@@ -1328,6 +1328,41 @@ public class RacketScannerTests {
                 points.stream().map(MutationPoint::getOperator).toList());
     }
 
+    // -------------------------------------------------------------------------
+    // Spec condition rules replace the whole Racket test
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testSpecConditionRulesReplaceWholeRacketTests() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("racket-conditions");
+        java.nio.file.Path file = dir.resolve("conds.rkt");
+        java.nio.file.Files.writeString(file, String.join("\n",
+                "#lang racket",
+                "(define (a s t) (if (string<? s t) 1 2))",
+                "(define (b s t) (when (string=? s t) (displayln s)))",
+                "(define (c x y) (cond [(char=? x y) 1] [else 2]))",
+                "(define (d n) (if (< n 0) 1 2))",
+                ""));
+        String source = java.nio.file.Files.readString(file);
+
+        List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().contains("condition →")).toList();
+
+        // Names with <, > or = (string<?, char=?) are classified too, and each
+        // test is replaced whole: (if (#t) 1 2) would fail when run.
+        java.util.Set<String> mutatedLines = new java.util.TreeSet<>();
+        for (MutationPoint p : points) {
+            mutatedLines.add(Main.applyMutation(source, p).split("\n")[p.getLineNumber() - 1]);
+        }
+        assertEquals(new java.util.TreeSet<>(List.of(
+                "(define (a s t) (if #t 1 2))", "(define (a s t) (if #f 1 2))",
+                "(define (b s t) (when #t (displayln s)))", "(define (b s t) (when #f (displayln s)))",
+                "(define (c x y) (cond [#t 1] [else 2]))", "(define (c x y) (cond [#f 1] [else 2]))",
+                "(define (d n) (if #t 1 2))", "(define (d n) (if #f 1 2))")), mutatedLines);
+        // One mutant per test per rule: the native and fallback scans don't double up
+        assertEquals(8, points.size());
+    }
+
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
         return points.stream()
                 .filter(p -> p.getOperator().equals(operator))
