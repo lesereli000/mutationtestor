@@ -856,8 +856,32 @@ public class RacketMutationScanner {
                 }
                 // ( struct name (field ...) ) — the field list is not a call
                 case "struct", "define-struct" -> statementExprs.addAll(exprs);
+                // ( let ( [x v] ... ) stmt... value ) and ( lambda ( x ... ) stmt... value )
+                case "let", "let*", "letrec", "lambda", "λ" -> {
+                    List<ISLParser.ExprContext> body = bodyAfterBindings(ctx);
+                    statementExprs.addAll(body.subList(0, Math.max(0, body.size() - 1)));
+                }
                 default -> { }
             }
+        }
+
+        /**
+         * The body exprs of a let or lambda, which the grammar lists flat after the
+         * bindings or parameters: everything after the ')' that closes them.
+         */
+        private List<ISLParser.ExprContext> bodyAfterBindings(ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> body = new ArrayList<>();
+            if (!(ctx.getChild(2) instanceof TerminalNode open) || !open.getText().equals("(")) return body;
+            boolean inBody = false;
+            for (int i = 3; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+                if (!inBody) {
+                    inBody = child instanceof TerminalNode t && t.getText().equals(")");
+                } else if (child instanceof ISLParser.ExprContext expr) {
+                    body.add(expr);
+                }
+            }
+            return body;
         }
 
         // -------------------------------------------------------------------------
@@ -1466,15 +1490,29 @@ public class RacketMutationScanner {
 
             /** Index of the first body form, or -1 if the form has no body. */
             private int bodyStartIndex(ParseTree form) {
-                switch (form.getChild(1).getText()) {
+                String head = form.getChild(1).getText();
+                switch (head) {
                     case "begin":
                         return 2;
-                    case "lambda", "λ", "let*", "letrec", "when", "unless":
+                    case "when", "unless":
                         return 3;
-                    case "let":
-                        // Named let: (let loop ([i 0]) body...)
-                        return form.getChild(2).getText().startsWith("(")
-                                || form.getChild(2).getText().startsWith("[") ? 3 : 4;
+                    case "lambda", "λ", "let", "let*", "letrec":
+                        // The grammar lists the parameters or bindings flat, so
+                        // [x (f a)] puts (f a) right after let: the body starts
+                        // after the ')' that closes them.
+                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
+                            for (int i = 3; i < form.getChildCount(); i++) {
+                                if (form.getChild(i) instanceof TerminalNode t && t.getText().equals(")")) {
+                                    return i + 1;
+                                }
+                            }
+                            return -1;
+                        }
+                        // Not parsed as that form (e.g. a named let): the
+                        // bindings are one sub-form, after the name if any.
+                        boolean named = head.equals("let") && !form.getChild(2).getText().startsWith("(")
+                                && !form.getChild(2).getText().startsWith("[");
+                        return named ? 4 : 3;
                     case "define":
                         // (define (f x) body...) - a grammar definition lists the
                         // header tokens flat, so the body starts after its ')'.

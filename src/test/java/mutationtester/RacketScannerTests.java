@@ -1266,6 +1266,68 @@ public class RacketScannerTests {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // let / lambda bodies: bindings are values, non-last body forms are statements
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testSpecStatementRemovalSkipsLetBindings() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("let-statements");
+        java.nio.file.Files.writeString(dir.resolve("lets.rkt"), String.join("\n",
+                "#lang racket",
+                "(define (bindings a b)",
+                "  (let ([add (+ a b)] [sub (- a b)])",
+                "    (list add sub)))",
+                "(define (let-body x)",
+                "  (let ([y (add1 x)])",
+                "    (displayln y)",
+                "    (* y 2)))",
+                "(define (star-body x)",
+                "  (let* ([a (sqr x)] [b (add1 a)])",
+                "    (displayln b)",
+                "    b))",
+                "(define (rec-body x)",
+                "  (letrec ([f (lambda (n) n)])",
+                "    (displayln x)",
+                "    (f x)))",
+                "(define (lam)",
+                "  (lambda (x) (displayln x) x))",
+                ""));
+
+        List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("statement → ;")).toList();
+
+        // Only the discarded displayln calls in each body; the binding values
+        // (+ a b), (add1 x), (sqr x), (lambda (n) n) etc. are used, so they stay.
+        assertEquals(List.of(7, 11, 15, 18), points.stream().map(MutationPoint::getLineNumber).toList());
+        for (MutationPoint p : points) {
+            assertTrue(p.getOperator().startsWith("(displayln"), p.getOperator());
+            assertEquals("(void)", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testNonVoidCallsSkipDiscardedLetAndLambdaBodyForms() throws IOException {
+        File tmp = File.createTempFile("let-non-void", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f x)",
+                "  (let ([y (add1 x)])",
+                "    (compute y)",
+                "    (finish y)))",
+                "(define (g)",
+                "  (lambda (x) (log-it x) (result x)))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // (compute y) and (log-it x) are discarded; the binding value and the
+        // last body forms are used
+        assertEquals(List.of("(add1 x)", "(finish y)", "(result x)"),
+                points.stream().map(MutationPoint::getOperator).toList());
+    }
+
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {
         return points.stream()
                 .filter(p -> p.getOperator().equals(operator))
