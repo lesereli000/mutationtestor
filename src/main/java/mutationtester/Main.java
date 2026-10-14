@@ -573,31 +573,6 @@ public class Main {
             return String.join("\n", lines);
         }
 
-        // Racket EQ_NEGATE: wrap (= x y) as (not (= x y)) instead of
-        // naively replacing just the "=" token, which produces broken syntax.
-        if (point.getType() == Mutator.MutatorType.EQ_NEGATE
-                && point.getSourceFile().getName().endsWith(".rkt")) {
-            int parenCol = point.getColumnNumber() - 1;
-            if (parenCol >= 0 && parenCol < line.length() && line.charAt(parenCol) == '(') {
-                int depth = 0;
-                int closeIdx = -1;
-                for (int i = parenCol; i < line.length(); i++) {
-                    if (line.charAt(i) == '(') depth++;
-                    else if (line.charAt(i) == ')') {
-                        depth--;
-                        if (depth == 0) { closeIdx = i; break; }
-                    }
-                }
-                if (closeIdx != -1) {
-                    String inner = line.substring(parenCol, closeIdx + 1); // e.g. "(= x y)"
-                    String mutated = "(not " + inner + ")";               // "(not (= x y))"
-                    String newLine = line.substring(0, parenCol) + mutated + line.substring(closeIdx + 1);
-                    lines[lineIndex] = newLine;
-                    return String.join("\n", lines);
-                }
-            }
-        }
-
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
                 line.substring(Math.min(point.getColumnNumber() + point.getOperator().length(), line.length()));

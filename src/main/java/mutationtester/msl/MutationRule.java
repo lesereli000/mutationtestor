@@ -34,8 +34,8 @@ public interface MutationRule {
     }
 
     private void traverseAndFind(MSLScannerAdapter scanner, ParseTree ctx, java.util.List<MutationPoint> points, File sourceFile) {
-        if (ctx == null) return;
-        
+        if (ctx == null || scanner.skipsSubtree(ctx)) return;
+
         if (matches(scanner, ctx)) {
             MutationPoint point = apply(scanner, ctx, sourceFile);
             if (point != null) {
