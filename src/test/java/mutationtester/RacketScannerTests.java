@@ -1328,6 +1328,34 @@ public class RacketScannerTests {
                 points.stream().map(MutationPoint::getOperator).toList());
     }
 
+    @Test
+    public void testEmptyLambdaParametersAndLetBindingsParse() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("empty-parens");
+        java.nio.file.Path file = dir.resolve("empty.rkt");
+        java.nio.file.Files.writeString(file, String.join("\n",
+                "#lang racket",
+                "(define (main d)",
+                "  (hash-set! d 'k (lambda () \"v\"))",
+                "  (lookup d))",
+                "(define (scoped)",
+                "  (let ()",
+                "    (displayln 1)",
+                "    (result)))",
+                ""));
+
+        // A lexer reads () as one token; before, (lambda () ...) didn't parse, the
+        // function ended early and (hash-set! ...) lost its closing paren.
+        List<MutationPoint> returns = RacketMutationScanner.scanFile(file.toFile(),
+                Mutator.MutatorType.RVM_OBJECT_TO_NULL);
+        assertEquals(List.of("(lookup d)", "(let ()\n    (displayln 1)\n    (result))"),
+                returns.stream().map(p -> p.getOperator().replace("\r", "")).toList());
+
+        List<MutationPoint> statements = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("statement → ;")).toList();
+        assertEquals(List.of("(hash-set! d 'k (lambda () \"v\"))", "(displayln 1)"),
+                statements.stream().map(MutationPoint::getOperator).toList());
+    }
+
     // -------------------------------------------------------------------------
     // Spec condition rules replace the whole Racket test
     // -------------------------------------------------------------------------

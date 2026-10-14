@@ -30,14 +30,15 @@ expr
     | '(' 'begin0' expr+ ')'
     | '(' 'set!' NAME expr ')'
     | '(' 'delay' expr ')'
-    // #lang racket allows several forms (and internal defines) in lambda and let bodies
-    | '(' 'lambda' '(' NAME* ')' (definition | expr)+ ')'
-    | '(' '\u03BB' '(' NAME* ')' (definition | expr)+ ')'
+    // #lang racket allows several forms (and internal defines) in lambda and let bodies.
+    // An empty () is a single '()' token, so (lambda () ...) and (let () ...) list it separately.
+    | '(' 'lambda' ('(' NAME* ')' | '()') (definition | expr)+ ')'
+    | '(' '\u03BB' ('(' NAME* ')' | '()') (definition | expr)+ ')'
     | '(' 'local' '[' definition* ']' expr ')'
-    | '(' 'letrec' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
+    | '(' 'letrec' ('(' ('[' name expr ']')* ')' | '()') (definition | expr)+ ')'
     | '(' 'shared' '(' ('[' name expr ']')* ')' expr ')'
-    | '(' 'let' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
-    | '(' 'let*' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
+    | '(' 'let' ('(' ('[' name expr ']')* ')' | '()') (definition | expr)+ ')'
+    | '(' 'let*' ('(' ('[' name expr ']')* ')' | '()') (definition | expr)+ ')'
     | '(' 'recur' name '(' ('[' name expr ']')* ')' expr ')'
     | '(' 'cond' ('[' expr expr ']')+ ')'
     | '(' 'cond' ('[' expr expr ']')* '[' 'else' expr ']' ')'

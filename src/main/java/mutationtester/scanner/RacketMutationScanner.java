@@ -864,8 +864,10 @@ public class RacketMutationScanner {
          */
         private List<ISLParser.ExprContext> bodyAfterBindings(ISLParser.ExprContext ctx) {
             List<ISLParser.ExprContext> body = new ArrayList<>();
-            if (!(ctx.getChild(2) instanceof TerminalNode open) || !open.getText().equals("(")) return body;
-            boolean inBody = false;
+            if (!(ctx.getChild(2) instanceof TerminalNode open)) return body;
+            // (lambda () ...) and (let () ...) have a single '()' token instead
+            boolean inBody = open.getText().equals("()");
+            if (!inBody && !open.getText().equals("(")) return body;
             for (int i = 3; i < ctx.getChildCount(); i++) {
                 ParseTree child = ctx.getChild(i);
                 if (!inBody) {
@@ -1515,7 +1517,10 @@ public class RacketMutationScanner {
                     case "lambda", "λ", "let", "let*", "letrec":
                         // The grammar lists the parameters or bindings flat, so
                         // [x (f a)] puts (f a) right after let: the body starts
-                        // after the ')' that closes them.
+                        // after the ')' that closes them. (lambda () ...) has a single '()' token.
+                        if (form.getChild(2) instanceof TerminalNode empty && empty.getText().equals("()")) {
+                            return 3;
+                        }
                         if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
                             for (int i = 3; i < form.getChildCount(); i++) {
                                 if (form.getChild(i) instanceof TerminalNode t && t.getText().equals(")")) {
