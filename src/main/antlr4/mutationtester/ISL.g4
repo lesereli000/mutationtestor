@@ -18,7 +18,7 @@ defOrExpr
     ;
 
 definition
-    : '(' 'define' '(' name NAME* ')' expr+ ')'
+    : '(' 'define' '(' name NAME* ')' (definition | expr)+ ')'  // #lang racket allows internal defines
     | '(' 'define' name expr ')'
     | '(' 'define-struct' name '(' name* ')' ')'
     | '(' 'provide' name+ ')'
@@ -30,13 +30,14 @@ expr
     | '(' 'begin0' expr+ ')'
     | '(' 'set!' NAME expr ')'
     | '(' 'delay' expr ')'
-    | '(' 'lambda' '(' NAME* ')' expr ')'
-    | '(' '\u03BB' '(' NAME* ')' expr ')'
+    // #lang racket allows several forms (and internal defines) in lambda and let bodies
+    | '(' 'lambda' '(' NAME* ')' (definition | expr)+ ')'
+    | '(' '\u03BB' '(' NAME* ')' (definition | expr)+ ')'
     | '(' 'local' '[' definition* ']' expr ')'
-    | '(' 'letrec' '(' ('[' name expr ']')* ')' expr ')'
+    | '(' 'letrec' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
     | '(' 'shared' '(' ('[' name expr ']')* ')' expr ')'
-    | '(' 'let' '(' ('[' name expr ']')* ')' expr ')'
-    | '(' 'let*' '(' ('[' name expr ']')* ')' expr ')'
+    | '(' 'let' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
+    | '(' 'let*' '(' ('[' name expr ']')* ')' (definition | expr)+ ')'
     | '(' 'recur' name '(' ('[' name expr ']')* ')' expr ')'
     | '(' 'cond' ('[' expr expr ']')+ ')'
     | '(' 'cond' ('[' expr expr ']')* '[' 'else' expr ']' ')'
@@ -57,9 +58,13 @@ expr
 
 quoted
     : NAME
+    | SYMBOL
     | STRING
     | CHARACTER
-    | '(' quoted* ')'
+    | NUMBER
+    | BOOLEAN
+    | PLUS | MINUS | STAR | SLASH | GT | LT | GEQ | LEQ | EQ  // '(+ -) quotes the symbols
+    | '(' (quoted | '()')* ')'  // the lexer reads a nested () as one '()' token
     | '\'' quoted
     | ',' quoted
     | ',@' quoted

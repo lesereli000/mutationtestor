@@ -126,6 +126,15 @@ public interface MSLScannerAdapter {
         return "";
     }
 
+    /**
+     * Returns true if no rule should mutate anything inside this node, such as
+     * a Racket macro definition, whose patterns and templates aren't ordinary
+     * expressions. Default: every node can be mutated.
+     */
+    default boolean skipsSubtree(ParseTree ctx) {
+        return false;
+    }
+
     // ── Optional language-specific helpers ────────────────────────────────
 
     /**

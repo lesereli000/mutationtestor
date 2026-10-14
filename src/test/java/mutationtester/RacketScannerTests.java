@@ -1,15 +1,17 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
-import mutationtester.model.*;
-import mutationtester.scanner.*;
-
-import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
+import mutationtester.model.MutationPoint;
+import mutationtester.model.Mutator;
+import mutationtester.scanner.RacketMutationScanner;
 
 /**
  * Tests for SchemeMutationScanner (Racket/.rkt files).
@@ -917,8 +919,13 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.EMPTY_RETURNS);
 
         // 5 two-branch string ifs + check-logic's nested if (3 string results)
-        assertEquals(13, points.size());
+        // + check-floats' (list a b c), after its internal defines
+        assertEquals(14, points.size());
         for (MutationPoint p : points) {
+            if (p.getOperator().equals("(list a b c)")) {
+                assertEquals("'()", p.getReplacement());
+                continue;
+            }
             assertTrue(p.getOperator().startsWith("\""));
             assertEquals("\"\"", p.getReplacement());
         }
@@ -952,6 +959,50 @@ public class RacketScannerTests {
         assertEquals("'()", points.get(0).getReplacement());
         assertEquals("(format \"~a\" x)", points.get(1).getOperator());
         assertEquals("\"\"", points.get(1).getReplacement());
+    }
+
+    @Test
+    public void testTypedEmptyReturnsUseTheValuesInferredType() throws IOException {
+        File tmp = File.createTempFile("typed-empty-returns", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (num x) (+ x 1))",
+                "(define (call x) (sqr x))",
+                "(define (lit) 42)",
+                "(define (cmp a b) (< a b))",
+                "(define (pred? x) (zero? x))",
+                "(define (yes) #t)",
+                "(define (str) \"hi\")",
+                "(define (lst x) (list x))",
+                "(define (unknown x) (helper x))",
+                "(define (branches x) (if (> x 0) 1 0))",
+                "(define (inner x)",
+                "  (define y (add1 x))",
+                "  (- y))",
+                "(define (empty) '())",
+                "(define (none) #f)",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanTypedEmptyReturns(tmp);
+
+        // Each tail value becomes the empty value of its type; the 0 branch,
+        // '() and #f are already empty, and the internal define isn't a return.
+        java.util.Map<String, String> mutated = new java.util.LinkedHashMap<>();
+        for (MutationPoint p : points) mutated.put(p.getOperator(), p.getReplacement());
+        java.util.Map<String, String> expected = new java.util.LinkedHashMap<>();
+        expected.put("(+ x 1)", "0");
+        expected.put("(sqr x)", "0");
+        expected.put("42", "0");
+        expected.put("(< a b)", "#f");
+        expected.put("(zero? x)", "#f");
+        expected.put("#t", "#f");
+        expected.put("\"hi\"", "\"\"");
+        expected.put("(list x)", "'()");
+        expected.put("(helper x)", "'()");
+        expected.put("1", "0");
+        expected.put("(- y)", "0");
+        assertEquals(expected, mutated);
     }
 
     // -------------------------------------------------------------------------
@@ -1140,6 +1191,176 @@ public class RacketScannerTests {
         assertEquals(List.of("eq?", "eqv?"), points.stream().map(MutationPoint::getOperator).toList());
         assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("equal?")));
         assertTrue(points.stream().allMatch(p -> p.getLineNumber() == 3));
+    }
+
+    @Test
+    public void testQuotedListsWithNumbersBooleansAndOperatorsParse() throws IOException {
+        File tmp = File.createTempFile("quoted-lists", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (nums) (length '(1 2.5 3)))",
+                "(define (bools) (length '(#t #f)))",
+                "(define (ops) (length '(+ - < >=)))",
+                "(define (nested) (length '(1 () (2 3))))",
+                "(define (after x) (add1 x))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // Each call is captured whole (a quoted number used to end the parse
+        // early, cutting off the closing paren), and parsing continues past them.
+        assertEquals(List.of("(length '(1 2.5 3))", "(length '(#t #f))", "(length '(+ - < >=))",
+                "(length '(1 () (2 3)))", "(add1 x)"),
+                points.stream().map(MutationPoint::getOperator).toList());
+    }
+
+    // -------------------------------------------------------------------------
+    // Macro definitions are never mutated
+    // -------------------------------------------------------------------------
+
+    /** Two macros, then an ordinary function on line 9. */
+    private static File writeMacroFile() throws IOException {
+        File tmp = File.createTempFile("macros", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define-syntax-rule (when-positive n body ...)",
+                "  (when (> n 0) (displayln n) (make-widget n) body ...))",
+                "(define-syntax swap!",
+                "  (syntax-rules ()",
+                "    [(swap! a b) (let ([tmp a]) (set! a b) (set! b tmp))]))",
+                "(define-syntax-rule (with-value v e)",
+                "  (let () (define v (compute 1)) e))",
+                "(define (after x) (if (> x 0) (+ x 1) (make-widget x)))",
+                ""));
+        return tmp;
+    }
+
+    @Test
+    public void testBuiltInOperatorsSkipMacroDefinitions() throws IOException {
+        File file = writeMacroFile();
+        for (Mutator.MutatorType type : RacketMutationScanner.getSupportedTypes()) {
+            for (MutationPoint p : RacketMutationScanner.scanFile(file, type)) {
+                assertEquals(9, p.getLineNumber(), type + " mutated a macro: " + p.getOperator());
+            }
+        }
+        // The function after the macros is still mutated
+        assertEquals(1, RacketMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS).size());
+        assertEquals(1, RacketMutationScanner.scanFile(file, Mutator.MutatorType.CONSTRUCTOR_CALLS).size());
+    }
+
+    @Test
+    public void testSpecRulesSkipMacroDefinitions() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("macro-spec");
+        java.nio.file.Files.copy(writeMacroFile().toPath(), dir.resolve("macros.rkt"));
+
+        // Covers both the adapter-based rules and the scanner-backed rules'
+        // regex fallbacks, which match (make-widget n) and (define v (compute 1))
+        for (String spec : List.of("OperatorMutations.txt", "StatementMutation.txt")) {
+            List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, spec);
+            assertFalse(points.isEmpty(), spec + " should still mutate the function after the macros");
+            for (MutationPoint p : points) {
+                assertEquals(9, p.getLineNumber(), spec + " mutated a macro: " + p.getOperator());
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // let / lambda bodies: bindings are values, non-last body forms are statements
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testSpecStatementRemovalSkipsLetBindings() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("let-statements");
+        java.nio.file.Files.writeString(dir.resolve("lets.rkt"), String.join("\n",
+                "#lang racket",
+                "(define (bindings a b)",
+                "  (let ([add (+ a b)] [sub (- a b)])",
+                "    (list add sub)))",
+                "(define (let-body x)",
+                "  (let ([y (add1 x)])",
+                "    (displayln y)",
+                "    (* y 2)))",
+                "(define (star-body x)",
+                "  (let* ([a (sqr x)] [b (add1 a)])",
+                "    (displayln b)",
+                "    b))",
+                "(define (rec-body x)",
+                "  (letrec ([f (lambda (n) n)])",
+                "    (displayln x)",
+                "    (f x)))",
+                "(define (lam)",
+                "  (lambda (x) (displayln x) x))",
+                ""));
+
+        List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("statement → ;")).toList();
+
+        // Only the discarded displayln calls in each body; the binding values
+        // (+ a b), (add1 x), (sqr x), (lambda (n) n) etc. are used, so they stay.
+        assertEquals(List.of(7, 11, 15, 18), points.stream().map(MutationPoint::getLineNumber).toList());
+        for (MutationPoint p : points) {
+            assertTrue(p.getOperator().startsWith("(displayln"), p.getOperator());
+            assertEquals("(void)", p.getReplacement());
+        }
+    }
+
+    @Test
+    public void testNonVoidCallsSkipDiscardedLetAndLambdaBodyForms() throws IOException {
+        File tmp = File.createTempFile("let-non-void", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (f x)",
+                "  (let ([y (add1 x)])",
+                "    (compute y)",
+                "    (finish y)))",
+                "(define (g)",
+                "  (lambda (x) (log-it x) (result x)))",
+                ""));
+
+        List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
+
+        // (compute y) and (log-it x) are discarded; the binding value and the
+        // last body forms are used
+        assertEquals(List.of("(add1 x)", "(finish y)", "(result x)"),
+                points.stream().map(MutationPoint::getOperator).toList());
+    }
+
+    // -------------------------------------------------------------------------
+    // Spec condition rules replace the whole Racket test
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testSpecConditionRulesReplaceWholeRacketTests() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("racket-conditions");
+        java.nio.file.Path file = dir.resolve("conds.rkt");
+        java.nio.file.Files.writeString(file, String.join("\n",
+                "#lang racket",
+                "(define (a s t) (if (string<? s t) 1 2))",
+                "(define (b s t) (when (string=? s t) (displayln s)))",
+                "(define (c x y) (cond [(char=? x y) 1] [else 2]))",
+                "(define (d n) (if (< n 0) 1 2))",
+                ""));
+        String source = java.nio.file.Files.readString(file);
+
+        List<MutationPoint> points = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().contains("condition →")).toList();
+
+        // Names with <, > or = (string<?, char=?) are classified too, and each
+        // test is replaced whole: (if (#t) 1 2) would fail when run.
+        java.util.Set<String> mutatedLines = new java.util.TreeSet<>();
+        for (MutationPoint p : points) {
+            mutatedLines.add(Main.applyMutation(source, p).split("\n")[p.getLineNumber() - 1]);
+        }
+        assertEquals(new java.util.TreeSet<>(List.of(
+                "(define (a s t) (if #t 1 2))", "(define (a s t) (if #f 1 2))",
+                "(define (b s t) (when #t (displayln s)))", "(define (b s t) (when #f (displayln s)))",
+                "(define (c x y) (cond [#t 1] [else 2]))", "(define (c x y) (cond [#f 1] [else 2]))",
+                "(define (d n) (if #t 1 2))", "(define (d n) (if #f 1 2))")), mutatedLines);
+        // One mutant per test per rule: the native and fallback scans don't double up
+        assertEquals(8, points.size());
     }
 
     private static MutationPoint findByOperator(List<MutationPoint> points, String operator) {

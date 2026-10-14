@@ -150,6 +150,22 @@ public class RacketMutationScanner {
     // -------------------------------------------------------------------------
 
     public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
+        return scan(file, type, false);
+    }
+
+    /**
+     * EMPTY_RETURNS for every returned value, not just strings and lists: each
+     * tail value becomes the empty value of its inferred type (0, "", '(), #f,
+     * or '() when the type can't be told). This is MSL's
+     * {return_value} → {empty_value}, which Java and C# apply to every return
+     * using the declared type.
+     */
+    public static List<MutationPoint> scanTypedEmptyReturns(File file) throws IOException {
+        return scan(file, Mutator.MutatorType.EMPTY_RETURNS, true);
+    }
+
+    private static List<MutationPoint> scan(File file, Mutator.MutatorType type, boolean typedEmptyValues)
+            throws IOException {
         String sourceCode = Files.readString(file.toPath());
 
         CharStream input = CharStreams.fromString(sourceCode);
@@ -166,6 +182,7 @@ public class RacketMutationScanner {
 
 
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        visitor.typedEmptyValues = typedEmptyValues;
         if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
             // Structs may be defined after their first use, so collect them up front
             visitor.collectStructConstructors(tree);
@@ -186,23 +203,20 @@ public class RacketMutationScanner {
         private final String sourceCode;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
 
+        // EMPTY_RETURNS: mutate every returned value by its inferred type
+        // (see scanTypedEmptyReturns), not only strings and lists
+        private boolean typedEmptyValues;
+
         private static final java.util.Set<String> SPECIAL_FORMS = java.util.Set.of(
                 "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
                 "begin", "begin0", "define", "define-struct", "provide", "require",
                 "local", "shared", "recur", "delay", "set!", "time", "module+"
         );
 
-        // Heads that make a condition an "equality" check (PIT REMOVE_CONDITIONALS_EQUAL_*).
-        // Names containing =, < or > (string=?, char<?, ...) are not single NAME
-        // tokens in the ISL lexer, so they can't be matched here.
-        private static final java.util.Set<String> EQUALITY_OPS = java.util.Set.of(
-                "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?"
-        );
-
-        // Heads that make a condition an "order" check (PIT REMOVE_CONDITIONALS_ORDER_*)
-        private static final java.util.Set<String> ORDER_OPS = java.util.Set.of(
-                "<", ">", "<=", ">=", "positive?", "negative?"
-        );
+        // Condition heads for REMOVE_CONDITIONALS_* are EQUALITY_TESTS and ORDER_TESTS
+        // (outer class). Names containing =, < or > (string=?, char<?, ...) are not
+        // single NAME tokens in the ISL lexer, so only the plain ones match here;
+        // ScannerBackedRule's text fallback finds the rest for spec rules.
 
         private boolean isStatementHead(String text) {
             if (SPECIAL_FORMS.contains(text)) return false;
@@ -225,6 +239,7 @@ public class RacketMutationScanner {
          */
         @Override
         public Void visitExpr(ISLParser.ExprContext ctx) {
+            if (isMacroDefinition(ctx)) return null;  // nothing inside a macro is mutated
 
             // Operator/keyword mutations
             if (ctx.getChildCount() >= 3) {
@@ -470,7 +485,7 @@ public class RacketMutationScanner {
         private void addRemoveConditionalPoint(ISLParser.ExprContext cond) {
             boolean equality = mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
                     || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE;
-            if (!containsHead(cond, equality ? EQUALITY_OPS : ORDER_OPS)) return;
+            if (!containsHead(cond, equality ? EQUALITY_TESTS : ORDER_TESTS)) return;
 
             // Main.applyMutation rewrites a single line, so a condition that spans
             // lines cannot be replaced safely; skip it rather than emit a broken mutant.
@@ -659,7 +674,7 @@ public class RacketMutationScanner {
         }
 
         private void checkEmptyReturn(ISLParser.ExprContext returnExpr) {
-            String replacement = emptyReplacement(returnExpr);
+            String replacement = typedEmptyValues ? typedEmptyValue(returnExpr) : emptyReplacement(returnExpr);
             if (replacement == null) return;
 
             // Main.applyMutation rewrites a single line; skip values that span lines.
@@ -707,6 +722,58 @@ public class RacketMutationScanner {
                 if (LIST_BUILDERS.contains(head.getText()) && hasArgs) return "'()";
             }
             return null;
+        }
+
+        /**
+         * The empty value for any returned expression, inferred from its form,
+         * or null when it is already that value:
+         *   strings and lists              → "" / '()   (as emptyReplacement)
+         *   numbers, (+ ...), (sqr ...)    → 0
+         *   #t, (< ...), (and ...), (p? x) → #f
+         *   anything else                  → '()  (Racket's null, as in RVM_OBJECT_TO_NULL)
+         */
+        private String typedEmptyValue(ISLParser.ExprContext ctx) {
+            String stringOrList = emptyReplacement(ctx);
+            if (stringOrList != null) return stringOrList;
+
+            Token tok = getSingleExprToken(ctx);
+            if (tok != null) {
+                String text = tok.getText();
+                return switch (tok.getType()) {
+                    case ISLLexer.STRING -> null;  // already ""
+                    case ISLLexer.NUMBER -> isZeroLiteral(text) ? null : "0";
+                    case ISLLexer.BOOLEAN -> text.equalsIgnoreCase("#f") || text.equals("#false") ? null : "#f";
+                    default -> "'()";
+                };
+            }
+            if (extractSourceText(ctx).replaceAll("\\s", "").equals("'()")) return null;
+
+            if (ctx.getChildCount() >= 3
+                    && ctx.getChild(0) instanceof TerminalNode open
+                    && open.getSymbol().getText().equals("(")) {
+                Token head = extractToken(ctx.getChild(1));
+                if (head != null) {
+                    String name = head.getText();
+                    int type = head.getType();
+                    if (type == ISLLexer.PLUS || type == ISLLexer.MINUS || type == ISLLexer.STAR
+                            || type == ISLLexer.SLASH || NUMBER_CALLS.contains(name)) return "0";
+                    if (type == ISLLexer.GT || type == ISLLexer.LT || type == ISLLexer.GEQ
+                            || type == ISLLexer.LEQ || type == ISLLexer.EQ
+                            || name.equals("and") || name.equals("or") || name.equals("not")
+                            || name.endsWith("?")) return "#f";
+                    // (list) with no arguments is already empty
+                    if (LIST_BUILDERS.contains(name)) return null;
+                }
+            }
+            return "'()";
+        }
+
+        private static boolean isZeroLiteral(String number) {
+            try {
+                return Double.parseDouble(number) == 0;
+            } catch (NumberFormatException e) {
+                return false;  // rationals like 1/2 are never zero
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -782,8 +849,32 @@ public class RacketMutationScanner {
                 }
                 // ( struct name (field ...) ) — the field list is not a call
                 case "struct", "define-struct" -> statementExprs.addAll(exprs);
+                // ( let ( [x v] ... ) stmt... value ) and ( lambda ( x ... ) stmt... value )
+                case "let", "let*", "letrec", "lambda", "λ" -> {
+                    List<ISLParser.ExprContext> body = bodyAfterBindings(ctx);
+                    statementExprs.addAll(body.subList(0, Math.max(0, body.size() - 1)));
+                }
                 default -> { }
             }
+        }
+
+        /**
+         * The body exprs of a let or lambda, which the grammar lists flat after the
+         * bindings or parameters: everything after the ')' that closes them.
+         */
+        private List<ISLParser.ExprContext> bodyAfterBindings(ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> body = new ArrayList<>();
+            if (!(ctx.getChild(2) instanceof TerminalNode open) || !open.getText().equals("(")) return body;
+            boolean inBody = false;
+            for (int i = 3; i < ctx.getChildCount(); i++) {
+                ParseTree child = ctx.getChild(i);
+                if (!inBody) {
+                    inBody = child instanceof TerminalNode t && t.getText().equals(")");
+                } else if (child instanceof ISLParser.ExprContext expr) {
+                    body.add(expr);
+                }
+            }
+            return body;
         }
 
         // -------------------------------------------------------------------------
@@ -975,6 +1066,50 @@ public class RacketMutationScanner {
     /** Racket equality tests that MSL's == (and the inner form of !=) stand for. */
     private static final List<String> EQUALITY_FUNCTIONS = List.of("=", "equal?", "eqv?", "eq?", "string=?", "char=?");
 
+    /**
+     * Forms that define macros. Their patterns ((when-positive n body ...)) and
+     * templates aren't ordinary expressions, so nothing inside them is mutated.
+     */
+    private static final java.util.Set<String> MACRO_DEFINITION_FORMS = java.util.Set.of(
+            "define-syntax-rule", "define-syntax", "define-syntaxes",
+            "let-syntax", "letrec-syntax", "define-simple-macro");
+
+    /** Functions whose call is an equality test (PIT REMOVE_CONDITIONALS_EQUAL_*). */
+    private static final java.util.Set<String> EQUALITY_TESTS = java.util.Set.of(
+            "=", "eq?", "eqv?", "equal?", "zero?", "null?", "empty?",
+            "string=?", "string-ci=?", "char=?", "char-ci=?");
+
+    /** Functions whose call is an order test (PIT REMOVE_CONDITIONALS_ORDER_*). */
+    private static final java.util.Set<String> ORDER_TESTS = java.util.Set.of(
+            "<", ">", "<=", ">=", "positive?", "negative?",
+            "string<?", "string>?", "string<=?", "string>=?",
+            "string-ci<?", "string-ci>?", "string-ci<=?", "string-ci>=?",
+            "char<?", "char>?", "char<=?", "char>=?",
+            "char-ci<?", "char-ci>?", "char-ci<=?", "char-ci>=?");
+
+    /** True if a call to this function is an equality test. */
+    public static boolean isEqualityTest(String head) {
+        return EQUALITY_TESTS.contains(head);
+    }
+
+    /** True if a call to this function is an order test. */
+    public static boolean isOrderTest(String head) {
+        return ORDER_TESTS.contains(head);
+    }
+
+    /** True for define-syntax-rule and the other macro-defining form names above. */
+    public static boolean isMacroDefinitionForm(String head) {
+        return MACRO_DEFINITION_FORMS.contains(head);
+    }
+
+    /** True for (define-syntax-rule ...) and the other forms above. */
+    static boolean isMacroDefinition(ParseTree ctx) {
+        return ctx instanceof ISLParser.ExprContext
+                && ctx.getChildCount() >= 3
+                && ctx.getChild(0).getText().equals("(")
+                && isMacroDefinitionForm(ctx.getChild(1).getText());
+    }
+
     /** Forms that define or declare something; removing them isn't a call removal. */
     private static final java.util.Set<String> NON_STATEMENT_FORMS = java.util.Set.of(
             "define", "define-values", "define-syntax", "define-struct", "struct",
@@ -1000,6 +1135,11 @@ public class RacketMutationScanner {
             //            masks the value to the word size first.
             // The inner / of (floor (/ a b)) and the bitwise-and mask of >>> are
             // part of those operators, so the / and & rules don't match them.
+
+            @Override
+            public boolean skipsSubtree(ParseTree ctx) {
+                return isMacroDefinition(ctx);
+            }
 
             @Override
             public boolean isBinaryExpressionFor(ParseTree ctx, String mslOperator) {
@@ -1366,15 +1506,29 @@ public class RacketMutationScanner {
 
             /** Index of the first body form, or -1 if the form has no body. */
             private int bodyStartIndex(ParseTree form) {
-                switch (form.getChild(1).getText()) {
+                String head = form.getChild(1).getText();
+                switch (head) {
                     case "begin":
                         return 2;
-                    case "lambda", "λ", "let*", "letrec", "when", "unless":
+                    case "when", "unless":
                         return 3;
-                    case "let":
-                        // Named let: (let loop ([i 0]) body...)
-                        return form.getChild(2).getText().startsWith("(")
-                                || form.getChild(2).getText().startsWith("[") ? 3 : 4;
+                    case "lambda", "λ", "let", "let*", "letrec":
+                        // The grammar lists the parameters or bindings flat, so
+                        // [x (f a)] puts (f a) right after let: the body starts
+                        // after the ')' that closes them.
+                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
+                            for (int i = 3; i < form.getChildCount(); i++) {
+                                if (form.getChild(i) instanceof TerminalNode t && t.getText().equals(")")) {
+                                    return i + 1;
+                                }
+                            }
+                            return -1;
+                        }
+                        // Not parsed as that form (e.g. a named let): the
+                        // bindings are one sub-form, after the name if any.
+                        boolean named = head.equals("let") && !form.getChild(2).getText().startsWith("(")
+                                && !form.getChild(2).getText().startsWith("[");
+                        return named ? 4 : 3;
                     case "define":
                         // (define (f x) body...) - a grammar definition lists the
                         // header tokens flat, so the body starts after its ')'.

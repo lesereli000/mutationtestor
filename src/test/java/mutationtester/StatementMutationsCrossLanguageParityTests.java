@@ -118,8 +118,10 @@ class StatementMutationsCrossLanguageParityTests {
         assertEquals(s("return 0;", "if (a < b) { return 0; }", "int Helper(int x) { return 0; }",
                         "bool Ready() { return false; }"),
                 mutatedLines(rule, ".cs"));
-        // A Racket function returns its last body form.
-        assertEquals(s("(define (helper x) #f)", "#f)"), mutatedLines(rule, ".rkt"));
+        // A Racket function returns its tail values (here each cond branch); each
+        // becomes the empty value of its inferred type, like the returns above.
+        // x's type is unknown, so it gets '(), Racket's null. [(= a b) 0] is already empty.
+        assertEquals(s("(define (helper x) '())", "[(< a b) 0]", "[else 0]))"), mutatedLines(rule, ".rkt"));
     }
 
     @Test
@@ -130,7 +132,8 @@ class StatementMutationsCrossLanguageParityTests {
         assertEquals(s("o = None"), mutatedLines(rule, ".py"));
         // "var o = null;" doesn't compile, so a var keeps its type via default(T).
         assertEquals(s("var o = default(object);"), mutatedLines(rule, ".cs"));
-        assertEquals(s("(define p #f)"), mutatedLines(rule, ".rkt"));
+        // '() is Racket's null, as in the other Racket null-value mutators.
+        assertEquals(s("(define p '())"), mutatedLines(rule, ".rkt"));
     }
 
     @Test
