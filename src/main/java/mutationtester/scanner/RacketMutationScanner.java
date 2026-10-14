@@ -45,7 +45,7 @@ import mutationtester.msl.MSLScannerAdapter;
  *   ROR_GE_TO_GT                 : (>= a b) → (> a b)
  *   ROR_LT_TO_LE                 : (< a b) → (<= a b)
  *   ROR_LE_TO_LT                 : (<= a b) → (< a b)
- *   EQ_NEGATE                    : (= a b) → (not (= a b))
+ *   EQ_NEGATE                    : (= a b), (equal? a b), (string=? a b) ... → (not ...)
  *   LOGICAL_AND_TO_OR            : (and p q) → (or p q)
  *   LOGICAL_OR_TO_AND            : (or p q) → (and p q)
  *   CONDITIONAL_TRUE             : (if cond t f) → (if #t t f)
@@ -214,9 +214,7 @@ public class RacketMutationScanner {
         );
 
         // Condition heads for REMOVE_CONDITIONALS_* are EQUALITY_TESTS and ORDER_TESTS
-        // (outer class). Names containing =, < or > (string=?, char<?, ...) are not
-        // single NAME tokens in the ISL lexer, so only the plain ones match here;
-        // ScannerBackedRule's text fallback finds the rest for spec rules.
+        // (outer class), shared with ScannerBackedRule's text fallback.
 
         private boolean isStatementHead(String text) {
             if (SPECIAL_FORMS.contains(text)) return false;
@@ -374,8 +372,14 @@ public class RacketMutationScanner {
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "<=", "<", mutationType));
                 }
                 case EQ_NEGATE -> {
-                    if (text.equals("="))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "=", "not =", mutationType));
+                    // (= a b), (equal? a b), (string=? a b) ... → (not ...), the same
+                    // equality tests as the spec's == rule
+                    if (EQUALITY_FUNCTIONS.contains(text)) {
+                        String exprText = extractSourceText(ctx);
+                        int[] pos = getExprPosition(ctx);
+                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                                exprText, "(not " + exprText + ")", mutationType));
+                    }
                 }
                 case LOGICAL_AND_TO_OR -> {
                     if (text.equals("and"))
@@ -621,12 +625,12 @@ public class RacketMutationScanner {
         // EMPTY_RETURNS — PIT-style: replace a returned string/list with "" / '()
         // -------------------------------------------------------------------------
 
-        // Calls whose result is a string. Names containing <, > or = (number->string,
-        // list->string) are not single NAME tokens in the ISL lexer, so they're omitted.
+        // Calls whose result is a string
         private static final java.util.Set<String> STRING_BUILDERS = java.util.Set.of(
                 "string-append", "substring", "format", "string", "make-string",
                 "string-upcase", "string-downcase", "string-titlecase",
-                "string-join", "string-trim", "~a"
+                "string-join", "string-trim", "~a",
+                "number->string", "symbol->string", "list->string"
         );
 
         // Calls whose result is a list

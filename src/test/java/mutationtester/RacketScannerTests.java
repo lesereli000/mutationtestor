@@ -186,11 +186,42 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
 
-        // operators.rkt has one (= x y) in check-equal
+        // operators.rkt has one (= x y) in check-equal; the whole test is wrapped
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
-        assertEquals("=", p.getOperator());
-        assertEquals("not =", p.getReplacement());
+        assertEquals("(= x y)", p.getOperator());
+        assertEquals("(not (= x y))", p.getReplacement());
+    }
+
+    @Test
+    public void testNamesWithComparisonCharactersAreRecognized() throws IOException {
+        File tmp = File.createTempFile("comparison-names", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (same? a b) (if (string=? a b) 1 2))",
+                "(define (before? a b) (if (char<? a b) 1 2))",
+                "(define (match? a b) (equal? a b))",
+                "(define (show n) (number->string n))",
+                ""));
+        String source = java.nio.file.Files.readString(tmp.toPath());
+
+        // string=? and char<? are single names, so each operator finds them
+        List<MutationPoint> negated = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.EQ_NEGATE);
+        assertEquals(List.of("(string=? a b)", "(equal? a b)"),
+                negated.stream().map(MutationPoint::getOperator).toList());
+        assertEquals("(define (same? a b) (if (not (string=? a b)) 1 2))",
+                Main.applyMutation(source, negated.get(0)).split("\n")[1]);
+
+        assertEquals(List.of("(string=? a b)"), RacketMutationScanner.scanFile(tmp,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF).stream().map(MutationPoint::getOperator).toList());
+        assertEquals(List.of("(char<? a b)"), RacketMutationScanner.scanFile(tmp,
+                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF).stream().map(MutationPoint::getOperator).toList());
+
+        // number->string returns a string, so its default is ""
+        MutationPoint show = findByOperator(RacketMutationScanner.scanFile(tmp,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS), "(number->string n)");
+        assertEquals("\"\"", show.getReplacement());
     }
 
     @Test

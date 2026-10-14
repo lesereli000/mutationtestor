@@ -622,7 +622,7 @@ public class ScannerBackedRule implements MutationRule {
      * Racket conditions are whole forms: the test of (if test ...), (when test ...),
      * (unless test ...) and each [test ...] cond clause. The test is classified by
      * its function name and replaced whole, so (if (string<? s t) ...) becomes
-     * (if #t ...). This finds names like string<? that the native scanner can't.
+     * (if #t ...). It backs up the native scanner, e.g. for multi-line forms.
      */
     private List<MutationPoint> scanRacketConditionalRemovals(File sourceFile, String[] lines,
                                                               String replacement) {

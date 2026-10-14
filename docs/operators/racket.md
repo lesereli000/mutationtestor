@@ -41,7 +41,7 @@ Use these names in `mutator_type`. `ALL` runs every one of them.
 | `ROR_GE_TO_GT` | `>=` → `>` | `(>= a b)` → `(> a b)` |
 | `ROR_LT_TO_LE` | `<` → `<=` | `(< a b)` → `(<= a b)` |
 | `ROR_LE_TO_LT` | `<=` → `<` | `(<= a b)` → `(< a b)` |
-| `EQ_NEGATE` | Negates an `=` test | `(= a b)` → `(not (= a b))` |
+| `EQ_NEGATE` | Negates an equality test: `=`, `equal?`, `eqv?`, `eq?`, `string=?` or `char=?` | `(= a b)` → `(not (= a b))` |
 | `JS_STRICT_EQ_TO_LOOSE_EQ` | Identity test → structural equality | `(eq? a b)` → `(equal? a b)` |
 
 ### Logic and conditions
@@ -61,8 +61,9 @@ Use these names in `mutator_type`. `ALL` runs every one of them.
 
 The four `REMOVE_CONDITIONALS_*` operators apply to conditions in `if`, `cond`,
 `when` and `unless`. Equality conditions use `=`, `eq?`, `eqv?`, `equal?`,
-`zero?`, `null?` or `empty?`; order conditions use `<`, `>`, `<=`, `>=`,
-`positive?` or `negative?`.
+`zero?`, `null?`, `empty?`, `string=?` or `char=?` (and their `-ci` versions);
+order conditions use `<`, `>`, `<=`, `>=`, `positive?`, `negative?`, or the
+`string` and `char` comparisons such as `string<?` and `char>=?`.
 
 ### Statements and calls
 
@@ -142,12 +143,6 @@ and find nothing in Racket.
 
 ## Known limitations
 
-- **Names that contain `<`, `>` or `=`** (`string=?`, `char<?`,
-  `number->string`) aren't read as one name by the grammar, so operators that
-  look for specific names miss them. For example, the built-in
-  `REMOVE_CONDITIONALS_EQUAL_*` and `EQ_NEGATE` don't treat `(string=? a b)` as
-  an equality test. The spec condition rules (`{equality_condition}`,
-  `{order_condition}`) do recognize `string=?`, `char<?` and similar names.
 - **Calls and values that span several lines** are skipped by
   `NON_VOID_METHOD_CALLS`, `CONSTRUCTOR_CALLS` and `EMPTY_RETURNS`.
 - **Any function named `make-…`** is treated as a constructor, including your
