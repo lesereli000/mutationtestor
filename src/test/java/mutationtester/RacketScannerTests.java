@@ -455,7 +455,8 @@ public class RacketScannerTests {
         // arithmetic.rkt has exactly one (if ...) form in divide
         assertEquals(1, points.size());
         MutationPoint p = points.get(0);
-        assertEquals("if", p.getOperator());
+        assertEquals("(= y 0)", p.getOperator());
+        assertEquals("(not (= y 0))", p.getReplacement());
     }
 
     @Test
@@ -463,11 +464,25 @@ public class RacketScannerTests {
         File file = new File("samples/RacketProject/project/src/operators.rkt");
         List<MutationPoint> points = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS);
 
-        // operators.rkt has 9 (if ...) forms (includes clamp-to-zero, under-limit?)
-        assertEquals(9, points.size());
+        // operators.rkt has 9 (if ...) forms (includes clamp-to-zero, under-limit?);
+        // each condition is wrapped in (not ...), never the if keyword itself
+        assertEquals(List.of("(> x y)", "(>= x y)", "(< x y)", "(<= x y)", "(= x y)",
+                "(and (> x 0) (> y 0))", "(or (> x 0) (> y 0))", "(<= n 0)", "(<= x limit)"),
+                points.stream().map(MutationPoint::getOperator).toList());
         for (MutationPoint p : points) {
-            assertEquals("if", p.getOperator());
+            assertEquals("(not " + p.getOperator() + ")", p.getReplacement());
         }
+    }
+
+    @Test
+    public void testNegateConditionalsProducesValidIf() throws IOException {
+        File file = new File("samples/RacketProject/project/src/operators.rkt");
+        String source = java.nio.file.Files.readString(file.toPath());
+        MutationPoint p = RacketMutationScanner.scanFile(file, Mutator.MutatorType.NEGATE_CONDITIONALS).get(0);
+
+        // Before, the keyword was wrapped: ((not if) (> x y) ...), which doesn't run
+        String mutatedLine = Main.applyMutation(source, p).split("\n")[p.getLineNumber() - 1].strip();
+        assertEquals("(if (not (> x y))", mutatedLine);
     }
 
     // -------------------------------------------------------------------------

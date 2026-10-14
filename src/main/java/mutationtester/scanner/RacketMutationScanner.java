@@ -400,8 +400,15 @@ public class RacketMutationScanner {
                         mutationPoints.add(new MutationPoint(sourceFile, line, col, "/", "*", mutationType));
                 }
                 case NEGATE_CONDITIONALS -> {
-                    if (text.equals("if"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "if", "(not if)", mutationType));
+                    // ( if cond then else ): wrap the condition, not the keyword. Only the
+                    // grammar's if form, where 'if' is a token; as a plain call, expr(0) is the head.
+                    if (text.equals("if") && ctx.getChild(1) instanceof TerminalNode && !ctx.expr().isEmpty()) {
+                        ISLParser.ExprContext cond = ctx.expr(0);
+                        String condText = extractSourceText(cond);
+                        int[] pos = getExprPosition(cond);
+                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
+                                condText, "(not " + condText + ")", mutationType));
+                    }
                 }
                 case AOR_MODULO_TO_MULTIPLY -> {
                     if (text.equals("modulo") || text.equals("remainder"))

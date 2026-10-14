@@ -53,7 +53,7 @@ Use these names in `mutator_type`. `ALL` runs every one of them.
 | `REMOVE_LOGICAL_NEGATION` | Removes `not` | `(not p)` → `p` |
 | `CONDITIONAL_TRUE` | An `if` condition → `#t` | `(if flag 1 2)` → `(if #t 1 2)` |
 | `CONDITIONAL_FALSE` | An `if` condition → `#f` | `(if flag 1 2)` → `(if #f 1 2)` |
-| `NEGATE_CONDITIONALS` | Negates an `if` condition (see [Known limitations](#known-limitations)) | `(if c 1 2)` → `((not if) c 1 2)` |
+| `NEGATE_CONDITIONALS` | Negates an `if` condition | `(if (> x y) 1 2)` → `(if (not (> x y)) 1 2)` |
 | `REMOVE_CONDITIONALS_EQUAL_IF` | An equality condition → `#t` | `(if (= n 0) …)` → `(if #t …)` |
 | `REMOVE_CONDITIONALS_EQUAL_ELSE` | An equality condition → `#f` | `(if (= n 0) …)` → `(if #f …)` |
 | `REMOVE_CONDITIONALS_ORDER_IF` | An order condition → `#t` | `(if (< n 0) …)` → `(if #t …)` |
@@ -142,11 +142,6 @@ and find nothing in Racket.
 
 ## Known limitations
 
-- **`NEGATE_CONDITIONALS` produces invalid code.** It wraps the `if` keyword
-  instead of the condition, so `(if c 1 2)` becomes `((not if) c 1 2)`, which
-  doesn't run. Every mutant it makes fails, so it is counted as killed whether
-  or not the tests are good. Use `EQ_NEGATE`, or the Negate Conditionals rules
-  in `OperatorMutations.txt`, until it is fixed.
 - **Names that contain `<`, `>` or `=`** (`string=?`, `char<?`,
   `number->string`) aren't read as one name by the grammar, so operators that
   look for specific names miss them. For example, the built-in
