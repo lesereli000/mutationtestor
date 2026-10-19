@@ -12,11 +12,19 @@ tool is never built in the project's CI.
    the setup guide) and swap the `setup-java` step for whatever the project's
    tests need.
 3. Add a repository secret `MUTATION_TOOL_TOKEN`. While
-   `EllieJin04/mutationtestor` is private, the jar download needs a token that
-   can read it: a fine-grained personal access token limited to that
-   repository with **Contents: read only**. Fine-grained tokens can only reach
-   repositories owned by whoever creates them, so the repository owner has to
-   create it.
+   `lesereli000/mutationtestor` is private, the jar download needs a token
+   that can read it. Fine-grained tokens can only reach repositories owned by
+   whoever creates them, so the repository owner creates it:
+   1. Profile picture → **Settings** → **Developer settings** (bottom of the
+      sidebar) → **Personal access tokens** → **Fine-grained tokens** →
+      **Generate new token**.
+   2. Resource owner: the tool repository's owner. Repository access: **Only
+      select repositories** → `mutationtestor`. Repository permissions:
+      **Contents: Read-only** (Metadata: Read-only is added automatically).
+   3. In the project: **Settings** → **Secrets and variables** → **Actions** →
+      **New repository secret** named `MUTATION_TOOL_TOKEN`.
+
+   When the token expires, the jar download fails until it is replaced.
 4. If the project has a branch ruleset covering all branches, allow
    `github-actions[bot]` to push to `mutation-data` (or exclude that branch).
 

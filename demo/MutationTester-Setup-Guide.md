@@ -19,13 +19,13 @@
 **Option A - Git clone:**
 
 ```bash
-git clone https://github.com/EllieJin04/mutationtestor.git
+git clone https://github.com/lesereli000/mutationtestor.git
 cd mutationtestor
 ```
 
 **Option B - Manual download (no Git required):**
 
-1. Open <https://github.com/EllieJin04/mutationtestor> in your browser
+1. Open <https://github.com/lesereli000/mutationtestor> in your browser
 2. Click the green **Code** button -> **Download ZIP**
 3. Extract the ZIP to a folder of your choice (e.g. `C:\Multi-Language_mutationtestor`)
 4. Open Windows Terminal and navigate to that folder

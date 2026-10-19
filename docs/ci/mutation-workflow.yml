@@ -3,7 +3,7 @@
 # only file the tool needs in the project's main branch. See docs/ci/README.md.
 #
 # One-time setup in the project:
-#   - Add a secret MUTATION_TOOL_TOKEN that can read EllieJin04/mutationtestor
+#   - Add a secret MUTATION_TOOL_TOKEN that can read lesereli000/mutationtestor
 #     (needed while that repository is private).
 #   - If a branch ruleset covers all branches, let github-actions[bot] push to
 #     the mutation-data branch.
@@ -24,7 +24,7 @@ on:
 
 env:
   TOOL_VERSION: v0.1.0-rc.1
-  TOOL_REPO: EllieJin04/mutationtestor
+  TOOL_REPO: lesereli000/mutationtestor
 
 jobs:
   # Creates the mutation-data branch if needed and folds equivalent-mutant
