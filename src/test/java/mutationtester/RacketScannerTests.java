@@ -642,6 +642,50 @@ public class RacketScannerTests {
         assertEquals("", p.getReplacement());
     }
 
+    @Test
+    public void testStatementRemovalCoversEveryBodyNotJustBegin() throws IOException {
+        File tmp = File.createTempFile("statements", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (body x)",
+                "  (displayln x)",
+                "  (add1 x))",
+                "(define (in-let x)",
+                "  (let ([y (add1 x)])",
+                "    (log-it y)",
+                "    (* y 2)))",
+                "(define (in-lambda) (lambda (x) (note x) x))",
+                "(define (in-when x) (when (> x 0) (warn x) (add1 x)))",
+                "(define (in-begin0 x) (begin0 (compute x) (record x)))",
+                "(define (nested x)",
+                "  (when (> x 0) (alert x))",
+                "  (set! x 1)",
+                "  x)",
+                ""));
+
+        // The discarded calls in a function, let, lambda, when and begin0 body, and
+        // (alert x), the value of a when whose own value is discarded. Values that
+        // are used stay: (add1 x), (* y 2), (compute x) (begin0's value), and the
+        // when and set! forms themselves aren't calls.
+        List<String> expected = List.of("(displayln x)", "(log-it y)", "(note x)", "(warn x)",
+                "(record x)", "(alert x)");
+        for (Mutator.MutatorType type : List.of(Mutator.MutatorType.STATEMENT_MUTATION,
+                Mutator.MutatorType.VML_VOID_METHOD_CALL)) {
+            List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, type);
+            assertEquals(expected, points.stream().map(MutationPoint::getOperator).toList(), type.name());
+        }
+
+        // NON_VOID_METHOD_CALLS uses the same positions: none of those calls is
+        // treated as a used value, and the used values are
+        List<String> nonVoid = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS)
+                .stream().map(MutationPoint::getOperator).toList();
+        for (String statement : expected) {
+            assertFalse(nonVoid.contains(statement), "statement mutated as a used value: " + statement);
+        }
+        assertTrue(nonVoid.containsAll(List.of("(add1 x)", "(compute x)")), nonVoid.toString());
+    }
+
     // -------------------------------------------------------------------------
     // AOR_INCREMENT_TO_DECREMENT  (add1 → sub1)
     // -------------------------------------------------------------------------

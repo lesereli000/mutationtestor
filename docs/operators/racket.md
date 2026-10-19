@@ -69,10 +69,16 @@ order conditions use `<`, `>`, `<=`, `>=`, `positive?`, `negative?`, or the
 
 | Operator | What it changes | Example |
 |----------|-----------------|---------|
-| `VML_VOID_METHOD_CALL` | Removes a call whose result is discarded in a `begin` | `(begin (displayln x) x)` → `(begin x)` |
-| `STATEMENT_MUTATION` | Replaces that call with `(void)` | `(begin (displayln x) x)` → `(begin (void) x)` |
+| `VML_VOID_METHOD_CALL` | Removes a call whose result is discarded | `(define (f x) (displayln x) x)` → `(define (f x) x)` |
+| `STATEMENT_MUTATION` | Replaces that call with `(void)` | `(define (f x) (displayln x) x)` → `(define (f x) (void) x)` |
 | `NON_VOID_METHOD_CALLS` | A call whose result is used → a default value | `(add1 x)` → `0` |
 | `CONSTRUCTOR_CALLS` | A struct constructor call → `'()` | `(posn 0 0)` → `'()` |
+
+A call's result is discarded when the call is any form but the last in a
+function, `let`, `lambda`, `when`, `unless` or `begin` body (in `begin0`, every
+form but the first). `VML_VOID_METHOD_CALL`, `STATEMENT_MUTATION` and
+`NON_VOID_METHOD_CALLS` all use this, so a call is either a statement or a
+used value, never both.
 
 `NON_VOID_METHOD_CALLS` picks the default from the function's name: `#f` for
 predicates (names ending in `?`), `0` for numeric functions such as `add1` or
