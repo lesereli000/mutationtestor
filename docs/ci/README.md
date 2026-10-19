@@ -40,6 +40,7 @@ The first run creates the `mutation-data` branch on its own.
   | 0 | Finished, and the score meets `min_mutation_score` (or none is set) |
   | 1 | Could not run: bad arguments or config, tests failing on the original code, or a threshold is set but there were no mutants to score |
   | 2 | Finished, but the score is below `min_mutation_score` |
+  | 3 | Stopped early (`time_limit_minutes` reached, or the job was cancelled); the report is partial and the minimum is not checked |
 
   The score is compared as printed (one decimal place), and equivalent mutants
   are left out of it.
@@ -52,6 +53,48 @@ The first run creates the `mutation-data` branch on its own.
 - **Bundled specs.** `custom_mutation_spec=OperatorMutations.txt` (also
   `StatementMutation.txt`, `StringMutation.txt`) loads the copy inside the jar
   when no file by that name exists, so the project doesn't need one.
+
+## Long runs
+
+Every mutant runs the project's test suite once, so mutation testing is slow.
+In rough order of payoff:
+
+- **Keep `test_command` lean.** Leave out `clean` (it recompiles everything
+  for every mutant), and leave out tests that are slow and not worth mutating
+  against, e.g. GUI tests: `mvn -q test -Dtest='!main/ui/**'` skips the
+  `main.ui` package. Use the same exclusion in `coverage_command`.
+- **Don't mutate code you aren't testing.** `exclude_source` (comma-separated
+  folders or files, relative to the project root) keeps code out of mutation
+  entirely: no mutants, and not in the score. When GUI tests are skipped,
+  exclude the GUI code too, e.g. `exclude_source=src/main/java/main/ui`;
+  otherwise its mutants show up as NO COVERAGE and lower the score.
+- **Turn on coverage.** With `coverage_command` and `coverage_report` set,
+  mutants on lines no test runs are marked NO COVERAGE without running the
+  suite. If the coverage command fails, nothing is skipped and the log shows
+  the command's output. For Maven:
+  - If the project's `pom.xml` already uses the `jacoco-maven-plugin`:
+    `coverage_command=mvn -q test jacoco:report`. Adding the plugin again on
+    the command line attaches a second JaCoCo agent, and the test JVM crashes
+    with `duplicate class definition for java.lang.$JaCoCo`.
+  - Otherwise: `coverage_command=mvn -q org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report`.
+
+  Either way `coverage_report=target/site/jacoco/jacoco.xml`, and use the same
+  test exclusions as `test_command`.
+- **Parallel workers (GitHub Actions only).** Set `MUTATION_WORKERS` (1-4,
+  default 1) in the mutation job's `env:`. Each worker runs the tests in its
+  own copy of the project. Results are the same as a one-at-a-time run, but
+  tests that share a port, a database or files outside the project can
+  collide and wrongly kill mutants; when first enabling it, compare one run
+  with and one without. Outside GitHub Actions mutants are always tested one
+  at a time and the variable is ignored.
+- **A time limit.** `time_limit_minutes` (counted from when the tool starts)
+  stops it starting new mutants; mutants already running finish, and the
+  report is written for the tested ones, marked partial, with exit code 3. If
+  the job is cancelled instead (Cancel button or a GitHub timeout), the tool
+  makes a best-effort partial report in the few seconds GitHub allows. The
+  template nests three limits so the report is always uploaded: the config's
+  `time_limit_minutes: 45`, the run step's `timeout-minutes: 55`, the job's
+  `timeout-minutes: 60`.
 
 ## Marking equivalent mutants
 

@@ -113,6 +113,7 @@ public class HtmlReportGenerator {
         html.append("        .view-all { padding: 10px 20px; background: #e74c3c; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; }\n");
         html.append("        .view-all:hover { background: #c0392b; }\n");
         html.append("        .store-note { margin-top: 8px; color: #64748b; font-size: 13px; }\n");
+        html.append("        .partial-banner { background: #fef3c7; border-bottom: 1px solid #fcd34d; color: #92400e; padding: 16px 30px; font-size: 15px; }\n");
         html.append("    </style>\n");
         html.append("</head>\n<body>\n");
 
@@ -123,6 +124,14 @@ public class HtmlReportGenerator {
                 .append(escapeHtml(describeSource(equivalents)))
                 .append("</div>\n");
         html.append("        </div>\n");
+
+        if (report.isPartial()) {
+            int notTested = report.getNotTested();
+            html.append("        <div class=\"partial-banner\"><strong>Partial report:</strong> ")
+                    .append(escapeHtml(report.getPartialReason())).append(". ")
+                    .append(notTested).append(notTested == 1 ? " mutant was" : " mutants were")
+                    .append(" not tested and are not counted below.</div>\n");
+        }
 
         html.append("        <div class=\"summary\">\n");
         int totalMutants = visibleReport.getTotalMutants();

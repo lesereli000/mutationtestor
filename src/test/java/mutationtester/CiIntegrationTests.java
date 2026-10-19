@@ -62,6 +62,43 @@ public class CiIntegrationTests {
         assertEquals("ALL", Main.readConfig(cfg.toFile()).mutatorType);
     }
 
+    @Test
+    void excludeSourceIsACommaSeparatedListOfRelativePaths() throws Exception {
+        assertEquals(List.of(), Main.readConfig(config("").toFile()).excludeSources);
+        assertEquals(List.of("src/main/java/main/ui", "src/legacy/Old.java"),
+                Main.readConfig(config("exclude_source=src/main/java/main/ui, src/legacy/Old.java,").toFile()).excludeSources);
+        IOException e = assertThrows(IOException.class,
+                () -> Main.readConfig(config("exclude_source=/abs/ui").toFile()));
+        assertTrue(e.getMessage().contains("exclude_source"));
+    }
+
+    @Test
+    void excludedFoldersAndFilesAreNotScanned() throws Exception {
+        Path project = Files.createTempDirectory(tmp, "scan");
+        for (String path : List.of("src/main/core/Calc.java", "src/main/ui/Window.java",
+                "src/main/uikit/Kit.java", "src/main/core/Legacy.java")) {
+            Path file = project.resolve(path);
+            Files.createDirectories(file.getParent());
+            String name = file.getFileName().toString().replace(".java", "");
+            Files.writeString(file, "public class " + name + " {\n    int f(int a, int b) {\n        return a + b;\n    }\n}\n");
+        }
+
+        List<Path> excluded = Main.excludedPaths(project, List.of("src/main/ui", "src/main/core/Legacy.java"));
+        List<String> files = Main.scanForMutations(project.resolve("src"), Mutator.MutatorType.AOR_PLUS_TO_MINUS, null, excluded)
+                .stream().map(p -> p.getSourceFile().getName()).sorted().toList();
+
+        assertEquals(List.of("Calc.java", "Kit.java"), files, "ui/ and Legacy.java are skipped, uikit/ is not");
+    }
+
+    @Test
+    void excludingEverythingLeavesNoMutantsToScore() throws Exception {
+        Path project = sampleProject(true);
+        Path cfg = runConfig(project, "50");
+        Files.writeString(cfg, Files.readString(cfg) + "exclude_source=src/Calc.java\n");
+
+        assertEquals(Main.EXIT_SETUP_FAILED, Main.run(new String[] { project.toString(), cfg.toString() }));
+    }
+
     // ---- exit codes and gate ----
 
     @Test
@@ -161,6 +198,30 @@ public class CiIntegrationTests {
         assertEquals(Main.EXIT_OK, Main.run(new String[] { project.toString(), runConfig(project, "100").toString() }));
         assertEquals(Set.of(survivorId), EquivalentsBranch.parseEquivalentsFile(
                 Files.readString(Path.of("output", "report", "equivalents.json"))));
+    }
+
+    @Test
+    void failingCoverageCommandPrintsItsOutput() throws Exception {
+        Path project = sampleProject(true);
+        Path cfg = runConfig(project, "0");
+        Files.writeString(cfg, Files.readString(cfg)
+                + "coverage_command=java NoSuchCoverageTool.java\ncoverage_report=coverage.xml\n");
+
+        java.io.PrintStream originalErr = System.err;
+        java.io.ByteArrayOutputStream err = new java.io.ByteArrayOutputStream();
+        System.setErr(new java.io.PrintStream(err, true, java.nio.charset.StandardCharsets.UTF_8));
+        int exitCode;
+        try {
+            exitCode = Main.run(new String[] { project.toString(), cfg.toString() });
+        } finally {
+            System.setErr(originalErr);
+        }
+
+        String printed = err.toString(java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(Main.EXIT_OK, exitCode, "coverage failing only turns off skipping");
+        assertTrue(printed.contains("no-coverage classification disabled"), printed);
+        assertTrue(printed.contains("Coverage command output:"), printed);
+        assertTrue(printed.contains("NoSuchCoverageTool.java"), printed);
     }
 
     @Test

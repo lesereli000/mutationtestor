@@ -294,6 +294,8 @@ test_command=mvn test
 - `test_command` - command to run the test suite (must pass on the original code before mutation begins)
 - `coverage_command` / `coverage_report` - optional; used to attach a coverage report to the output
 - `min_mutation_score` - optional, 0-100. The tool exits with code 2 when the score is below it (code 1 means it could not run, 0 means it passed), so CI can fail on it. See [Running MutationTester in GitHub Actions](../docs/ci/README.md)
+- `exclude_source` - optional, comma-separated folders or files (relative to the project root, like `source_code_directory`) that are never mutated, e.g. `exclude_source=src/main/java/main/ui`. Excluded code produces no mutants and doesn't count in the score
+- `time_limit_minutes` - optional, above 0. After this long (from when the tool starts) no new mutants are tested; the report covers the tested ones and is marked partial, and the tool exits with code 3
 
 **Language-specific examples:**
 

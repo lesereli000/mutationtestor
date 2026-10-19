@@ -17,6 +17,8 @@ public class MutationReport {
     private int noCoverage;
     private int equivalent;
     private double mutationScore;
+    private int notTested;
+    private String partialReason;
 
     public MutationReport(List<MutantResult> results) {
         this(results, Set.of());
@@ -58,10 +60,24 @@ public class MutationReport {
         }
     }
 
+    /**
+     * Marks the report as covering only part of the run (time limit or cancel).
+     * The counts and score already cover just the tested mutants.
+     */
+    public void markPartial(int notTested, String reason) {
+        this.notTested = notTested;
+        this.partialReason = reason;
+    }
+
     public void printReport() {
         System.out.println("\n" + "=".repeat(80));
         System.out.println("MUTATION TESTING REPORT");
         System.out.println("=".repeat(80));
+        if (isPartial()) {
+            System.out.println("PARTIAL: " + partialReason + ".");
+            System.out.printf("Not tested:       %d (not in any count or the score)\n", notTested);
+            System.out.println("-".repeat(80));
+        }
         System.out.printf("Total Mutants:    %d\n", totalMutants);
         System.out.printf("Killed:           %d (%.1f%%)\n",
                 killed, totalMutants > 0 ? (killed / (double) totalMutants) * 100 : 0.0);
@@ -184,6 +200,19 @@ public class MutationReport {
 
     public int getEquivalent() {
         return equivalent;
+    }
+
+    public boolean isPartial() {
+        return partialReason != null;
+    }
+
+    public int getNotTested() {
+        return notTested;
+    }
+
+    /** e.g. "stopped after 140 of 212 mutants (time limit of 45 min reached)"; null for a complete run. */
+    public String getPartialReason() {
+        return partialReason;
     }
 
     /** Scored survivors, in run order (equivalent mutants are not included). */

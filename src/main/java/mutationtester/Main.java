@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,6 +58,17 @@ public class Main {
     static final int EXIT_OK = 0;
     static final int EXIT_SETUP_FAILED = 1;
     static final int EXIT_BELOW_THRESHOLD = 2;
+    static final int EXIT_STOPPED_EARLY = 3;
+
+    static final int MAX_WORKERS = 4;
+    /** How long a cancel waits for the partial report; GitHub kills the process about 7.5 s after asking. */
+    private static final long CANCEL_GRACE_SECONDS = 6;
+
+    /** Every test/build process still running, so a cancel can kill them. */
+    private static final Set<Process> RUNNING_PROCESSES = ConcurrentHashMap.newKeySet();
+
+    /** Set by parallel workers so runCommand's progress lines don't interleave. */
+    static final ThreadLocal<Boolean> QUIET = ThreadLocal.withInitial(() -> false);
 
     static class Config {
         String sourceCodeDirectory;
@@ -68,11 +80,13 @@ public class Main {
         String coverageCommand;   // optional command that writes a coverage report
         String coverageReport;    // optional lcov/cobertura/jacoco report path, relative to project dir
         Double minMutationScore;  // optional 0-100; below it the run exits with EXIT_BELOW_THRESHOLD
+        Double timeLimitMinutes;  // optional; no new mutants start after this, and the report is partial
+        List<String> excludeSources = List.of(); // folders/files, relative to project dir, never mutated
     }
 
-    enum RunStatus { COMPLETED, NO_MUTANTS, SETUP_FAILED }
+    enum RunStatus { COMPLETED, STOPPED_EARLY, NO_MUTANTS, SETUP_FAILED }
 
-    /** How a run ended. The report and equivalents are only set when it completed. */
+    /** How a run ended. The report and equivalents are only set when it completed or stopped early. */
     record RunOutcome(RunStatus status, MutationReport report, EquivalentsBranch.Snapshot equivalents, String message) {
         static RunOutcome setupFailed(String message) {
             return new RunOutcome(RunStatus.SETUP_FAILED, null, null, message);
@@ -99,6 +113,7 @@ public class Main {
             pb.directory(workingDir);
             pb.redirectErrorStream(true);
             process = pb.start();
+            RUNNING_PROCESSES.add(process);
 
         } catch (IOException e) {
             System.out.println("Error running command " + command + ": " + e.getMessage());
@@ -126,7 +141,9 @@ public class Main {
             boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
             if (!completed) {
                 destroyProcessTree(process);
-                System.out.println("Process " + commandList.get(0) + " timed out.");
+                if (!QUIET.get()) {
+                    System.out.println("Process " + commandList.get(0) + " timed out.");
+                }
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
                 outputFuture.cancel(true);
                 return output.toString();
@@ -141,7 +158,9 @@ public class Main {
 
             outputExecutor.shutdown();
             process.destroy();
-            System.out.println("Process " + commandList.get(0) + " finished");
+            if (!QUIET.get()) {
+                System.out.println("Process " + commandList.get(0) + " finished");
+            }
             return output.toString();
 
         } catch (ExecutionException e) {
@@ -158,6 +177,15 @@ public class Main {
             return "";
         } finally {
             outputExecutor.shutdownNow();
+            RUNNING_PROCESSES.remove(process);
+        }
+    }
+
+    /** For a cancel: kill everything still running without waiting, the grace period is short. */
+    private static void killRunningProcesses() {
+        for (Process process : RUNNING_PROCESSES) {
+            process.descendants().forEach(ProcessHandle::destroyForcibly);
+            process.destroyForcibly();
         }
     }
 
@@ -208,11 +236,21 @@ public class Main {
         String projectDirectory = args[0];
         String configFile = args[1];
 
+        // The clock for time_limit_minutes starts here, so it covers the whole run.
+        long startedMillis = RunControl.nowMillis();
+
         Config config;
         try {
             config = readConfig(configFile);
         } catch (IOException e) {
-            return finish(RunOutcome.setupFailed("Error reading config file " + configFile + ": " + e.getMessage()), null);
+            return finish(RunOutcome.setupFailed("Error reading config file " + configFile + ": " + e.getMessage()), null, null);
+        }
+
+        int workers;
+        try {
+            workers = workerCount(System.getenv());
+        } catch (IllegalArgumentException e) {
+            return finish(RunOutcome.setupFailed(e.getMessage()), config.minMutationScore, null);
         }
 
         String mutatorTypes = "ALL".equalsIgnoreCase(config.mutatorType) ? allSupportedTypes() : config.mutatorType;
@@ -223,43 +261,117 @@ public class Main {
             try {
                 loadCustomRules(config.customMutationSpec);
             } catch (IOException e) {
-                return finish(RunOutcome.setupFailed(e.getMessage()), config.minMutationScore);
+                return finish(RunOutcome.setupFailed(e.getMessage()), config.minMutationScore, null);
             }
         }
 
-        RunOutcome outcome;
-        if ("ALL".equalsIgnoreCase(config.mutatorType) || config.mutatorType.contains(",")) {
-            // Multiple mutation types — run all, one combined report
-            outcome = multiMutationTest(
-                    projectDirectory,
-                    config.sourceCodeDirectory,
-                    mutatorTypes,
-                    config.compileCommand,
-                    config.testCommand,
-                    config.customMutationSpec,
-                    config.coverageCommand,
-                    config.coverageReport);
-        } else {
-            outcome = mutationTest(
-                    projectDirectory,
-                    config.sourceCodeDirectory,
-                    config.mutatorType,
-                    config.compileCommand,
-                    config.testCommand,
-                    config.customMutationSpec,
-                    config.coverageCommand,
-                    config.coverageReport);
-        }
+        RunControl control = new RunControl(config.timeLimitMinutes, RunControl::nowMillis, startedMillis);
 
-        return finish(outcome, config.minMutationScore);
+        // On a cancel (GitHub Actions cancelling the job, Ctrl+C) the JVM runs this
+        // before exiting: stop the workers, kill the test processes, and give the
+        // main thread a few seconds to write a partial report.
+        Thread cancelHook = new Thread(() -> {
+            if (control.finished.getCount() == 0) {
+                return;
+            }
+            System.err.println("\nStop requested: writing a report from the mutants finished so far...");
+            control.cancel();
+            killRunningProcesses();
+            try {
+                control.finished.await(CANCEL_GRACE_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, "mutationtester-cancel");
+        Runtime.getRuntime().addShutdownHook(cancelHook);
+
+        try {
+            RunOutcome outcome;
+            if ("ALL".equalsIgnoreCase(config.mutatorType) || config.mutatorType.contains(",")) {
+                // Multiple mutation types — run all, one combined report
+                outcome = multiMutationTest(
+                        projectDirectory,
+                        config.sourceCodeDirectory,
+                        mutatorTypes,
+                        config.compileCommand,
+                        config.testCommand,
+                        config.customMutationSpec,
+                        config.coverageCommand,
+                        config.coverageReport,
+                        config.excludeSources,
+                        workers,
+                        control);
+            } else {
+                outcome = mutationTest(
+                        projectDirectory,
+                        config.sourceCodeDirectory,
+                        config.mutatorType,
+                        config.compileCommand,
+                        config.testCommand,
+                        config.customMutationSpec,
+                        config.coverageCommand,
+                        config.coverageReport,
+                        config.excludeSources,
+                        workers,
+                        control);
+            }
+            return finish(outcome, config.minMutationScore, control);
+        } finally {
+            control.finished.countDown();
+            try {
+                Runtime.getRuntime().removeShutdownHook(cancelHook);
+            } catch (IllegalStateException e) {
+                // Already shutting down; the hook is running.
+            }
+        }
     }
 
-    private static int finish(RunOutcome outcome, Double minScore) {
+    /**
+     * Parallel workers are a GitHub Actions feature: outside Actions this is
+     * always 1. In Actions it is MUTATION_WORKERS (1 when not set), at most
+     * MAX_WORKERS.
+     *
+     * @throws IllegalArgumentException when MUTATION_WORKERS is not a whole number of 1 or more
+     */
+    static int workerCount(Map<String, String> env) {
+        if (!"true".equals(env.get("GITHUB_ACTIONS"))) {
+            return 1;
+        }
+        String raw = env.get("MUTATION_WORKERS");
+        if (raw == null || raw.isBlank()) {
+            return 1;
+        }
+        int workers;
+        try {
+            workers = Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            workers = 0;
+        }
+        if (workers < 1) {
+            throw new IllegalArgumentException(
+                    "MUTATION_WORKERS must be a whole number from 1 to " + MAX_WORKERS + ", got: " + raw);
+        }
+        if (workers > MAX_WORKERS) {
+            System.out.println("MUTATION_WORKERS=" + workers + " is above the maximum of " + MAX_WORKERS
+                    + "; using " + MAX_WORKERS + ".");
+            return MAX_WORKERS;
+        }
+        return workers;
+    }
+
+    private static int finish(RunOutcome outcome, Double minScore, RunControl control) {
+        if (outcome.status() == RunStatus.SETUP_FAILED && control != null && control.isCancelled()) {
+            outcome = RunOutcome.setupFailed("The run was cancelled before any mutants were tested.");
+        }
         int exitCode = exitCodeFor(outcome, minScore);
         System.out.println();
         if (outcome.status() == RunStatus.SETUP_FAILED) {
             System.err.println("ERROR: Mutation testing did not run: " + outcome.message());
         } else {
+            if (outcome.status() == RunStatus.STOPPED_EARLY) {
+                System.out.println("RUN STOPPED EARLY: " + outcome.report().getPartialReason()
+                        + ". The report covers only the mutants that were tested.");
+            }
             String gate = gateLine(outcome, minScore);
             if (gate != null) {
                 System.out.println(gate);
@@ -272,12 +384,15 @@ public class Main {
 
     /**
      * EXIT_SETUP_FAILED when the run could not happen, or when a threshold is
-     * set but nothing could be scored. Otherwise EXIT_BELOW_THRESHOLD when the
-     * score (rounded to one decimal, as printed) is under the threshold.
+     * set but nothing could be scored. EXIT_STOPPED_EARLY when the time limit
+     * or a cancel stopped it before every mutant was tested. Otherwise
+     * EXIT_BELOW_THRESHOLD when the score (rounded to one decimal, as printed)
+     * is under the threshold.
      */
     static int exitCodeFor(RunOutcome outcome, Double minScore) {
         return switch (outcome.status()) {
             case SETUP_FAILED -> EXIT_SETUP_FAILED;
+            case STOPPED_EARLY -> EXIT_STOPPED_EARLY;
             case NO_MUTANTS -> minScore == null ? EXIT_OK : EXIT_SETUP_FAILED;
             case COMPLETED -> {
                 if (minScore == null) {
@@ -294,6 +409,9 @@ public class Main {
     static String gateLine(RunOutcome outcome, Double minScore) {
         if (minScore == null) {
             return null;
+        }
+        if (outcome.status() == RunStatus.STOPPED_EARLY) {
+            return String.format("MUTATION SCORE GATE: NOT CHECKED (the run stopped early; minimum is %.1f%%)", minScore);
         }
         if (outcome.status() != RunStatus.COMPLETED || outcome.report().getTotalMutants() == 0) {
             return String.format("MUTATION SCORE GATE: FAILED (no mutants to score; minimum is %.1f%%)", minScore);
@@ -339,9 +457,16 @@ public class Main {
         }
 
         MutationReport report = outcome.report();
-        md.append(String.format("**Mutation score: %.1f%%**", roundedScore(report)));
-        if (minScore != null) {
-            md.append(String.format(" (minimum %.1f%%) ", minScore)).append(exitCode == EXIT_OK ? "✅" : "❌");
+        if (report.isPartial()) {
+            md.append("⚠️ **Partial run:** ").append(oneLine(report.getPartialReason())).append(". ")
+                    .append(report.getNotTested()).append(" mutant").append(report.getNotTested() == 1 ? " was" : "s were")
+                    .append(" not tested; the score covers only the tested ones and the minimum was not checked.\n\n");
+            md.append(String.format("**Mutation score (tested mutants): %.1f%%**", roundedScore(report)));
+        } else {
+            md.append(String.format("**Mutation score: %.1f%%**", roundedScore(report)));
+            if (minScore != null) {
+                md.append(String.format(" (minimum %.1f%%) ", minScore)).append(exitCode == EXIT_OK ? "✅" : "❌");
+            }
         }
         md.append("\n\n");
         md.append("| Killed | Survived | No coverage | Equivalent (excluded) | Scored |\n");
@@ -466,12 +591,42 @@ public class Main {
             config.minMutationScore = parsed;
         }
 
+        String timeLimit = values.get("time_limit_minutes");
+        if (timeLimit != null && !timeLimit.isEmpty()) {
+            double parsed;
+            try {
+                parsed = Double.parseDouble(timeLimit);
+            } catch (NumberFormatException e) {
+                parsed = Double.NaN;
+            }
+            if (!(parsed > 0 && parsed < Double.POSITIVE_INFINITY)) {
+                throw new IOException("time_limit_minutes must be a number above 0, got: " + timeLimit);
+            }
+            config.timeLimitMinutes = parsed;
+        }
+
+        String exclude = values.get("exclude_source");
+        if (exclude != null && !exclude.isEmpty()) {
+            List<String> entries = new ArrayList<>();
+            for (String entry : exclude.split(",")) {
+                String trimmed = entry.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (Path.of(trimmed).isAbsolute() || trimmed.startsWith("/") || trimmed.startsWith("\\")) {
+                    throw new IOException("exclude_source entries must be relative to the project folder, got: " + trimmed);
+                }
+                entries.add(trimmed);
+            }
+            config.excludeSources = List.copyOf(entries);
+        }
+
         return config;
     }
 
     private static RunOutcome mutationTest(String projectDir, String sourceCode, String mutatorType, String command1,
         String command2, String customMutationSpec,
-        String coverageCommand, String coverageReport) {
+        String coverageCommand, String coverageReport, List<String> excludeSources, int workers, RunControl control) {
         Path projectPath = Path.of(projectDir);
         Path sourcePath = Path.of(sourceCode);
         Path outputRoot = Path.of(OUTPUT_ROOT);
@@ -510,7 +665,8 @@ public class Main {
         List<MutationPoint> mutationPoints = scanForMutations(
                 sourceDir,
                 Mutator.MutatorType.valueOf(mutatorType),
-                customMutationSpec);
+                customMutationSpec,
+                excludedPaths(mutantPath, excludeSources));
         System.out.println("Found " + mutationPoints.size() + " mutation points");
 
         if (mutationPoints.isEmpty()) {
@@ -518,37 +674,21 @@ public class Main {
             return RunOutcome.noMutants("No mutants were generated for " + sourceCode + ".");
         }
 
+        // Loaded before testing so a cancel never waits on a git fetch.
+        EquivalentsBranch.Snapshot equivalents = loadEquivalents(projectPath);
+
         System.out.println("\nTesting mutants");
-        List<MutantResult> results = new ArrayList<>();
-        int current = 1;
+        MutantRunner.Outcome tested = MutantRunner.run(
+                mutationPoints, mutantPath, command1, command2, coverageData, workers, control, false);
 
-        for (MutationPoint point : mutationPoints) {
-            String labelInfo = point.getCustomLabel() != null ? " [" + point.getCustomLabel() + "]" : "";
-            System.out.print("[" + current++ + "/" + mutationPoints.size() + "] Testing " +
-                    point.getSourceFile().getName() + ":" + point.getLineNumber() + ":" + point.getColumnNumber() +
-                    " (" + point.getOperator() + " to " + point.getReplacement() + ")" + labelInfo + "... ");
-
-            MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
-            results.add(result);
-
-            if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
-                System.out.println("KILLED");
-            } else if (result.getStatus() == MutantResult.MutantStatus.SURVIVED) {
-                System.out.println("SURVIVED");
-            } else if (result.getStatus() == MutantResult.MutantStatus.NO_COVERAGE) {
-                System.out.println("NO COVERAGE");
-            } else if (result.getStatus() == MutantResult.MutantStatus.COMPILE_ERROR) {
-                System.out.println("COMPILE ERROR");
-            } else {
-                System.out.println("TIMEOUT OR ERROR");
-            }
-        }
-
-        RunOutcome outcome = finishRun(results, projectPath, "Generating report");
+        RunOutcome outcome = finishRun(tested, equivalents, control, "Generating report");
         System.out.println("\n Mutation testing complete");
         return outcome;
         } finally {
-            cleanupWorkDirectories(outputRoot, mutantPath);
+            // After a cancel the JVM is about to exit; spend the time on the report, not on deleting files.
+            if (!control.isCancelled()) {
+                cleanupWorkDirectories(outputRoot, mutantPath);
+            }
         }
     }
 
@@ -556,15 +696,21 @@ public class Main {
      * Scores the run with equivalent mutants left out, writes the HTML report
      * (with those IDs embedded) and a copy of the IDs used next to it. Runs
      * before the working copy is deleted: mutant IDs read the mutated files.
+     * A run that stopped early is scored over the mutants that were tested.
      */
-    private static RunOutcome finishRun(List<MutantResult> results, Path projectPath, String heading) {
-        EquivalentsBranch.Snapshot equivalents = loadEquivalents(projectPath);
+    private static RunOutcome finishRun(MutantRunner.Outcome tested, EquivalentsBranch.Snapshot equivalents,
+            RunControl control, String heading) {
         if (equivalents.source() != EquivalentsBranch.Source.NONE) {
             System.out.println("\nEquivalent mutants: " + equivalents.description());
         }
 
         System.out.println("\n" + heading);
+        List<MutantResult> results = tested.results();
         MutationReport report = new MutationReport(results, equivalents.ids());
+        if (tested.stoppedEarly()) {
+            report.markPartial(tested.notTested(),
+                    control.describeStop(results.size(), results.size() + tested.notTested()));
+        }
         report.printReport();
 
         try {
@@ -574,7 +720,8 @@ public class Main {
         } catch (IOException e) {
             System.err.println("Failed to generate HTML report: " + e.getMessage());
         }
-        return new RunOutcome(RunStatus.COMPLETED, report, equivalents, null);
+        RunStatus status = tested.stoppedEarly() ? RunStatus.STOPPED_EARLY : RunStatus.COMPLETED;
+        return new RunOutcome(status, report, equivalents, null);
     }
 
     /**
@@ -651,6 +798,7 @@ public class Main {
             String coverageOutput = runCommand(coverageCommand, mutantPath.toString());
             if (hasTestFailures(coverageOutput)) {
                 System.err.println("WARNING: Coverage command reported a failure; no-coverage classification disabled.");
+                System.err.println("Coverage command output:\n" + coverageOutput);
                 return CoverageData.empty();
             }
         }
@@ -702,7 +850,20 @@ public class Main {
             String compileCommand,
             String testCommand,
             CoverageData coverageData) {
-        File originalFile = point.getSourceFile();
+        return testSingleMutant(point, point.getSourceFile(), workingDir, compileCommand, testCommand, coverageData);
+    }
+
+    /**
+     * @param originalFile the file to mutate: the point's own file, or the same
+     *                     file in a parallel worker's copy of the project
+     */
+    static MutantResult testSingleMutant(
+            MutationPoint point,
+            File originalFile,
+            Path workingDir,
+            String compileCommand,
+            String testCommand,
+            CoverageData coverageData) {
         String originalContent = null;
 
         try {
@@ -960,6 +1121,15 @@ public class Main {
             Path sourceDir,
             Mutator.MutatorType type,
             String customMutationSpec) {
+        return scanForMutations(sourceDir, type, customMutationSpec, List.of());
+    }
+
+    /** @param excluded absolute folders/files whose source files are never mutated */
+    static List<MutationPoint> scanForMutations(
+            Path sourceDir,
+            Mutator.MutatorType type,
+            String customMutationSpec,
+            List<Path> excluded) {
         List<MutationPoint> points = new ArrayList<>();
 
         List<MutationRule> rules = null;
@@ -976,7 +1146,7 @@ public class Main {
         try {
             for (Iterator<File> it = FileUtils.iterateFiles(sourceDir.toFile(), null, true); it.hasNext();) {
                 File file = it.next();
-                if (!shouldScanFile(file)) {
+                if (!shouldScanFile(file) || isExcluded(file, excluded)) {
                     continue;
                 }
 
@@ -994,6 +1164,33 @@ public class Main {
         }
 
         return points;
+    }
+
+    /**
+     * The exclude_source entries inside the working copy. An entry that doesn't
+     * exist there is probably a typo, so it is reported rather than ignored.
+     */
+    static List<Path> excludedPaths(Path workingCopy, List<String> excludeSources) {
+        List<Path> excluded = new ArrayList<>();
+        for (String entry : excludeSources) {
+            Path path = workingCopy.resolve(entry).toAbsolutePath().normalize();
+            if (Files.exists(path)) {
+                System.out.println("Excluding from mutation: " + entry);
+            } else {
+                System.err.println("WARNING: exclude_source entry not found in the project: " + entry);
+            }
+            excluded.add(path);
+        }
+        return excluded;
+    }
+
+    private static boolean isExcluded(File file, List<Path> excluded) {
+        if (excluded.isEmpty()) {
+            return false;
+        }
+        // Path.startsWith compares whole folder names, so "ui" doesn't exclude "uikit".
+        Path path = file.toPath().toAbsolutePath().normalize();
+        return excluded.stream().anyMatch(path::startsWith);
     }
 
     /**
@@ -1131,8 +1328,9 @@ public class Main {
         private static RunOutcome multiMutationTest(
             String projectDir, String sourceCode, String mutatorTypes,
             String command1, String command2,
-            String customMutationSpec, String coverageCommand, String coverageReport) {
- 
+            String customMutationSpec, String coverageCommand, String coverageReport,
+            List<String> excludeSources, int workers, RunControl control) {
+
         Path projectPath = Path.of(projectDir);
         Path sourcePath  = Path.of(sourceCode);
         Path outputRoot  = Path.of(OUTPUT_ROOT);
@@ -1167,6 +1365,7 @@ public class Main {
         
             // Collect mutation points for ALL requested types
             System.out.println("\nScanning for mutations across all types...");
+            List<Path> excluded = excludedPaths(mutantPath, excludeSources);
             List<MutationPoint> allPoints = new ArrayList<>();
             String[] types = mutatorTypes.split(",");
             for (String typeStr : types) {
@@ -1175,7 +1374,8 @@ public class Main {
                 List<MutationPoint> typePoints = scanForMutations(
                         sourceDir,
                         Mutator.MutatorType.valueOf(trimmed),
-                        customMutationSpec);
+                        customMutationSpec,
+                        excluded);
                 System.out.println("    Found " + typePoints.size() + " points");
                 allPoints.addAll(typePoints);
             }
@@ -1186,31 +1386,22 @@ public class Main {
                 return RunOutcome.noMutants("No mutants were generated for " + sourceCode + ".");
             }
  
+            // Loaded before testing so a cancel never waits on a git fetch.
+            EquivalentsBranch.Snapshot equivalents = loadEquivalents(projectPath);
+
             // Test all mutants, collecting into one result list
             System.out.println("\nTesting mutants");
-            List<MutantResult> results = new ArrayList<>();
-            int current = 1;
-            for (MutationPoint point : allPoints) {
-                String labelInfo = point.getCustomLabel() != null
-                        ? " [" + point.getCustomLabel() + "]" : "";
-                System.out.print("[" + current++ + "/" + allPoints.size() + "] Testing "
-                        + point.getSourceFile().getName()
-                        + ":" + point.getLineNumber()
-                        + " (" + point.getOperator() + " \u2192 " + point.getReplacement()
-                        + ") [" + point.getType().name() + "]" + labelInfo + "... ");
- 
-                MutantResult result = testSingleMutant(
-                        point, mutantPath, command1, command2, coverageData);
-                results.add(result);
-                System.out.println(result.getStatus());
-            }
- 
+            MutantRunner.Outcome tested = MutantRunner.run(
+                    allPoints, mutantPath, command1, command2, coverageData, workers, control, true);
+
             // One combined report
-            RunOutcome outcome = finishRun(results, projectPath, "Generating combined report");
+            RunOutcome outcome = finishRun(tested, equivalents, control, "Generating combined report");
             System.out.println("\nMutation testing complete");
             return outcome;
         } finally {
-            cleanupWorkDirectories(outputRoot, mutantPath);
+            if (!control.isCancelled()) {
+                cleanupWorkDirectories(outputRoot, mutantPath);
+            }
         }
     }
  

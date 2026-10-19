@@ -53,11 +53,19 @@ jobs:
     needs: sync-equivalents
     if: ${{ !cancelled() && needs.sync-equivalents.result != 'failure' }}
     runs-on: ubuntu-latest
+    # Three nested limits, so a long run still produces a report:
+    #   time_limit_minutes (config, 45) - the tool starts no new mutants
+    #   step timeout-minutes (55)       - room for running mutants and the report
+    #   job timeout-minutes (60)        - overall cap; the upload step still runs
     timeout-minutes: 60
     permissions:
       contents: read
     env:
       MIN_SCORE: ${{ inputs.min_score || '70' }}
+      # Mutants tested at once (1-4, default 1). Each worker runs the test
+      # suite in its own copy of the project, so only raise this if the tests
+      # don't share ports, databases or files outside the project.
+      # MUTATION_WORKERS: 4
     steps:
       - uses: actions/checkout@v4
 
@@ -76,20 +84,43 @@ jobs:
           gh release download "$TOOL_VERSION" --repo "$TOOL_REPO" \
             --pattern "mutationtester-$TOOL_VERSION.jar" --output "$RUNNER_TEMP/mt/mutationtester.jar"
 
+      # test_command runs once per mutant, so keep it lean: no "clean" (that
+      # recompiles everything each time). xvfb-run gives GUI tests a virtual
+      # display; drop it if the project has none.
+      #
+      # coverage_command/coverage_report let the tool skip mutants on lines no
+      # test runs (reported as NO COVERAGE) instead of running the suite for
+      # them. The coverage command must pass the same way the tests do, so it
+      # uses xvfb-run too; if it fails, skipping is turned off for the run and
+      # its output is printed.
+      #
+      # If the project's pom.xml already configures the jacoco-maven-plugin,
+      # don't add a second agent (two JaCoCo agents crash the test JVM with
+      # "duplicate class definition for java.lang.$JaCoCo"). Use the project's
+      # own setup instead:
+      #   coverage_command=xvfb-run -a mvn -q test jacoco:report
+      #
+      # To leave code out of mutation entirely (no mutants, not in the score),
+      # add e.g.: exclude_source=src/main/java/main/ui,src/main/java/legacy
       - name: Write config
         run: |
           cat > "$RUNNER_TEMP/mt/mutation.config" <<EOF
           source_code_directory=src/main/java
           mutator_type=CUSTOM
           custom_mutation_spec=OperatorMutations.txt
-          test_command=mvn -q clean test
+          test_command=xvfb-run -a mvn -q test
+          coverage_command=xvfb-run -a mvn -q org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report
+          coverage_report=target/site/jacoco/jacoco.xml
           min_mutation_score=$MIN_SCORE
+          time_limit_minutes=45
           EOF
 
       # Runs from a temp folder so output/ stays out of the checkout.
-      # Exit code 1 = could not run, 2 = score below min_mutation_score.
+      # Exit code 1 = could not run, 2 = score below min_mutation_score,
+      # 3 = stopped early (time limit or cancel; the report is partial).
       - name: Run mutation testing
         working-directory: ${{ runner.temp }}/mt
+        timeout-minutes: 55
         run: java -jar mutationtester.jar "$GITHUB_WORKSPACE" mutation.config
 
       - name: Upload report
