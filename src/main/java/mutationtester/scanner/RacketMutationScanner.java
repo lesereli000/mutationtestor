@@ -55,8 +55,9 @@ import mutationtester.msl.MSLScannerAdapter;
  *   REMOVE_CONDITIONALS_EQUAL_ELSE : equality condition in if/cond/when/unless → #f
  *   REMOVE_CONDITIONALS_ORDER_IF   : order condition in if/cond/when/unless → #t
  *   REMOVE_CONDITIONALS_ORDER_ELSE : order condition in if/cond/when/unless → #f
- *   STATEMENT_MUTATION           : (stmt ...) in begin → (void)
- *   VML_VOID_METHOD_CALL         : (stmt ...) in begin → removed entirely
+ *   STATEMENT_MUTATION           : a call whose value is discarded → (void)
+ *   VML_VOID_METHOD_CALL         : a call whose value is discarded → removed entirely
+ *                                  (in function, let, lambda, when/unless and begin/begin0 bodies)
  *   INEG_INVERT_NEGATIVE         : (- x) → x
  *   NLT_INTEGER_TO_FLOAT         : 5 → 5.0
  *   NLT_FLOAT_TO_INTEGER         : 5.0 → 5
@@ -267,13 +268,11 @@ public class RacketMutationScanner {
                             checkLogicalNegation(headToken, ctx);
                         }
 
-                        // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: flag non-last exprs in begin/begin0
+                        // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: the forms whose values are
+                        // discarded (function bodies are handled in visitDefinition)
                         if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
                                 || mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
-                            String headText = headToken.getText();
-                            if (headText.equals("begin") || headText.equals("begin0")) {
-                                handleBeginStatements(ctx);
-                            }
+                            discardedForms(headToken.getText(), ctx).forEach(this::checkStatement);
                         }
                     }
                 }
@@ -282,31 +281,39 @@ public class RacketMutationScanner {
             return visitChildren(ctx);
         }
 
-        private void handleBeginStatements(ISLParser.ExprContext ctx) {
-            // ( begin expr+ ) — children: (, begin, expr..., )
-            // last child is ')'; second-to-last is the return-value expr; rest are statements
-            int childCount = ctx.getChildCount();
-            for (int i = 2; i <= childCount - 3; i++) {
-                ParseTree child = ctx.getChild(i);
-                if (!(child instanceof ISLParser.ExprContext stmtCtx)) continue;
-                if (stmtCtx.getChildCount() < 3) continue;
-                if (!(stmtCtx.getChild(0) instanceof TerminalNode tn)
-                        || !tn.getSymbol().getText().equals("(")) continue;
-                Token stmtHead = extractToken(stmtCtx.getChild(1));
-                if (stmtHead == null || !isStatementHead(stmtHead.getText())) continue;
-                String stmtText = extractSourceText(stmtCtx);
-                Token startTok = stmtCtx.getStart();
-                String replacement = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "" : "(void)";
-                String label = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "Void method call" : "Statement mutation";
-                mutationPoints.add(new MutationPoint(
-                        sourceFile,
-                        startTok.getLine(),
-                        startTok.getCharPositionInLine(),
-                        stmtText, replacement,
-                        mutationType,
-                        label
-                ));
+        /**
+         * Removes (VML) or voids (STATEMENT_MUTATION) a discarded form if it's a call:
+         * (displayln x) yes; a variable, a literal, or a form like (when ...) or
+         * (set! ...) no.
+         */
+        private void checkStatement(ISLParser.ExprContext stmtCtx) {
+            if (stmtCtx.getChildCount() < 3) return;
+            if (!(stmtCtx.getChild(0) instanceof TerminalNode tn)
+                    || !tn.getSymbol().getText().equals("(")) return;
+            Token stmtHead = extractToken(stmtCtx.getChild(1));
+            if (stmtHead == null) return;
+
+            // A discarded (when c ... (displayln x)) discards its value form too
+            // (its other forms are found when that form itself is visited)
+            ISLParser.ExprContext valueForm = valueForm(stmtHead.getText(), stmtCtx);
+            if (valueForm != null) {
+                checkStatement(valueForm);
+                return;
             }
+
+            if (!isStatementHead(stmtHead.getText()) || NON_CALL_HEADS.contains(stmtHead.getText())) return;
+            String stmtText = extractSourceText(stmtCtx);
+            Token startTok = stmtCtx.getStart();
+            String replacement = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "" : "(void)";
+            String label = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "Void method call" : "Statement mutation";
+            mutationPoints.add(new MutationPoint(
+                    sourceFile,
+                    startTok.getLine(),
+                    startTok.getCharPositionInLine(),
+                    stmtText, replacement,
+                    mutationType,
+                    label
+            ));
         }
 
         /**
@@ -591,12 +598,12 @@ public class RacketMutationScanner {
         @Override
         public Void visitDefinition(ISLParser.DefinitionContext ctx) {
             // A function body's non-last exprs run only for their side effects
-            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS
-                    && ctx.getChildCount() >= 6
-                    && ctx.getChild(2) instanceof TerminalNode paren
-                    && paren.getText().equals("(")) {
-                List<ISLParser.ExprContext> bodyExprs = ctx.expr();
-                statementExprs.addAll(bodyExprs.subList(0, Math.max(0, bodyExprs.size() - 1)));
+            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                markDiscarded(discardedBodyForms(ctx));
+            }
+            if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
+                    || mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
+                discardedBodyForms(ctx).forEach(this::checkStatement);
             }
 
             boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
@@ -848,25 +855,69 @@ public class RacketMutationScanner {
 
         /** Marks the sub-exprs of begin/begin0/when/unless whose values are discarded. */
         private void markStatementExprs(String head, ISLParser.ExprContext ctx) {
+            markDiscarded(discardedForms(head, ctx));
+            // ( struct name (field ...) ) — the field list is not a call
+            if (head.equals("struct") || head.equals("define-struct")) statementExprs.addAll(ctx.expr());
+        }
+
+        /** Marks forms as discarded, and the value form of each discarded when/begin/let too. */
+        private void markDiscarded(List<ISLParser.ExprContext> forms) {
+            for (ISLParser.ExprContext form : forms) {
+                statementExprs.add(form);
+                if (form.getChildCount() < 3 || !form.getChild(0).getText().equals("(")) continue;
+                Token head = extractToken(form.getChild(1));
+                ISLParser.ExprContext value = head == null ? null : valueForm(head.getText(), form);
+                if (value != null) markDiscarded(List.of(value));
+            }
+        }
+
+        /**
+         * The sub-forms of a form whose values are discarded, i.e. statements. Shared
+         * by NON_VOID_METHOD_CALLS (which skips them) and VML_VOID_METHOD_CALL /
+         * STATEMENT_MUTATION (which remove them):
+         *   ( begin stmt... value )               ( begin0 value stmt... )
+         *   ( when cond stmt... value )           ( unless cond stmt... value )
+         *   ( let ( [x v] ... ) stmt... value )   ( lambda ( x ... ) stmt... value )
+         */
+        private List<ISLParser.ExprContext> discardedForms(String head, ISLParser.ExprContext ctx) {
             List<ISLParser.ExprContext> exprs = ctx.expr();
-            switch (head) {
-                // ( begin stmt... value )
-                case "begin" -> statementExprs.addAll(exprs.subList(0, Math.max(0, exprs.size() - 1)));
-                // ( begin0 value stmt... )
-                case "begin0" -> statementExprs.addAll(exprs.subList(Math.min(1, exprs.size()), exprs.size()));
-                // ( when cond stmt... value ) — parsed as an application, so exprs(0) is the head
-                case "when", "unless" -> {
-                    if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
-                }
-                // ( struct name (field ...) ) — the field list is not a call
-                case "struct", "define-struct" -> statementExprs.addAll(exprs);
-                // ( let ( [x v] ... ) stmt... value ) and ( lambda ( x ... ) stmt... value )
+            return switch (head) {
+                case "begin" -> exprs.subList(0, Math.max(0, exprs.size() - 1));
+                case "begin0" -> exprs.subList(Math.min(1, exprs.size()), exprs.size());
+                // parsed as an application, so exprs(0) is the head and exprs(1) the condition
+                case "when", "unless" -> exprs.size() > 3 ? exprs.subList(2, exprs.size() - 1) : List.of();
                 case "let", "let*", "letrec", "lambda", "λ" -> {
                     List<ISLParser.ExprContext> body = bodyAfterBindings(ctx);
-                    statementExprs.addAll(body.subList(0, Math.max(0, body.size() - 1)));
+                    yield body.subList(0, Math.max(0, body.size() - 1));
                 }
-                default -> { }
+                default -> List.of();
+            };
+        }
+
+        /**
+         * The form that gives a begin, begin0, when, unless or let its value (the
+         * one discardedForms leaves out), or null for any other form.
+         */
+        private ISLParser.ExprContext valueForm(String head, ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> exprs = ctx.expr();
+            List<ISLParser.ExprContext> body = switch (head) {
+                case "begin", "begin0" -> exprs;
+                case "when", "unless" -> exprs.size() > 2 ? exprs.subList(2, exprs.size()) : List.of();
+                case "let", "let*", "letrec" -> bodyAfterBindings(ctx);
+                default -> List.of();
+            };
+            if (body.isEmpty()) return null;
+            return head.equals("begin0") ? body.get(0) : body.get(body.size() - 1);
+        }
+
+        /** The discarded forms of a function body: ( define ( f x ... ) stmt... value ). */
+        private List<ISLParser.ExprContext> discardedBodyForms(ISLParser.DefinitionContext ctx) {
+            if (ctx.getChildCount() < 6 || !(ctx.getChild(2) instanceof TerminalNode paren)
+                    || !paren.getText().equals("(")) {
+                return List.of();
             }
+            List<ISLParser.ExprContext> body = ctx.expr();
+            return body.subList(0, Math.max(0, body.size() - 1));
         }
 
         /**
