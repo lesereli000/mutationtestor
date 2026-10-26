@@ -84,8 +84,11 @@ used value, never both.
 predicates (names ending in `?`), `0` for numeric functions such as `add1` or
 `sqr`, `""` for string functions such as `string-append`, and `'()` otherwise.
 
-`CONSTRUCTOR_CALLS` covers constructors of structs declared in the file with
-`struct` or `define-struct`, and any call to a name starting with `make-`.
+`CONSTRUCTOR_CALLS` covers constructors of structs declared in the file
+(`(struct posn …)` declares `posn`, `(define-struct posn …)` declares
+`make-posn`) and built-in constructors such as `make-hash`, `make-vector`,
+`make-string` and `make-posn`. Other functions whose names start with `make-`,
+like your own `make-report`, are ordinary calls.
 
 ### Return values
 
@@ -149,9 +152,7 @@ and find nothing in Racket.
 
 ## Known limitations
 
-- **Calls and values that span several lines** are skipped by
-  `NON_VOID_METHOD_CALLS`, `CONSTRUCTOR_CALLS` and `EMPTY_RETURNS`.
-- **Any function named `make-…`** is treated as a constructor, including your
-  own helper functions.
+- **Structs declared in another file** aren't recognized as constructors,
+  because the scanner reads one file at a time.
 - **`JS_STRICT_EQ_TO_LOOSE_EQ`** keeps its JavaScript name because the same
   operator name is shared across languages.
