@@ -695,10 +695,10 @@ public class RacketMutationScanner {
             String replacement = typedEmptyValues ? typedEmptyValue(returnExpr) : emptyReplacement(returnExpr);
             if (replacement == null) return;
 
-            // Main.applyMutation rewrites a single line; skip values that span lines.
-            if (returnExpr.getStart() == null || returnExpr.getStop() == null
-                    || returnExpr.getStart().getLine() != returnExpr.getStop().getLine()) return;
+            if (returnExpr.getStart() == null || returnExpr.getStop() == null) return;
 
+            // A value spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text
             int[] pos = getExprPosition(returnExpr);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(returnExpr), replacement, mutationType));
@@ -831,9 +831,8 @@ public class RacketMutationScanner {
             String name = head.getText();
             if (NON_CALL_HEADS.contains(name) || VOID_CALLS.contains(name) || name.endsWith("!")) return;
 
-            // Main.applyMutation rewrites a single line; skip calls that span lines.
-            if (call.getStart().getLine() != call.getStop().getLine()) return;
-
+            // A call spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text
             int[] pos = getExprPosition(call);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(call), defaultValueForCall(name), mutationType,
@@ -984,10 +983,8 @@ public class RacketMutationScanner {
                     || (name.startsWith("make-") && name.length() > "make-".length());
             if (!isConstructor) return;
 
-            // Main.applyMutation rewrites a single line; skip calls that span lines.
-            if (call.getStart().getLine() != call.getStop().getLine()) return;
-
-            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            // A call spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text. '() is Racket's null (as in RVM_OBJECT_TO_NULL)
             int[] pos = getExprPosition(call);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(call), "'()", mutationType,
