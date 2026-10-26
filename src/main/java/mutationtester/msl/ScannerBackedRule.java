@@ -368,20 +368,26 @@ public class ScannerBackedRule implements MutationRule {
     private List<MutationPoint> scanConstructorCalls(File sourceFile, String[] lines, String extension) {
         if (extension.endsWith(".rkt")) {
             List<MutationPoint> points = new ArrayList<>();
-            // Racket constructors are ordinary calls: a struct's own name or
-            // make-name for (struct name ...) / (define-struct name ...) in the
-            // file, any (make-thing ...), and racket/class's (new thing% ...).
-            Set<String> structs = new TreeSet<>();
-            Matcher def = Pattern.compile("\\((?:struct|define-struct)\\s+([^\\s()\\[\\]]+)")
+            // Racket constructors are ordinary calls, so the same ones as
+            // RacketMutationScanner: a struct declared in the file ((struct name ...)
+            // binds name, (define-struct name ...) binds make-name), a built-in like
+            // make-hash, and racket/class's (new thing% ...). Other make-... names
+            // are ordinary functions.
+            Set<String> constructors = new TreeSet<>();
+            Matcher def = Pattern.compile("\\((struct|define-struct)\\s+([^\\s()\\[\\]]+)")
                     .matcher(String.join("\n", lines));
-            while (def.find()) structs.add(Pattern.quote(def.group(1)));
-            String structCalls = structs.isEmpty() ? "" : "|" + String.join("|", structs);
-            Pattern p = Pattern.compile("\\((?:make-[A-Za-z_][A-Za-z0-9_-]*|new" + structCalls + ")(?=[\\s)])");
+            while (def.find()) {
+                constructors.add(def.group(1).equals("define-struct") ? "make-" + def.group(2) : def.group(2));
+            }
+            Pattern p = Pattern.compile("\\(([^\\s()\\[\\]]+)(?=[\\s)])");
             for (int i = 0; i < lines.length; i++) {
                 String line = lines[i];
                 Matcher m = p.matcher(line);
                 while (m.find()) {
-                    int open = line.lastIndexOf('(', m.start() + 1);
+                    String head = m.group(1);
+                    if (!head.equals("new") && !constructors.contains(head)
+                            && !RacketMutationScanner.isBuiltInConstructor(head)) continue;
+                    int open = m.start();
                     int close = findMatchingParen(line, open);
                     if (open < 0 || close < 0) continue;
                     String call = line.substring(open, close + 1);

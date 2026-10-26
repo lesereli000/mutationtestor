@@ -976,11 +976,10 @@ public class RacketMutationScanner {
         private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
             if (head.getType() != ISLLexer.NAME) return;
 
-            // make-NAME is Racket's naming convention for constructors, which also
-            // covers structs declared in other modules and built-ins like make-hash
+            // A struct declared in this file, or a built-in like make-hash. Other
+            // make-... names are ordinary functions (make-report, make-counter).
             String name = head.getText();
-            boolean isConstructor = structConstructors.contains(name)
-                    || (name.startsWith("make-") && name.length() > "make-".length());
+            boolean isConstructor = structConstructors.contains(name) || isBuiltInConstructor(name);
             if (!isConstructor) return;
 
             // A call spanning several lines is fine: Main.applyMutation replaces the
@@ -1147,6 +1146,22 @@ public class RacketMutationScanner {
             "string-ci<?", "string-ci>?", "string-ci<=?", "string-ci>=?",
             "char<?", "char>?", "char<=?", "char>=?",
             "char-ci<?", "char-ci>?", "char-ci<=?", "char-ci>=?");
+
+    /**
+     * Built-in functions that create a new object, Racket's nearest thing to `new`.
+     * make-posn is built into the HtDP teaching languages.
+     */
+    private static final java.util.Set<String> BUILT_IN_CONSTRUCTORS = java.util.Set.of(
+            "make-hash", "make-hasheq", "make-hasheqv",
+            "make-weak-hash", "make-weak-hasheq", "make-weak-hasheqv",
+            "make-immutable-hash", "make-immutable-hasheq", "make-immutable-hasheqv",
+            "make-vector", "make-string", "make-bytes", "make-list",
+            "make-posn", "make-parameter", "make-channel", "make-semaphore", "make-custodian");
+
+    /** True for a built-in constructor such as make-hash (CONSTRUCTOR_CALLS). */
+    public static boolean isBuiltInConstructor(String name) {
+        return BUILT_IN_CONSTRUCTORS.contains(name);
+    }
 
     /** True if a call to this function is an equality test. */
     public static boolean isEqualityTest(String head) {

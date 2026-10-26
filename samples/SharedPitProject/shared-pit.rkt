@@ -5,3 +5,4 @@
 (define (returned-call) (compute 1))
 (define (void-call) (begin (displayln "notice") 1))
 (define (constructor-call) (make-widget 1))
+(define-struct widget (n))

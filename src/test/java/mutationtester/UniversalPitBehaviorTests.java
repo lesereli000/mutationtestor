@@ -88,6 +88,7 @@ class UniversalPitBehaviorTests {
                 (define (empty) (list 1 2))
                 (define (called) (compute 1))
                 (define (notify-user) (begin (displayln "notice") 1))
+                (define-struct widget (n))
                 (define (create) (make-widget 1))
                 """));
     }

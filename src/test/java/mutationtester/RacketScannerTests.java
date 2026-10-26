@@ -1202,6 +1202,30 @@ public class RacketScannerTests {
     }
 
     @Test
+    public void testOnlyDeclaredStructsAndBuiltInsAreConstructors() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("make-functions");
+        java.nio.file.Files.writeString(dir.resolve("make.rkt"), String.join("\n",
+                "#lang racket",
+                "(struct point (x y))",
+                "(define-struct box (v))",
+                "(define (make-report x) (list x))",
+                "(define (build a)",
+                "  (list (point a 1) (make-box a) (make-hash) (make-vector 3 0) (make-report a)))",
+                ""));
+
+        // make-report is an ordinary function that happens to start with make-
+        List<String> expected = List.of("(point a 1)", "(make-box a)", "(make-hash)", "(make-vector 3 0)");
+        assertEquals(expected, RacketMutationScanner.scanFile(dir.resolve("make.rkt").toFile(),
+                Mutator.MutatorType.CONSTRUCTOR_CALLS).stream().map(MutationPoint::getOperator).toList());
+
+        // The spec rule, including ScannerBackedRule's text fallback, agrees
+        List<String> spec = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("constructor call → null"))
+                .map(MutationPoint::getOperator).toList();
+        assertEquals(expected, spec);
+    }
+
+    @Test
     public void testConstructorCallsFindsDeclaredStructsAndSkipsOtherCalls() throws IOException {
         File tmp = File.createTempFile("constructor-calls", ".rkt");
         tmp.deleteOnExit();
@@ -1357,6 +1381,7 @@ public class RacketScannerTests {
                 "(define-syntax-rule (with-value v e)",
                 "  (let () (define v (compute 1)) e))",
                 "(define (after x) (if (> x 0) (+ x 1) (make-widget x)))",
+                "(define-struct widget (n))",
                 ""));
         return tmp;
     }
