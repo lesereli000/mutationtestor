@@ -141,6 +141,54 @@ public class MainTests {
         assertTrue(parsed.coverageReport.equals("target/site/jacoco/jacoco.xml"));
     }
 
+    private static Path writeConfig(String extraLine) throws Exception {
+        Path config = Files.createTempFile("mutation-config", ".txt");
+        Files.writeString(config, "source_code_directory=src\nmutator_type=AOR_PLUS_TO_MINUS\n"
+                + "test_command=mvn test\n" + extraLine + "\n");
+        return config;
+    }
+
+    @Test
+    void testReadConfigTestTimeoutDefaultsToThreeMinutes() throws Exception {
+        Main.Config parsed = Main.readConfig(writeConfig("").toFile());
+        org.junit.jupiter.api.Assertions.assertEquals(180, parsed.testTimeoutSeconds);
+    }
+
+    @Test
+    void testReadConfigAcceptsTestTimeout() throws Exception {
+        Main.Config parsed = Main.readConfig(writeConfig("test_timeout_seconds=10").toFile());
+        org.junit.jupiter.api.Assertions.assertEquals(10, parsed.testTimeoutSeconds);
+    }
+
+    @Test
+    void testReadConfigRejectsInvalidTestTimeout() throws Exception {
+        for (String bad : List.of("0", "-5", "ten", "1.5")) {
+            java.io.IOException e = org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class,
+                    () -> Main.readConfig(writeConfig("test_timeout_seconds=" + bad).toFile()));
+            assertTrue(e.getMessage().contains("test_timeout_seconds"), e.getMessage());
+        }
+    }
+
+    @Test
+    void testTestRunsAreStoppedAtTheTestTimeout() throws Exception {
+        // A command that would run for about 20 seconds, like a mutant that loops forever
+        boolean windows = System.getProperty("os.name").toLowerCase().contains("win");
+        String slow = windows ? "ping -n 21 127.0.0.1" : "sleep 20";
+
+        long saved = Main.testTimeoutMillis;
+        Main.testTimeoutMillis = 2000;
+        try {
+            long start = System.currentTimeMillis();
+            String output = Main.runTests(slow, Files.createTempDirectory("timeout").toString());
+            long elapsed = System.currentTimeMillis() - start;
+
+            assertTrue(output.contains("PROCESS_TIMEOUT"), output);
+            assertTrue(elapsed < 10000, "stopped after " + elapsed + " ms, not at the 2 s limit");
+        } finally {
+            Main.testTimeoutMillis = saved;
+        }
+    }
+
     @Test
     void testSingleMutantSkipsExecutionWhenLineHasNoCoverage() throws Exception {
         Path projectDir = Files.createTempDirectory("mutation-no-coverage-skip");
