@@ -50,6 +50,14 @@ The first run creates the `mutation-data` branch on its own.
   artifact, even when the run fails. It works offline: unzip it and open
   `mutation-report-demo.html`. It also contains `equivalents.json`, the exact
   list of equivalent mutants that run used.
+- **Report on GitHub Pages (optional).** The template has a commented-out
+  `publish-report` job that publishes `main`'s latest report at
+  `https://<owner>.github.io/<repo>/` and links it from the run summary. To
+  use it, set **Settings → Pages → Build and deployment → Source: GitHub
+  Actions** and uncomment the job. On a free account Pages needs a public
+  repository and the site is public (the report shows source lines), and it
+  replaces any existing Pages site. Every run on `main` publishes, whether
+  pushed or started with **Run workflow**; PR runs still use the artifact.
 - **Bundled specs.** `custom_mutation_spec=OperatorMutations.txt` (also
   `StatementMutation.txt`, `StringMutation.txt`) loads the copy inside the jar
   when no file by that name exists, so the project doesn't need one.

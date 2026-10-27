@@ -129,3 +129,44 @@ jobs:
         with:
           name: mutation-report
           path: ${{ runner.temp }}/mt/output/report/
+
+  # Optional: publish main's latest report on GitHub Pages, at
+  # https://<owner>.github.io/<repo>/. Before enabling:
+  #   - Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+  #   - On a free account Pages needs a public repository, and the site is
+  #     public: the report shows the project's source lines.
+  #   - Pages publishes a whole site, so this replaces any existing Pages site.
+  # Runs for any run on main, pushed or started with Run workflow (PR runs
+  # keep using the artifact), including when the score is below the minimum
+  # or the run stopped early.
+  # publish-report:
+  #   needs: mutation
+  #   if: ${{ !cancelled() && needs.mutation.result != 'skipped' && github.ref == 'refs/heads/main' }}
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #   concurrency:
+  #     group: pages
+  #     cancel-in-progress: false
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: mutation-report
+  #         path: site
+  #
+  #     - name: Add index page
+  #       run: cp site/mutation-report-demo.html site/index.html
+  #
+  #     - uses: actions/upload-pages-artifact@v3
+  #       with:
+  #         path: site
+  #
+  #     - id: deployment
+  #       uses: actions/deploy-pages@v4
+  #
+  #     - name: Link from the run summary
+  #       run: echo "📄 [Mutation report](${{ steps.deployment.outputs.page_url }})" >> "$GITHUB_STEP_SUMMARY"
