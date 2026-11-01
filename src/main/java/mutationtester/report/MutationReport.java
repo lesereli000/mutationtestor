@@ -12,6 +12,7 @@ public class MutationReport {
     private int killed;
     private int survived;
     private int noCoverage;
+    private int safetySkipped;
     private double mutationScore;
 
     public MutationReport(List<MutantResult> results) {
@@ -30,9 +31,10 @@ public class MutationReport {
         noCoverage = (int) results.stream()
                 .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
                 .count();
+        safetySkipped = (int) results.stream().filter(r -> r.getStatus() == MutantResult.MutantStatus.SAFETY_SKIPPED || r.getStatus() == MutantResult.MutantStatus.SAFETY_ABORTED).count();
 
-        if (totalMutants > 0) {
-            mutationScore = (killed / (double) totalMutants) * 100.0;
+        if (totalMutants - safetySkipped > 0) {
+            mutationScore = (killed / (double) (totalMutants - safetySkipped)) * 100.0;
         } else {
             mutationScore = 0.0;
         }
@@ -49,6 +51,10 @@ public class MutationReport {
                 survived, totalMutants > 0 ? (survived / (double) totalMutants) * 100 : 0.0);
         System.out.printf("No Coverage:      %d (%.1f%%)\n",
                 noCoverage, totalMutants > 0 ? (noCoverage / (double) totalMutants) * 100 : 0.0);
+        System.out.printf("Safety skipped/aborted: %d\n", safetySkipped);
+        if (totalMutants == safetySkipped && safetySkipped > 0) {
+            System.out.println("No mutants were available for scoring after safety review.");
+        }
         System.out.println("-".repeat(80));
         System.out.printf("MUTATION SCORE:   %.1f%%\n", mutationScore);
         System.out.println("=".repeat(80));
@@ -158,4 +164,6 @@ public class MutationReport {
     public int getNoCoverage() {
         return noCoverage;
     }
+
+    public int getSafetySkipped() { return safetySkipped; }
 }

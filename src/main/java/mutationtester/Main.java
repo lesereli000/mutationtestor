@@ -38,6 +38,9 @@ import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
 import mutationtester.scanner.RacketMutationScanner;
+import mutationtester.safety.SafetyAction;
+import mutationtester.safety.SafetyController;
+import mutationtester.safety.SafetyAssessment;
 
 public class Main {
     private static final long MAX_CMD_TIME = 180000;
@@ -47,6 +50,8 @@ public class Main {
     static long testTimeoutMillis = MAX_CMD_TIME;
     private static final String OUTPUT_ROOT = "output";
     private static final String WORKING_DIR_PREFIX = "workdir-";
+    private static final SafetyController SAFETY = SafetyController.fromEnvironment(
+            System.console() == null ? null : new BufferedReader(new InputStreamReader(System.in)), System.out);
 
     static class Config {
         String sourceCodeDirectory;
@@ -381,6 +386,11 @@ public class Main {
             MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
             results.add(result);
 
+            if (result.getStatus() == MutantResult.MutantStatus.SAFETY_ABORTED) {
+                System.out.println("Safety review aborted the mutation run.");
+                break;
+            }
+
             if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
                 System.out.println("KILLED");
             } else if (result.getStatus() == MutantResult.MutantStatus.SURVIVED) {
@@ -389,6 +399,8 @@ public class Main {
                 System.out.println("NO COVERAGE");
             } else if (result.getStatus() == MutantResult.MutantStatus.COMPILE_ERROR) {
                 System.out.println("COMPILE ERROR");
+            } else if (result.getStatus() == MutantResult.MutantStatus.SAFETY_SKIPPED) {
+                System.out.println("SAFETY SKIPPED");
             } else {
                 System.out.println("TIMEOUT OR ERROR");
             }
@@ -511,8 +523,16 @@ public class Main {
             String compileCommand,
             String testCommand,
             CoverageData coverageData) {
+        return testSingleMutant(point, workingDir, compileCommand, testCommand, coverageData, SAFETY);
+    }
+
+    static MutantResult testSingleMutant(
+            MutationPoint point, Path workingDir, String compileCommand, String testCommand,
+            CoverageData coverageData, SafetyController safety) {
         File originalFile = point.getSourceFile();
         String originalContent = null;
+        boolean mutationWritten = false;
+        SafetyAssessment safetyAssessment = null;
 
         try {
             if (isNoCoverageMutant(point, coverageData)) {
@@ -526,6 +546,20 @@ public class Main {
             originalContent = Files.readString(originalFile.toPath());
 
             String mutatedContent = applyMutation(originalContent, point);
+            if (mutatedContent.equals(originalContent)) {
+                return new MutantResult(point, MutantResult.MutantStatus.COMPILE_ERROR,
+                        "Mutation was not applied; the source location or expected text did not match.", false);
+            }
+            SafetyController.Outcome outcome = safety.decideWithAssessment(point, originalContent, mutatedContent,
+                    compileCommand, testCommand);
+            safetyAssessment = outcome.assessment();
+            SafetyAction action = outcome.action();
+            if (action != SafetyAction.CONTINUE) {
+                return new MutantResult(point,
+                        action == SafetyAction.ABORT ? MutantResult.MutantStatus.SAFETY_ABORTED : MutantResult.MutantStatus.SAFETY_SKIPPED,
+                        outcome.assessment().reason(), false, safetyAssessment);
+            }
+            mutationWritten = true;
             Files.writeString(originalFile.toPath(), mutatedContent);
 
             String compileOutput = "";
@@ -536,7 +570,7 @@ public class Main {
                             point,
                             MutantResult.MutantStatus.COMPILE_ERROR,
                             compileOutput,
-                            false);
+                            false, safetyAssessment);
                 }
             }
 
@@ -553,16 +587,16 @@ public class Main {
                 status = MutantResult.MutantStatus.KILLED;
             }
 
-            return new MutantResult(point, status, testOutput, testsPass);
+            return new MutantResult(point, status, testOutput, testsPass, safetyAssessment);
 
         } catch (IOException e) {
             return new MutantResult(
                     point,
                     MutantResult.MutantStatus.COMPILE_ERROR,
                     e.getMessage(),
-                    false);
+                    false, safetyAssessment);
         } finally {
-            if (originalContent != null) {
+            if (mutationWritten) {
                 try {
                     Path originalPath = originalFile.toPath();
                     Path parent = originalPath.getParent();
@@ -611,6 +645,11 @@ public class Main {
             String newLine = mutateRemoveIncrementLine(line, point);
             lines[lineIndex] = newLine;
             return String.join("\n", lines);
+        }
+
+        if (!line.startsWith(point.getOperator(), point.getColumnNumber())) {
+            System.err.println("Warning: Mutation text does not match the original source at " + point);
+            return content;
         }
 
         String newLine = line.substring(0, point.getColumnNumber()) +
@@ -965,6 +1004,10 @@ public class Main {
                         point, mutantPath, command1, command2, coverageData);
                 results.add(result);
                 System.out.println(result.getStatus());
+                if (result.getStatus() == MutantResult.MutantStatus.SAFETY_ABORTED) {
+                    System.out.println("Safety review aborted the mutation run.");
+                    break;
+                }
             }
  
             // One combined report
