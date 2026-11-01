@@ -55,6 +55,15 @@ class JavaScriptPitStyleMutationTests {
     }
 
     @Test
+    void unicodeBeforeTernaryDoesNotCorruptMutationPosition() throws Exception {
+        source = "// emoji: 😀\nconst label = '😀'; const output = show ? 'yes' : 'no';";
+        Files.writeString(sourceFile, source);
+        MutationPoint point = scan(Mutator.MutatorType.CONDITIONAL_FALSE).get(0);
+        assertEquals("show", point.getOperator());
+        assertTrue(apply(point).contains("const output = false ?"));
+    }
+
+    @Test
     void replacesClearLiteralReturnsWithEmptyValues() throws Exception {
         List<MutationPoint> points = scan(Mutator.MutatorType.EMPTY_RETURNS);
 

@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -119,15 +120,22 @@ public class JavaScriptPitStyleVisitor extends JavaScriptParserBaseVisitor<Void>
         Token start = ctx.getStart();
         Token stop = ctx.getStop();
         if (start.getLine() != stop.getLine()) return; // Main currently applies line-local edits.
-        String original = sourceCode.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+        // ANTLR indexes Unicode code points; Java String.substring uses UTF-16 units.
+        String original = start.getInputStream().getText(Interval.of(start.getStartIndex(), stop.getStopIndex()));
         mutations.add(new MutationPoint(sourceFile,
-                start.getLine(), start.getCharPositionInLine(), original, replacement, mutationType));
+                start.getLine(), utf16Column(start), original, replacement, mutationType));
     }
 
     private void addToken(ParseTree node, String replacement) {
         if (!(node instanceof TerminalNode terminal)) return;
         Token token = terminal.getSymbol();
         mutations.add(new MutationPoint(sourceFile,
-                token.getLine(), token.getCharPositionInLine(), token.getText(), replacement, mutationType));
+                token.getLine(), utf16Column(token), token.getText(), replacement, mutationType));
+    }
+
+    private int utf16Column(Token token) {
+        String[] lines = sourceCode.split("\\n", -1);
+        String line = lines[token.getLine() - 1];
+        return line.offsetByCodePoints(0, token.getCharPositionInLine());
     }
 }

@@ -3,8 +3,7 @@ package mutationtester.safety;
 import java.util.Objects;
 
 /**
- * Research prototype for enforcing block/skip/continue decisions.
- * It is intentionally not connected to mutation execution yet.
+ * Enforces block/skip/continue decisions independently of the assessor.
  */
 public final class SafetyGate {
     private SafetyGate() {
@@ -51,14 +50,13 @@ public final class SafetyGate {
                 SAFETY REVIEW: %s
                 Category: %s
                 Reason: %s
-                Assessor: %s (confidence %.0f%%)
+                Assessor: %s
                 %s
                 """.formatted(
                 assessment.level(),
                 assessment.category(),
                 assessment.reason(),
                 assessment.assessor(),
-                assessment.confidence() * 100.0,
                 options).stripTrailing();
     }
 
