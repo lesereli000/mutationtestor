@@ -1,7 +1,6 @@
 package mutationtester;
 
 import mutationtester.coverage.*;
-import mutationtester.core.*;
 import mutationtester.model.*;
 import mutationtester.scanner.*;
 
@@ -48,7 +47,6 @@ public class EndToEndMSLTests {
         // Main.scanForMutations expects a directory
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir, 
-            Mutator.MutatorType.CUSTOM, 
             specFile.toString()
         );
 
@@ -83,7 +81,6 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir, 
-            Mutator.MutatorType.CUSTOM, 
             specFile.toString()
         );
 
@@ -118,7 +115,6 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
-            Mutator.MutatorType.CUSTOM,
             specFile.toString()
         );
 
@@ -152,14 +148,13 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
-            Mutator.MutatorType.CUSTOM,
             specFile.toString()
         );
 
         assertEquals(1, points.size());
         assertEquals("RegisterDomainEvent(new ContributorNameUpdatedEvent(this));", points.get(0).getOperator());
         assertEquals(";", points.get(0).getReplacement());
-        assertEquals("CSharp Custom Mutations: statement \u2192 ;", points.get(0).getCustomLabel());
+        assertEquals("CSharp Custom Mutations: invocation statement \u2192 ;", points.get(0).getCustomLabel());
     }
 
     @Test
@@ -186,17 +181,16 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
-            Mutator.MutatorType.CUSTOM,
             specFile.toString()
         );
 
         assertEquals(2, points.size());
         assertEquals("string.IsNullOrEmpty(name)", points.get(0).getOperator());
         assertEquals("(name != null)", points.get(0).getReplacement());
-        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not null", points.get(0).getCustomLabel());
+        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty({quantity}) \u2192 {quantity} != null", points.get(0).getCustomLabel());
         assertEquals("string.IsNullOrEmpty(name)", points.get(1).getOperator());
         assertEquals("(name != \"\")", points.get(1).getReplacement());
-        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty \u2192 not empty", points.get(1).getCustomLabel());
+        assertEquals("CSharp Custom Mutations: string.IsNullOrEmpty({quantity}) \u2192 {quantity} != \"\"", points.get(1).getCustomLabel());
     }
 
     @Test
@@ -263,36 +257,35 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
             tempDir,
-            Mutator.MutatorType.CUSTOM,
             specFile.toString()
         );
 
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.EMPTY_RETURNS
+                p.getCustomLabel().endsWith("return value \u2192 empty value")
                         && p.getOperator().equals("\"items\"")
                         && p.getReplacement().equals("\"\"")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.CONSTRUCTOR_CALLS
+                p.getCustomLabel().endsWith("constructor call \u2192 null")
                         && p.getOperator().equals("new Widget(\"created\")")
                         && p.getReplacement().equals("null")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.NON_VOID_METHOD_CALLS
+                p.getCustomLabel().endsWith("non void method call \u2192 default value")
                         && p.getOperator().equals("ComputeValue()")
                         && p.getReplacement().equals("0")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                p.getCustomLabel().endsWith("equality condition \u2192 true")
                         && p.getOperator().equals("value == 10")
                         && p.getReplacement().equals("true")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE
+                p.getCustomLabel().endsWith("equality condition \u2192 false")
                         && p.getOperator().equals("value == 10")
                         && p.getReplacement().equals("false")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF
+                p.getCustomLabel().endsWith("order condition \u2192 true")
                         && p.getOperator().equals("value > 10")
                         && p.getReplacement().equals("true")));
         assertTrue(points.stream().anyMatch(p ->
-                p.getType() == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE
+                p.getCustomLabel().endsWith("order condition \u2192 false")
                         && p.getOperator().equals("value > 10")
                         && p.getReplacement().equals("false")));
     }
@@ -318,7 +311,6 @@ public class EndToEndMSLTests {
 
         List<MutationPoint> points = ReflectionUtils.invokeScanForMutations(
                 tempDir,
-                Mutator.MutatorType.CUSTOM,
                 specFile.toString()
         );
 
@@ -337,10 +329,10 @@ public class EndToEndMSLTests {
  */
 class ReflectionUtils {
     @SuppressWarnings("unchecked")
-    static List<MutationPoint> invokeScanForMutations(Path sourceDir, Mutator.MutatorType type, String spec) throws Exception {
+    static List<MutationPoint> invokeScanForMutations(Path sourceDir, String spec) throws Exception {
         java.lang.reflect.Method method = Main.class.getDeclaredMethod("scanForMutations",
-            Path.class, Mutator.MutatorType.class, String.class);
+            Path.class, String.class);
         method.setAccessible(true);
-        return (List<MutationPoint>) method.invoke(null, sourceDir, type, spec);
+        return (List<MutationPoint>) method.invoke(null, sourceDir, spec);
     }
 }

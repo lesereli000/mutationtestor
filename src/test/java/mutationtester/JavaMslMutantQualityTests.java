@@ -146,7 +146,7 @@ class JavaMslMutantQualityTests {
                 + "Replace: {quantity} " + from + " {quantity}\n"
                 + "With: {quantity} " + to + " {quantity}\n\n"
                 + "End\n");
-        return Main.scanForMutations(java.getParent(), Mutator.MutatorType.CUSTOM, spec.toString())
+        return Main.scanForMutations(java.getParent(), spec.toString())
                 .stream()
                 .filter(point -> point.getSourceFile().getName().endsWith(".java"))
                 .toList();

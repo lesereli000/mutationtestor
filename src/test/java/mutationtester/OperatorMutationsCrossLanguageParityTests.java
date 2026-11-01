@@ -18,7 +18,7 @@ import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
 /**
- * Checks every rule in OperatorMutations.txt against equivalent code in all
+ * Checks every rule in specs/OperatorMutations.spec against equivalent code in all
  * five languages. Each mutant is applied to the source, and the changed line
  * must match exactly, so this catches missing mutants, no-op mutants,
  * mutants on the wrong operator, and replacements that aren't valid code.
@@ -165,7 +165,7 @@ class OperatorMutationsCrossLanguageParityTests {
         write("clamp.rkt", "#lang racket/base\n(define (f a b)\n  (if (<= a 0) 0\n      (if (< a b) a b)))\n");
 
         List<MutationPoint> points = Main.scanForMutations(
-                tempDir, Mutator.MutatorType.CUSTOM, "specs/context-sensitive-mutations.spec");
+                tempDir, "specs/context-sensitive-mutations.spec");
 
         // Only the a < b comparison is mutated; the a <= 0 clamp is excepted.
         assertEquals(s("return a <= b ? a : b;"), mutatedLines(points, ".java"));
@@ -179,13 +179,15 @@ class OperatorMutationsCrossLanguageParityTests {
     void eachSpecSectionLabelsItsOwnRules() throws Exception {
         writeOperatorFixtures(tempDir);
         List<MutationPoint> points = Main.scanForMutations(
-                tempDir, Mutator.MutatorType.CUSTOM, "OperatorMutations.txt");
+                tempDir, "specs/OperatorMutations.spec");
 
         Set<String> sections = new TreeSet<>();
         for (MutationPoint point : points) {
             sections.add(point.getCustomLabel().substring(0, point.getCustomLabel().indexOf(':')));
         }
-        assertEquals(s("Conditionals Boundary", "Logical Operators", "Math Operators", "Negate Conditionals"),
+        // Invert Negation (!{quantity}) is absent: no adapter matches unary ! yet.
+        assertEquals(s("Conditionals Boundary", "Logical Operand Removal", "Logical Operators", "Math Operators",
+                        "Negate Conditionals"),
                 sections);
     }
 
@@ -314,7 +316,7 @@ class OperatorMutationsCrossLanguageParityTests {
                 "With: {quantity} " + to + " {quantity}\n\n" +
                 "End\n");
         try {
-            return Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, spec.toString());
+            return Main.scanForMutations(dir, spec.toString());
         } finally {
             Files.deleteIfExists(spec);
         }

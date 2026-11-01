@@ -17,7 +17,7 @@ Success Rate: 100.0%
 
 STEP 3: Proceed with mutation testing
 --------------------------------------
-If all tests pass, run:
-  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config.txt
+If all tests pass, run from the repository root:
+  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject configs/samples/javascript-operators.config
 
 ========================================

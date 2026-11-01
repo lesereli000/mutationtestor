@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,7 +36,6 @@ import mutationtester.msl.MutationRuleGenerator;
 import mutationtester.report.HtmlReportGenerator;
 import mutationtester.report.MutationReport;
 import mutationtester.scanner.CSharpMutationScanner;
-import mutationtester.scanner.DictionaryMutationScanner;
 import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
@@ -46,11 +48,10 @@ public class Main {
 
     static class Config {
         String sourceCodeDirectory;
-        String mutatorType;
         String compileCommand;
         String testCommand;
         String testMode;          // BROWSER, CLI, or AUTO
-        String customMutationSpec; // path to .spec file when mutatorType=CUSTOM; null otherwise
+        String customMutationSpec; // path to the .spec file whose rules make the mutants
         String coverageCommand;   // optional command that writes a coverage report
         String coverageReport;    // optional lcov/cobertura/jacoco report path, relative to project dir
     }
@@ -183,38 +184,14 @@ public class Main {
             return;
         }
 
-        if ("ALL".equalsIgnoreCase(config.mutatorType)) {
-            multiMutationTest(
-                    projectDirectory,
-                    config.sourceCodeDirectory,
-                    allSupportedTypes(),
-                    config.compileCommand,
-                    config.testCommand,
-                    config.customMutationSpec,
-                    config.coverageCommand,
-                    config.coverageReport);
-        } else if (config.mutatorType.contains(",")) {
-            // Multiple comma-separated mutation types — run all, one combined report
-            multiMutationTest(
-                    projectDirectory,
-                    config.sourceCodeDirectory,
-                    config.mutatorType,
-                    config.compileCommand,
-                    config.testCommand,
-                    config.customMutationSpec,
-                    config.coverageCommand,
-                    config.coverageReport);
-        } else {
-            mutationTest(
-                    projectDirectory,
-                    config.sourceCodeDirectory,
-                    config.mutatorType,
-                    config.compileCommand,
-                    config.testCommand,
-                    config.customMutationSpec,
-                    config.coverageCommand,
-                    config.coverageReport);
-        }
+        mutationTest(
+                projectDirectory,
+                config.sourceCodeDirectory,
+                config.compileCommand,
+                config.testCommand,
+                config.customMutationSpec,
+                config.coverageCommand,
+                config.coverageReport);
 
         System.out.println("Quitting");
     }
@@ -256,7 +233,6 @@ public class Main {
 
         Config config = new Config();
         config.sourceCodeDirectory = values.get("source_code_directory");
-        config.mutatorType = values.get("mutator_type");
         config.compileCommand = values.getOrDefault("compile_command", "");
         config.testCommand = values.get("test_command");
 
@@ -270,8 +246,14 @@ public class Main {
             throw new IOException("Missing source_code_directory in config file");
         }
 
-        if (config.mutatorType == null || config.mutatorType.isEmpty()) {
-            throw new IOException("Missing mutator_type in config file");
+        // Mutations always come from a spec file; mutator_type used to choose a
+        // built-in mutator and is now ignored.
+        if (values.containsKey("mutator_type")) {
+            System.err.println("WARNING: mutator_type is deprecated and ignored; the mutations come from"
+                    + " custom_mutation_spec.");
+        }
+        if (config.customMutationSpec == null || config.customMutationSpec.isEmpty()) {
+            throw new IOException("Missing custom_mutation_spec in config file (the .spec file of mutation rules)");
         }
 
         if (config.testCommand == null || config.testCommand.isEmpty()) {
@@ -281,7 +263,7 @@ public class Main {
         return config;
     }
 
-    private static void mutationTest(String projectDir, String sourceCode, String mutatorType, String command1,
+    private static void mutationTest(String projectDir, String sourceCode, String command1,
         String command2, String customMutationSpec,
         String coverageCommand, String coverageReport) {
         Path projectPath = Path.of(projectDir);
@@ -319,10 +301,7 @@ public class Main {
 
         System.out.println("\nScanning for mutations...");
 
-        List<MutationPoint> mutationPoints = scanForMutations(
-                sourceDir,
-                Mutator.MutatorType.valueOf(mutatorType),
-                customMutationSpec);
+        List<MutationPoint> mutationPoints = scanForMutations(sourceDir, customMutationSpec);
         System.out.println("Found " + mutationPoints.size() + " mutation points");
 
         if (mutationPoints.isEmpty()) {
@@ -567,12 +546,6 @@ public class Main {
             return content;
         }
 
-        if (point.getType() == Mutator.MutatorType.REMOVE_INCREMENT) {
-            String newLine = mutateRemoveIncrementLine(line, point);
-            lines[lineIndex] = newLine;
-            return String.join("\n", lines);
-        }
-
         String newLine = line.substring(0, point.getColumnNumber()) +
                 point.getReplacement() +
                 line.substring(Math.min(point.getColumnNumber() + point.getOperator().length(), line.length()));
@@ -607,53 +580,6 @@ public class Main {
         return content.substring(0, offset)
                 + point.getReplacement()
                 + content.substring(offset + point.getOperator().length());
-    }
-
-    private static String mutateRemoveIncrementLine(String line, MutationPoint point) {
-        int col = point.getColumnNumber();
-        String op = point.getOperator();
-
-        int identStart;
-        int identEnd;
-
-        if (op.equals("++") || op.equals("--")) {
-            boolean postfix = col > 0 && isIdentifierChar(line.charAt(col - 1));
-
-            if (postfix) {
-                identEnd = col;
-                identStart = identEnd - 1;
-                while (identStart >= 0 && isIdentifierChar(line.charAt(identStart))) {
-                    identStart--;
-                }
-                identStart++;
-
-                String varName = line.substring(identStart, identEnd);
-                String replacement = op.equals("++") ? varName + " += 0" : varName + " -= 0";
-
-                return line.substring(0, identStart) +
-                        replacement +
-                        line.substring(col + 2);
-            } else {
-                identStart = col + 2;
-                while (identStart < line.length() && Character.isWhitespace(line.charAt(identStart))) {
-                    identStart++;
-                }
-
-                identEnd = identStart;
-                while (identEnd < line.length() && isIdentifierChar(line.charAt(identEnd))) {
-                    identEnd++;
-                }
-
-                String varName = line.substring(identStart, identEnd);
-                String replacement = op.equals("++") ? varName + " += 0" : varName + " -= 0";
-
-                return line.substring(0, col) +
-                        replacement +
-                        line.substring(identEnd);
-            }
-        }
-
-        return line;
     }
 
     private static boolean isIdentifierChar(char c) {
@@ -702,25 +628,23 @@ public class Main {
                 || lower.contains("type mismatch");
     }
 
-    static List<MutationPoint> scanForMutations(
-            Path sourceDir,
-            Mutator.MutatorType type,
-            String customMutationSpec) {
+    /** Every mutant the spec file's rules produce in the source files under sourceDir. */
+    static List<MutationPoint> scanForMutations(Path sourceDir, String customMutationSpec) {
         List<MutationPoint> points = new ArrayList<>();
 
-        List<MutationRule> rules = null;
-        if (type == Mutator.MutatorType.CUSTOM) {
-            if (customMutationSpec == null || customMutationSpec.isEmpty()) {
-                System.err.println("ERROR: custom_mutation_spec is missing in config for CUSTOM mutator type");
-                return points;
-            }
-            try {
-                rules = MutationRuleGenerator.generateRules(new File(customMutationSpec));
-                System.out.println("  Loaded " + rules.size() + " custom mutation rules");
-            } catch (IOException e) {
-                System.err.println("ERROR: Failed to load custom mutation spec: " + e.getMessage());
-                return points;
-            }
+        List<MutationRule> rules;
+        // Rules each language's adapter can't apply, by file extension.
+        Map<String, Set<String>> unsupported = new TreeMap<>();
+        if (customMutationSpec == null || customMutationSpec.isEmpty()) {
+            System.err.println("ERROR: custom_mutation_spec is missing in config");
+            return points;
+        }
+        try {
+            rules = MutationRuleGenerator.generateRules(new File(customMutationSpec));
+            System.out.println("  Loaded " + rules.size() + " custom mutation rules");
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to load custom mutation spec: " + e.getMessage());
+            return points;
         }
 
         try {
@@ -730,37 +654,19 @@ public class Main {
                     continue;
                 }
 
-                List<MutationPoint> filePoints;
-                if (type == Mutator.MutatorType.CUSTOM) {
-                    filePoints = findCustomMutationsInFile(file, rules);
-                } else {
-                    filePoints = findMutationsInFile(file, type);
-                }
-                points.addAll(filePoints);
+                points.addAll(findCustomMutationsInFile(file, rules, unsupported));
             }
         } catch (Exception e) {
             System.err.println("Error scanning for mutations: " + e.getMessage());
             e.printStackTrace();
         }
 
+        for (Map.Entry<String, Set<String>> entry : unsupported.entrySet()) {
+            System.out.println("  Rules not applied to " + entry.getKey() + " files (the language adapter"
+                    + " doesn't know a construct or placeholder they use):");
+            for (String label : entry.getValue()) System.out.println("    - " + label);
+        }
         return points;
-    }
-
-    private static String allSupportedTypes() {
-        List<Mutator.MutatorType> union = new ArrayList<>(PythonMutationScanner.getSupportedTypes());
-        for (Mutator.MutatorType type : RacketMutationScanner.getSupportedTypes()) {
-            if (!union.contains(type)) {
-                union.add(type);
-            }
-        }
-        StringBuilder joined = new StringBuilder();
-        for (Mutator.MutatorType type : union) {
-            if (joined.length() > 0) {
-                joined.append(',');
-            }
-            joined.append(type.name());
-        }
-        return joined.toString();
     }
 
     private static boolean shouldScanFile(File file) {
@@ -780,7 +686,8 @@ public class Main {
                 && !normalizedPath.contains("/node_modules/");
     }
 
-    private static List<MutationPoint> findCustomMutationsInFile(File file, List<MutationRule> rules) throws IOException {
+    private static List<MutationPoint> findCustomMutationsInFile(File file, List<MutationRule> rules,
+                                                                  Map<String, Set<String>> unsupported) throws IOException {
         String fileName = file.getName();
         MSLScannerAdapter adapter = null;
 
@@ -801,148 +708,15 @@ public class Main {
         }
 
         List<MutationPoint> points = new ArrayList<>();
+        String extension = fileName.substring(fileName.lastIndexOf('.'));
         for (MutationRule rule : rules) {
+            final MSLScannerAdapter language = adapter;
+            if (!rule.getTrees().stream().allMatch(language::supports)) {
+                unsupported.computeIfAbsent(extension, e -> new TreeSet<>()).add(rule.getLabel());
+                continue;
+            }
             points.addAll(rule.findMutationPoints(adapter, file));
         }
         return points;
     }
-
-    private static List<MutationPoint> findMutationsInFile(
-            File file,
-            Mutator.MutatorType type) throws IOException {
-
-        String name = type.name();
-            if (file.getName().endsWith(".js")) {
-                System.out.println("  [AST] Scanning " + file.getName());
-                return JavaScriptMutationScanner.scanFile(file, type);
-            }
-
-            if (file.getName().endsWith(".cs")) {
-                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR C# parser");
-                return CSharpMutationScanner.scanFile(file, type);
-            }
-
-            if (file.getName().endsWith(".java")) {
-                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Java parser");
-                return JavaMutationScanner.scanFile(file, type);
-            }
-
-            if (file.getName().endsWith(".py")) {
-                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Python parser");
-                return PythonMutationScanner.scanFile(file, type);
-            }
-
-            if (file.getName().endsWith(".rkt")) {
-                System.out.println("  [AST] Scanning " + file.getName() + " using ANTLR Scheme parser");
-                return RacketMutationScanner.scanFile(file, type);
-            }
-        // Fallback for any other file type
-        System.out.println("  [Dictionary] Scanning " + file.getName());
-        return scanWithDictionary(file, type);
-    }
-
-
-    /**
-     * Dictionary-based mutation scanning using regex patterns.
-     * Delegates to {@link mutationtester.scanner.DictionaryMutationScanner}.
-     */
-    private static List<MutationPoint> scanWithDictionary(File file, Mutator.MutatorType type) throws IOException {
-        return DictionaryMutationScanner.scanFile(file, type);
-    }
-
-        private static void multiMutationTest(
-            String projectDir, String sourceCode, String mutatorTypes,
-            String command1, String command2,
-            String customMutationSpec, String coverageCommand, String coverageReport) {
- 
-        Path projectPath = Path.of(projectDir);
-        Path sourcePath  = Path.of(sourceCode);
-        Path outputRoot  = Path.of(OUTPUT_ROOT);
-        Path mutantPath  = outputRoot.resolve(WORKING_DIR_PREFIX + System.currentTimeMillis());
- 
-        System.out.println("Setting up working directory");
-        try {
-            FileUtils.forceMkdir(outputRoot.toFile());
-            cleanupWorkDirectories(outputRoot, null);
-            FileUtils.copyDirectory(projectPath.toFile(), mutantPath.toFile());
-        } catch (IOException e) {
-            System.err.println("Error setting up working directory: " + e.getMessage());
-            return;
-        }
-        System.out.println("Working directory created: " + mutantPath);
- 
-        try {
-            System.out.println("\nRunning baseline tests");
-            if (!command1.isEmpty()) runCommand(command1, mutantPath.toString());
-            String baselineOutput = runCommand(command2, mutantPath.toString());
-            if (hasTestFailures(baselineOutput)) {
-                System.err.println("ERROR: Tests fail on original code!");
-                return;
-            }
-            System.out.println("Baseline tests pass");
- 
-            Path sourceDir = mutantPath.resolve(sourcePath);
-            CoverageData coverageData = loadCoverageData(
-                    mutantPath, sourceDir, coverageCommand, coverageReport);
- 
-        
-            // Collect mutation points for ALL requested types
-            System.out.println("\nScanning for mutations across all types...");
-            List<MutationPoint> allPoints = new ArrayList<>();
-            String[] types = mutatorTypes.split(",");
-            for (String typeStr : types) {
-                String trimmed = typeStr.trim();
-                System.out.println("  Scanning for: " + trimmed);
-                List<MutationPoint> typePoints = scanForMutations(
-                        sourceDir,
-                        Mutator.MutatorType.valueOf(trimmed),
-                        customMutationSpec);
-                System.out.println("    Found " + typePoints.size() + " points");
-                allPoints.addAll(typePoints);
-            }
-            System.out.println("Total mutation points found: " + allPoints.size());
- 
-            if (allPoints.isEmpty()) {
-                System.out.println("No mutations found. Exiting.");
-                return;
-            }
- 
-            // Test all mutants, collecting into one result list
-            System.out.println("\nTesting mutants");
-            List<MutantResult> results = new ArrayList<>();
-            int current = 1;
-            for (MutationPoint point : allPoints) {
-                String labelInfo = point.getCustomLabel() != null
-                        ? " [" + point.getCustomLabel() + "]" : "";
-                System.out.print("[" + current++ + "/" + allPoints.size() + "] Testing "
-                        + point.getSourceFile().getName()
-                        + ":" + point.getLineNumber()
-                        + " (" + point.getOperator() + " \u2192 " + point.getReplacement()
-                        + ") [" + point.getType().name() + "]" + labelInfo + "... ");
- 
-                MutantResult result = testSingleMutant(
-                        point, mutantPath, command1, command2, coverageData);
-                results.add(result);
-                System.out.println(result.getStatus());
-            }
- 
-            // One combined report
-            System.out.println("\nGenerating combined report");
-            MutationReport report = new MutationReport(results);
-            report.printReport();
- 
-            try {
-                HtmlReportGenerator.generateHtmlReport(report, results);
-                System.out.println("HTML report: output/report/mutation-report-demo.html");
-            } catch (IOException e) {
-                System.err.println("Failed to generate HTML report: " + e.getMessage());
-            }
- 
-            System.out.println("\nMutation testing complete");
-        } finally {
-            cleanupWorkDirectories(outputRoot, mutantPath);
-        }
-    }
- 
-
 }

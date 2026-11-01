@@ -86,7 +86,7 @@
                 <version>4.13.2</version> <!-- Match with runtime version -->
                 <configuration>
                     <visitor>true</visitor> <!-- Generates visitor classes -->
-                    <listener>true</listener> <!-- Generates listener classes (default) -->
+                    <listener>false</listener> <!-- Nothing walks the trees with listeners -->
                     <arguments>
                         <argument>-package</argument>
                         <argument>mutationtester</argument>

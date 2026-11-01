@@ -1,7 +1,6 @@
 package mutationtester;
 
 import mutationtester.coverage.*;
-import mutationtester.core.*;
 import mutationtester.model.*;
 import mutationtester.scanner.*;
 
@@ -117,8 +116,7 @@ public class MainTests {
     void testScanForMutationsRecursesIntoNestedSourceDirectories() {
         List<MutationPoint> points = Main.scanForMutations(
                 Path.of("samples/CSProject/src"),
-                Mutator.MutatorType.CONDITIONAL_TRUE,
-                null);
+                "specs/StatementMutation.spec");
 
         assertTrue(points.stream().anyMatch(p -> p.getSourceFile().getName().equals("ConditionalDemo.cs")));
     }
@@ -128,7 +126,7 @@ public class MainTests {
         Path config = Files.createTempFile("mutation-config", ".txt");
         Files.writeString(config, """
                 source_code_directory=src
-                mutator_type=AOR_PLUS_TO_MINUS
+                custom_mutation_spec=specs/OperatorMutations.spec
                 compile_command=
                 test_command=mvn test
                 coverage_command=mvn test jacoco:report

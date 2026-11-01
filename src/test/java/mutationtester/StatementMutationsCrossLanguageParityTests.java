@@ -16,7 +16,7 @@ import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
 /**
- * Runs StatementMutation.txt (S01-S08) over equivalent code in all five
+ * Runs specs/StatementMutation.spec (S01-S08) over equivalent code in all five
  * languages and checks the source each mutant produces, so a rule can't
  * silently emit code that doesn't compile (e.g. "return null;" in an int
  * method, or Racket's ";", which starts a comment).
@@ -92,12 +92,12 @@ class StatementMutationsCrossLanguageParityTests {
                 "    [(< a b) 1]\n" +
                 "    [else (+ a b)]))\n");
 
-        points = Main.scanForMutations(tempDir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt");
+        points = Main.scanForMutations(tempDir, "specs/StatementMutation.spec");
     }
 
     @Test
     void s01RemovesCallStatements() throws Exception {
-        List<MutationPoint> rule = rule("statement \u2192 ;");
+        List<MutationPoint> rule = rule("delete invocation statement");
         assertEquals(s(";", "void log(String m) { ; }"), mutatedLines(rule, ".java"));
         assertEquals(s(";", "function log(m) { ; }"), mutatedLines(rule, ".js"));
         assertEquals(s("pass"), mutatedLines(rule, ".py"));
@@ -138,7 +138,7 @@ class StatementMutationsCrossLanguageParityTests {
 
     @Test
     void s04ReplacesCallResultsWithTypedDefaults() throws Exception {
-        List<MutationPoint> rule = rule("non-void method call \u2192 default value");
+        List<MutationPoint> rule = rule("non void method call \u2192 default value");
         assertEquals(s("int v = 0;"), mutatedLines(rule, ".java"));
         assertEquals(s("let v = null;"), mutatedLines(rule, ".js"));
         assertEquals(s("o = None", "v = None"), mutatedLines(rule, ".py"));

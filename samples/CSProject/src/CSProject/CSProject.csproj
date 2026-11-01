@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- The Demo*.cs samples have their own Main methods -->
+    <StartupObject>samples.CSProject.src.Program</StartupObject>
   </PropertyGroup>
 
 </Project>

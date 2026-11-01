@@ -1,7 +1,6 @@
 package mutationtester;
 
 import mutationtester.coverage.*;
-import mutationtester.core.*;
 import mutationtester.model.*;
 import mutationtester.msl.*;
 import mutationtester.scanner.*;
@@ -19,270 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PythonScannerTests {
 
-    @Test
-    public void testAdditiveMutation() throws IOException {
-        File file = writeTempPythonFile("def add1(a):\n    return a + 1\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-
-        assertEquals(1, points.size());
-        assertEquals("+", points.get(0).getOperator());
-        assertEquals("-", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testSubtractiveMutation() throws IOException {
-        File file = writeTempPythonFile("def subtract(a, b):\n    return a - b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MINUS_TO_PLUS);
-
-        assertEquals(1, points.size());
-        assertEquals("-", points.get(0).getOperator());
-        assertEquals("+", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testEqualityMutation() throws IOException {
-        File file = writeTempPythonFile("def compare(a, b):\n    if a == b or a != 0:\n        return True\n    return False\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.EQ_NEGATE);
-
-        assertEquals(2, points.size());
-        assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("==") && point.getReplacement().equals("!=")));
-        assertTrue(points.stream().anyMatch(point -> point.getOperator().equals("!=") && point.getReplacement().equals("==")));
-    }
-
-    @Test
-    public void testNegateConditionalsFull() throws IOException {
-        File file = writeTempPythonFile("def check(a, b):\n    if a > b:\n        return True\n    if a < b:\n        return False\n    if a >= b:\n        return True\n    if a <= b:\n        return False\n");
-
-        List<MutationPoint> gtToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_LT);
-        List<MutationPoint> ltToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_GT);
-        List<MutationPoint> gteToLt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GTE_TO_LT);
-        List<MutationPoint> lteToGt = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LTE_TO_GT);
-
-        assertEquals(1, gtToLt.size());
-        assertEquals("<", gtToLt.get(0).getReplacement());
-        assertEquals(1, ltToGt.size());
-        assertEquals(">", ltToGt.get(0).getReplacement());
-        assertEquals(1, gteToLt.size());
-        assertEquals("<", gteToLt.get(0).getReplacement());
-        assertEquals(1, lteToGt.size());
-        assertEquals(">", lteToGt.get(0).getReplacement());
-    }
-
-    @Test
-    public void testLogicalMutation() throws IOException {
-        File file = writeTempPythonFile("def choose(a, b):\n    if a and b:\n        return True\n    return False\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_AND_TO_OR);
-
-        assertEquals(1, points.size());
-        assertEquals("and", points.get(0).getOperator());
-        assertEquals("or", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testTypeMutation() throws IOException {
-        File file = writeTempPythonFile("x: int = 5\n\ndef add(a: int) -> int:\n    return a\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_FLOAT);
-
-        assertEquals(3, points.size());
-        assertTrue(points.stream().allMatch(point -> point.getOperator().equals("int")));
-        assertTrue(points.stream().allMatch(point -> point.getReplacement().equals("float")));
-    }
-
-    @Test
-    public void testMultiplyToDivideMutation() throws IOException {
-        File file = writeTempPythonFile("def multiply(x, y):\n    return x * y\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE);
-
-        assertEquals(1, points.size());
-        assertEquals("*", points.get(0).getOperator());
-        assertEquals("/", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testDivideToMultiplyMutation() throws IOException {
-        File file = writeTempPythonFile("def divide(x, y):\n    return x / y\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY);
-
-        assertEquals(1, points.size());
-        assertEquals("/", points.get(0).getOperator());
-        assertEquals("*", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testModuloToMultiplyMutation() throws IOException {
-        File file = writeTempPythonFile("def modulo(x, y):\n    return x % y\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY);
-
-        assertEquals(1, points.size());
-        assertEquals("%", points.get(0).getOperator());
-        assertEquals("*", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testFloorDivToDivMutation() throws IOException {
-        File file = writeTempPythonFile("def floor_divide(a, b):\n    return a // b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
-
-        assertEquals(1, points.size());
-        assertEquals("//", points.get(0).getOperator());
-        assertEquals("/", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testFloorDivDoesNotFireOnRegularDiv() throws IOException {
-        File file = writeTempPythonFile("def divide(a, b):\n    return a / b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_FLOOR_DIV_TO_DIV);
-
-        assertTrue(points.isEmpty());
-    }
-
-    @Test
-    public void testPowerToMultiplyMutation() throws IOException {
-        File file = writeTempPythonFile("def power(a, b):\n    return a ** b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
-
-        assertEquals(1, points.size());
-        assertEquals("**", points.get(0).getOperator());
-        assertEquals("*", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testPowerToMultiplyDoesNotFireOnSingleStar() throws IOException {
-        File file = writeTempPythonFile("def multiply(a, b):\n    return a * b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.AOR_POWER_TO_MULTIPLY);
-
-        assertTrue(points.isEmpty());
-    }
-
-    @Test
-    public void testBitwiseAndToOr() throws IOException {
-        File file = writeTempPythonFile("def bitwise_and(x, y):\n    return x & y\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.BOR_AND_TO_OR);
-
-        assertEquals(1, points.size());
-        assertEquals("&", points.get(0).getOperator());
-        assertEquals("|", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testBitwiseOrToAnd() throws IOException {
-        File file = writeTempPythonFile("def bitwise_or(x, y):\n    return x | y\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.BOR_OR_TO_AND);
-
-        assertEquals(1, points.size());
-        assertEquals("|", points.get(0).getOperator());
-        assertEquals("&", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testRorLtToLe() throws IOException {
-        File file = writeTempPythonFile("def is_below(a, b):\n    return a < b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LT_TO_LE);
-
-        assertEquals(1, points.size());
-        assertEquals("<", points.get(0).getOperator());
-        assertEquals("<=", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testRorLeToLt() throws IOException {
-        File file = writeTempPythonFile("def is_at_most(a, b):\n    return a <= b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_LE_TO_LT);
-
-        assertEquals(1, points.size());
-        assertEquals("<=", points.get(0).getOperator());
-        assertEquals("<", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testRorGtToGe() throws IOException {
-        File file = writeTempPythonFile("def is_above(a, b):\n    return a > b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GT_TO_GE);
-
-        assertEquals(1, points.size());
-        assertEquals(">", points.get(0).getOperator());
-        assertEquals(">=", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testRorGeToGt() throws IOException {
-        File file = writeTempPythonFile("def is_at_least(a, b):\n    return a >= b\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.ROR_GE_TO_GT);
-
-        assertEquals(1, points.size());
-        assertEquals(">=", points.get(0).getOperator());
-        assertEquals(">", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testLogicalOrToAnd() throws IOException {
-        File file = writeTempPythonFile("def either(a, b):\n    if a or b:\n        return True\n    return False\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.LOGICAL_OR_TO_AND);
-
-        assertEquals(1, points.size());
-        assertEquals("or", points.get(0).getOperator());
-        assertEquals("and", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testTypeFloatToInt() throws IOException {
-        File file = writeTempPythonFile("def scale(a: float) -> float:\n    return a\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_FLOAT_TO_INT);
-
-        assertEquals(2, points.size());
-        assertTrue(points.stream().allMatch(point -> point.getOperator().equals("float")));
-        assertTrue(points.stream().allMatch(point -> point.getReplacement().equals("int")));
-    }
-
-    @Test
-    public void testUnsupportedMutationReturnsNoPoints() throws IOException {
-        File file = writeTempPythonFile("x: int = 5\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.TYPE_INT_TO_DOUBLE);
-
-        assertTrue(points.isEmpty());
-    }
-
-    @Test
-    public void testInvertNegsRemovesNot() throws IOException {
-        File file = writeTempPythonFile("def is_nonzero(x):\n    return not x == 0\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.INVERT_NEGS);
-
-        assertEquals(1, points.size());
-        assertEquals("not ", points.get(0).getOperator());
-        assertEquals("", points.get(0).getReplacement());
-    }
-
-    @Test
-    public void testInvertNegsDoesNotFireInsideString() throws IOException {
-        File file = writeTempPythonFile("def example():\n    return \"not x\"\n");
-
-        List<MutationPoint> points = PythonMutationScanner.scanFile(file, Mutator.MutatorType.INVERT_NEGS);
-
-        assertTrue(points.isEmpty());
-    }
-
     // ── Context-sensitive (Except:) tests ────────────────────────────────────
 
     @Test
@@ -291,7 +26,7 @@ public class PythonScannerTests {
         File file = writeTempPythonFile(
                 "def clamp(n):\n    if n <= 0: n = 0\n    return n\n");
         File specFile = writeSpecFile(
-                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if ({match: {quantity} <= 0}) {quantity} = 0\n\nEnd\n");
 
         MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
         List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
@@ -309,7 +44,7 @@ public class PythonScannerTests {
         File file = writeTempPythonFile(
                 "def is_under(x, limit):\n    if x <= limit:\n        return True\n    return False\n");
         File specFile = writeSpecFile(
-                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if ({match: {quantity} <= 0}) {quantity} = 0\n\nEnd\n");
 
         MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
         List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);
@@ -329,7 +64,7 @@ public class PythonScannerTests {
         File file = writeTempPythonFile(
                 "def check(a, b):\n    return a <= b\n");
         File specFile = writeSpecFile(
-                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if {quantity} <= 0: {quantity} = 0\n\nEnd\n");
+                "Test\n\n\tReplace: {quantity} <= {quantity}\n\tWith: {quantity} < {quantity}\n\tExcept: if ({match: {quantity} <= 0}) {quantity} = 0\n\nEnd\n");
 
         MSLScannerAdapter adapter = PythonMutationScanner.createAdapter(file);
         List<MutationRule> rules = MutationRuleGenerator.generateRules(specFile);

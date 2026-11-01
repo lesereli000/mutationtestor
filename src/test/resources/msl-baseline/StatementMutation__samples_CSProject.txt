@@ -1,0 +1,383 @@
+src/CSProject/Add1.cs	7	19	x + 1	0
+src/CSProject/Add2.cs	7	19	x + 2	0
+src/CSProject/Add3.cs	7	19	x + 3	0
+src/CSProject/BitwiseAndKilledDemo.cs	7	19	6 & 3	0
+src/CSProject/BitwiseAndSurviveDemo.cs	7	19	10 & 3	0
+src/CSProject/BitwiseOrKilledDemo.cs	7	19	6 | 3	0
+src/CSProject/BitwiseOrSurviveDemo.cs	7	19	8 | 1	0
+src/CSProject/BoundaryCheck.cs	13	16	x <= limit	false
+src/CSProject/BoundaryCheck.cs	13	16	x <= limit	true
+src/CSProject/BoundaryCheck.cs	15	23	true	false
+src/CSProject/BoundaryCheck.cs	7	16	n <= 0	false
+src/CSProject/BoundaryCheck.cs	7	16	n <= 0	true
+src/CSProject/BoundaryCheck.cs	8	19	n	0
+src/CSProject/ConditionalDemo.cs	16	16	x > 100	false
+src/CSProject/ConditionalDemo.cs	16	16	x > 100	true
+src/CSProject/ConditionalDemo.cs	18	23	1	0
+src/CSProject/ConditionalDemo.cs	7	16	x > 100	false
+src/CSProject/ConditionalDemo.cs	7	16	x > 100	true
+src/CSProject/ConditionalDemo.cs	9	23	1	0
+src/CSProject/Demo.cs	10	15	(a + b) + c	0
+src/CSProject/Demo.cs	14	15	arr[i] + 1	0
+src/CSProject/Demo.cs	18	15	+a	0
+src/CSProject/Demo.cs	24	15	x	0
+src/CSProject/Demo.cs	30	15	x	0
+src/CSProject/Demo.cs	37	11	x > equal	false
+src/CSProject/Demo.cs	37	11	x > equal	true
+src/CSProject/Demo.cs	38	12	Console.WriteLine("GreaterToGE: passes");	;
+src/CSProject/Demo.cs	40	12	Console.WriteLine("GreaterToGE: fails");	;
+src/CSProject/Demo.cs	48	11	x >= equal	false
+src/CSProject/Demo.cs	48	11	x >= equal	true
+src/CSProject/Demo.cs	49	12	Console.WriteLine("GEToGreater: fails");	;
+src/CSProject/Demo.cs	51	12	Console.WriteLine("GEToGreater: passes");	;
+src/CSProject/Demo.cs	56	8	Console.WriteLine("string literal has +: 2+3");	;
+src/CSProject/Demo.cs	57	8	Console.WriteLine("concat with int: " + Add(2, 3));	;
+src/CSProject/Demo.cs	58	8	Console.WriteLine("concat with char: " + '+');	;
+src/CSProject/Demo.cs	6	15	a + b	0
+src/CSProject/Demo.cs	65	8	Console.WriteLine(Add(2, 3));	;
+src/CSProject/Demo.cs	66	8	Console.WriteLine(Chain(1, 2, 3));	;
+src/CSProject/Demo.cs	67	8	Console.WriteLine(ArrayPlus(new int[]{10, 20, 30}, 1));	;
+src/CSProject/Demo.cs	68	8	Console.WriteLine(UnaryPlus(7));	;
+src/CSProject/Demo.cs	69	8	Console.WriteLine(PlusEquals());	;
+src/CSProject/Demo.cs	70	8	Console.WriteLine(PlusPlus());	;
+src/CSProject/Demo.cs	72	8	Console.WriteLine(1 + 2 + 3);	;
+src/CSProject/Demo.cs	73	8	Console.WriteLine((1 + 2) + 3);	;
+src/CSProject/Demo.cs	75	8	GreaterToGE();	;
+src/CSProject/Demo.cs	76	8	GEToGreater();	;
+src/CSProject/DemoEqualToNotEqual.cs	10	15	(a == b) && (b == c)	false
+src/CSProject/DemoEqualToNotEqual.cs	14	15	arr[i] == val	false
+src/CSProject/DemoEqualToNotEqual.cs	18	15	s == null	false
+src/CSProject/DemoEqualToNotEqual.cs	25	12	x == y	false
+src/CSProject/DemoEqualToNotEqual.cs	25	12	x == y	true
+src/CSProject/DemoEqualToNotEqual.cs	26	12	Console.WriteLine("TestBasicEquality: fails (should pass)");	;
+src/CSProject/DemoEqualToNotEqual.cs	28	12	Console.WriteLine("TestBasicEquality: passes (should fail)");	;
+src/CSProject/DemoEqualToNotEqual.cs	36	12	x == y	false
+src/CSProject/DemoEqualToNotEqual.cs	36	12	x == y	true
+src/CSProject/DemoEqualToNotEqual.cs	37	12	Console.WriteLine("TestInequalityCheck: passes");	;
+src/CSProject/DemoEqualToNotEqual.cs	39	12	Console.WriteLine("TestInequalityCheck: fails");	;
+src/CSProject/DemoEqualToNotEqual.cs	48	12	(a == b) && (b == c)	false
+src/CSProject/DemoEqualToNotEqual.cs	48	12	(a == b) && (b == c)	true
+src/CSProject/DemoEqualToNotEqual.cs	49	12	Console.WriteLine("TestMultipleConditions: fails (all equal)");	;
+src/CSProject/DemoEqualToNotEqual.cs	51	12	Console.WriteLine("TestMultipleConditions: passes");	;
+src/CSProject/DemoEqualToNotEqual.cs	56	8	Console.WriteLine("string literal has ==: a==b");	;
+src/CSProject/DemoEqualToNotEqual.cs	57	8	Console.WriteLine("concat with bool: " + IsEqual(5, 5));	;
+src/CSProject/DemoEqualToNotEqual.cs	58	8	Console.WriteLine("concat with char: " + '=');	;
+src/CSProject/DemoEqualToNotEqual.cs	6	15	a == b	false
+src/CSProject/DemoEqualToNotEqual.cs	61	8	Console.WriteLine(IsEqual(5, 5));	;
+src/CSProject/DemoEqualToNotEqual.cs	62	8	Console.WriteLine(IsEqual(5, 10));	;
+src/CSProject/DemoEqualToNotEqual.cs	63	8	Console.WriteLine(ChainedEquality(5, 5, 5));	;
+src/CSProject/DemoEqualToNotEqual.cs	64	8	Console.WriteLine(ChainedEquality(5, 5, 10));	;
+src/CSProject/DemoEqualToNotEqual.cs	65	8	Console.WriteLine(ArrayEquals(new int[]{10, 20, 30}, 1, 20));	;
+src/CSProject/DemoEqualToNotEqual.cs	66	8	Console.WriteLine(NullCheck(null));	;
+src/CSProject/DemoEqualToNotEqual.cs	67	8	Console.WriteLine(NullCheck("test"));	;
+src/CSProject/DemoEqualToNotEqual.cs	69	8	Console.WriteLine(5 == 5);	;
+src/CSProject/DemoEqualToNotEqual.cs	70	8	Console.WriteLine(5 == 10);	;
+src/CSProject/DemoEqualToNotEqual.cs	71	8	Console.WriteLine((5 == 5) && (10 == 10));	;
+src/CSProject/DemoEqualToNotEqual.cs	73	8	TestBasicEquality();	;
+src/CSProject/DemoEqualToNotEqual.cs	74	8	TestInequalityCheck();	;
+src/CSProject/DemoEqualToNotEqual.cs	75	8	TestMultipleConditions();	;
+src/CSProject/DemoLogicalAndToOr.cs	12	8	Console.WriteLine($"Both positive? {BothPositive(2, 3)}");	;
+src/CSProject/DemoLogicalAndToOr.cs	7	15	a > 0 && b > 0	false
+src/CSProject/DemoLogicalOrToAnd.cs	12	8	Console.WriteLine($"Either positive? {EitherPositive(2, -3)}");	;
+src/CSProject/DemoLogicalOrToAnd.cs	7	15	a > 0 || b > 0	false
+src/CSProject/DemoMinusToPlus.cs	10	15	(a - b) - c	0
+src/CSProject/DemoMinusToPlus.cs	14	15	arr[i] - 1	0
+src/CSProject/DemoMinusToPlus.cs	18	15	-a	0
+src/CSProject/DemoMinusToPlus.cs	24	15	x	0
+src/CSProject/DemoMinusToPlus.cs	30	15	x	0
+src/CSProject/DemoMinusToPlus.cs	34	8	Console.WriteLine(Sub(5, 3));	;
+src/CSProject/DemoMinusToPlus.cs	35	8	Console.WriteLine(Chain(10, 3, 2));	;
+src/CSProject/DemoMinusToPlus.cs	36	8	Console.WriteLine(ArrayMinus(new int[]{10,20,30}, 1));	;
+src/CSProject/DemoMinusToPlus.cs	37	8	Console.WriteLine(UnaryMinus(7));	;
+src/CSProject/DemoMinusToPlus.cs	38	8	Console.WriteLine(MinusEquals());	;
+src/CSProject/DemoMinusToPlus.cs	39	8	Console.WriteLine(MinusMinus());	;
+src/CSProject/DemoMinusToPlus.cs	41	8	Console.WriteLine(10 - 2 - 3);	;
+src/CSProject/DemoMinusToPlus.cs	42	8	Console.WriteLine((10 - 2) - 3);	;
+src/CSProject/DemoMinusToPlus.cs	6	15	a - b	0
+src/CSProject/DemoNotEqualToEqual.cs	10	15	(a != b) && (b != c)	false
+src/CSProject/DemoNotEqualToEqual.cs	14	15	arr[i] != val	false
+src/CSProject/DemoNotEqualToEqual.cs	18	15	s != null	false
+src/CSProject/DemoNotEqualToEqual.cs	25	12	x != y	false
+src/CSProject/DemoNotEqualToEqual.cs	25	12	x != y	true
+src/CSProject/DemoNotEqualToEqual.cs	26	12	Console.WriteLine("TestBasicInequality: fails (should pass)");	;
+src/CSProject/DemoNotEqualToEqual.cs	28	12	Console.WriteLine("TestBasicInequality: passes (should fail)");	;
+src/CSProject/DemoNotEqualToEqual.cs	36	12	x != y	false
+src/CSProject/DemoNotEqualToEqual.cs	36	12	x != y	true
+src/CSProject/DemoNotEqualToEqual.cs	37	12	Console.WriteLine("TestEqualityCheck: passes");	;
+src/CSProject/DemoNotEqualToEqual.cs	39	12	Console.WriteLine("TestEqualityCheck: fails");	;
+src/CSProject/DemoNotEqualToEqual.cs	48	12	(a != b) && (b != c)	false
+src/CSProject/DemoNotEqualToEqual.cs	48	12	(a != b) && (b != c)	true
+src/CSProject/DemoNotEqualToEqual.cs	49	12	Console.WriteLine("TestMultipleConditions: fails (all different)");	;
+src/CSProject/DemoNotEqualToEqual.cs	51	12	Console.WriteLine("TestMultipleConditions: passes");	;
+src/CSProject/DemoNotEqualToEqual.cs	56	8	Console.WriteLine("string literal has !=: a!=b");	;
+src/CSProject/DemoNotEqualToEqual.cs	57	8	Console.WriteLine("concat with bool: " + IsNotEqual(5, 10));	;
+src/CSProject/DemoNotEqualToEqual.cs	6	15	a != b	false
+src/CSProject/DemoNotEqualToEqual.cs	60	8	Console.WriteLine(IsNotEqual(5, 10));	;
+src/CSProject/DemoNotEqualToEqual.cs	61	8	Console.WriteLine(IsNotEqual(5, 5));	;
+src/CSProject/DemoNotEqualToEqual.cs	62	8	Console.WriteLine(ChainedInequality(5, 10, 15));	;
+src/CSProject/DemoNotEqualToEqual.cs	63	8	Console.WriteLine(ChainedInequality(5, 5, 10));	;
+src/CSProject/DemoNotEqualToEqual.cs	64	8	Console.WriteLine(ArrayNotEquals(new int[]{10, 20, 30}, 1, 25));	;
+src/CSProject/DemoNotEqualToEqual.cs	65	8	Console.WriteLine(NotNullCheck(null));	;
+src/CSProject/DemoNotEqualToEqual.cs	66	8	Console.WriteLine(NotNullCheck("test"));	;
+src/CSProject/DemoNotEqualToEqual.cs	68	8	Console.WriteLine(5 != 10);	;
+src/CSProject/DemoNotEqualToEqual.cs	69	8	Console.WriteLine(5 != 5);	;
+src/CSProject/DemoNotEqualToEqual.cs	70	8	Console.WriteLine((5 != 10) && (10 != 15));	;
+src/CSProject/DemoNotEqualToEqual.cs	72	8	TestBasicInequality();	;
+src/CSProject/DemoNotEqualToEqual.cs	73	8	TestEqualityCheck();	;
+src/CSProject/DemoNotEqualToEqual.cs	74	8	TestMultipleConditions();	;
+src/CSProject/DivideKilledDemo.cs	7	19	8 / 2	0
+src/CSProject/DivideSurviveDemo.cs	7	19	12 / 3	0
+src/CSProject/EqualsDemo.cs	7	19	x == 5	false
+src/CSProject/EqualsDemo.cs	7	19	x == 5	true
+src/CSProject/EqualsDemo.cs	7	19	x == 5 ? 1 : 0	0
+src/CSProject/EquivalentDemo.cs	14	19	x | 1	0
+src/CSProject/EquivalentDemo.cs	9	19	x | x	0
+src/CSProject/IncrementKilledDemo.cs	9	19	x	0
+src/CSProject/IncrementSurviveDemo.cs	9	19	x	0
+src/CSProject/LessEqualKilledDemo.cs	7	19	x <= 5	false
+src/CSProject/LessEqualKilledDemo.cs	7	19	x <= 5	true
+src/CSProject/LessEqualKilledDemo.cs	7	19	x <= 5 ? 1 : 0	0
+src/CSProject/LessEqualSurviveDemo.cs	7	19	x <= 10	false
+src/CSProject/LessEqualSurviveDemo.cs	7	19	x <= 10	true
+src/CSProject/LessEqualSurviveDemo.cs	7	19	x <= 10 ? 1 : 0	0
+src/CSProject/LessThanKilledDemo.cs	7	19	x < 5	false
+src/CSProject/LessThanKilledDemo.cs	7	19	x < 5	true
+src/CSProject/LessThanKilledDemo.cs	7	19	x < 5 ? 1 : 0	0
+src/CSProject/LessThanSurviveDemo.cs	7	19	x < 10	false
+src/CSProject/LessThanSurviveDemo.cs	7	19	x < 10	true
+src/CSProject/LessThanSurviveDemo.cs	7	19	x < 10 ? 1 : 0	0
+src/CSProject/Minu2.cs	7	19	x - 2	0
+src/CSProject/Minus1.cs	7	19	x - 1	0
+src/CSProject/Minus3.cs	7	19	x - 3	0
+src/CSProject/ModuloKilledDemo.cs	7	19	5 % 2	0
+src/CSProject/ModuloSurviveDemo.cs	7	19	7 % 3	0
+src/CSProject/MultiplyKilledDemo.cs	7	19	6 * 2	0
+src/CSProject/MultiplySurviveDemo.cs	7	19	8 * 2	0
+src/CSProject/NoCoverageDemo.cs	12	19	x + 10	0
+src/CSProject/NoCoverageDemo.cs	7	19	x + 1	0
+src/CSProject/NotEqualsDemo.cs	7	19	x != 5	false
+src/CSProject/NotEqualsDemo.cs	7	19	x != 5	true
+src/CSProject/NotEqualsDemo.cs	7	19	x != 5 ? 1 : 0	0
+src/CSProject/PitConstructorCallsDemo.cs	12	19	new Widget("survived")	default
+src/CSProject/PitConstructorCallsDemo.cs	12	19	new Widget("survived")	null
+src/CSProject/PitConstructorCallsDemo.cs	7	19	new Widget("killed")	default
+src/CSProject/PitConstructorCallsDemo.cs	7	19	new Widget("killed")	null
+src/CSProject/PitEmptyReturnsDemo.cs	14	19	7	0
+src/CSProject/PitEmptyReturnsDemo.cs	19	19	new List<int> { 1, 2, 3 }	new System.Collections.Generic.List<int>()
+src/CSProject/PitEmptyReturnsDemo.cs	24	19	new[] { "alpha", "beta" }	System.Linq.Enumerable.Empty<string>()
+src/CSProject/PitEmptyReturnsDemo.cs	29	19	"items"	""
+src/CSProject/PitEmptyReturnsDemo.cs	34	19	new List<int> { 1, 2, 3 }	new System.Collections.Generic.List<int>()
+src/CSProject/PitEmptyReturnsDemo.cs	9	19	"items"	""
+src/CSProject/PitIncrementDemo.cs	16	19	value	0
+src/CSProject/PitIncrementDemo.cs	9	19	value	0
+src/CSProject/PitInvertNegativeDemo.cs	12	19	-value	0
+src/CSProject/PitInvertNegativeDemo.cs	18	19	Math.Abs(value)	0
+src/CSProject/PitInvertNegativeDemo.cs	23	19	Math.Abs(-value)	0
+src/CSProject/PitInvertNegativeDemo.cs	7	19	-5	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	12	19	ComputeValue()	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	17	24	ComputeValue()	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	18	19	value	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	23	24	ComputeValue()	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	24	19	value	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	29	19	9	0
+src/CSProject/PitNonVoidMethodCallsDemo.cs	7	19	ComputeValue()	0
+src/CSProject/PitReturnValueDemo.cs	22	19	42	0
+src/CSProject/PitReturnValueDemo.cs	27	19	"ready"	""
+src/CSProject/PitReturnValueDemo.cs	32	19	this	default
+src/CSProject/PitReturnValueDemo.cs	37	19	true	false
+src/CSProject/PitReturnValueDemo.cs	52	19	42	0
+src/CSProject/PitReturnValueDemo.cs	57	19	"ready"	""
+src/CSProject/PitReturnValueDemo.cs	62	19	this	default
+src/CSProject/PitReturnValueDemo.cs	7	19	true	false
+src/CSProject/PitVoidMethodCallDemo.cs	14	12	Record();	;
+src/CSProject/PitVoidMethodCallDemo.cs	15	19	Count	0
+src/CSProject/PitVoidMethodCallDemo.cs	20	12	Record();	;
+src/CSProject/Program.cs	12	19	Minus1.minus1(x) + Minus2.minus2(x) + Minus3.minus3(x)	0
+src/CSProject/Program.cs	17	19	EqualsDemo.isEqual(x) + NotEqualsDemo.isNotEqual(x)	0
+src/CSProject/Program.cs	30	19	IncrementKilledDemo.test() + IncrementSurviveDemo.test()	0
+src/CSProject/Program.cs	35	12	System.Console.WriteLine("Pipeline: " + RunPipeline(1));	;
+src/CSProject/Program.cs	36	12	System.Console.WriteLine("MinusPipeline: " + RunMinusPipeline(5));	;
+src/CSProject/Program.cs	37	12	System.Console.WriteLine("EqualityPipeline: " + RunEqualityPipeline(5));	;
+src/CSProject/Program.cs	38	12	System.Console.WriteLine("RelationalPipeline: " + RunRelationalPipeline(5));	;
+src/CSProject/Program.cs	39	12	System.Console.WriteLine("IncrementPipeline: " + RunIncrementPipeline());	;
+src/CSProject/Program.cs	40	12	System.Console.WriteLine("UseInt: " + TypeMutationDemo.UseInt());	;
+src/CSProject/Program.cs	41	12	System.Console.WriteLine("UseDouble: " + TypeMutationDemo.UseDouble());	;
+src/CSProject/Program.cs	42	12	System.Console.WriteLine("UseFloat: " + TypeMutationDemo.UseFloat());	;
+src/CSProject/Program.cs	7	19	Add1.add1(x) + Add2.add2(x) + Add3.add3(x)	0
+src/CSProject/StatementMutationDemo.cs	10	12	values.Add(7);	;
+src/CSProject/StatementMutationDemo.cs	11	19	values.Count	0
+src/CSProject/StatementMutationDemo.cs	16	25	new List<int>()	default(List<int>)
+src/CSProject/StatementMutationDemo.cs	17	12	values.Add(7);	;
+src/CSProject/StatementMutationDemo.cs	18	19	1	0
+src/CSProject/StatementMutationDemo.cs	9	25	new List<int>()	default(List<int>)
+src/CSProject/StringMutation.cs	12	19	string.IsNullOrEmpty(value) ? 1 : 1	0
+src/CSProject/StringMutation.cs	7	19	string.IsNullOrEmpty(value) ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	14	19	a == 2.5	false
+src/CSProject/TypeMutationDemo.cs	14	19	a == 2.5	true
+src/CSProject/TypeMutationDemo.cs	14	19	a == 2.5 ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	20	19	a == 2.5f	false
+src/CSProject/TypeMutationDemo.cs	20	19	a == 2.5f	true
+src/CSProject/TypeMutationDemo.cs	20	19	a == 2.5f ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	26	23	a == 2.5	false
+src/CSProject/TypeMutationDemo.cs	26	23	a == 2.5	true
+src/CSProject/TypeMutationDemo.cs	26	23	a == 2.5 ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	32	23	a == 2.5	false
+src/CSProject/TypeMutationDemo.cs	32	23	a == 2.5	true
+src/CSProject/TypeMutationDemo.cs	32	23	a == 2.5 ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	38	23	a == 2.5f	false
+src/CSProject/TypeMutationDemo.cs	38	23	a == 2.5f	true
+src/CSProject/TypeMutationDemo.cs	38	23	a == 2.5f ? 1 : 0	0
+src/CSProject/TypeMutationDemo.cs	8	19	a == 2.5	false
+src/CSProject/TypeMutationDemo.cs	8	19	a == 2.5	true
+src/CSProject/TypeMutationDemo.cs	8	19	a == 2.5 ? 1 : 0	0
+src/CSProject/WhileLoopContextDemo.cs	14	19	n	0
+src/CSProject/WhileLoopContextDemo.cs	21	19	n > 0	false
+src/CSProject/WhileLoopContextDemo.cs	21	19	n > 0	true
+src/CSProject/WhileLoopContextDemo.cs	26	19	n	0
+src/CSProject/WhileLoopContextDemo.cs	36	19	current <= limit	false
+src/CSProject/WhileLoopContextDemo.cs	36	19	current <= limit	true
+src/CSProject/WhileLoopContextDemo.cs	42	19	steps	0
+src/CSProject/WhileLoopContextDemo.cs	9	19	n < 0	false
+src/CSProject/WhileLoopContextDemo.cs	9	19	n < 0	true
+src/CSProject/prototypeSample.cs	102	16	i == 1	false
+src/CSProject/prototypeSample.cs	102	16	i == 1	true
+src/CSProject/prototypeSample.cs	103	12	Console.WriteLine("For: " + i);	;
+src/CSProject/prototypeSample.cs	107	15	j < 2	false
+src/CSProject/prototypeSample.cs	107	15	j < 2	true
+src/CSProject/prototypeSample.cs	107	22	Console.WriteLine("While: " + j++);	;
+src/CSProject/prototypeSample.cs	112	12	Console.WriteLine("Do-While: " + k++);	;
+src/CSProject/prototypeSample.cs	113	17	k < 2	false
+src/CSProject/prototypeSample.cs	113	17	k < 2	true
+src/CSProject/prototypeSample.cs	119	33	Console.WriteLine("Started");	;
+src/CSProject/prototypeSample.cs	120	33	Console.WriteLine("Running");	;
+src/CSProject/prototypeSample.cs	121	34	Console.WriteLine("Finished");	;
+src/CSProject/prototypeSample.cs	126	8	list.ForEach(e => Console.WriteLine("Lambda: " + e));	;
+src/CSProject/prototypeSample.cs	130	18	new Dog("Labrador")	null
+src/CSProject/prototypeSample.cs	131	8	dog.MakeSound();	;
+src/CSProject/prototypeSample.cs	134	27	new ConsoleGreeter()	null
+src/CSProject/prototypeSample.cs	135	8	greeter.Greet("World");	;
+src/CSProject/prototypeSample.cs	138	23	new Box<int>(42)	null
+src/CSProject/prototypeSample.cs	139	8	Console.WriteLine(box.Value);	;
+src/CSProject/prototypeSample.cs	144	8	Console.WriteLine(di);	;
+src/CSProject/prototypeSample.cs	148	12	s == null	false
+src/CSProject/prototypeSample.cs	148	12	s == null	true
+src/CSProject/prototypeSample.cs	148	23	Console.WriteLine("s is null");	;
+src/CSProject/prototypeSample.cs	154	24	new CSharpSpecifics()	default(CSharpSpecifics)
+src/CSProject/prototypeSample.cs	156	8	specifics.StartProcess();	;
+src/CSProject/prototypeSample.cs	159	8	specifics.DoAsyncWork().Wait();	;
+src/CSProject/prototypeSample.cs	182	8	await System.Threading.Tasks.Task.Delay(1);	;
+src/CSProject/prototypeSample.cs	187	21	1	default
+src/CSProject/prototypeSample.cs	188	21	2	default
+src/CSProject/prototypeSample.cs	50	15	result	0
+src/CSProject/prototypeSample.cs	97	22	(a > b)	false
+src/CSProject/prototypeSample.cs	97	22	(a > b)	true
+tests/CSProject.Tests/ConditionalTests.cs	11	12	Assert.Equal(0, ConditionalDemo.Killed(50));	;
+tests/CSProject.Tests/ConditionalTests.cs	17	12	Assert.Equal(1, ConditionalDemo.Killed(150));	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	12	12	AllSyntaxDemo.RunDemo();	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	15	12	AllSyntaxDemo.StaticMethod();	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	17	23	new AllSyntaxDemo()	default(AllSyntaxDemo)
+tests/CSProject.Tests/PrototypeSampleTests.cs	18	12	Assert.Equal(6, demo.Sum(1, 2, 3));	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	20	22	new Dog("Beagle")	default(Dog)
+tests/CSProject.Tests/PrototypeSampleTests.cs	21	12	dog.MakeSound();	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	22	12	Assert.Equal("Beagle", dog.Breed);	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	24	22	new Box<int>(1)	default(Box<int>)
+tests/CSProject.Tests/PrototypeSampleTests.cs	25	12	Assert.Equal(1, box.Value);	;
+tests/CSProject.Tests/PrototypeSampleTests.cs	27	26	new ConsoleGreeter()	default(ConsoleGreeter)
+tests/CSProject.Tests/PrototypeSampleTests.cs	28	12	greeter.Greet("Test");	;
+tests/CSProject.Tests/TestAdd.cs	11	8	Assert.Equal(6, Add1.add1(5));	;
+tests/CSProject.Tests/TestAdd.cs	12	8	Assert.Equal(0, Add1.add1(-1));	;
+tests/CSProject.Tests/TestAdd.cs	13	8	Assert.Equal(789, Add1.add1(788));	;
+tests/CSProject.Tests/TestAdd.cs	14	8	Assert.Equal(12, Add1.add1(11));	;
+tests/CSProject.Tests/TestAdd.cs	15	8	Assert.Equal(int.MaxValue, Add1.add1(int.MaxValue - 1));	;
+tests/CSProject.Tests/TestAdd.cs	21	8	Assert.Equal(7.0, Add2.add2(5));	;
+tests/CSProject.Tests/TestAdd.cs	22	8	Assert.Equal(1.0, Add2.add2(-1));	;
+tests/CSProject.Tests/TestAdd.cs	23	8	Assert.Equal(790.0, Add2.add2(788));	;
+tests/CSProject.Tests/TestAdd.cs	24	8	Assert.Equal(13.0, Add2.add2(11));	;
+tests/CSProject.Tests/TestAdd.cs	25	8	Assert.Equal((double)int.MaxValue, Add2.add2(int.MaxValue - 2));	;
+tests/CSProject.Tests/TestAdd.cs	31	8	Assert.Equal(21, Program.RunPipeline(5));	;
+tests/CSProject.Tests/TestBitwise.cs	11	8	Assert.Equal(2, BitwiseAndKilledDemo.test());	;
+tests/CSProject.Tests/TestBitwise.cs	17	8	Assert.Equal(7, BitwiseOrKilledDemo.test());	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	11	8	Assert.Equal(0, BoundaryCheck.ClampToZero(-5));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	12	8	Assert.Equal(0, BoundaryCheck.ClampToZero(-1));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	13	8	Assert.Equal(0, BoundaryCheck.ClampToZero(0));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	19	8	Assert.Equal(5, BoundaryCheck.ClampToZero(5));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	20	8	Assert.Equal(100, BoundaryCheck.ClampToZero(100));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	26	8	Assert.True(BoundaryCheck.IsUnderLimit(3, 10));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	27	8	Assert.True(BoundaryCheck.IsUnderLimit(0, 5));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	28	8	Assert.True(BoundaryCheck.IsUnderLimit(10, 10));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	34	8	Assert.False(BoundaryCheck.IsUnderLimit(11, 10));	;
+tests/CSProject.Tests/TestBoundaryCheck.cs	35	8	Assert.False(BoundaryCheck.IsUnderLimit(100, 50));	;
+tests/CSProject.Tests/TestEquals.cs	11	8	Assert.Equal(1, EqualsDemo.isEqual(5));	;
+tests/CSProject.Tests/TestEquals.cs	12	8	Assert.Equal(0, EqualsDemo.isEqual(3));	;
+tests/CSProject.Tests/TestEquals.cs	18	8	Assert.Equal(0, NotEqualsDemo.isNotEqual(5));	;
+tests/CSProject.Tests/TestEquals.cs	19	8	Assert.Equal(1, NotEqualsDemo.isNotEqual(3));	;
+tests/CSProject.Tests/TestIncrement.cs	11	8	Assert.Equal(2, IncrementKilledDemo.test());	;
+tests/CSProject.Tests/TestMinus.cs	11	8	Assert.Equal(4, Minus1.minus1(5));	;
+tests/CSProject.Tests/TestMinus.cs	17	8	Assert.Equal(3, Minus2.minus2(5));	;
+tests/CSProject.Tests/TestModulo.cs	11	8	Assert.Equal(1, ModuloKilledDemo.test());	;
+tests/CSProject.Tests/TestMultiplyDivide.cs	11	8	Assert.Equal(12, MultiplyKilledDemo.test());	;
+tests/CSProject.Tests/TestMultiplyDivide.cs	17	8	Assert.Equal(4, DivideKilledDemo.test());	;
+tests/CSProject.Tests/TestMutationType.cs	11	12	Assert.Equal(1, TypeMutationDemo.UseDouble());	;
+tests/CSProject.Tests/TestMutationType.cs	17	12	Assert.Equal(0, TypeMutationDemo.UseInt());	;
+tests/CSProject.Tests/TestMutationType.cs	23	12	Assert.Equal(1, TypeMutationDemo.UseFloat());	;
+tests/CSProject.Tests/TestNoCoverage.cs	11	8	Assert.Equal(6, NoCoverageDemo.CoveredByTests(5));	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	10	19	new PitVoidMethodCallDemo()	default(PitVoidMethodCallDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	101	19	new PitConstructorCallsDemo()	default(PitConstructorCallsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	103	8	Assert.True(demo.CreateSurvivedWidget() == null || demo.CreateSurvivedWidget() != null);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	109	19	new PitNonVoidMethodCallsDemo()	default(PitNonVoidMethodCallsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	111	8	Assert.Equal(9, demo.ReadKilledValue());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	112	8	Assert.Equal(9, demo.AssignKilledValue());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	118	19	new PitNonVoidMethodCallsDemo()	default(PitNonVoidMethodCallsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	12	8	Assert.Equal(1, demo.KilledBySideEffectAssertion());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	120	8	Assert.True(demo.ReadSurvivedValue() >= 0);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	121	8	Assert.True(demo.AssignSurvivedValue() >= 0);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	18	19	new PitVoidMethodCallDemo()	default(PitVoidMethodCallDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	20	8	Assert.Equal(0, demo.SurvivesBecauseSideEffectIsNotAsserted());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	26	8	Assert.Equal(11, PitIncrementDemo.Increment());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	27	8	Assert.Equal(9, PitIncrementDemo.Decrement());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	33	8	Assert.Equal(-5, PitInvertNegativeDemo.KilledNegativeConstant());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	34	8	Assert.Equal(-7, PitInvertNegativeDemo.KilledNegativeVariable(7));	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	40	8	Assert.Equal(5, PitInvertNegativeDemo.SurvivedNegativeInsideAbsoluteValue());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	41	8	Assert.Equal(7, PitInvertNegativeDemo.SurvivedNegativeVariableInsideAbsoluteValue(7));	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	47	19	new PitReturnValueDemo()	default(PitReturnValueDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	49	8	Assert.True(demo.KilledReturnsTrue());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	50	8	Assert.False(demo.KilledReturnsFalse());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	51	8	Assert.Equal(0, demo.KilledReturnsZero());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	52	8	Assert.Equal(42, demo.KilledReturnsNonZero());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	53	8	Assert.Equal("ready", demo.KilledReturnsString());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	54	8	Assert.Same(demo, demo.KilledReturnsObject());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	60	19	new PitReturnValueDemo()	default(PitReturnValueDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	62	8	Assert.IsType<bool>(demo.SurvivedReturnsTrue());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	63	8	Assert.IsType<bool>(demo.SurvivedReturnsFalse());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	64	8	Assert.True(demo.SurvivedReturnsZero() >= 0);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	65	8	Assert.True(demo.SurvivedReturnsNonZero() >= 0);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	66	8	Assert.NotNull(demo.SurvivedReturnsString());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	67	8	Assert.True(demo.SurvivedReturnsObject() == null || demo.SurvivedReturnsObject() != null);	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	73	19	new PitEmptyReturnsDemo()	default(PitEmptyReturnsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	75	8	Assert.Equal("items", demo.KilledReturnsString());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	76	8	Assert.Equal(7, demo.KilledReturnsInt());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	77	8	Assert.Equal(new[] { 1, 2, 3 }, demo.KilledReturnsList());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	78	8	Assert.Equal(new[] { "alpha", "beta" }, demo.KilledReturnsEnumerable());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	84	19	new PitEmptyReturnsDemo()	default(PitEmptyReturnsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	86	8	Assert.NotNull(demo.SurvivedReturnsString());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	87	8	Assert.NotNull(demo.SurvivedReturnsList());	;
+tests/CSProject.Tests/TestPitStyleMutations.cs	93	19	new PitConstructorCallsDemo()	default(PitConstructorCallsDemo)
+tests/CSProject.Tests/TestPitStyleMutations.cs	95	8	Assert.Equal("killed", demo.CreateKilledWidget().Name);	;
+tests/CSProject.Tests/TestRelational.cs	11	8	Assert.Equal(1, LessThanKilledDemo.IsLessThanFive(4));	;
+tests/CSProject.Tests/TestRelational.cs	12	8	Assert.Equal(0, LessThanKilledDemo.IsLessThanFive(5));	;
+tests/CSProject.Tests/TestRelational.cs	13	8	Assert.Equal(0, LessThanKilledDemo.IsLessThanFive(6));	;
+tests/CSProject.Tests/TestRelational.cs	19	8	Assert.Equal(1, LessEqualKilledDemo.IsLessEqualFive(4));	;
+tests/CSProject.Tests/TestRelational.cs	20	8	Assert.Equal(1, LessEqualKilledDemo.IsLessEqualFive(5));	;
+tests/CSProject.Tests/TestRelational.cs	21	8	Assert.Equal(0, LessEqualKilledDemo.IsLessEqualFive(6));	;
+tests/CSProject.Tests/TestStatementMutation.cs	11	12	Assert.Equal(1, StatementMutationDemo.Killed());	;
+tests/CSProject.Tests/TestStatementMutation.cs	17	12	Assert.Equal(1, StatementMutationDemo.Survived());	;
+tests/CSProject.Tests/TestStringMutation.cs	11	12	Assert.Equal(1, StringMutation.Killed(null));	;
+tests/CSProject.Tests/TestStringMutation.cs	12	12	Assert.Equal(1, StringMutation.Killed(string.Empty));	;
+tests/CSProject.Tests/TestStringMutation.cs	18	12	Assert.Equal(1, StringMutation.Survived("text"));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	11	8	Assert.Equal(0, WhileLoopContextDemo.NormalizeNegativeToZero(-5));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	12	8	Assert.Equal(0, WhileLoopContextDemo.NormalizeNegativeToZero(0));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	18	8	Assert.Equal(0, WhileLoopContextDemo.NormalizePositiveToZero(5));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	19	8	Assert.Equal(0, WhileLoopContextDemo.NormalizePositiveToZero(0));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	25	8	Assert.Equal(1, WhileLoopContextDemo.CountStepsThroughLimit(10, 10));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	26	8	Assert.Equal(3, WhileLoopContextDemo.CountStepsThroughLimit(10, 12));	;
+tests/CSProject.Tests/TestWhileLoopContextDemo.cs	27	8	Assert.Equal(0, WhileLoopContextDemo.CountStepsThroughLimit(13, 12));	;

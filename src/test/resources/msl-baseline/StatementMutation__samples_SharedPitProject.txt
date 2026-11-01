@@ -1,0 +1,33 @@
+SharedPit.cs	2	55	1	0
+SharedPit.cs	3	43	!flag	false
+SharedPit.cs	4	40	"value"	""
+SharedPit.cs	5	42	Compute()	""
+SharedPit.cs	5	42	Compute()	null
+SharedPit.cs	7	8	Notify();	;
+SharedPit.cs	9	45	new Widget()	default
+SharedPit.cs	9	45	new Widget()	null
+SharedPit.java	2	51	1	0
+SharedPit.java	3	42	!flag	false
+SharedPit.java	4	33	"value"	""
+SharedPit.java	5	35	compute()	""
+SharedPit.java	7	8	notifyUser();	;
+SharedPit.java	9	38	new Widget()	null
+shared-pit.js	1	44	1	0
+shared-pit.js	2	31	!flag	null
+shared-pit.js	3	31	"value"	""
+shared-pit.js	4	33	compute()	null
+shared-pit.js	5	22	notify();	;
+shared-pit.js	6	36	new Widget()	null
+shared-pit.rkt	2	34	1	0
+shared-pit.rkt	3	22	(not flag)	#f
+shared-pit.rkt	4	22	(list 1 2)	'()
+shared-pit.rkt	5	24	(compute 1)	'()
+shared-pit.rkt	6	27	(displayln "notice")	(void)
+shared-pit.rkt	6	48	1	0
+shared-pit.rkt	7	27	(make-widget 1)	'()
+shared_pit.py	10	11	"value"	""
+shared_pit.py	13	11	compute()	None
+shared_pit.py	16	4	notify()	pass
+shared_pit.py	19	11	Widget()	None
+shared_pit.py	3	15	1	0
+shared_pit.py	7	11	not flag	None

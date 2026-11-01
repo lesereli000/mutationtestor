@@ -21,385 +21,12 @@ import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 
 import mutationtester.CSharpLexer;
 import mutationtester.CSharpParser;
-import mutationtester.CSharpParserBaseVisitor;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
+import mutationtester.msl.CstNodes;
 import mutationtester.msl.MSLScannerAdapter;
 
 public class CSharpMutationScanner {
-
-    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        sourceCode = removeBom(sourceCode);
-
-        if (type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
-            return UniversalPitMutationScanner.scan(file, type);
-        }
-
-        if (isTypeSwapMutation(type)) {
-            return scanTypeSwapMutations(file, sourceCode, type);
-        }
-        if (isReturnValueMutation(type)) {
-            return scanReturnValueMutations(file, sourceCode, type);
-        }
-        if (type == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
-            return scanVoidMethodCallMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
-            return scanConstructorCallMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
-            return scanNonVoidMethodCallMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT
-                || type == Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT) {
-            return scanIncrementSwapMutations(file, sourceCode, type);
-        }
-        if (type == Mutator.MutatorType.INEG_INVERT_NEGATIVE) {
-            return scanInvertNegativeMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.REMOVE_INCREMENT) {
-            return scanRemoveIncrementMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.STATEMENT_MUTATION) {
-            return scanStatementRemovalMutations(file, sourceCode);
-        }
-        if (type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_NULL
-                || type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_EMPTY) {
-            return scanStringIsNullOrEmptyMutations(file, sourceCode, type);
-        }
-        if (type == Mutator.MutatorType.CONDITIONAL_TRUE || type == Mutator.MutatorType.CONDITIONAL_FALSE) {
-            return scanConditionalMutations(file, sourceCode, type);
-        }
-        if (isRemoveConditionalMutation(type)) {
-            return scanRemoveConditionalMutations(file, sourceCode, type);
-        }
-
-        CharStream input = CharStreams.fromString(sourceCode);
-        CSharpLexer lexer = new CSharpLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        CSharpParser parser = new CSharpParser(tokens);
-
-        ParseTree tree = parser.prog();
-
-        CSharpMutationVisitor visitor = new CSharpMutationVisitor(file, type);
-        visitor.visit(tree);
-
-        return visitor.getMutationPoints();
-    }
-
-    private static List<MutationPoint> scanConditionalMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        String replacement = type == Mutator.MutatorType.CONDITIONAL_TRUE ? "true" : "false";
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
-            addParenthesizedCondition(points, file, line, i + 1, type, replacement, "if");
-            addParenthesizedCondition(points, file, line, i + 1, type, replacement, "while");
-            addTernaryCondition(points, file, lines, i, type, replacement);
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanRemoveConditionalMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        String replacement = removeConditionalReplacement(type);
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
-            addRemoveConditionalPoint(points, file, line, i + 1, type, replacement, "if");
-            addRemoveConditionalPoint(points, file, line, i + 1, type, replacement, "while");
-            addRemoveConditionalTernaryPoint(points, file, lines, i, type, replacement);
-        }
-
-        return points;
-    }
-
-    private static void addRemoveConditionalPoint(List<MutationPoint> points, File file, String line, int lineNumber,
-                                                  Mutator.MutatorType type, String replacement, String keyword) {
-        int searchFrom = 0;
-
-        while (searchFrom < line.length()) {
-            int keywordIndex = findKeywordOutsideStringOrComment(line, keyword, searchFrom);
-            if (keywordIndex < 0) {
-                return;
-            }
-
-            int openParen = line.indexOf('(', keywordIndex + keyword.length());
-            if (openParen < 0 || isInStringOrComment(line, openParen)) {
-                searchFrom = keywordIndex + keyword.length();
-                continue;
-            }
-
-            int closeParen = findMatchingParen(line, openParen);
-            if (closeParen < 0) {
-                searchFrom = openParen + 1;
-                continue;
-            }
-
-            String condition = line.substring(openParen + 1, closeParen).trim();
-            int conditionColumn = line.indexOf(condition, openParen + 1);
-
-            if (isValidConditionText(condition) && removeConditionalMatches(type, condition)) {
-                points.add(new MutationPoint(file, lineNumber, conditionColumn, condition, replacement, type));
-            }
-
-            searchFrom = closeParen + 1;
-        }
-    }
-
-    private static void addRemoveConditionalTernaryPoint(List<MutationPoint> points, File file, String[] lines, int lineIndex,
-                                                         Mutator.MutatorType type, String replacement) {
-        String line = lines[lineIndex];
-        int questionMark = findQuestionMarkOutsideStringOrComment(line);
-        ConditionSpan conditionSpan = null;
-
-        if (questionMark >= 0) {
-            conditionSpan = extractInlineTernaryCondition(line, questionMark);
-        } else if (lineIndex + 1 < lines.length && startsWithQuestionMark(lines[lineIndex + 1])) {
-            conditionSpan = extractTrailingTernaryCondition(line);
-        }
-
-        if (conditionSpan == null) {
-            return;
-        }
-
-        String condition = conditionSpan.text().trim();
-        if (isValidConditionText(condition) && removeConditionalMatches(type, condition)) {
-            points.add(new MutationPoint(
-                    file,
-                    lineIndex + 1,
-                    conditionSpan.startColumn(),
-                    condition,
-                    replacement,
-                    type
-            ));
-        }
-    }
-
-    private static boolean isRemoveConditionalMutation(Mutator.MutatorType type) {
-        return type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
-                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE
-                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF
-                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE;
-    }
-
-    private static String removeConditionalReplacement(Mutator.MutatorType type) {
-        return (type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
-                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF) ? "true" : "false";
-    }
-
-    private static boolean removeConditionalMatches(Mutator.MutatorType type, String condition) {
-        boolean equality = containsOperatorOutsideStringOrComment(condition, "==")
-                || containsOperatorOutsideStringOrComment(condition, "!=");
-        boolean order = containsOperatorOutsideStringOrComment(condition, "<=")
-                || containsOperatorOutsideStringOrComment(condition, ">=")
-                || containsStandaloneOrderOperator(condition, '<')
-                || containsStandaloneOrderOperator(condition, '>');
-
-        if (type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
-                || type == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE) {
-            return equality;
-        }
-
-        return order;
-    }
-
-    private static boolean containsOperatorOutsideStringOrComment(String text, String operator) {
-        int index = text.indexOf(operator);
-        while (index >= 0) {
-            if (!isInStringOrComment(text, index)) {
-                return true;
-            }
-            index = text.indexOf(operator, index + operator.length());
-        }
-        return false;
-    }
-
-    private static boolean containsStandaloneOrderOperator(String text, char operator) {
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) != operator || isInStringOrComment(text, i)) {
-                continue;
-            }
-
-            char prev = i > 0 ? text.charAt(i - 1) : '\0';
-            char next = i + 1 < text.length() ? text.charAt(i + 1) : '\0';
-            if (prev != operator && next != operator && next != '=') {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static void addParenthesizedCondition(List<MutationPoint> points, File file, String line, int lineNumber,
-                                                  Mutator.MutatorType type, String replacement, String keyword) {
-        int searchFrom = 0;
-
-        while (searchFrom < line.length()) {
-            int keywordIndex = findKeywordOutsideStringOrComment(line, keyword, searchFrom);
-            if (keywordIndex < 0) {
-                return;
-            }
-
-            int openParen = line.indexOf('(', keywordIndex + keyword.length());
-            if (openParen < 0 || isInStringOrComment(line, openParen)) {
-                searchFrom = keywordIndex + keyword.length();
-                continue;
-            }
-
-            int closeParen = findMatchingParen(line, openParen);
-            if (closeParen < 0) {
-                searchFrom = openParen + 1;
-                continue;
-            }
-
-            String condition = line.substring(openParen + 1, closeParen).trim();
-            int conditionColumn = line.indexOf(condition, openParen + 1);
-
-            if (isValidConditionText(condition)) {
-                points.add(new MutationPoint(file, lineNumber, conditionColumn, condition, replacement, type));
-            }
-
-            searchFrom = closeParen + 1;
-        }
-    }
-
-    private static void addTernaryCondition(List<MutationPoint> points, File file, String[] lines, int lineIndex,
-                                            Mutator.MutatorType type, String replacement) {
-        String line = lines[lineIndex];
-        int questionMark = findQuestionMarkOutsideStringOrComment(line);
-        if (questionMark >= 0) {
-            addConditionPoint(points, file, lineIndex + 1, type, replacement,
-                    extractInlineTernaryCondition(line, questionMark));
-            return;
-        }
-
-        if (lineIndex + 1 < lines.length && startsWithQuestionMark(lines[lineIndex + 1])) {
-            addConditionPoint(points, file, lineIndex + 1, type, replacement,
-                    extractTrailingTernaryCondition(line));
-        }
-    }
-
-    private static void addConditionPoint(List<MutationPoint> points, File file, int lineNumber,
-                                          Mutator.MutatorType type, String replacement, ConditionSpan conditionSpan) {
-        if (conditionSpan == null) {
-            return;
-        }
-
-        String condition = conditionSpan.text().trim();
-        if (isValidConditionText(condition)) {
-            points.add(new MutationPoint(
-                    file,
-                    lineNumber,
-                    conditionSpan.startColumn(),
-                    condition,
-                    replacement,
-                    type
-            ));
-        }
-    }
-
-    private static ConditionSpan extractInlineTernaryCondition(String line, int questionMark) {
-        String prefix = line.substring(0, questionMark);
-        return buildConditionSpan(line, prefix, findConditionStart(prefix));
-    }
-
-    private static ConditionSpan extractTrailingTernaryCondition(String line) {
-        return buildConditionSpan(line, line, findConditionStart(line));
-    }
-
-    private static ConditionSpan buildConditionSpan(String fullLine, String candidateSource, int start) {
-        if (start < 0 || start >= candidateSource.length()) {
-            return null;
-        }
-
-        String candidate = candidateSource.substring(start).trim();
-        if (candidate.isEmpty()) {
-            return null;
-        }
-
-        int column = fullLine.indexOf(candidate, start);
-        if (column < 0) {
-            return null;
-        }
-
-        return new ConditionSpan(candidate, column);
-    }
-
-    private static int findConditionStart(String text) {
-        // The condition begins after the nearest top-level boundary before it:
-        // an assignment (int t = cond ? ...), an open paren, a comma, etc.
-        int boundary = 0;
-        int depth = 0;
-        for (int i = text.length() - 1; i >= 0; i--) {
-            char ch = text.charAt(i);
-            if (isInStringOrComment(text, i)) continue;
-            if (ch == ')' || ch == ']') {
-                depth++;
-            } else if (ch == '(' || ch == '[') {
-                if (depth == 0) { boundary = i + 1; break; }
-                depth--;
-            } else if (depth == 0 && (ch == ',' || ch == ';' || ch == '{')) {
-                boundary = i + 1;
-                break;
-            } else if (depth == 0 && ch == '=') {
-                char prev = i > 0 ? text.charAt(i - 1) : '\0';
-                char next = i + 1 < text.length() ? text.charAt(i + 1) : '\0';
-                if (next == '>') { boundary = i + 2; break; }
-                if (next != '=' && "=!<>".indexOf(prev) < 0) { boundary = i + 1; break; }
-            }
-        }
-
-        int start = skipLeadingTrivia(text, boundary);
-
-        if (text.startsWith("=>", start)) {
-            return skipLeadingTrivia(text, start + 2);
-        }
-
-        if (start < text.length() && text.charAt(start) == ':') {
-            return skipLeadingTrivia(text, start + 1);
-        }
-
-        if (text.startsWith("return", start)) {
-            int next = start + "return".length();
-            if (next >= text.length() || Character.isWhitespace(text.charAt(next))) {
-                return skipLeadingTrivia(text, next);
-            }
-        }
-
-        return start;
-    }
-
-    private static int skipLeadingTrivia(String text, int start) {
-        int index = start;
-        while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
-            index++;
-        }
-        return index;
-    }
-
-    private static int findKeywordOutsideStringOrComment(String line, String keyword, int from) {
-        int index = line.indexOf(keyword, from);
-
-        while (index >= 0) {
-            boolean beforeOk = index == 0 || !isIdentifierChar(line.charAt(index - 1));
-            int afterIndex = index + keyword.length();
-            boolean afterOk = afterIndex >= line.length() || !isIdentifierChar(line.charAt(afterIndex));
-
-            if (beforeOk && afterOk && !isInStringOrComment(line, index)) {
-                return index;
-            }
-
-            index = line.indexOf(keyword, index + keyword.length());
-        }
-
-        return -1;
-    }
 
     private static int findMatchingParen(String line, int openParen) {
         int depth = 0;
@@ -422,222 +49,6 @@ public class CSharpMutationScanner {
         }
 
         return -1;
-    }
-
-    private static int findQuestionMarkOutsideStringOrComment(String line) {
-        for (int i = 0; i < line.length(); i++) {
-            if (line.charAt(i) == '?' && isTernaryQuestionMark(line, i)) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private static boolean startsWithQuestionMark(String line) {
-        String trimmed = line.trim();
-        return trimmed.startsWith("?") && !trimmed.startsWith("??");
-    }
-
-    private static boolean isTernaryQuestionMark(String line, int index) {
-        if (index < 0 || index >= line.length() || line.charAt(index) != '?' || isInStringOrComment(line, index)) {
-            return false;
-        }
-
-        if ((index > 0 && line.charAt(index - 1) == '?')
-                || (index + 1 < line.length() && line.charAt(index + 1) == '?')) {
-            return false;
-        }
-
-        int prev = previousNonWhitespace(line, index - 1);
-        if (prev < 0) {
-            return false;
-        }
-
-        char prevChar = line.charAt(prev);
-        if (!Character.isLetterOrDigit(prevChar)
-                && prevChar != ')'
-                && prevChar != ']'
-                && prevChar != '}'
-                && prevChar != '"'
-                && prevChar != '\''
-                && prevChar != '_') {
-            return false;
-        }
-
-        return findMatchingTernaryColon(line, index) >= 0;
-    }
-
-    private static int findMatchingTernaryColon(String line, int questionMark) {
-        int baseParenDepth = nestingDepth(line, questionMark, '(', ')');
-        int baseBracketDepth = nestingDepth(line, questionMark, '[', ']');
-        int baseBraceDepth = nestingDepth(line, questionMark, '{', '}');
-        int nestedTernaryDepth = 0;
-        int parenDepth = baseParenDepth;
-        int bracketDepth = baseBracketDepth;
-        int braceDepth = baseBraceDepth;
-
-        for (int i = questionMark + 1; i < line.length(); i++) {
-            if (isInStringOrComment(line, i)) {
-                continue;
-            }
-
-            char c = line.charAt(i);
-            if (c == '(') parenDepth++;
-            else if (c == ')') parenDepth--;
-            else if (c == '[') bracketDepth++;
-            else if (c == ']') bracketDepth--;
-            else if (c == '{') braceDepth++;
-            else if (c == '}') braceDepth--;
-
-            if (parenDepth < baseParenDepth || bracketDepth < baseBracketDepth || braceDepth < baseBraceDepth) {
-                return -1;
-            }
-
-            if (parenDepth == baseParenDepth && bracketDepth == baseBracketDepth && braceDepth == baseBraceDepth) {
-                if (c == '?' && isTernaryQuestionMark(line, i)) {
-                    nestedTernaryDepth++;
-                } else if (c == ':') {
-                    if (i + 1 < line.length() && line.charAt(i + 1) == ':') {
-                        i++;
-                        continue;
-                    }
-
-                    if (nestedTernaryDepth == 0) {
-                        return i;
-                    }
-                    nestedTernaryDepth--;
-                }
-            }
-        }
-
-        return -1;
-    }
-
-    private static int nestingDepth(String line, int endExclusive, char openChar, char closeChar) {
-        int depth = 0;
-        for (int i = 0; i < endExclusive; i++) {
-            if (isInStringOrComment(line, i)) {
-                continue;
-            }
-
-            char c = line.charAt(i);
-            if (c == openChar) {
-                depth++;
-            } else if (c == closeChar && depth > 0) {
-                depth--;
-            }
-        }
-        return depth;
-    }
-
-    private static int previousNonWhitespace(String line, int index) {
-        int i = index;
-        while (i >= 0 && Character.isWhitespace(line.charAt(i))) {
-            i--;
-        }
-        return i;
-    }
-
-    private static boolean isValidConditionText(String condition) {
-        if (condition == null || condition.isBlank()) {
-            return false;
-        }
-
-        String trimmed = condition.trim();
-
-        if (trimmed.equals("true") || trimmed.equals("false")) {
-            return false;
-        }
-
-        if (trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith("=>")) {
-            return false;
-        }
-
-        if (trimmed.startsWith("?") || trimmed.startsWith(":")) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static boolean isReturnValueMutation(Mutator.MutatorType type) {
-        return type == Mutator.MutatorType.RVM_TRUE_TO_FALSE
-                || type == Mutator.MutatorType.RVM_FALSE_TO_TRUE
-                || type == Mutator.MutatorType.RVM_ZERO_TO_ONE
-                || type == Mutator.MutatorType.RVM_NONZERO_TO_ZERO
-                || type == Mutator.MutatorType.RVM_OBJECT_TO_NULL
-                || type == Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO
-                || type == Mutator.MutatorType.RVM_STRING_TO_EMPTY
-                || type == Mutator.MutatorType.EMPTY_RETURNS;
-    }
-
-    private static List<MutationPoint> scanReturnValueMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        String currentReturnType = "";
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            String detectedReturnType = detectMethodReturnType(line);
-            if (detectedReturnType != null) {
-                currentReturnType = detectedReturnType;
-            }
-            int searchFrom = 0;
-
-            while (searchFrom < line.length()) {
-                int returnIndex = findKeywordOutsideStringOrComment(line, "return", searchFrom);
-                if (returnIndex < 0) {
-                    break;
-                }
-
-                int expressionStart = skipLeadingTrivia(line, returnIndex + "return".length());
-                if (expressionStart >= line.length() || line.charAt(expressionStart) == ';') {
-                    searchFrom = returnIndex + "return".length();
-                    continue;
-                }
-
-                int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
-                if (semicolon < 0) {
-                    searchFrom = returnIndex + "return".length();
-                    continue;
-                }
-
-                String expression = line.substring(expressionStart, semicolon).trim();
-                int column = line.indexOf(expression, expressionStart);
-                // "yield return x" yields one element, so the method's declared
-                // (IEnumerable) return type doesn't describe x.
-                boolean yieldReturn = line.substring(0, returnIndex).strip().endsWith("yield");
-                String replacement = yieldReturn && (type == Mutator.MutatorType.EMPTY_RETURNS
-                                || type == Mutator.MutatorType.RVM_OBJECT_TO_NULL)
-                        ? null
-                        : getReturnValueReplacement(expression, type, currentReturnType);
-
-                if (replacement != null && column >= 0) {
-                    points.add(new MutationPoint(file, i + 1, column, expression, replacement, type));
-                }
-
-                searchFrom = semicolon + 1;
-            }
-        }
-
-        return points;
-    }
-
-    private static String getReturnValueReplacement(String expression, Mutator.MutatorType type, String returnType) {
-        String value = stripOuterParentheses(expression.trim());
-
-        return switch (type) {
-            case RVM_TRUE_TO_FALSE -> value.equals("true") ? "false" : null;
-            case RVM_FALSE_TO_TRUE -> value.equals("false") ? "true" : null;
-            case RVM_ZERO_TO_ONE -> isZeroLiteral(value) ? "1" : null;
-            case RVM_NONZERO_TO_ZERO -> isNonZeroNumericLiteral(value) ? "0" : null;
-            case RVM_PRIMITIVE_TO_ZERO -> isNonZeroNumericLiteral(value) ? "0" : null;
-            case RVM_OBJECT_TO_NULL -> isReferenceReturnType(returnType) && isObjectLikeReturn(value) ? "null" : null;
-            case RVM_STRING_TO_EMPTY -> isNonEmptyStringLiteral(value) ? "\"\"" : null;
-            case EMPTY_RETURNS -> getEmptyReturnReplacement(value, returnType);
-            default -> null;
-        };
     }
 
     private static String getEmptyReturnReplacement(String value, String returnType) {
@@ -667,467 +78,6 @@ public class CSharpMutationScanner {
         return null;
     }
 
-    private static String detectMethodReturnType(String line) {
-        String trimmed = line.trim();
-        Pattern methodPattern = Pattern.compile(
-                "^(?:public|private|protected|internal|static|sealed|override|virtual|async|extern|new|partial|readonly|unsafe|\\s)+\\s*([A-Za-z_][A-Za-z0-9_<>?\\[\\]\\.]*|void)\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\("
-        );
-        Matcher matcher = methodPattern.matcher(trimmed);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        return null;
-    }
-
-    private static boolean isReferenceReturnType(String returnType) {
-        if (returnType == null || returnType.isBlank()) {
-            return false;
-        }
-
-        String normalized = returnType.replace("?", "").trim();
-        return !normalized.equals("void")
-                && !normalized.equals("bool")
-                && !normalized.equals("byte")
-                && !normalized.equals("sbyte")
-                && !normalized.equals("short")
-                && !normalized.equals("ushort")
-                && !normalized.equals("int")
-                && !normalized.equals("uint")
-                && !normalized.equals("long")
-                && !normalized.equals("ulong")
-                && !normalized.equals("float")
-                && !normalized.equals("double")
-                && !normalized.equals("decimal")
-                && !normalized.equals("char");
-    }
-
-    private static List<MutationPoint> scanVoidMethodCallMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        Pattern invocationStatement = Pattern.compile(
-                "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
-        );
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            Matcher matcher = invocationStatement.matcher(line);
-            if (!matcher.matches()) {
-                continue;
-            }
-
-            String statement = line.trim();
-            if (startsWithControlKeyword(statement)) {
-                continue;
-            }
-
-            int column = line.indexOf(statement);
-            points.add(new MutationPoint(
-                    file,
-                    i + 1,
-                    column,
-                    statement,
-                    ";",
-                    Mutator.MutatorType.VML_VOID_METHOD_CALL,
-                    "Void method call mutation"
-            ));
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanConstructorCallMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            int searchFrom = 0;
-
-            while (searchFrom < line.length()) {
-                int newIndex = findKeywordOutsideStringOrComment(line, "new", searchFrom);
-                if (newIndex < 0) {
-                    break;
-                }
-
-                int typeStart = skipLeadingTrivia(line, newIndex + "new".length());
-                ConstructorCall call = readConstructorCall(line, newIndex, typeStart);
-                if (call == null) {
-                    searchFrom = newIndex + "new".length();
-                    continue;
-                }
-
-                if (!isValueTypeConstructor(call.typeName())) {
-                    // "var x = null;" doesn't compile; default(T) keeps the type.
-                    String replacement = isImplicitlyTypedDeclaration(line.substring(0, newIndex))
-                            ? "default(" + call.typeName() + ")"
-                            : "null";
-                    points.add(new MutationPoint(
-                            file,
-                            i + 1,
-                            newIndex,
-                            call.text(),
-                            replacement,
-                            Mutator.MutatorType.CONSTRUCTOR_CALLS,
-                            "Constructor call mutation"
-                    ));
-                }
-
-                searchFrom = newIndex + call.text().length();
-            }
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanNonVoidMethodCallMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        String currentReturnType = "";
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            String detectedReturnType = detectMethodReturnType(line);
-            if (detectedReturnType != null) {
-                currentReturnType = detectedReturnType;
-            }
-
-            addReturnMethodCallMutation(points, file, line, i + 1, currentReturnType);
-            addAssignmentMethodCallMutations(points, file, line, i + 1);
-        }
-
-        return points;
-    }
-
-    private static void addReturnMethodCallMutation(List<MutationPoint> points, File file, String line, int lineNumber,
-                                                    String currentReturnType) {
-        int returnIndex = findKeywordOutsideStringOrComment(line, "return", 0);
-        if (returnIndex < 0) {
-            return;
-        }
-
-        int expressionStart = skipLeadingTrivia(line, returnIndex + "return".length());
-        int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
-        if (expressionStart >= line.length() || semicolon < 0) {
-            return;
-        }
-
-        String expression = line.substring(expressionStart, semicolon).trim();
-        MethodCall call = findSingleMethodCallExpression(line, expressionStart, semicolon);
-        String replacement = defaultValueForType(currentReturnType, false);
-        if (call != null && replacement != null && expression.equals(call.text())) {
-            points.add(new MutationPoint(
-                    file,
-                    lineNumber,
-                    call.column(),
-                    call.text(),
-                    replacement,
-                    Mutator.MutatorType.NON_VOID_METHOD_CALLS,
-                    "Non-void method call mutation"
-            ));
-        }
-    }
-
-    private static void addAssignmentMethodCallMutations(List<MutationPoint> points, File file, String line, int lineNumber) {
-        Pattern declarationPattern = Pattern.compile(
-                "\\b(?<type>[A-Za-z_][A-Za-z0-9_<>?\\[\\]\\.]*|bool|byte|sbyte|short|ushort|int|uint|long|ulong|float|double|decimal|char|string)\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"
-        );
-        Matcher matcher = declarationPattern.matcher(line);
-
-        while (matcher.find()) {
-            if (isInStringOrComment(line, matcher.start())) {
-                continue;
-            }
-
-            int expressionStart = matcher.end();
-            int semicolon = findSemicolonOutsideStringOrComment(line, expressionStart);
-            if (semicolon < 0) {
-                continue;
-            }
-
-            MethodCall call = findSingleMethodCallExpression(line, expressionStart, semicolon);
-            // With var the call's type is unknown, and "var x = null;" doesn't compile.
-            String type = matcher.group("type");
-            String replacement = type.equals("var") ? null : defaultValueForType(type, false);
-            if (call != null && replacement != null) {
-                points.add(new MutationPoint(
-                        file,
-                        lineNumber,
-                        call.column(),
-                        call.text(),
-                        replacement,
-                        Mutator.MutatorType.NON_VOID_METHOD_CALLS,
-                        "Non-void method call mutation"
-                ));
-            }
-        }
-    }
-
-    private static ConstructorCall readConstructorCall(String line, int newIndex, int typeStart) {
-        if (typeStart >= line.length() || isInStringOrComment(line, newIndex)) {
-            return null;
-        }
-
-        int typeEnd = typeStart;
-        int genericDepth = 0;
-        while (typeEnd < line.length()) {
-            char c = line.charAt(typeEnd);
-            if (c == '<') {
-                genericDepth++;
-            } else if (c == '>' && genericDepth > 0) {
-                genericDepth--;
-            } else if (genericDepth == 0 && !(Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '?' || c == '[' || c == ']')) {
-                break;
-            }
-            typeEnd++;
-        }
-
-        if (typeEnd == typeStart) {
-            return null;
-        }
-
-        int openParen = skipLeadingTrivia(line, typeEnd);
-        if (openParen >= line.length() || line.charAt(openParen) != '(' || isInStringOrComment(line, openParen)) {
-            return null;
-        }
-
-        int closeParen = findMatchingParen(line, openParen);
-        if (closeParen < 0) {
-            return null;
-        }
-
-        String text = line.substring(newIndex, closeParen + 1);
-        String typeName = line.substring(typeStart, typeEnd);
-        return new ConstructorCall(text, typeName);
-    }
-
-    private static MethodCall findSingleMethodCallExpression(String line, int expressionStart, int expressionEnd) {
-        int start = skipLeadingTrivia(line, expressionStart);
-        int end = expressionEnd;
-        while (end > start && Character.isWhitespace(line.charAt(end - 1))) {
-            end--;
-        }
-
-        if (start >= end || line.startsWith("new ", start)) {
-            return null;
-        }
-
-        int openParen = -1;
-        for (int i = start; i < end; i++) {
-            if (line.charAt(i) == '(' && !isInStringOrComment(line, i)) {
-                openParen = i;
-                break;
-            }
-        }
-
-        if (openParen < 0) {
-            return null;
-        }
-
-        int closeParen = findMatchingParen(line, openParen);
-        if (closeParen != end - 1) {
-            return null;
-        }
-
-        String callee = line.substring(start, openParen).trim();
-        if (!callee.matches("^(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*$") || startsWithControlKeyword(callee)) {
-            return null;
-        }
-
-        return new MethodCall(line.substring(start, end), start);
-    }
-
-    private static List<MutationPoint> scanIncrementSwapMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        String original = type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT ? "++" : "--";
-        String replacement = type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT ? "--" : "++";
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
-            for (int col = 0; col < line.length() - 1; col++) {
-                if (isInStringOrComment(line, col)) {
-                    continue;
-                }
-
-                if (line.startsWith(original, col)) {
-                    points.add(new MutationPoint(file, i + 1, col, original, replacement, type));
-                    col++;
-                }
-            }
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanInvertNegativeMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
-            for (int col = 0; col < line.length(); col++) {
-                if (line.charAt(col) != '-' || isInStringOrComment(line, col)) {
-                    continue;
-                }
-
-                if (isUnaryMinus(line, col)) {
-                    points.add(new MutationPoint(
-                            file,
-                            i + 1,
-                            col,
-                            "-",
-                            "",
-                            Mutator.MutatorType.INEG_INVERT_NEGATIVE
-                    ));
-                }
-            }
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanRemoveIncrementMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
-            for (int col = 0; col < line.length() - 1; col++) {
-                if (isInStringOrComment(line, col)) {
-                    continue;
-                }
-
-                String two = line.substring(col, col + 2);
-
-                if (two.equals("++")) {
-                    points.add(new MutationPoint(
-                            file,
-                            i + 1,
-                            col,
-                            "++",
-                            "__INC_NOOP__",
-                            Mutator.MutatorType.REMOVE_INCREMENT
-                    ));
-                    col++;
-                } else if (two.equals("--")) {
-                    points.add(new MutationPoint(
-                            file,
-                            i + 1,
-                            col,
-                            "--",
-                            "__DEC_NOOP__",
-                            Mutator.MutatorType.REMOVE_INCREMENT
-                    ));
-                    col++;
-                }
-            }
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanStatementRemovalMutations(File file, String sourceCode) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-        Pattern invocationStatement = Pattern.compile(
-                "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
-        );
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            Matcher matcher = invocationStatement.matcher(line);
-            if (!matcher.matches()) {
-                continue;
-            }
-
-            String statement = line.trim();
-            int column = line.indexOf(statement);
-            if (column < 0) {
-                continue;
-            }
-
-            points.add(new MutationPoint(
-                    file,
-                    i + 1,
-                    column,
-                    statement,
-                    ";",
-                    Mutator.MutatorType.STATEMENT_MUTATION,
-                    "Statement mutation"
-            ));
-        }
-
-        return points;
-    }
-
-    private static List<MutationPoint> scanStringIsNullOrEmptyMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            int searchFrom = 0;
-
-            while (searchFrom < line.length()) {
-                int callIndex = line.indexOf("string.IsNullOrEmpty", searchFrom);
-                if (callIndex < 0) {
-                    break;
-                }
-
-                if (isInStringOrComment(line, callIndex)) {
-                    searchFrom = callIndex + "string.IsNullOrEmpty".length();
-                    continue;
-                }
-
-                int openParen = line.indexOf('(', callIndex + "string.IsNullOrEmpty".length());
-                if (openParen < 0 || isInStringOrComment(line, openParen)) {
-                    searchFrom = callIndex + "string.IsNullOrEmpty".length();
-                    continue;
-                }
-
-                int closeParen = findMatchingParen(line, openParen);
-                if (closeParen < 0) {
-                    searchFrom = openParen + 1;
-                    continue;
-                }
-
-                String fullCall = line.substring(callIndex, closeParen + 1);
-                String argument = line.substring(openParen + 1, closeParen).trim();
-                String replacement = type == Mutator.MutatorType.STRING_MUTATION_TO_NOT_NULL
-                        ? "(" + argument + " != null)"
-                        : "(" + argument + " != \"\")";
-
-                if (!argument.isEmpty()) {
-                    points.add(new MutationPoint(
-                            file,
-                            i + 1,
-                            callIndex,
-                            fullCall,
-                            replacement,
-                            type,
-                            "String mutation"
-                    ));
-                }
-
-                searchFrom = closeParen + 1;
-            }
-        }
-
-        return points;
-    }
-
-    private static int findSemicolonOutsideStringOrComment(String line, int from) {
-        for (int i = from; i < line.length(); i++) {
-            if (line.charAt(i) == ';' && !isInStringOrComment(line, i)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
     private static String stripOuterParentheses(String expression) {
         String value = expression;
         while (value.startsWith("(") && value.endsWith(")") && findMatchingParen(value, 0) == value.length() - 1) {
@@ -1136,45 +86,21 @@ public class CSharpMutationScanner {
         return value;
     }
 
+    /** [+-]0[.0][fFdDmM]: zero written with any number of zeros. */
     private static boolean isZeroLiteral(String value) {
-        return value.matches("^[+-]?0+(\\.0+)?([fFdDmM])?$");
-    }
-
-    private static boolean isNonZeroNumericLiteral(String value) {
-        if (!value.matches("^[+-]?(\\d+\\.?\\d*|\\d*\\.\\d+)([eE][+-]?\\d+)?([fFdDmM])?$")) {
-            return false;
+        int i = value.startsWith("+") || value.startsWith("-") ? 1 : 0;
+        int end = value.length();
+        if (end > i && "fFdDmM".indexOf(value.charAt(end - 1)) >= 0) end--;
+        int zeros = 0;
+        while (i < end && value.charAt(i) == '0') { i++; zeros++; }
+        if (zeros == 0) return false;
+        if (i < end && value.charAt(i) == '.') {
+            i++;
+            int fraction = 0;
+            while (i < end && value.charAt(i) == '0') { i++; fraction++; }
+            if (fraction == 0) return false;
         }
-
-        try {
-            String normalized = value.replaceAll("[fFdDmM]$", "");
-            return Double.parseDouble(normalized) != 0.0;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private static boolean isNonEmptyStringLiteral(String value) {
-        return value.length() >= 2
-                && value.startsWith("\"")
-                && value.endsWith("\"")
-                && !value.equals("\"\"");
-    }
-
-    private static boolean isObjectLikeReturn(String value) {
-        if (value.isBlank()
-                || value.equals("true")
-                || value.equals("false")
-                || value.equals("null")
-                || isZeroLiteral(value)
-                || isNonZeroNumericLiteral(value)) {
-            return false;
-        }
-
-        return isNonEmptyStringLiteral(value)
-                || value.equals("\"\"")
-                || value.startsWith("new ")
-                || value.startsWith("this")
-                || value.matches("^@?[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$");
+        return i == end;
     }
 
     private static String defaultValueForType(String type, boolean emptyReturn) {
@@ -1238,21 +164,39 @@ public class CSharpMutationScanner {
     }
 
     private static boolean isAlreadyEmptyCollection(String value) {
-        return value.startsWith("System.Array.Empty<")
-                || value.startsWith("System.Linq.Enumerable.Empty<")
-                || value.matches("^new\\s+(?:System\\.Collections\\.Generic\\.)?(?:List|HashSet)<.*>\\s*\\(\\s*\\)$");
+        if (value.startsWith("System.Array.Empty<") || value.startsWith("System.Linq.Enumerable.Empty<")) {
+            return true;
+        }
+        // new List<T>() / new HashSet<T>(), optionally namespace-qualified
+        if (!value.startsWith("new") || value.length() < 4 || !Character.isWhitespace(value.charAt(3))) return false;
+        String rest = value.substring(3).strip();
+        if (!rest.endsWith(")")) return false;
+        rest = rest.substring(0, rest.length() - 1).strip();
+        if (!rest.endsWith("(")) return false;
+        rest = rest.substring(0, rest.length() - 1).strip();
+        return isGenericOf(rest, "List", "HashSet");
+    }
+
+    /** "Name<...>" or "System.Collections.Generic.Name<...>" for one of the names. */
+    private static boolean isGenericOf(String type, String... names) {
+        String t = type.startsWith("System.Collections.Generic.")
+                ? type.substring("System.Collections.Generic.".length()) : type;
+        for (String name : names) {
+            if (t.startsWith(name + "<") && t.endsWith(">") && t.indexOf('\n') < 0) return true;
+        }
+        return false;
     }
 
     private static boolean isListType(String type) {
-        return type.matches("^(?:System\\.Collections\\.Generic\\.)?(?:IList|List|IReadOnlyList|ICollection|Collection)<.*>$");
+        return isGenericOf(type, "IList", "List", "IReadOnlyList", "ICollection", "Collection");
     }
 
     private static boolean isSetType(String type) {
-        return type.matches("^(?:System\\.Collections\\.Generic\\.)?(?:ISet|HashSet|IReadOnlySet|Set)<.*>$");
+        return isGenericOf(type, "ISet", "HashSet", "IReadOnlySet", "Set");
     }
 
     private static boolean isEnumerableType(String type) {
-        return type.matches("^(?:System\\.Collections\\.Generic\\.)?IEnumerable<.*>$");
+        return isGenericOf(type, "IEnumerable");
     }
 
     private static String concreteGenericCollectionType(String type, String concreteName) {
@@ -1267,79 +211,6 @@ public class CSharpMutationScanner {
             return null;
         }
         return type.substring(open + 1, close).trim();
-    }
-
-    private static boolean isValueTypeConstructor(String typeName) {
-        String normalized = typeName.replace("?", "").trim();
-        return normalized.equals("bool")
-                || normalized.equals("byte")
-                || normalized.equals("sbyte")
-                || normalized.equals("short")
-                || normalized.equals("ushort")
-                || normalized.equals("int")
-                || normalized.equals("uint")
-                || normalized.equals("long")
-                || normalized.equals("ulong")
-                || normalized.equals("float")
-                || normalized.equals("double")
-                || normalized.equals("decimal")
-                || normalized.equals("char");
-    }
-
-    private static boolean startsWithControlKeyword(String statement) {
-        return statement.startsWith("if ")
-                || statement.startsWith("if(")
-                || statement.startsWith("while ")
-                || statement.startsWith("while(")
-                || statement.startsWith("for ")
-                || statement.startsWith("for(")
-                || statement.startsWith("foreach ")
-                || statement.startsWith("foreach(")
-                || statement.startsWith("switch ")
-                || statement.startsWith("switch(")
-                || statement.startsWith("using ")
-                || statement.startsWith("using(")
-                || statement.startsWith("lock ")
-                || statement.startsWith("lock(")
-                || statement.startsWith("catch ")
-                || statement.startsWith("catch(");
-    }
-
-    private static boolean isUnaryMinus(String line, int minusIndex) {
-        if (minusIndex + 1 >= line.length()) {
-            return false;
-        }
-
-        char next = line.charAt(minusIndex + 1);
-        if (next == '-' || next == '>' || next == '=') {
-            return false;
-        }
-
-        int nextNonWhitespace = skipLeadingTrivia(line, minusIndex + 1);
-        if (nextNonWhitespace >= line.length()) {
-            return false;
-        }
-
-        char nextChar = line.charAt(nextNonWhitespace);
-        if (!Character.isLetterOrDigit(nextChar) && nextChar != '_' && nextChar != '(') {
-            return false;
-        }
-
-        int prev = previousNonWhitespace(line, minusIndex - 1);
-        if (prev < 0) {
-            return true;
-        }
-
-        char prevChar = line.charAt(prev);
-        if ("([{=,:;!&|?+-*/%^~<>".indexOf(prevChar) >= 0) {
-            return true;
-        }
-
-        String before = line.substring(0, minusIndex).trim();
-        return before.endsWith("return")
-                || before.endsWith("case")
-                || before.endsWith("=>")
-                || before.endsWith("throw");
     }
 
     private static boolean isInStringOrComment(String line, int position) {
@@ -1372,26 +243,6 @@ public class CSharpMutationScanner {
         return commentStart >= 0 && commentStart < position;
     }
 
-    private static boolean isIdentifierChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
-    }
-
-    private record ConditionSpan(String text, int startColumn) {}
-    private record ConstructorCall(String text, String typeName) {}
-
-    /** True when text ends with "var name =", i.e. the value sets the variable's type. */
-    private static boolean isImplicitlyTypedDeclaration(String textBeforeValue) {
-        return Pattern.compile("\\bvar\\s+@?[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*$").matcher(textBeforeValue).find();
-    }
-    private record MethodCall(String text, int column) {}
-
-    private static boolean isTypeSwapMutation(Mutator.MutatorType type) {
-        return type == Mutator.MutatorType.TYPE_INT_TO_DOUBLE
-                || type == Mutator.MutatorType.TYPE_INT_TO_FLOAT
-                || type == Mutator.MutatorType.TYPE_DOUBLE_TO_INT
-                || type == Mutator.MutatorType.TYPE_FLOAT_TO_INT;
-    }
-
     private static String removeBom(String sourceCode) {
         if (sourceCode != null && !sourceCode.isEmpty() && sourceCode.charAt(0) == '\uFEFF') {
             return sourceCode.substring(1);
@@ -1399,416 +250,17 @@ public class CSharpMutationScanner {
         return sourceCode;
     }
 
-    private static List<MutationPoint> scanTypeSwapMutations(File file, String sourceCode, Mutator.MutatorType type) {
-        List<MutationPoint> points = new ArrayList<>();
-        String[] lines = sourceCode.split("\n", -1);
-
-        Pattern pattern = Pattern.compile(
-                "^(\\s*)(int|double|float)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(.+?)(;\\s*)$"
-        );
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            Matcher matcher = pattern.matcher(line);
-
-            if (!matcher.find()) {
-                continue;
-            }
-
-            String declaredType = matcher.group(2);
-            String varName = matcher.group(3);
-            String exprText = matcher.group(4).trim();
-
-            String original = declaredType + " " + varName + " = " + exprText;
-            String replacement = getTypeSwapReplacement(declaredType, varName, exprText, type);
-
-            if (replacement == null || replacement.equals(original)) {
-                continue;
-            }
-
-            int column = line.indexOf(original);
-            if (column < 0) {
-                continue;
-            }
-
-            points.add(new MutationPoint(
-                    file,
-                    i + 1,
-                    column,
-                    original,
-                    replacement,
-                    type
-            ));
-        }
-
-        return points;
-    }
-
-    private static String getTypeSwapReplacement(String declaredType, String varName, String exprText, Mutator.MutatorType type) {
-        switch (type) {
-            case TYPE_INT_TO_DOUBLE:
-                if (declaredType.equals("int")) {
-                    return "double " + varName + " = " + convertIntExpressionToDouble(exprText);
-                }
-                break;
-
-            case TYPE_INT_TO_FLOAT:
-                if (declaredType.equals("int")) {
-                    return "float " + varName + " = " + convertIntExpressionToFloat(exprText);
-                }
-                break;
-
-            case TYPE_DOUBLE_TO_INT:
-                if (declaredType.equals("double")) {
-                    return "int " + varName + " = (int)(" + exprText + ")";
-                }
-                break;
-
-            case TYPE_FLOAT_TO_INT:
-                if (declaredType.equals("float")) {
-                    return "int " + varName + " = (int)(" + exprText + ")";
-                }
-                break;
-
-            default:
-                break;
-        }
-
-        return null;
-    }
-
-    private static String convertIntExpressionToDouble(String exprText) {
-        return exprText.replaceAll("(?<![\\w.])(\\d+)(?![\\w.])", "$1.0");
-    }
-
-    private static String convertIntExpressionToFloat(String exprText) {
-        return exprText.replaceAll("(?<![\\w.])(\\d+)(?![\\w.])", "$1.0f");
-    }
-
-    private static class CSharpMutationVisitor extends CSharpParserBaseVisitor<Void> {
-
-        private final File sourceFile;
-        private final Mutator.MutatorType mutationType;
-        private final List<MutationPoint> mutationPoints;
-
-        public CSharpMutationVisitor(File sourceFile, Mutator.MutatorType mutationType) {
-            this.sourceFile = sourceFile;
-            this.mutationType = mutationType;
-            this.mutationPoints = new ArrayList<>();
-        }
-
-        @Override
-        public Void visitAdditive_expression(CSharpParser.Additive_expressionContext ctx) {
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("+") && mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                        if (isStringConcatenationExpression(ctx)) {
-                            continue;
-                        }
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "+",
-                                "-",
-                                mutationType
-                        ));
-                    } else if (operator.equals("-") && mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "-",
-                                "+",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        private boolean isStringConcatenationExpression(CSharpParser.Additive_expressionContext ctx) {
-            return ctx.getText().contains("\"");
-        }
-
-        @Override
-        public Void visitRelational_expression(CSharpParser.Relational_expressionContext ctx) {
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals(">") && mutationType == Mutator.MutatorType.ROR_GT_TO_GE) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                ">",
-                                ">=",
-                                mutationType
-                        ));
-                    } else if (operator.equals(">=") && mutationType == Mutator.MutatorType.ROR_GE_TO_GT) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                ">=",
-                                ">",
-                                mutationType
-                        ));
-                    } else if (operator.equals("<") && mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "<",
-                                "<=",
-                                mutationType
-                        ));
-                    } else if (operator.equals("<=") && mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "<=",
-                                "<",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitEquality_expression(CSharpParser.Equality_expressionContext ctx) {
-            if (mutationType != Mutator.MutatorType.EQ_NEGATE) {
-                return visitChildren(ctx);
-            }
-
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("==")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "==",
-                                "!=",
-                                mutationType
-                        ));
-                    } else if (operator.equals("!=")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "!=",
-                                "==",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitConditional_and_expression(CSharpParser.Conditional_and_expressionContext ctx) {
-            if (mutationType != Mutator.MutatorType.LOGICAL_AND_TO_OR) {
-                return visitChildren(ctx);
-            }
-
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("&&")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "&&",
-                                "||",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitConditional_or_expression(CSharpParser.Conditional_or_expressionContext ctx) {
-            if (mutationType != Mutator.MutatorType.LOGICAL_OR_TO_AND) {
-                return visitChildren(ctx);
-            }
-
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("||")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "||",
-                                "&&",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitMultiplicative_expression(CSharpParser.Multiplicative_expressionContext ctx) {
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("*") && mutationType == Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "*",
-                                "/",
-                                mutationType
-                        ));
-                    } else if (operator.equals("/") && mutationType == Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "/",
-                                "*",
-                                mutationType
-                        ));
-                    } else if (operator.equals("%") && mutationType == Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "%",
-                                "*",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitAnd_expression(CSharpParser.And_expressionContext ctx) {
-            if (mutationType != Mutator.MutatorType.BOR_AND_TO_OR) {
-                return visitChildren(ctx);
-            }
-
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("&")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "&",
-                                "|",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        @Override
-        public Void visitInclusive_or_expression(CSharpParser.Inclusive_or_expressionContext ctx) {
-            if (mutationType != Mutator.MutatorType.BOR_OR_TO_AND) {
-                return visitChildren(ctx);
-            }
-
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    if (operator.equals("|")) {
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile,
-                                token.getLine(),
-                                token.getCharPositionInLine(),
-                                "|",
-                                "&",
-                                mutationType
-                        ));
-                    }
-                }
-            }
-
-            return visitChildren(ctx);
-        }
-
-        public List<MutationPoint> getMutationPoints() {
-            return mutationPoints;
-        }
-    }
-
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
         sourceCode = removeBom(sourceCode);
         final String sourceText = sourceCode;
-        final String[] sourceLines = sourceCode.split("\n", -1);
-        CharStream input = CharStreams.fromString(sourceCode);
+        CharStream input = CstNodes.utf16(sourceCode);
         CSharpLexer lexer = new CSharpLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         CSharpParser parser = new CSharpParser(tokens);
         ParseTree tree = parser.prog();
 
         return new MSLScannerAdapter() {
-            private final Pattern invocationStatement = Pattern.compile(
-                    "^(\\s*)(await\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>]*\\s*\\(.*\\)\\s*;\\s*$"
-            );
-            private final Pattern csharpIdentifier = Pattern.compile("@?[A-Za-z_][A-Za-z0-9_]*");
-
             // C# has no // or ** operator. The calls that compute them stand in:
             // Math.Pow(a, b) is a ** b and Math.Floor(a / b) is a // b (whose
             // inner "/" is part of that operator, not a separate division).
@@ -1822,7 +274,7 @@ public class CSharpMutationScanner {
 
             private boolean isMathCall(ParseTree ctx, String method) {
                 if (!isCall(ctx)) return false;
-                String callee = getNodeText(ctx.getChild(0)).replaceAll("\\s+", "");
+                String callee = CstNodes.compactText(ctx.getChild(0));
                 return callee.equals("Math." + method) || callee.equals("System.Math." + method);
             }
 
@@ -1912,7 +364,7 @@ public class CSharpMutationScanner {
             /** {left text, right text} for a.Equals(b) or Equals(a, b), else null. */
             private String[] equalsOperands(ParseTree ctx) {
                 if (!isCall(ctx)) return null;
-                String callee = getNodeText(ctx.getChild(0)).replaceAll("\\s+", "");
+                String callee = CstNodes.compactText(ctx.getChild(0));
                 List<ParseTree> args = callArguments(ctx);
                 if (args.size() == 2 && STATIC_EQUALS.contains(callee)) {
                     return new String[]{getNodeText(args.get(0)), getNodeText(args.get(1))};
@@ -2084,93 +536,484 @@ public class CSharpMutationScanner {
                 return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), false);
             }
 
+            // MSL's "s is null" is a null-or-empty check: string.IsNullOrEmpty(s),
+            // or the check written out (s == null || s == "" and variants).
             @Override
-            public String getSourceLine(ParseTree ctx) {
-                ParseTree statement = ctx;
-                while (statement != null && !(statement instanceof CSharpParser.StatementContext)) {
-                    statement = statement.getParent();
+            public ParseTree nullCheckSubject(ParseTree ctx) {
+                if (isCall(ctx)) {
+                    String callee = CstNodes.compactText(ctx.getChild(0));
+                    List<ParseTree> args = callArguments(ctx);
+                    return (callee.equals("string.IsNullOrEmpty") || callee.equals("String.IsNullOrEmpty"))
+                            && args.size() == 1 ? args.get(0) : null;
                 }
-                if (statement instanceof ParserRuleContext prc) {
-                    Token start = prc.getStart();
-                    Token stop = prc.getStop();
-                    if (start != null && stop != null
-                            && start.getStartIndex() >= 0
-                            && stop.getStopIndex() >= start.getStartIndex()
-                            && stop.getStopIndex() < sourceText.length()) {
-                        return sourceText.substring(start.getStartIndex(), stop.getStopIndex() + 1);
-                    }
-                }
-
-                int[] pos = getTokenPosition(ctx);
-                int lineIndex = pos[0] - 1;
-                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
-                    return sourceLines[lineIndex];
-                }
-                return "";
-            }
-
-            @Override
-            public String getSingleArgumentText(ParseTree ctx, String functionName) {
-                String text = getNodeText(ctx);
-                String prefix = functionName + "(";
-                if (!text.startsWith(prefix) || !text.endsWith(")")) {
+                if (!(ctx instanceof CSharpParser.Conditional_or_expressionContext or) || or.getChildCount() != 3) {
                     return null;
                 }
-
-                String inner = text.substring(prefix.length(), text.length() - 1).trim();
-                if (inner.isEmpty() || hasTopLevelComma(inner)) {
+                ParseTree isNull = unwrap(or.getChild(0));
+                if (!isEqualityTest(isNull) || !isNull.getChild(2).getText().equals("null")
+                        || !CstNodes.isDottedName(isNull.getChild(0))) {
                     return null;
                 }
-
-                return inner;
+                ParseTree subject = isNull.getChild(0);
+                String s = subject.getText();
+                ParseTree isEmpty = unwrap(or.getChild(2));
+                if (!isEqualityTest(isEmpty)) return null;
+                String left = isEmpty.getChild(0).getText();
+                String right = isEmpty.getChild(2).getText();
+                boolean empty = left.equals(s)
+                        && (right.equals("\"\"") || right.equals("string.Empty") || right.equals("String.Empty"));
+                boolean zeroLength = left.equals(s + ".Length") && right.equals("0");
+                return empty || zeroLength ? subject : null;
             }
 
             @Override
-            public List<String> getFunctionAliases(String canonicalFunctionName) {
-                if ("string.IsNullOrEmpty".equals(canonicalFunctionName)) {
-                    return List.of(
-                            "string.IsNullOrEmpty",
-                            "String.IsNullOrEmpty"
-                    );
-                }
-                return List.of(canonicalFunctionName);
+            public List<ParseTree> callArguments(ParseTree ctx, String functionName) {
+                return isCall(ctx) && CstNodes.compactText(ctx.getChild(0)).equals(functionName)
+                        ? callArguments(ctx) : null;
             }
 
-            // Besides string.IsNullOrEmpty(s), C# code writes the check out.
-            private static final List<Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
-                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\s*==\\s*\"\""),
-                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\s*==\\s*(?:string|String)\\.Empty"),
-                    Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.Length\\s*==\\s*0"));
-
-            @Override
-            public String getNullOrEmptySubject(ParseTree ctx) {
-                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            private boolean isEqualityTest(ParseTree node) {
+                return node instanceof CSharpParser.Equality_expressionContext && node.getChildCount() == 3
+                        && node.getChild(1).getText().equals("==");
             }
 
             @Override
             public boolean isInvocationStatement(ParseTree ctx) {
                 // Only real statements: "delegate void Notify();" also looks like a call.
-                if (!(ctx instanceof CSharpParser.Expression_statementContext)) {
+                if (!(ctx instanceof CSharpParser.Expression_statementContext prc)) {
                     return false;
                 }
-                if (ctx instanceof ParserRuleContext prc) {
-                    Token start = prc.getStart();
-                    Token stop = prc.getStop();
-                    if (start != null && stop != null && start.getLine() != stop.getLine()) {
-                        return false;
+                Token start = prc.getStart();
+                Token stop = prc.getStop();
+                if (start == null || stop == null || start.getLine() != stop.getLine()) {
+                    return false;
+                }
+                // [await] name(.name|<T>)*( ... ) ; - a statement that is a call.
+                List<Token> t = CstNodes.tokens(ctx);
+                if (t.size() < 4 || !t.get(t.size() - 1).getText().equals(";")
+                        || !t.get(t.size() - 2).getText().equals(")")) {
+                    return false;
+                }
+                String first = t.get(0).getText();
+                if (first.startsWith("return") || first.startsWith("yield")) return false;
+                int i = first.equals("await") ? 1 : 0;
+                if (i >= t.size() || t.get(i).getText().isEmpty()) return false;
+                char initial = t.get(i).getText().charAt(0);
+                if (!Character.isLetter(initial) && initial != '_') return false;
+                for (; i < t.size(); i++) {
+                    String text = t.get(i).getText();
+                    if (text.equals("(")) return true;
+                    for (int c = 0; c < text.length(); c++) {
+                        char ch = text.charAt(c);
+                        if (!Character.isLetterOrDigit(ch) && ch != '_' && ch != '.' && ch != '<' && ch != '>') {
+                            return false;
+                        }
                     }
                 }
+                return false;
+            }
 
-                String text = getNodeText(ctx);
-                if (text == null || text.isBlank()) {
+            private boolean isCSharpIdentifier(String text) {
+                String name = text.startsWith("@") ? text.substring(1) : text;
+                return CstNodes.isName(name) && name.indexOf('$') < 0;
+            }
+
+            // ── Statements, for Except: trees ────────────────────────────
+
+            @Override
+            public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                switch (pattern.kind()) {
+                    case mutationtester.msl.MSLNode.IF -> {
+                        ParseTree s = statementBody(ctx);
+                        return s instanceof CSharpParser.If_statementContext i
+                                ? List.of(i.boolean_expression(), i.embedded_statement(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WHILE -> {
+                        ParseTree s = statementBody(ctx);
+                        return s instanceof CSharpParser.While_statementContext w
+                                ? List.of(w.boolean_expression(), w.embedded_statement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR -> {
+                        ParseTree s = statementBody(ctx);
+                        if (!(s instanceof CSharpParser.For_statementContext f)) return null;
+                        return java.util.Arrays.asList(f.for_initializer(), f.for_condition(), f.for_iterator(),
+                                f.embedded_statement());
+                    }
+                    case mutationtester.msl.MSLNode.ASSIGN -> {
+                        ParseTree s = statementBody(ctx);
+                        ParseTree expr = s instanceof CSharpParser.Expression_statementContext e
+                                ? e.statement_expression() : ctx;
+                        ParseTree assign = unwrap(expr);
+                        if (assign instanceof CSharpParser.AssignmentContext a
+                                && a.assignment_operator().getText().equals("=")) {
+                            return List.of(a.unary_expression(), a.expression());
+                        }
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.BLOCK -> {
+                        ParseTree s = statementBody(ctx);
+                        if (!(s instanceof CSharpParser.BlockContext b) || b.statement_list() == null
+                                || b.statement_list().statement().size() < pattern.children().size()) {
+                            return null;
+                        }
+                        return new ArrayList<>(b.statement_list().statement().subList(0, pattern.children().size()));
+                    }
+                    default -> {
+                        return MSLScannerAdapter.super.matchNode(pattern, ctx);
+                    }
+                }
+            }
+
+            /** The specific statement inside statement / embedded_statement wrappers. */
+            private ParseTree statementBody(ParseTree ctx) {
+                ParseTree p = ctx;
+                while ((p instanceof CSharpParser.StatementContext || p instanceof CSharpParser.Embedded_statementContext
+                        || p instanceof CSharpParser.Selection_statementContext
+                        || p instanceof CSharpParser.Iteration_statementContext)
+                        && p.getChildCount() == 1) {
+                    p = p.getChild(0);
+                }
+                return p;
+            }
+
+            // ── Increments ───────────────────────────────────────────────
+
+            @Override
+            public ParseTree incrementOperand(String operator, ParseTree ctx) {
+                boolean post = operator.equals("++") ? ctx instanceof CSharpParser.Post_increment_expressionContext
+                        : operator.equals("--") && ctx instanceof CSharpParser.Post_decrement_expressionContext;
+                boolean pre = operator.equals("++") ? ctx instanceof CSharpParser.Pre_increment_expressionContext
+                        : operator.equals("--") && ctx instanceof CSharpParser.Pre_decrement_expressionContext;
+                // x++ is [operand, '++'] and ++x is ['++', operand], whether the
+                // parser built the node or CSharpParserBase inserted it.
+                if (ctx.getChildCount() != 2) return null;
+                if (post) return ctx.getChild(0);
+                if (pre) return ctx.getChild(1);
+                return null;
+            }
+
+            @Override
+            public ParseTree expressionStatement(ParseTree ctx) {
+                return ctx.getParent() instanceof CSharpParser.Statement_expressionContext se
+                        && se.getParent() instanceof CSharpParser.Expression_statementContext statement
+                        ? statement : null;
+            }
+
+            @Override
+            public boolean discardsValue(ParseTree ctx) {
+                // for (i = 0, j++; ...; i++, j--) lists statement expressions too
+                return expressionStatement(ctx) != null
+                        || ctx.getParent() instanceof CSharpParser.Statement_expressionContext se
+                            && se.getParent() instanceof CSharpParser.Statement_expression_listContext;
+            }
+
+            @Override
+            public Set<String> supportedKinds() {
+                return Set.of("binary", "predicate", "literal", "identifier", "call", "if", "while", "for", "assign", "block",
+                        "increment");
+            }
+
+            @Override
+            public Set<String> supportedPlaceholders() {
+                return Set.of("quantity", "match", "statement", "invocation_statement",
+                        "return_value", "constructor_call", "non_void_method_call",
+                        "equality_condition", "order_condition");
+            }
+
+            // ── PIT-style placeholders ───────────────────────────────────
+
+            @Override
+            public boolean matchesPlaceholder(String type, ParseTree ctx) {
+                return switch (type) {
+                    case "statement" -> ctx instanceof CSharpParser.StatementContext
+                            || ctx instanceof CSharpParser.Embedded_statementContext;
+                    case "return_value" -> returnedExpression(ctx) && renderValue("empty_value", ctx) != null;
+                    case "constructor_call" -> isConstructorCall(ctx);
+                    case "non_void_method_call" -> nonVoidCallType(ctx) != null;
+                    case "equality_condition" -> isCondition(ctx) && hasEqualityOperator(ctx);
+                    case "order_condition" -> isCondition(ctx) && hasOrderOperator(ctx);
+                    default -> MSLScannerAdapter.super.matchesPlaceholder(type, ctx);
+                };
+            }
+
+            private boolean singleLine(ParseTree ctx) {
+                Token start = CstNodes.start(ctx);
+                Token stop = CstNodes.stop(ctx);
+                if (start == null && isCall(ctx) && ctx.getChild(0) instanceof ParserRuleContext) {
+                    // An invocation node has no tokens of its own: callee to ')'.
+                    start = callStart(ctx);
+                    stop = ((TerminalNode) ctx.getChild(ctx.getChildCount() - 1)).getSymbol();
+                }
+                return start != null && stop != null && start.getLine() == stop.getLine();
+            }
+
+            /** The value of a one-line "return x;" or "yield return x;". */
+            private boolean returnedExpression(ParseTree ctx) {
+                return ctx instanceof CSharpParser.ExpressionContext
+                        && (ctx.getParent() instanceof CSharpParser.Return_statementContext
+                            || isYieldedValue(ctx))
+                        && singleLine(ctx.getParent());
+            }
+
+            private boolean isYieldedValue(ParseTree ctx) {
+                return ctx.getParent() instanceof CSharpParser.Yield_statementContext y && y.expression() == ctx;
+            }
+
+            /** new T(...) for a reference type T. */
+            private boolean isConstructorCall(ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Object_creation_expressionContext creation)
+                        || creation.getChildCount() < 4 || !creation.getChild(2).getText().equals("(")
+                        || isValueType(creation.type().getText())) {
                     return false;
                 }
-                String trimmed = text.stripLeading();
-                if (trimmed.startsWith("return") || trimmed.startsWith("yieldreturn")
-                        || trimmed.startsWith("yield return")) {
-                    return false;
+                Token start = creation.getStart();
+                Token close = ((TerminalNode) creation.getChild(creation.argument_list() == null ? 3 : 4)).getSymbol();
+                return start.getLine() == close.getLine();
+            }
+
+            private boolean isValueType(String type) {
+                return Set.of("bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
+                        "float", "double", "decimal", "char").contains(type.replace("?", ""));
+            }
+
+            /** The condition of an if, while or do-while, or of a ?: expression. */
+            private boolean isCondition(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                if (ctx instanceof CSharpParser.Boolean_expressionContext) {
+                    return parent instanceof CSharpParser.If_statementContext
+                            || parent instanceof CSharpParser.While_statementContext
+                            || parent instanceof CSharpParser.Do_statementContext;
                 }
-                return invocationStatement.matcher(text).matches();
+                return parent instanceof CSharpParser.Conditional_expressionContext c
+                        && c.getChildCount() == 5 && c.getChild(0) == ctx && !ctx.getText().equals("true")
+                        && !ctx.getText().equals("false");
+            }
+
+            private boolean hasEqualityOperator(ParseTree ctx) {
+                for (Token t : CstNodes.tokens(ctx)) {
+                    if (t.getText().equals("==") || t.getText().equals("!=")) return true;
+                }
+                return false;
+            }
+
+            private boolean hasOrderOperator(ParseTree ctx) {
+                for (Token t : CstNodes.tokens(ctx)) {
+                    String text = t.getText();
+                    if (text.equals("<") || text.equals(">") || text.equals("<=") || text.equals(">=")
+                            || text.equals("=>")) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            /**
+             * The declared type a call's result goes into: the method's return
+             * type for "return f(x);", or the variable's type for "T v = f(x);".
+             * Null when the call isn't one of those, or the type is var or void.
+             */
+            private String nonVoidCallType(ParseTree ctx) {
+                // "await f(x)" is replaced as a whole, like the call itself.
+                ParseTree call = ctx instanceof CSharpParser.Await_expressionContext await
+                        ? unwrap(await.unary_expression()) : ctx;
+                if (!isCall(call) || !singleLine(ctx)) return null;
+                String callee = CstNodes.compactText(call.getChild(0));
+                if (callee.startsWith("new") || !isSimpleCallee(callee)) return null;
+                ParseTree value = ctx;
+                while (value.getParent() != null && value.getParent().getChildCount() == 1) value = value.getParent();
+                // A declaration whose whole value is the call gets the type's default.
+                String typed = value instanceof CSharpParser.Local_variable_initializerContext
+                        || value instanceof CSharpParser.Variable_initializerContext ? "native:" : "assigned:";
+                if (value.getParent() instanceof CSharpParser.Return_statementContext) {
+                    // return f(x); - the call must be the whole value.
+                    String type = precedingReturnType(ctx);
+                    return type == null || type.equals("void") ? null : "native:" + type;
+                }
+                // Otherwise the call that starts an assigned value: T v = f(x) ?? y; v = f(x);
+                // new T { P = f(x) }; new { p = f(x) }.
+                value = ctx;
+                while (value.getParent() != null && value.getParent().getChild(0) == value
+                        && !(value instanceof CSharpParser.Local_variable_initializerContext)
+                        && !(value instanceof CSharpParser.Variable_initializerContext)) {
+                    value = value.getParent();
+                }
+                ParseTree parent = value instanceof CSharpParser.Local_variable_initializerContext ? value : value.getParent();
+                if (parent instanceof CSharpParser.Member_initializerContext init && init.initializer_value() == value
+                        || parent instanceof CSharpParser.Member_declaratorContext member && member.expression() == value) {
+                    return "assigned:";
+                }
+                if (parent instanceof CSharpParser.Local_variable_initializerContext init
+                        && init.getParent() instanceof CSharpParser.Explicitly_typed_local_variable_declaratorContext declarator
+                        && declarator.getParent() != null
+                        && declarator.getParent().getParent() instanceof CSharpParser.Explicitly_typed_local_variable_declarationContext decl) {
+                    return typed + decl.type().getText();
+                }
+                if (value instanceof CSharpParser.Variable_initializerContext init
+                        && init.getParent() instanceof CSharpParser.Variable_declaratorContext declarator
+                        && declarator.getParent() != null
+                        && declarator.getParent().getParent() instanceof CSharpParser.Field_declarationContext field) {
+                    return typed + field.type().getText();
+                }
+                if (parent instanceof CSharpParser.AssignmentContext assign
+                        && assign.assignment_operator().getText().equals("=") && assign.expression() == value) {
+                    // v = f(x): the type v was declared with, when it was; "object" (null) otherwise.
+                    String type = declaredType(assign.unary_expression());
+                    return "assigned:" + (type == null || type.equals("var") ? "" : type);
+                }
+                return null;
+            }
+
+            /** A callee of names, dots and type arguments: Foo, a.b.Get, Repo<T>.Find. */
+            private boolean isSimpleCallee(String callee) {
+                if (callee.isEmpty() || (!Character.isLetter(callee.charAt(0)) && callee.charAt(0) != '_')) return false;
+                for (int i = 0; i < callee.length(); i++) {
+                    char c = callee.charAt(i);
+                    if (!Character.isLetterOrDigit(c) && "_$.<>".indexOf(c) < 0) return false;
+                }
+                return true;
+            }
+
+            /** The declared type of the variable, field or parameter a target names, from its nearest earlier declaration. */
+            private String declaredType(ParseTree target) {
+                List<Token> tokens = CstNodes.tokens(target);
+                if (tokens.isEmpty()) return null;
+                String name = tokens.get(tokens.size() - 1).getText();
+                int before = tokens.get(0).getTokenIndex();
+                String type = null;
+                int nearest = -1;
+                for (Object[] declaration : declarations()) {
+                    int index = (Integer) declaration[0];
+                    if (index < before && index > nearest && declaration[1].equals(name)) {
+                        nearest = index;
+                        type = (String) declaration[2];
+                    }
+                }
+                return type;
+            }
+
+            private List<Object[]> declarations;
+
+            /** {token index, name, type} for each typed local, field and parameter. */
+            private List<Object[]> declarations() {
+                if (declarations == null) {
+                    declarations = new ArrayList<>();
+                    collectDeclarations(tree);
+                }
+                return declarations;
+            }
+
+            private void collectDeclarations(ParseTree node) {
+                if (node instanceof CSharpParser.Explicitly_typed_local_variable_declarationContext local) {
+                    for (CSharpParser.Explicitly_typed_local_variable_declaratorContext d
+                            : local.explicitly_typed_local_variable_declarators().explicitly_typed_local_variable_declarator()) {
+                        addDeclaration(d.identifier(), local.type().getText());
+                    }
+                } else if (node instanceof CSharpParser.Field_declarationContext field) {
+                    for (CSharpParser.Variable_declaratorContext d : field.variable_declarators().variable_declarator()) {
+                        addDeclaration(d.identifier(), field.type().getText());
+                    }
+                } else if (node instanceof CSharpParser.Fixed_parameterContext param && param.type() != null) {
+                    addDeclaration(param.identifier(), param.type().getText());
+                }
+                for (int i = 0; i < node.getChildCount(); i++) collectDeclarations(node.getChild(i));
+            }
+
+            private void addDeclaration(CSharpParser.IdentifierContext id, String type) {
+                if (id != null && id.getStart() != null) {
+                    declarations.add(new Object[]{id.getStart().getTokenIndex(), id.getText(), type});
+                }
+            }
+
+            /** The return type of the nearest method declared before ctx, or null. */
+            private String precedingReturnType(ParseTree ctx) {
+                Token at = CstNodes.start(ctx);
+                if (at == null && isCall(ctx) && ctx.getChild(0) instanceof ParserRuleContext) at = callStart(ctx);
+                if (at == null) return null;
+                String type = null;
+                int nearest = -1;
+                for (CSharpParser.Method_declarationContext m : methods()) {
+                    int index = m.getStart().getTokenIndex();
+                    if (index < at.getTokenIndex() && index > nearest && m.return_type() != null) {
+                        nearest = index;
+                        type = m.return_type().getText();
+                    }
+                }
+                return type;
+            }
+
+            private List<CSharpParser.Method_declarationContext> methods;
+
+            private List<CSharpParser.Method_declarationContext> methods() {
+                if (methods == null) {
+                    methods = new ArrayList<>();
+                    collectMethods(tree);
+                }
+                return methods;
+            }
+
+            private void collectMethods(ParseTree node) {
+                if (node instanceof CSharpParser.Method_declarationContext m && m.getStart() != null) methods.add(m);
+                for (int i = 0; i < node.getChildCount(); i++) collectMethods(node.getChild(i));
+            }
+
+            @Override
+            public String renderLiteral(String canonical, ParseTree ctx) {
+                if (canonical.equals("null") && ctx instanceof CSharpParser.Object_creation_expressionContext creation) {
+                    // "var x = null;" doesn't compile; default(T) keeps the type.
+                    ParseTree p = creation;
+                    while (p.getParent() != null && p.getParent().getChildCount() == 1) p = p.getParent();
+                    if (p.getParent() instanceof CSharpParser.Implicitly_typed_local_variable_declaratorContext) {
+                        return "default(" + creation.type().getText() + ")";
+                    }
+                }
+                return canonical;
+            }
+
+            @Override
+            public String renderValue(String placeholderType, ParseTree ctx) {
+                switch (placeholderType) {
+                    case "empty_value" -> {
+                        String type = precedingReturnType(ctx);
+                        String value = stripOuterParentheses(getNodeText(ctx).strip());
+                        // "yield return x" yields one element, so the method's declared
+                        // (IEnumerable) return type doesn't describe x; its default does.
+                        String typed = type == null || isYieldedValue(ctx) ? null : getEmptyReturnReplacement(value, type);
+                        if (typed != null) return typed;
+                        if (type == null) return TypedEmptyValues.forExpression(getNodeText(ctx), "null", "false");
+                        return TypedEmptyValues.forType(type, true);
+                    }
+                    case "default_value" -> {
+                        // A returned call or a typed local's value gets the type's default;
+                        // other assigned values get its empty value (null when unknown).
+                        String kind = nonVoidCallType(ctx);
+                        if (kind == null) return null;
+                        if (kind.startsWith("native:")) return defaultValueForType(kind.substring("native:".length()), false);
+                        String type = kind.substring("assigned:".length());
+                        if (type.isEmpty()) return "null";
+                        String value = TypedEmptyValues.forType(type, true);
+                        return value == null ? null
+                                : value.equals("\"\"") || value.equals("Optional.empty()") ? "default" : value;
+                    }
+                    default -> {
+                        return null;
+                    }
+                }
+            }
+
+            /** An object creation with an initializer is replaced only up to its ')'. */
+            @Override
+            public OperatorEdit replace(ParseTree ctx, mutationtester.msl.MSLTree from, mutationtester.msl.MSLTree to,
+                                        mutationtester.msl.MSLBindings bindings) {
+                if (from instanceof mutationtester.msl.MSLPlaceholder p && p.type().equals("constructor_call")
+                        && ctx instanceof CSharpParser.Object_creation_expressionContext creation) {
+                    String replacement = render(to, bindings.cursor(), ctx);
+                    if (replacement == null) return null;
+                    Token start = creation.getStart();
+                    Token close = ((TerminalNode) creation.getChild(creation.argument_list() == null ? 3 : 4)).getSymbol();
+                    return new OperatorEdit(start.getLine(), start.getCharPositionInLine(),
+                            sourceText.substring(start.getStartIndex(), close.getStopIndex() + 1), replacement);
+                }
+                return MSLScannerAdapter.super.replace(ctx, from, to, bindings);
             }
 
             @Override
@@ -2183,6 +1026,10 @@ public class CSharpMutationScanner {
                             && stop.getStopIndex() >= start.getStartIndex()
                             && stop.getStopIndex() < sourceText.length()) {
                         return sourceText.substring(start.getStartIndex(), stop.getStopIndex() + 1);
+                    }
+                    // Invocation nodes are built without their own start/stop tokens.
+                    if (start == null && isCall(ctx) && ctx.getChild(0) instanceof ParserRuleContext) {
+                        return callText(ctx);
                     }
                 }
                 return ctx.getText();
@@ -2225,12 +1072,12 @@ public class CSharpMutationScanner {
 
                 String leftText = compactNodeText(ctx.getChild(0));
                 String rightText = compactNodeText(ctx.getChild(1));
-                if (!leftText.endsWith("*") || !csharpIdentifier.matcher(rightText).matches()) {
+                if (!leftText.endsWith("*") || !isCSharpIdentifier(rightText)) {
                     return null;
                 }
 
                 String leftOperand = leftText.substring(0, leftText.length() - 1);
-                if (!csharpIdentifier.matcher(leftOperand).matches()) {
+                if (!isCSharpIdentifier(leftOperand)) {
                     return null;
                 }
 
@@ -2257,12 +1104,12 @@ public class CSharpMutationScanner {
                 String originalLeftText = getNodeText(ctx.getChild(0));
                 String compactLeftText = compactNodeText(ctx.getChild(0));
                 String rightText = compactNodeText(ctx.getChild(1));
-                if (!compactLeftText.endsWith("*") || !csharpIdentifier.matcher(rightText).matches()) {
+                if (!compactLeftText.endsWith("*") || !isCSharpIdentifier(rightText)) {
                     return null;
                 }
 
                 String leftOperand = compactLeftText.substring(0, compactLeftText.length() - 1);
-                if (!csharpIdentifier.matcher(leftOperand).matches()) {
+                if (!isCSharpIdentifier(leftOperand)) {
                     return null;
                 }
 
@@ -2296,56 +1143,9 @@ public class CSharpMutationScanner {
             }
 
             private String compactNodeText(ParseTree ctx) {
-                String text = getNodeText(ctx);
-                return text == null ? "" : text.replaceAll("\\s+", "");
+                return CstNodes.compactText(ctx);
             }
         };
     }
 
-    private static boolean hasTopLevelComma(String text) {
-        int parenDepth = 0;
-        int bracketDepth = 0;
-        int braceDepth = 0;
-        boolean inString = false;
-        char stringDelimiter = '\0';
-
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (i > 0 && text.charAt(i - 1) == '\\') {
-                continue;
-            }
-
-            if (inString) {
-                if (c == stringDelimiter) {
-                    inString = false;
-                    stringDelimiter = '\0';
-                }
-                continue;
-            }
-
-            if (c == '"' || c == '\'') {
-                inString = true;
-                stringDelimiter = c;
-                continue;
-            }
-
-            switch (c) {
-                case '(' -> parenDepth++;
-                case ')' -> parenDepth--;
-                case '[' -> bracketDepth++;
-                case ']' -> bracketDepth--;
-                case '{' -> braceDepth++;
-                case '}' -> braceDepth--;
-                case ',' -> {
-                    if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
-                        return true;
-                    }
-                }
-                default -> {
-                }
-            }
-        }
-
-        return false;
-    }
 }

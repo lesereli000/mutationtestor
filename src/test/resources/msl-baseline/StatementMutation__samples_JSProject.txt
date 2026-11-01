@@ -1,0 +1,306 @@
+browser-tests/run-browser-tests.js	1	21	require('child_process')	null
+browser-tests/run-browser-tests.js	10	21	path.resolve(htmlFile)	null
+browser-tests/run-browser-tests.js	12	0	console.log('Opening test file in browser:');	;
+browser-tests/run-browser-tests.js	13	0	console.log(absolutePath);	;
+browser-tests/run-browser-tests.js	14	0	console.log('\\nPlease check your browser window...');	;
+browser-tests/run-browser-tests.js	15	0	console.log('Tests should complete automatically.\\n');	;
+browser-tests/run-browser-tests.js	18	4	process.platform === 'win32'	false
+browser-tests/run-browser-tests.js	18	4	process.platform === 'win32'	true
+browser-tests/run-browser-tests.js	19	4	execSync(`start "" "${absolutePath}"`);	;
+browser-tests/run-browser-tests.js	2	13	require('path')	null
+browser-tests/run-browser-tests.js	20	11	process.platform === 'darwin'	false
+browser-tests/run-browser-tests.js	20	11	process.platform === 'darwin'	true
+browser-tests/run-browser-tests.js	21	4	execSync(`open "${absolutePath}"`);	;
+browser-tests/run-browser-tests.js	23	4	execSync(`xdg-open "${absolutePath}"`);	;
+browser-tests/run-browser-tests.js	26	0	console.log('========================================');	;
+browser-tests/run-browser-tests.js	27	0	console.log('Browser tests launched!');	;
+browser-tests/run-browser-tests.js	28	0	console.log('Check browser for results.');	;
+browser-tests/run-browser-tests.js	29	0	console.log('========================================\\n');	;
+browser-tests/run-browser-tests.js	3	11	require('fs')	null
+browser-tests/run-browser-tests.js	32	20	path.join(__dirname, 'browser-test-status.txt')	null
+browser-tests/run-browser-tests.js	33	0	fs.writeFileSync(resultsFile, 'RUNNING\\n');	;
+browser-tests/run-browser-tests.js	35	0	console.log('Note: Tests are running in browser.');	;
+browser-tests/run-browser-tests.js	36	0	console.log('If all tests pass, mutation testing will continue.');	;
+browser-tests/run-browser-tests.js	37	0	process.exit(0);	;
+browser-tests/run-browser-tests.js	5	0	console.log('========================================');	;
+browser-tests/run-browser-tests.js	6	0	console.log('Running Browser-Based JavaScript Tests');	;
+browser-tests/run-browser-tests.js	7	0	console.log('========================================\\n');	;
+browser-tests/run-browser-tests.js	9	17	path.join(__dirname, 'test-runner.html')	null
+browser-tests/run-with-puppeteer.js	1	18	require('puppeteer')	null
+browser-tests/run-with-puppeteer.js	105	19	{\r\n                success: false,\r\n                error: 'No test results found'\r\n            }	{}
+browser-tests/run-with-puppeteer.js	112	12	console.log('ERROR:', results.error);	;
+browser-tests/run-with-puppeteer.js	116	12	console.log(results.summaryText);	;
+browser-tests/run-with-puppeteer.js	119	16	console.log('\\nALL TESTS PASSED\\n');	;
+browser-tests/run-with-puppeteer.js	122	16	console.log('\\nSOME TESTS FAILED\\n');	;
+browser-tests/run-with-puppeteer.js	128	8	console.error('ERROR:', error.message);	;
+browser-tests/run-with-puppeteer.js	132	12	await browser.close();	;
+browser-tests/run-with-puppeteer.js	134	8	process.exit(exitCode);	;
+browser-tests/run-with-puppeteer.js	2	13	require('path')	null
+browser-tests/run-with-puppeteer.js	23	25	msg.text()	null
+browser-tests/run-with-puppeteer.js	24	16	text.includes('===') || text.includes('Tests complete')	false
+browser-tests/run-with-puppeteer.js	24	16	text.includes('===') || text.includes('Tests complete')	true
+browser-tests/run-with-puppeteer.js	25	16	console.log('[BROWSER]', text);	;
+browser-tests/run-with-puppeteer.js	3	11	require('fs')	null
+browser-tests/run-with-puppeteer.js	30	12	console.log('[JS ERROR]', error.message);	;
+browser-tests/run-with-puppeteer.js	50	12	console.error('ERROR: Could not find test-runner.html');	;
+browser-tests/run-with-puppeteer.js	51	12	console.error('Searched in:');	;
+browser-tests/run-with-puppeteer.js	52	12	possiblePaths.forEach(p => console.error('  -', p));	;
+browser-tests/run-with-puppeteer.js	53	12	process.exit(1);	;
+browser-tests/run-with-puppeteer.js	56	8	console.log('Loading:', testFile);	;
+browser-tests/run-with-puppeteer.js	57	8	console.log('');	;
+browser-tests/run-with-puppeteer.js	6	4	console.log('========================================');	;
+browser-tests/run-with-puppeteer.js	7	4	console.log('JavaScript Mutation Testing');	;
+browser-tests/run-with-puppeteer.js	73	8	console.log('Tests completed!\\n');	;
+browser-tests/run-with-puppeteer.js	76	31	document.getElementById('phantomjs-results')	null
+browser-tests/run-with-puppeteer.js	77	27	document.getElementById('test-output')	null
+browser-tests/run-with-puppeteer.js	78	28	document.getElementById('summary')	null
+browser-tests/run-with-puppeteer.js	8	4	console.log('Puppeteer (Chrome Headless) Browser Test Runner');	;
+browser-tests/run-with-puppeteer.js	82	27	{\r\n                        summary: JSON.parse(resultsDiv.textContent),\r\n                        output: output ? output.innerText : 'No output',\r\n                        summaryText: summary ? summary.innerText : 'No summary',\r\n                        success: true\r\n                    }	{}
+browser-tests/run-with-puppeteer.js	89	27	{\r\n                        success: false,\r\n                        error: 'Failed to parse results: ' + e.toString()\r\n                    }	{}
+browser-tests/run-with-puppeteer.js	9	4	console.log('========================================\\n');	;
+browser-tests/run-with-puppeteer.js	97	23	{\r\n                    summary: window.testResults,\r\n                    output: output ? output.innerText : 'No output',\r\n                    summaryText: summary ? summary.innerText : 'No summary',\r\n                    success: true\r\n                }	{}
+src/Add1.js	2	11	x + 1	null
+src/Add2.js	2	11	x + 2	null
+src/Add3.js	2	11	x + 3	null
+src/BoundaryCheck.js	2	8	n <= 0	false
+src/BoundaryCheck.js	2	8	n <= 0	true
+src/BoundaryCheck.js	3	11	n	null
+src/BoundaryCheck.js	7	8	x <= limit	false
+src/BoundaryCheck.js	7	8	x <= limit	true
+src/BoundaryCheck.js	8	15	true	false
+src/Comparisons.js	10	11	x === 0	null
+src/Comparisons.js	14	8	x > 0 && x < 100	false
+src/Comparisons.js	14	8	x > 0 && x < 100	true
+src/Comparisons.js	15	15	true	false
+src/Comparisons.js	2	11	x > 0	null
+src/Comparisons.js	24	11	count	null
+src/Comparisons.js	30	11	count	null
+src/Comparisons.js	34	8	n < 0	false
+src/Comparisons.js	34	8	n < 0	true
+src/Comparisons.js	35	15	-n	null
+src/Comparisons.js	37	11	n	null
+src/Comparisons.js	41	4	console.log(x);	;
+src/Comparisons.js	42	11	x	null
+src/Comparisons.js	50	11	total	null
+src/Comparisons.js	55	11	count > 0	false
+src/Comparisons.js	55	11	count > 0	true
+src/Comparisons.js	58	11	count	null
+src/Comparisons.js	6	11	x >= min && x <= max	null
+src/Demo.js	11	8	console.log("GT to GE Fails");	;
+src/Demo.js	18	7	a >= equal	false
+src/Demo.js	18	7	a >= equal	true
+src/Demo.js	19	8	console.log("GE to GT Fails");	;
+src/Demo.js	2	11	a + b	null
+src/Demo.js	21	8	console.log("GE to GT Passes");	;
+src/Demo.js	25	0	console.log(add(2,3));	;
+src/Demo.js	27	0	GTtoGE();	;
+src/Demo.js	28	0	GEtoGT();	;
+src/Demo.js	8	7	a > equal	false
+src/Demo.js	8	7	a > equal	true
+src/Demo.js	9	8	console.log("GT to GE Passes");	;
+src/DemoEqualToNotEqual.js	10	11	arr[i] === val	null
+src/DemoEqualToNotEqual.js	14	11	s === null	null
+src/DemoEqualToNotEqual.js	2	11	a === b	null
+src/DemoEqualToNotEqual.js	21	8	x === y	false
+src/DemoEqualToNotEqual.js	21	8	x === y	true
+src/DemoEqualToNotEqual.js	22	8	console.log("testBasicEquality: fails (should pass)");	;
+src/DemoEqualToNotEqual.js	24	8	console.log("testBasicEquality: passes (should fail)");	;
+src/DemoEqualToNotEqual.js	32	8	x === y	false
+src/DemoEqualToNotEqual.js	32	8	x === y	true
+src/DemoEqualToNotEqual.js	33	8	console.log("testInequalityCheck: passes");	;
+src/DemoEqualToNotEqual.js	35	8	console.log("testInequalityCheck: fails");	;
+src/DemoEqualToNotEqual.js	44	8	(a === b) && (b === c)	false
+src/DemoEqualToNotEqual.js	44	8	(a === b) && (b === c)	true
+src/DemoEqualToNotEqual.js	45	8	console.log("testMultipleConditions: fails (all equal)");	;
+src/DemoEqualToNotEqual.js	47	8	console.log("testMultipleConditions: passes");	;
+src/DemoEqualToNotEqual.js	51	0	console.log("string literal has ===: a===b");	;
+src/DemoEqualToNotEqual.js	52	0	console.log("concat with bool: " + isEqual(5, 5));	;
+src/DemoEqualToNotEqual.js	53	0	console.log("concat with char: " + '=');	;
+src/DemoEqualToNotEqual.js	56	0	console.log(isEqual(5, 5));	;
+src/DemoEqualToNotEqual.js	57	0	console.log(isEqual(5, 10));	;
+src/DemoEqualToNotEqual.js	58	0	console.log(chainedEquality(5, 5, 5));	;
+src/DemoEqualToNotEqual.js	59	0	console.log(chainedEquality(5, 5, 10));	;
+src/DemoEqualToNotEqual.js	6	11	(a === b) && (b === c)	null
+src/DemoEqualToNotEqual.js	60	0	console.log(arrayEquals([10, 20, 30], 1, 20));	;
+src/DemoEqualToNotEqual.js	61	0	console.log(nullCheck(null));	;
+src/DemoEqualToNotEqual.js	62	0	console.log(nullCheck("test"));	;
+src/DemoEqualToNotEqual.js	64	0	console.log(5 === 5);	;
+src/DemoEqualToNotEqual.js	65	0	console.log(5 === 10);	;
+src/DemoEqualToNotEqual.js	66	0	console.log((5 === 5) && (10 === 10));	;
+src/DemoEqualToNotEqual.js	67	0	testBasicEquality();	;
+src/DemoEqualToNotEqual.js	68	0	testInequalityCheck();	;
+src/DemoEqualToNotEqual.js	69	0	testMultipleConditions();	;
+src/DemoLogicalAndToOr.js	3	9	a > 0 && b > 0	null
+src/DemoLogicalAndToOr.js	6	0	console.log("Both positive?", bothPositive(2, 3));	;
+src/DemoLogicalOrToAnd.js	3	9	a > 0 || b > 0	null
+src/DemoLogicalOrToAnd.js	6	0	console.log("Either positive?", eitherPositive(2, -3));	;
+src/DemoMinusToPlus.js	10	11	arr[i] + 1	null
+src/DemoMinusToPlus.js	14	11	+a	null
+src/DemoMinusToPlus.js	2	11	a + b	null
+src/DemoMinusToPlus.js	20	11	x	null
+src/DemoMinusToPlus.js	26	11	x	null
+src/DemoMinusToPlus.js	29	0	console.log(sub(5, 3));	;
+src/DemoMinusToPlus.js	30	0	console.log(chain(10, 3, 2));	;
+src/DemoMinusToPlus.js	31	0	console.log(arrayMinus([10, 20, 30], 1));	;
+src/DemoMinusToPlus.js	32	0	console.log(unaryMinus(7));	;
+src/DemoMinusToPlus.js	33	0	console.log(minusEquals());	;
+src/DemoMinusToPlus.js	34	0	console.log(minusMinus());	;
+src/DemoMinusToPlus.js	36	0	console.log(10 + 2 + 3);	;
+src/DemoMinusToPlus.js	37	0	console.log((10 + 2) + 3);	;
+src/DemoMinusToPlus.js	6	11	(a + b) + c	null
+src/DemoNotEqualToEqual.js	10	11	arr[i] !== val	null
+src/DemoNotEqualToEqual.js	14	11	s !== null	null
+src/DemoNotEqualToEqual.js	2	11	a !== b	null
+src/DemoNotEqualToEqual.js	21	8	x !== y	false
+src/DemoNotEqualToEqual.js	21	8	x !== y	true
+src/DemoNotEqualToEqual.js	22	8	console.log("testBasicInequality: fails (should pass)");	;
+src/DemoNotEqualToEqual.js	24	8	console.log("testBasicInequality: passes (should fail)");	;
+src/DemoNotEqualToEqual.js	32	8	x !== y	false
+src/DemoNotEqualToEqual.js	32	8	x !== y	true
+src/DemoNotEqualToEqual.js	33	8	console.log("testEqualityCheck: passes");	;
+src/DemoNotEqualToEqual.js	35	8	console.log("testEqualityCheck: fails");	;
+src/DemoNotEqualToEqual.js	44	8	(a !== b) && (b !== c)	false
+src/DemoNotEqualToEqual.js	44	8	(a !== b) && (b !== c)	true
+src/DemoNotEqualToEqual.js	45	8	console.log("testMultipleConditions: fails (all different)");	;
+src/DemoNotEqualToEqual.js	47	8	console.log("testMultipleConditions: passes");	;
+src/DemoNotEqualToEqual.js	51	0	console.log("string literal has !==: a!==b");	;
+src/DemoNotEqualToEqual.js	52	0	console.log("concat with bool: " + isNotEqual(5, 10));	;
+src/DemoNotEqualToEqual.js	55	0	console.log(isNotEqual(5, 10));	;
+src/DemoNotEqualToEqual.js	56	0	console.log(isNotEqual(5, 5));	;
+src/DemoNotEqualToEqual.js	57	0	console.log(chainedInequality(5, 10, 15));	;
+src/DemoNotEqualToEqual.js	58	0	console.log(chainedInequality(5, 5, 10));	;
+src/DemoNotEqualToEqual.js	59	0	console.log(arrayNotEquals([10, 20, 30], 1, 25));	;
+src/DemoNotEqualToEqual.js	6	11	(a !== b) && (b !== c)	null
+src/DemoNotEqualToEqual.js	60	0	console.log(notNullCheck(null));	;
+src/DemoNotEqualToEqual.js	61	0	console.log(notNullCheck("test"));	;
+src/DemoNotEqualToEqual.js	63	0	console.log(5 !== 10);	;
+src/DemoNotEqualToEqual.js	64	0	console.log(5 !== 5);	;
+src/DemoNotEqualToEqual.js	65	0	console.log((5 !== 10) && (10 !== 15));	;
+src/DemoNotEqualToEqual.js	67	0	testBasicInequality();	;
+src/DemoNotEqualToEqual.js	68	0	testEqualityCheck();	;
+src/DemoNotEqualToEqual.js	69	0	testMultipleConditions();	;
+src/Main.js	1	17	require("./Add1")	null
+src/Main.js	10	4	console.log(e);	;
+src/Main.js	2	17	require("./Add2")	null
+src/Main.js	6	14	add1(a)	null
+src/Main.js	7	14	add2(b)	null
+src/Main.js	8	14	add2(c)	null
+src/Main.js	9	14	add1(add2(add1(d)))	null
+src/TestNumbers.js	6	11	integer + decimal + scientific	null
+src/exponentialTypes.js	13	11	x * coefficient	null
+src/exponentialTypes.js	18	11	value	null
+src/exponentialTypes.js	23	11	huge	null
+src/exponentialTypes.js	3	11	large	null
+src/exponentialTypes.js	8	11	small	null
+src/floatTypes.js	13	11	precise + 0.2	null
+src/floatTypes.js	18	11	negative	null
+src/floatTypes.js	23	11	small	null
+src/floatTypes.js	3	11	pi	null
+src/floatTypes.js	8	11	x * half	null
+src/integerTypes.js	13	11	zero	null
+src/integerTypes.js	18	11	negative	null
+src/integerTypes.js	23	11	large	null
+src/integerTypes.js	3	11	result + x	null
+src/integerTypes.js	8	11	x * factor	null
+src/mixedTypes.js	14	11	start * factor * scale	null
+src/mixedTypes.js	22	11	zero + tiny + big	null
+src/mixedTypes.js	6	11	(integerPart + floatPart) * multiplier * x	null
+src/prototypeSample.js	102	17	k < 2	false
+src/prototypeSample.js	102	17	k < 2	true
+src/prototypeSample.js	107	33	console.log("Started");	;
+src/prototypeSample.js	108	33	console.log("Running");	;
+src/prototypeSample.js	109	34	console.log("Finished");	;
+src/prototypeSample.js	110	21	console.log("Unknown");	;
+src/prototypeSample.js	116	24	list.map(s => s + s)	null
+src/prototypeSample.js	119	20	new Dog("Labrador")	null
+src/prototypeSample.js	123	24	new ConsoleGreeter()	null
+src/prototypeSample.js	127	20	new Box(42)	null
+src/prototypeSample.js	137	12	s === null	false
+src/prototypeSample.js	137	12	s === null	true
+src/prototypeSample.js	152	17	new AllSyntaxDemo()	null
+src/prototypeSample.js	157	26	new JSSpecifics()	null
+src/prototypeSample.js	169	24	makeCounter()	null
+src/prototypeSample.js	173	26	new Promise(resolve => setTimeout(() => resolve("done"), 1))	null
+src/prototypeSample.js	179	18	new Person("JS")	null
+src/prototypeSample.js	195	4	require.main === module	false
+src/prototypeSample.js	195	4	require.main === module	true
+src/prototypeSample.js	3	15	Object.freeze({ Started: "Started", Running: "Running", Finished: "Finished" })	null
+src/prototypeSample.js	55	20	Math.trunc(a / b)	null
+src/prototypeSample.js	6	24	new Error("abstract")	null
+src/prototypeSample.js	92	16	i === 1	false
+src/prototypeSample.js	92	16	i === 1	true
+src/prototypeSample.js	97	15	j < 2	false
+src/prototypeSample.js	97	15	j < 2	true
+tests/BoundaryCheck.test.js	10	8	expect(clampToZero(-1)).toBe(0);	;
+tests/BoundaryCheck.test.js	14	8	expect(clampToZero(0)).toBe(0);	;
+tests/BoundaryCheck.test.js	18	8	expect(clampToZero(5)).toBe(5);	;
+tests/BoundaryCheck.test.js	19	8	expect(clampToZero(100)).toBe(100);	;
+tests/BoundaryCheck.test.js	23	8	expect(isUnderLimit(3, 10)).toBe(true);	;
+tests/BoundaryCheck.test.js	24	8	expect(isUnderLimit(0, 5)).toBe(true);	;
+tests/BoundaryCheck.test.js	28	8	expect(isUnderLimit(10, 10)).toBe(true);	;
+tests/BoundaryCheck.test.js	32	8	expect(isUnderLimit(11, 10)).toBe(false);	;
+tests/BoundaryCheck.test.js	33	8	expect(isUnderLimit(100, 50)).toBe(false);	;
+tests/BoundaryCheck.test.js	4	4	require('../src/BoundaryCheck')	null
+tests/BoundaryCheck.test.js	9	8	expect(clampToZero(-5)).toBe(0);	;
+tests/TestAdd.test.js	1	15	require("assert")	null
+tests/TestAdd.test.js	10	8	assert.strictEqual(add1(11), 12);	;
+tests/TestAdd.test.js	11	8	assert.strictEqual(add1(Number.MAX_SAFE_INTEGER - 1), Number.MAX_SAFE_INTEGER);	;
+tests/TestAdd.test.js	15	8	assert.strictEqual(add2(5), 7);	;
+tests/TestAdd.test.js	16	8	assert.strictEqual(add2(-1), 1);	;
+tests/TestAdd.test.js	17	8	assert.strictEqual(add2(788), 790);	;
+tests/TestAdd.test.js	18	8	assert.strictEqual(add2(11), 13);	;
+tests/TestAdd.test.js	19	8	assert.strictEqual(add2(Number.MAX_SAFE_INTEGER - 2), Number.MAX_SAFE_INTEGER);	;
+tests/TestAdd.test.js	2	17	require("../src/Add1")	null
+tests/TestAdd.test.js	3	17	require("../src/Add2")	null
+tests/TestAdd.test.js	7	8	assert.strictEqual(add1(5), 6);	;
+tests/TestAdd.test.js	8	8	assert.strictEqual(add1(-1), 0);	;
+tests/TestAdd.test.js	9	8	assert.strictEqual(add1(788), 789);	;
+tests/TestNumbers.test.js	1	24	require('../src/TestNumbers')	null
+tests/TestNumbers.test.js	6	8	expect(testNumbers()).toBeCloseTo(10000000045.14, 2);	;
+tests/exponentialTypes.test.js	12	8	expect(largeNumber()).toBe(10000000000);	;
+tests/exponentialTypes.test.js	16	8	expect(smallNumber()).toBe(0.00001);	;
+tests/exponentialTypes.test.js	20	8	expect(scientificCalculation(4)).toBe(10000);	;
+tests/exponentialTypes.test.js	21	8	expect(scientificCalculation(1)).toBe(2500);	;
+tests/exponentialTypes.test.js	22	8	expect(scientificCalculation(0)).toBe(0);	;
+tests/exponentialTypes.test.js	26	8	expect(negativeExponent()).toBe(0.005);	;
+tests/exponentialTypes.test.js	30	8	expect(largeExponent()).toBe(1e20);	;
+tests/exponentialTypes.test.js	7	4	require('../src/exponentialTypes')	null
+tests/floatTypes.test.js	12	8	expect(calculatePi()).toBeCloseTo(3.14159, 5);	;
+tests/floatTypes.test.js	16	8	expect(halfValue(10)).toBe(5);	;
+tests/floatTypes.test.js	17	8	expect(halfValue(7)).toBe(3.5);	;
+tests/floatTypes.test.js	18	8	expect(halfValue(0)).toBe(0);	;
+tests/floatTypes.test.js	22	23	precisionTest()	null
+tests/floatTypes.test.js	23	8	expect(result).toBeCloseTo(0.3, 1);	;
+tests/floatTypes.test.js	27	8	expect(negativeFloat()).toBe(-2.5);	;
+tests/floatTypes.test.js	31	8	expect(smallDecimal()).toBe(0.001);	;
+tests/floatTypes.test.js	7	4	require('../src/floatTypes')	null
+tests/integerTypes.test.js	12	8	expect(addInteger(8)).toBe(50);	;
+tests/integerTypes.test.js	13	8	expect(addInteger(0)).toBe(42);	;
+tests/integerTypes.test.js	14	8	expect(addInteger(-42)).toBe(0);	;
+tests/integerTypes.test.js	18	8	expect(multiplyInteger(5)).toBe(50);	;
+tests/integerTypes.test.js	19	8	expect(multiplyInteger(0)).toBe(0);	;
+tests/integerTypes.test.js	20	8	expect(multiplyInteger(-3)).toBe(-30);	;
+tests/integerTypes.test.js	24	8	expect(zeroInteger()).toBe(0);	;
+tests/integerTypes.test.js	28	8	expect(negativeInteger()).toBe(-42);	;
+tests/integerTypes.test.js	32	8	expect(largeInteger()).toBe(1000);	;
+tests/integerTypes.test.js	7	4	require('../src/integerTypes')	null
+tests/mixedTypes.test.js	11	8	expect(complexCalculation(2)).toBe(2100);	;
+tests/mixedTypes.test.js	14	8	expect(complexCalculation(1)).toBe(1050);	;
+tests/mixedTypes.test.js	17	8	expect(complexCalculation(0)).toBe(0);	;
+tests/mixedTypes.test.js	22	8	expect(typeConversion()).toBe(630);	;
+tests/mixedTypes.test.js	27	8	expect(edgeCases()).toBeCloseTo(1e15, -10);	;
+tests/mixedTypes.test.js	5	4	require('../src/mixedTypes')	null
+tests/prototypeSample.test.js	1	49	require('../src/prototypeSample')	null
+tests/prototypeSample.test.js	13	21	new AllSyntaxDemo()	null
+tests/prototypeSample.test.js	14	8	expect(demo.sum(1, 2, 3)).toBe(6);	;
+tests/prototypeSample.test.js	18	20	new Dog("Pug")	null
+tests/prototypeSample.test.js	19	8	expect(dog.breed).toBe("Pug");	;
+tests/prototypeSample.test.js	21	20	new Box(1)	null
+tests/prototypeSample.test.js	22	8	expect(box.value).toBe(1);	;
+tests/prototypeSample.test.js	5	8	AllSyntaxDemo.main();	;
+tests/prototypeSample.test.js	9	8	AllSyntaxDemo.staticMethod();	;
+tests/test.js	1	17	require('../src/Add1')	null
+tests/test.js	2	15	require('assert')	null
+tests/test.js	6	8	assert.strictEqual(add1(5), 6);	;
+tests/test.js	7	8	assert.strictEqual(add1(0), 1);	;
+tests/test.js	8	8	assert.strictEqual(add1(-1), 0);	;

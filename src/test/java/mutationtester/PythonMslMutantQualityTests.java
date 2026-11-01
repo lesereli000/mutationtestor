@@ -155,7 +155,7 @@ class PythonMslMutantQualityTests {
                 + "Replace: {quantity} " + from + " {quantity}\n"
                 + "With: {quantity} " + to + " {quantity}\n\n"
                 + "End\n");
-        return Main.scanForMutations(py.getParent(), Mutator.MutatorType.CUSTOM, spec.toString())
+        return Main.scanForMutations(py.getParent(), spec.toString())
                 .stream()
                 .filter(point -> point.getSourceFile().getName().endsWith(".py"))
                 .filter(point -> !point.getSourceFile().getName().endsWith(".spec"))

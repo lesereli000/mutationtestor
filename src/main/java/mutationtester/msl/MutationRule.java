@@ -6,7 +6,7 @@ import java.io.File;
 
 /**
  * A single mutation rule parsed from a .spec file.
- * Implementations include SwapRule (operator replacement).
+ * The rule types are ReplaceRule, DeleteRule and InsertRule.
  */
 public interface MutationRule {
 
@@ -22,6 +22,11 @@ public interface MutationRule {
 
     /** Human-readable label used in reports (e.g., "Math Operations: + → -"). */
     String getLabel();
+
+    /** The MSL trees a language adapter must support for this rule to apply to its files. */
+    default java.util.List<MSLTree> getTrees() {
+        return java.util.List.of();
+    }
 
     /**
      * Scans the entire AST via the adapter and returns all mutation points

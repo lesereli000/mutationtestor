@@ -1,0 +1,11 @@
+calculator/src/arithmetic.rkt	10	3	-	+
+calculator/src/arithmetic.rkt	13	3	*	/
+calculator/src/arithmetic.rkt	16	6	(= y 0)	(not (= y 0))
+calculator/src/arithmetic.rkt	18	7	/	*
+calculator/src/arithmetic.rkt	21	3	*	/
+calculator/src/arithmetic.rkt	25	2	(= (modulo x 2) 0)	(not (= (modulo x 2) 0))
+calculator/src/arithmetic.rkt	25	6	modulo	*
+calculator/src/arithmetic.rkt	28	3	>	<=
+calculator/src/arithmetic.rkt	28	3	>	>=
+calculator/src/arithmetic.rkt	7	3	+	-
+calculator/src/statistics.rkt	14	7	/	*

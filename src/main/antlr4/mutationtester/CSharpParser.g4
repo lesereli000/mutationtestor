@@ -99,6 +99,7 @@ contextual_keyword
     | 'let'     | 'nameof'     | 'notnull'   | 'on'        | 'orderby'
     | 'partial' | 'remove'     | 'select'    | 'set'       | 'unmanaged'
     | 'value'   | 'var'        | 'when'      | 'where'     | 'yield'
+    | 'init'    | 'record'     | 'required'                       // C# 9 and 11
     ;
 
 // Source: §6.4.5.1 General
@@ -455,6 +456,7 @@ primary_expression
     | simple_name
     | tuple_expression
     | parenthesized_expression
+    | collection_expression
     // From: member_access
         | primary_expression '.' identifier type_argument_list? { this.AsMemberAccess(_localctx); }
         | predefined_type '.' identifier type_argument_list? { this.AsMemberAccess(_localctx); }
@@ -606,6 +608,15 @@ null_forgiving_operator
 // Source: §12.8.10.1 General
 invocation_expression
     : primary_expression '(' argument_list? ')'
+    ;
+
+// [1, 2, ..rest] - a collection expression (C# 12)
+collection_expression
+    : '[' (collection_element (',' collection_element)* ','?)? ']'
+    ;
+
+collection_element
+    : '..'? expression
     ;
 
 // Source: §12.8.11 Null Conditional Invocation Expression
@@ -1525,12 +1536,15 @@ yield_statement
 // Source: §14.2 Compilation units
 compilation_unit
     : extern_alias_directive* using_directive* global_attributes?
-      namespace_member_declaration*
+      statement* namespace_member_declaration*       // top-level statements (C# 9)
     ;
 
 // Source: §14.3 Namespace declarations
 namespace_declaration
     : 'namespace' qualified_identifier namespace_body ';'?
+    // file-scoped namespace (C# 10): the rest of the file is its body
+    | 'namespace' qualified_identifier ';' extern_alias_directive* using_directive*
+      namespace_member_declaration*
     ;
 
 qualified_identifier
@@ -1549,9 +1563,9 @@ extern_alias_directive
 
 // Source: §14.5.1 General
 using_directive
-    : using_alias_directive
-    | using_namespace_directive
-    | using_static_directive    
+    : 'global'? using_alias_directive       // global using (C# 10)
+    | 'global'? using_namespace_directive
+    | 'global'? using_static_directive
     ;
 
 // Source: §14.5.2 Using alias directives
@@ -1578,6 +1592,7 @@ namespace_member_declaration
 // Source: §14.7 Type declarations
 type_declaration
     : class_declaration
+    | record_declaration
     | struct_declaration
     | interface_declaration
     | enum_declaration
@@ -1592,8 +1607,20 @@ qualified_alias_member
 // Source: §15.2.1 General
 class_declaration
     : attributes? class_modifier* 'partial'? 'class' identifier
-        type_parameter_list? class_base? type_parameter_constraints_clause*
+        type_parameter_list? primary_constructor_parameters? class_base? type_parameter_constraints_clause*
         class_body ';'?
+    ;
+
+// record / record class / record struct (C# 9, 10)
+record_declaration
+    : attributes? class_modifier* 'partial'? 'record' ('class' | 'struct')? identifier
+        type_parameter_list? primary_constructor_parameters? class_base? type_parameter_constraints_clause*
+        (class_body ';'? | ';')
+    ;
+
+// class C(int x) - a primary constructor (C# 12)
+primary_constructor_parameters
+    : '(' parameter_list? ')'
     ;
 
 // Source: §15.2.2.1 General
@@ -1620,9 +1647,14 @@ decorated_type_parameter
 
 // Source: §15.2.4.1 General
 class_base
-    : ':' class_type
+    : ':' class_type base_constructor_arguments?
     | ':' interface_type_list
-    | ':' class_type ',' interface_type_list
+    | ':' class_type base_constructor_arguments? ',' interface_type_list
+    ;
+
+// class C(int x) : B(x) - arguments to the base's constructor (C# 12)
+base_constructor_arguments
+    : '(' argument_list? ')'
     ;
 
 interface_type_list
@@ -1701,6 +1733,7 @@ field_declaration
 
 field_modifier
     : 'new'
+    | 'required'        // C# 11
     | 'public'
     | 'protected'
     | 'internal'
@@ -1837,6 +1870,7 @@ property_declaration
 
 property_modifier
     : 'new'
+    | 'required'        // C# 11
     | 'public'
     | 'protected'
     | 'internal'
@@ -1876,7 +1910,7 @@ get_accessor_declaration
     ;
 
 set_accessor_declaration
-    : attributes? accessor_modifier? 'set' accessor_body
+    : attributes? accessor_modifier? ('set' | 'init') accessor_body   // init accessor (C# 9)
     ;
 
 accessor_modifier

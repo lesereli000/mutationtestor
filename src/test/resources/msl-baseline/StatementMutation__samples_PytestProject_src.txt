@@ -1,0 +1,192 @@
+Add1.py	2	11	a + 1	None
+Add2.py	2	11	a + 2	None
+Add3.py	2	11	x + 3	None
+BitwiseAndKilledDemo.py	2	11	6 & 3	None
+BitwiseOrKilledDemo.py	2	11	6 | 3	None
+BoundaryCheck.py	14	11	n	None
+BoundaryCheck.py	19	15	True	False
+BoundaryCheck.py	3	11	n	None
+BoundaryCheck.py	8	15	True	False
+ConditionalDemo.py	2	7	x > 100	False
+ConditionalDemo.py	2	7	x > 100	True
+ConditionalDemo.py	3	15	1	0
+ConditionalDemo.py	8	7	x > 100	False
+ConditionalDemo.py	8	7	x > 100	True
+ConditionalDemo.py	9	15	1	0
+Demo.py	13	8	print("GTtoGE Passes")	pass
+Demo.py	15	8	print("GTtoGE Fails")	pass
+Demo.py	17	4	GEtoGT()	None
+Demo.py	2	11	a + b	None
+Demo.py	21	8	print("GEtoGT Fails")	pass
+Demo.py	23	8	print("GEtoGT Passes")	pass
+Demo.py	25	0	GTtoGE()	None
+Demo.py	25	0	GTtoGE()	pass
+Demo.py	26	0	GEtoGT()	None
+Demo.py	26	0	GEtoGT()	pass
+Demo.py	5	0	print(add(2, 3))	pass
+Demo.py	7	0	print("2 + 3")	pass
+Demo.py	9	4	GTtoGE()	None
+DemoEqualToNotEqual.py	13	11	s == None  # return s != None	None
+DemoEqualToNotEqual.py	2	11	a == b  # return a != b	None
+DemoEqualToNotEqual.py	20	7	x == y	False
+DemoEqualToNotEqual.py	20	7	x == y	True
+DemoEqualToNotEqual.py	21	8	print("test_basic_equality: fails (should pass)")	pass
+DemoEqualToNotEqual.py	23	8	print("test_basic_equality: passes (should fail)")	pass
+DemoEqualToNotEqual.py	30	7	x == y	False
+DemoEqualToNotEqual.py	30	7	x == y	True
+DemoEqualToNotEqual.py	31	8	print("test_inequality_check: passes")	pass
+DemoEqualToNotEqual.py	33	8	print("test_inequality_check: fails")	pass
+DemoEqualToNotEqual.py	41	7	(a == b) and (b == c)	False
+DemoEqualToNotEqual.py	41	7	(a == b) and (b == c)	True
+DemoEqualToNotEqual.py	42	8	print("test_multiple_conditions: fails (all equal)")	pass
+DemoEqualToNotEqual.py	44	8	print("test_multiple_conditions: passes")	pass
+DemoEqualToNotEqual.py	47	3	__name__ == "__main__"	False
+DemoEqualToNotEqual.py	47	3	__name__ == "__main__"	True
+DemoEqualToNotEqual.py	48	4	print("string literal has ==: a==b")	pass
+DemoEqualToNotEqual.py	49	4	print("concat with bool: " + str(is_equal(5, 5)))	pass
+DemoEqualToNotEqual.py	50	4	print("concat with char: " + "=")	pass
+DemoEqualToNotEqual.py	53	4	print(is_equal(5, 5))	pass
+DemoEqualToNotEqual.py	54	4	print(is_equal(5, 10))	pass
+DemoEqualToNotEqual.py	55	4	print(chained_equality(5, 5, 5))	pass
+DemoEqualToNotEqual.py	56	4	print(chained_equality(5, 5, 10))	pass
+DemoEqualToNotEqual.py	57	4	print(array_equals([10, 20, 30], 1, 20))	pass
+DemoEqualToNotEqual.py	58	4	print(none_check(None))	pass
+DemoEqualToNotEqual.py	59	4	print(none_check("test"))	pass
+DemoEqualToNotEqual.py	6	11	(a == b) and (b == c)  # return (a != b) and (b != c)	None
+DemoEqualToNotEqual.py	61	4	print(5 == 5)	pass
+DemoEqualToNotEqual.py	62	4	print(5 == 10)	pass
+DemoEqualToNotEqual.py	63	4	print((5 == 5) and (10 == 10))	pass
+DemoEqualToNotEqual.py	65	4	test_basic_equality()	pass
+DemoEqualToNotEqual.py	66	4	test_inequality_check()	pass
+DemoEqualToNotEqual.py	67	4	test_multiple_conditions()	pass
+DemoEqualToNotEqual.py	9	11	arr[i] == val  # return arr[i] != val	None
+DemoLogicalAndToOr.py	3	11	a > 0 and b > 0	None
+DemoLogicalAndToOr.py	5	3	__name__ == "__main__"	False
+DemoLogicalAndToOr.py	5	3	__name__ == "__main__"	True
+DemoLogicalAndToOr.py	6	4	print("Both positive?", both_positive(2, 3))	pass
+DemoLogicalOrToAnd.py	3	11	a > 0 or b > 0	None
+DemoLogicalOrToAnd.py	5	3	__name__ == "__main__"	False
+DemoLogicalOrToAnd.py	5	3	__name__ == "__main__"	True
+DemoLogicalOrToAnd.py	6	4	print("Either positive?", either_positive(2, -3))	pass
+DemoMinusToPlus.py	10	11	arr[i] - 1  # mutant: return arr[i] + 1	None
+DemoMinusToPlus.py	14	11	-a  # mutant: return +a	None
+DemoMinusToPlus.py	2	11	a - b  # mutant: return a + b	None
+DemoMinusToPlus.py	20	11	x	None
+DemoMinusToPlus.py	23	3	__name__ == "__main__"	False
+DemoMinusToPlus.py	23	3	__name__ == "__main__"	True
+DemoMinusToPlus.py	24	4	print(sub(5, 3))	pass
+DemoMinusToPlus.py	25	4	print(chain(10, 3, 2))	pass
+DemoMinusToPlus.py	26	4	print(array_minus([10, 20, 30], 1))	pass
+DemoMinusToPlus.py	27	4	print(unary_minus(7))	pass
+DemoMinusToPlus.py	28	4	print(minus_equals())	pass
+DemoMinusToPlus.py	30	4	print(10 - 2 - 3)	pass
+DemoMinusToPlus.py	31	4	print((10 - 2) - 3)	pass
+DemoMinusToPlus.py	6	11	(a - b) - c  # mutant: return (a + b) + c	None
+DemoNotEqualToEqual.py	13	11	s != None  # return s == None	None
+DemoNotEqualToEqual.py	19	7	x != y	False
+DemoNotEqualToEqual.py	19	7	x != y	True
+DemoNotEqualToEqual.py	2	11	a != b  # return a == b	None
+DemoNotEqualToEqual.py	20	8	print("test_basic_inequality: fails (should pass)")	pass
+DemoNotEqualToEqual.py	22	8	print("test_basic_inequality: passes (should fail)")	pass
+DemoNotEqualToEqual.py	29	7	x != y	False
+DemoNotEqualToEqual.py	29	7	x != y	True
+DemoNotEqualToEqual.py	30	8	print("test_equality_check: passes")	pass
+DemoNotEqualToEqual.py	32	8	print("test_equality_check: fails")	pass
+DemoNotEqualToEqual.py	40	7	(a != b) and (b != c)	False
+DemoNotEqualToEqual.py	40	7	(a != b) and (b != c)	True
+DemoNotEqualToEqual.py	41	8	print("test_multiple_conditions: fails (all different)")	pass
+DemoNotEqualToEqual.py	43	8	print("test_multiple_conditions: passes")	pass
+DemoNotEqualToEqual.py	46	3	__name__ == "__main__"	False
+DemoNotEqualToEqual.py	46	3	__name__ == "__main__"	True
+DemoNotEqualToEqual.py	47	4	print("string literal has !=: a!=b")	pass
+DemoNotEqualToEqual.py	48	4	print("concat with bool: " + str(is_not_equal(5, 10)))	pass
+DemoNotEqualToEqual.py	51	4	print(is_not_equal(5, 10))	pass
+DemoNotEqualToEqual.py	52	4	print(is_not_equal(5, 5))	pass
+DemoNotEqualToEqual.py	53	4	print(chained_inequality(5, 10, 15))	pass
+DemoNotEqualToEqual.py	54	4	print(chained_inequality(5, 5, 10))	pass
+DemoNotEqualToEqual.py	55	4	print(array_not_equals([10, 20, 30], 1, 25))	pass
+DemoNotEqualToEqual.py	56	4	print(not_none_check(None))	pass
+DemoNotEqualToEqual.py	57	4	print(not_none_check("test"))	pass
+DemoNotEqualToEqual.py	59	4	print(5 != 10)	pass
+DemoNotEqualToEqual.py	6	11	(a != b) and (b != c)  # return (a == b) and (b == c)	None
+DemoNotEqualToEqual.py	60	4	print(5 != 5)	pass
+DemoNotEqualToEqual.py	61	4	print((5 != 10) and (10 != 15))	pass
+DemoNotEqualToEqual.py	63	4	test_basic_inequality()	pass
+DemoNotEqualToEqual.py	64	4	test_equality_check()	pass
+DemoNotEqualToEqual.py	65	4	test_multiple_conditions()	pass
+DemoNotEqualToEqual.py	9	11	arr[i] != val  # return arr[i] == val	None
+FloorDivDemo.py	2	11	a // b	None
+IncrementKilledDemo.py	4	11	x	None
+InvertNegDemo.py	2	11	not x == 0	None
+Main.py	10	0	print(fibonacci(7))	pass
+Main.py	11	0	print(binary_search([1, 3, 5, 7, 9], 7))	pass
+Main.py	8	0	print(add1(3))	pass
+Main.py	9	0	print(add2(4))	pass
+ModuloKilledDemo.py	2	11	5 % 2	None
+NoCoverageDemo.py	2	11	x + 1	None
+NoCoverageDemo.py	6	11	x + 10	None
+PowerDemo.py	2	11	base ** exp	None
+StatementMutationDemo.py	10	11	1	0
+StatementMutationDemo.py	3	4	values.append(7)	pass
+StatementMutationDemo.py	4	11	len(values)	None
+StatementMutationDemo.py	9	4	values.append(7)	pass
+prototypeSample.py	133	11	a > 0	False
+prototypeSample.py	133	11	a > 0	True
+prototypeSample.py	134	12	print("a positive")	pass
+prototypeSample.py	136	12	print("a negative")	pass
+prototypeSample.py	138	12	print("a zero")	pass
+prototypeSample.py	142	11	status == Status.STARTED	False
+prototypeSample.py	142	11	status == Status.STARTED	True
+prototypeSample.py	143	12	print("Started")	pass
+prototypeSample.py	145	12	print("Running")	pass
+prototypeSample.py	147	12	print("Finished")	pass
+prototypeSample.py	151	15	i != 1	False
+prototypeSample.py	151	15	i != 1	True
+prototypeSample.py	153	12	print(f"For loop {i}")	pass
+prototypeSample.py	156	14	j < 3	False
+prototypeSample.py	156	14	j < 3	True
+prototypeSample.py	157	12	print(f"While {j}")	pass
+prototypeSample.py	162	12	print(f"Do-while {k}")	pass
+prototypeSample.py	164	15	k == 2	False
+prototypeSample.py	164	15	k == 2	True
+prototypeSample.py	166	15	k >= 3	False
+prototypeSample.py	166	15	k >= 3	True
+prototypeSample.py	171	12	print(f"Name: {n}")	pass
+prototypeSample.py	178	8	list(map(lambda e: print(f"Lambda: {e}"), list_items))	pass
+prototypeSample.py	186	15	x == 5	False
+prototypeSample.py	186	15	x == 5	True
+prototypeSample.py	187	22	Exception("Example exception")	None
+prototypeSample.py	189	12	print(f"Exception: {e}")	pass
+prototypeSample.py	191	12	print("Finally executed")	pass
+prototypeSample.py	195	25	f.readline()	None
+prototypeSample.py	196	12	print("File opened successfully")	pass
+prototypeSample.py	199	14	Dog("Labrador")	None
+prototypeSample.py	200	8	dog.make_sound()	pass
+prototypeSample.py	201	8	dog.play()	pass
+prototypeSample.py	206	16	print(f"Hello {name}")	pass
+prototypeSample.py	208	18	ConsoleGreeter()	None
+prototypeSample.py	209	8	greeter.greet("World")	pass
+prototypeSample.py	212	24	Box("Generics!")	None
+prototypeSample.py	213	8	print(box.get())	pass
+prototypeSample.py	217	13	int(d)	None
+prototypeSample.py	218	8	print(f"Casted: {di}")	pass
+prototypeSample.py	222	12	print("dog is Animal")	pass
+prototypeSample.py	225	15	threading.Lock()	None
+prototypeSample.py	235	12	print("s is None")	pass
+prototypeSample.py	254	20	PythonSpecifics()	None
+prototypeSample.py	255	8	specifics.run_specifics()	pass
+prototypeSample.py	260	15	func(*args, **kwargs)	None
+prototypeSample.py	261	11	wrapper	None
+prototypeSample.py	284	16	obj.quack()	pass
+prototypeSample.py	286	22	Duck()	None
+prototypeSample.py	286	8	make_it_quack(Duck())	pass
+prototypeSample.py	289	3	__name__ == "__main__"	False
+prototypeSample.py	289	3	__name__ == "__main__"	True
+prototypeSample.py	290	4	MutationTestDemo.main()	pass
+prototypeSample.py	35	8	print("Woof!")	pass
+prototypeSample.py	42	15	Dog(breed)	None
+prototypeSample.py	45	4	TypeVar('T')	None
+prototypeSample.py	51	15	self.value	None
+prototypeSample.py	68	8	print("Static method called")	pass
+prototypeSample.py	74	15	result	None
+prototypeSample.py	78	15	MutationTestDemo()	None

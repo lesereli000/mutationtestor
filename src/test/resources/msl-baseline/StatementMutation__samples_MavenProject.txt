@@ -1,0 +1,189 @@
+src/main/java/Add1.java	6	15	x + 1	0
+src/main/java/Add2.java	6	15	x + y	0
+src/main/java/Add3.java	7	15	(int) (x + y + z)	0
+src/main/java/DemoEqualToNotEqual.java	12	15	arr[i] == val	false
+src/main/java/DemoEqualToNotEqual.java	16	15	s == null	false
+src/main/java/DemoEqualToNotEqual.java	23	12	x == y	false
+src/main/java/DemoEqualToNotEqual.java	23	12	x == y	true
+src/main/java/DemoEqualToNotEqual.java	24	12	System.out.println("testBasicEquality: fails (should pass)");	;
+src/main/java/DemoEqualToNotEqual.java	26	12	System.out.println("testBasicEquality: passes (should fail)");	;
+src/main/java/DemoEqualToNotEqual.java	34	12	x == y	false
+src/main/java/DemoEqualToNotEqual.java	34	12	x == y	true
+src/main/java/DemoEqualToNotEqual.java	35	12	System.out.println("testInequalityCheck: passes");	;
+src/main/java/DemoEqualToNotEqual.java	37	12	System.out.println("testInequalityCheck: fails");	;
+src/main/java/DemoEqualToNotEqual.java	4	15	a == b	false
+src/main/java/DemoEqualToNotEqual.java	46	12	(a == b) && (b == c)	false
+src/main/java/DemoEqualToNotEqual.java	46	12	(a == b) && (b == c)	true
+src/main/java/DemoEqualToNotEqual.java	47	12	System.out.println("testMultipleConditions: fails (all equal)");	;
+src/main/java/DemoEqualToNotEqual.java	49	12	System.out.println("testMultipleConditions: passes");	;
+src/main/java/DemoEqualToNotEqual.java	54	8	System.out.println("string literal has ==: a==b");	;
+src/main/java/DemoEqualToNotEqual.java	55	8	System.out.println("concat with bool: " + isEqual(5, 5));	;
+src/main/java/DemoEqualToNotEqual.java	56	8	System.out.println("concat with char: " + '=');	;
+src/main/java/DemoEqualToNotEqual.java	59	8	System.out.println(isEqual(5, 5));	;
+src/main/java/DemoEqualToNotEqual.java	60	8	System.out.println(isEqual(5, 10));	;
+src/main/java/DemoEqualToNotEqual.java	61	8	System.out.println(chainedEquality(5, 5, 5));	;
+src/main/java/DemoEqualToNotEqual.java	62	8	System.out.println(chainedEquality(5, 5, 10));	;
+src/main/java/DemoEqualToNotEqual.java	63	8	System.out.println(arrayEquals(new int[]{10, 20, 30}, 1, 20));	;
+src/main/java/DemoEqualToNotEqual.java	64	8	System.out.println(nullCheck(null));	;
+src/main/java/DemoEqualToNotEqual.java	65	8	System.out.println(nullCheck("test"));	;
+src/main/java/DemoEqualToNotEqual.java	66	8	System.out.println(5 == 5);	;
+src/main/java/DemoEqualToNotEqual.java	67	8	System.out.println(5 == 10);	;
+src/main/java/DemoEqualToNotEqual.java	68	8	System.out.println((5 == 5) && (10 == 10));	;
+src/main/java/DemoEqualToNotEqual.java	70	8	testBasicEquality();	;
+src/main/java/DemoEqualToNotEqual.java	71	8	testInequalityCheck();	;
+src/main/java/DemoEqualToNotEqual.java	72	8	testMultipleConditions();	;
+src/main/java/DemoEqualToNotEqual.java	8	15	(a == b) && (b == c)	false
+src/main/java/DemoLogicalAndToOr.java	4	15	a > 0 && b > 0	false
+src/main/java/DemoLogicalAndToOr.java	8	8	System.out.println("Both positive? " + bothPositive(2, 3));	;
+src/main/java/DemoLogicalOrToAnd.java	4	15	a > 0 || b > 0	false
+src/main/java/DemoLogicalOrToAnd.java	8	8	System.out.println("Either positive? " + eitherPositive(2, -3));	;
+src/main/java/DemoMinusToPlus.java	12	15	arr[i] - 1	0
+src/main/java/DemoMinusToPlus.java	16	15	-a	0
+src/main/java/DemoMinusToPlus.java	22	15	x	0
+src/main/java/DemoMinusToPlus.java	28	15	x	0
+src/main/java/DemoMinusToPlus.java	32	8	System.out.println("string literal has -: 2-3");	;
+src/main/java/DemoMinusToPlus.java	33	8	System.out.println("concat with int: " + sub(5, 3));	;
+src/main/java/DemoMinusToPlus.java	34	8	System.out.println("concat with char: " + '-');	;
+src/main/java/DemoMinusToPlus.java	4	15	a - b	0
+src/main/java/DemoMinusToPlus.java	41	8	System.out.println(sub(5, 3));	;
+src/main/java/DemoMinusToPlus.java	42	8	System.out.println(chain(10, 3, 2));	;
+src/main/java/DemoMinusToPlus.java	43	8	System.out.println(arrayMinus(new int[]{10, 20, 30}, 1));	;
+src/main/java/DemoMinusToPlus.java	44	8	System.out.println(unaryMinus(7));	;
+src/main/java/DemoMinusToPlus.java	45	8	System.out.println(minusEquals());	;
+src/main/java/DemoMinusToPlus.java	46	8	System.out.println(minusMinus());	;
+src/main/java/DemoMinusToPlus.java	48	8	System.out.println(10 - 2 - 3);	;
+src/main/java/DemoMinusToPlus.java	49	8	System.out.println((10 - 2) - 3);	;
+src/main/java/DemoMinusToPlus.java	8	15	(a - b) - c	0
+src/main/java/DemoNotEqualToEqual.java	12	15	arr[i] != val	false
+src/main/java/DemoNotEqualToEqual.java	16	15	s != null	false
+src/main/java/DemoNotEqualToEqual.java	23	12	x != y	false
+src/main/java/DemoNotEqualToEqual.java	23	12	x != y	true
+src/main/java/DemoNotEqualToEqual.java	24	12	System.out.println("testBasicInequality: fails (should pass)");	;
+src/main/java/DemoNotEqualToEqual.java	26	12	System.out.println("testBasicInequality: passes (should fail)");	;
+src/main/java/DemoNotEqualToEqual.java	34	12	x != y	false
+src/main/java/DemoNotEqualToEqual.java	34	12	x != y	true
+src/main/java/DemoNotEqualToEqual.java	35	12	System.out.println("testEqualityCheck: passes");	;
+src/main/java/DemoNotEqualToEqual.java	37	12	System.out.println("testEqualityCheck: fails");	;
+src/main/java/DemoNotEqualToEqual.java	4	15	a != b	false
+src/main/java/DemoNotEqualToEqual.java	46	12	(a != b) && (b != c)	false
+src/main/java/DemoNotEqualToEqual.java	46	12	(a != b) && (b != c)	true
+src/main/java/DemoNotEqualToEqual.java	47	12	System.out.println("testMultipleConditions: fails (all different)");	;
+src/main/java/DemoNotEqualToEqual.java	49	12	System.out.println("testMultipleConditions: passes");	;
+src/main/java/DemoNotEqualToEqual.java	54	8	System.out.println("string literal has !=: a!=b");	;
+src/main/java/DemoNotEqualToEqual.java	55	8	System.out.println("concat with bool: " + isNotEqual(5, 10));	;
+src/main/java/DemoNotEqualToEqual.java	58	8	System.out.println(isNotEqual(5, 10));	;
+src/main/java/DemoNotEqualToEqual.java	59	8	System.out.println(isNotEqual(5, 5));	;
+src/main/java/DemoNotEqualToEqual.java	60	8	System.out.println(chainedInequality(5, 10, 15));	;
+src/main/java/DemoNotEqualToEqual.java	61	8	System.out.println(chainedInequality(5, 5, 10));	;
+src/main/java/DemoNotEqualToEqual.java	62	8	System.out.println(arrayNotEquals(new int[]{10, 20, 30}, 1, 25));	;
+src/main/java/DemoNotEqualToEqual.java	63	8	System.out.println(notNullCheck(null));	;
+src/main/java/DemoNotEqualToEqual.java	64	8	System.out.println(notNullCheck("test"));	;
+src/main/java/DemoNotEqualToEqual.java	66	8	System.out.println(5 != 10);	;
+src/main/java/DemoNotEqualToEqual.java	67	8	System.out.println(5 != 5);	;
+src/main/java/DemoNotEqualToEqual.java	68	8	System.out.println((5 != 10) && (10 != 15));	;
+src/main/java/DemoNotEqualToEqual.java	70	8	testBasicInequality();	;
+src/main/java/DemoNotEqualToEqual.java	71	8	testEqualityCheck();	;
+src/main/java/DemoNotEqualToEqual.java	72	8	testMultipleConditions();	;
+src/main/java/DemoNotEqualToEqual.java	8	15	(a != b) && (b != c)	false
+src/main/java/DemoPlusToMinus.java	12	15	arr[i] + 1	0
+src/main/java/DemoPlusToMinus.java	16	15	+a	0
+src/main/java/DemoPlusToMinus.java	22	15	x	0
+src/main/java/DemoPlusToMinus.java	28	15	x	0
+src/main/java/DemoPlusToMinus.java	35	11	x > equal	false
+src/main/java/DemoPlusToMinus.java	35	11	x > equal	true
+src/main/java/DemoPlusToMinus.java	36	12	System.out.println("GreaterToGE: passes");	;
+src/main/java/DemoPlusToMinus.java	38	12	System.out.println("GreaterToGE: fails");	;
+src/main/java/DemoPlusToMinus.java	4	15	a + b	0
+src/main/java/DemoPlusToMinus.java	46	12	x >= equal	false
+src/main/java/DemoPlusToMinus.java	46	12	x >= equal	true
+src/main/java/DemoPlusToMinus.java	47	12	System.out.println("GEToGreater: fails");	;
+src/main/java/DemoPlusToMinus.java	49	12	System.out.println("GEToGreater: passes");	;
+src/main/java/DemoPlusToMinus.java	54	8	System.out.println("string literal has +: 2+3");	;
+src/main/java/DemoPlusToMinus.java	55	8	System.out.println("concat with int: " + add(2, 3));	;
+src/main/java/DemoPlusToMinus.java	56	8	System.out.println("concat with char: " + '+');	;
+src/main/java/DemoPlusToMinus.java	63	8	System.out.println(add(2, 3));	;
+src/main/java/DemoPlusToMinus.java	64	8	System.out.println(chain(1, 2, 3));	;
+src/main/java/DemoPlusToMinus.java	65	8	System.out.println(arrayPlus(new int[]{10, 20, 30}, 1));	;
+src/main/java/DemoPlusToMinus.java	66	8	System.out.println(unaryPlus(7));	;
+src/main/java/DemoPlusToMinus.java	67	8	System.out.println(plusEquals());	;
+src/main/java/DemoPlusToMinus.java	68	8	System.out.println(plusPlus());	;
+src/main/java/DemoPlusToMinus.java	70	8	System.out.println(1 + 2 + 3);	;
+src/main/java/DemoPlusToMinus.java	71	8	System.out.println((1 + 2) + 3);	;
+src/main/java/DemoPlusToMinus.java	73	8	GreaterToGE();	;
+src/main/java/DemoPlusToMinus.java	74	8	GEToGreater();	;
+src/main/java/DemoPlusToMinus.java	8	15	(a + b) + c	0
+src/main/java/Main.java	10	8	System.out.println(e);	;
+src/main/java/Main.java	6	16	Add1.add1(a)	0
+src/main/java/Main.java	7	16	Add2.add2(b)	0
+src/main/java/Main.java	8	16	Add2.add2(c)	0
+src/main/java/Main.java	9	16	Add1.add1(Add2.add2(Add1.add1(d)))	0
+src/main/java/prototypeSample.java	149	12	a > 0	false
+src/main/java/prototypeSample.java	149	12	a > 0	true
+src/main/java/prototypeSample.java	151	12	System.out.println("equivalent mutant should only be mutated to <=, not >=");	;
+src/main/java/prototypeSample.java	152	19	a > 0	false
+src/main/java/prototypeSample.java	152	19	a > 0	true
+src/main/java/prototypeSample.java	153	12	System.out.println("a positive");	;
+src/main/java/prototypeSample.java	154	19	a < 0	false
+src/main/java/prototypeSample.java	154	19	a < 0	true
+src/main/java/prototypeSample.java	155	12	System.out.println("a negative");	;
+src/main/java/prototypeSample.java	157	12	System.out.println("a zero");	;
+src/main/java/prototypeSample.java	163	28	System.out.println("Started");	{}
+src/main/java/prototypeSample.java	164	28	System.out.println("Running");	{}
+src/main/java/prototypeSample.java	165	29	System.out.println("Finished");	{}
+src/main/java/prototypeSample.java	170	16	i != 1	false
+src/main/java/prototypeSample.java	170	16	i != 1	true
+src/main/java/prototypeSample.java	172	12	System.out.println("For loop " + i);	;
+src/main/java/prototypeSample.java	177	12	System.out.println("While " + j);	;
+src/main/java/prototypeSample.java	183	12	System.out.println("Do-while " + k);	;
+src/main/java/prototypeSample.java	185	16	k == 2	false
+src/main/java/prototypeSample.java	185	16	k == 2	true
+src/main/java/prototypeSample.java	191	12	System.out.println("Name: " + n);	;
+src/main/java/prototypeSample.java	194	28	new ArrayList<>()	null
+src/main/java/prototypeSample.java	195	8	list.add("One");	;
+src/main/java/prototypeSample.java	196	8	list.add("Two");	;
+src/main/java/prototypeSample.java	197	35	new HashMap<>()	null
+src/main/java/prototypeSample.java	198	8	map.put("A", 1);	;
+src/main/java/prototypeSample.java	199	8	map.put("B", 2);	;
+src/main/java/prototypeSample.java	202	8	list.forEach(e -> System.out.println("Lambda: " + e));	;
+src/main/java/prototypeSample.java	207	16	x == 5	false
+src/main/java/prototypeSample.java	207	16	x == 5	true
+src/main/java/prototypeSample.java	210	12	e.printStackTrace();	;
+src/main/java/prototypeSample.java	212	12	System.out.println("Finally executed");	;
+src/main/java/prototypeSample.java	216	31	new Scanner("Dummy input")	null
+src/main/java/prototypeSample.java	219	12	e.printStackTrace();	;
+src/main/java/prototypeSample.java	223	18	new Dog("Labrador")	null
+src/main/java/prototypeSample.java	224	8	dog.makeSound();	;
+src/main/java/prototypeSample.java	233	16	System.out.println("Hello " + name);	;
+src/main/java/prototypeSample.java	236	8	greeter.greet("World");	;
+src/main/java/prototypeSample.java	239	26	new Box<>("Generics!")	null
+src/main/java/prototypeSample.java	240	8	System.out.println(box.get());	;
+src/main/java/prototypeSample.java	245	8	System.out.println("Casted: " + di);	;
+src/main/java/prototypeSample.java	249	12	System.out.println("dog is Animal");	;
+src/main/java/prototypeSample.java	261	12	s == null	false
+src/main/java/prototypeSample.java	261	12	s == null	true
+src/main/java/prototypeSample.java	262	12	System.out.println("s is null");	;
+src/main/java/prototypeSample.java	37	8	System.out.println("Woof!");	;
+src/main/java/prototypeSample.java	47	15	new Dog(breed)	null
+src/main/java/prototypeSample.java	60	15	value	null
+src/main/java/prototypeSample.java	83	8	System.out.println("Static method called");	;
+src/main/java/prototypeSample.java	92	15	result	0
+src/main/java/prototypeSample.java	96	32	new MutationTestDemo()	null
+src/test/java/TestAdd.java	16	8	assertEquals(6, Add1.add1(5));	;
+src/test/java/TestAdd.java	17	8	assertEquals(0, Add1.add1(-1));	;
+src/test/java/TestAdd.java	18	8	assertEquals(789, Add1.add1(788));	;
+src/test/java/TestAdd.java	19	8	assertEquals(12, Add1.add1(11));	;
+src/test/java/TestAdd.java	20	8	assertEquals(Integer.MAX_VALUE, Add1.add1(Integer.MAX_VALUE - 1));	;
+src/test/java/TestAdd.java	27	8	assertEquals(7, Add2.add2(5));	;
+src/test/java/TestAdd.java	28	8	assertEquals(1, Add2.add2(-1));	;
+src/test/java/TestAdd.java	29	8	assertEquals(790, Add2.add2(788));	;
+src/test/java/TestAdd.java	30	8	assertEquals(13, Add2.add2(11));	;
+src/test/java/TestAdd.java	31	8	assertEquals(Integer.MAX_VALUE, Add2.add2(Integer.MAX_VALUE - 2));	;
+src/test/java/prototypeSampleTest.java	10	8	MutationTestDemo.main(new String[]{});	;
+src/test/java/prototypeSampleTest.java	13	8	MutationTestDemo.staticMethod();	;
+src/test/java/prototypeSampleTest.java	14	32	new MutationTestDemo()	null
+src/test/java/prototypeSampleTest.java	15	8	assertEquals(6, demo.sum(1, 2, 3));	;
+src/test/java/prototypeSampleTest.java	17	21	Dog.createDog("Poodle")	null
+src/test/java/prototypeSampleTest.java	18	8	assertNotNull(newDog);	;
+src/test/java/prototypeSampleTest.java	20	30	new Box<>(1)	null
+src/test/java/prototypeSampleTest.java	21	8	intBox.set(2);	;
+src/test/java/prototypeSampleTest.java	22	8	assertEquals(2, intBox.get());	;

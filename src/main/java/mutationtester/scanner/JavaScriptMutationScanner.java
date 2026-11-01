@@ -14,201 +14,27 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import mutationtester.JavaScriptAORVisitor;
 import mutationtester.JavaScriptLexer;
 import mutationtester.JavaScriptParser;
-import mutationtester.JavaScriptParserBaseVisitor;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
+import mutationtester.msl.CstNodes;
 import mutationtester.msl.MSLScannerAdapter;
 
 public class JavaScriptMutationScanner {
-
-    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
-        JavaScriptLexer lexer = new JavaScriptLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        JavaScriptParser parser = new JavaScriptParser(tokens);
-        ParseTree tree = parser.program();
-
-        String name = type.name();
-
-        // ROR — Relational Operator Replacement
-        if (name.startsWith("ROR_")) {
-            JavaScriptRORVisitor v = new JavaScriptRORVisitor(file, type);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // LCR — Logical Connector Replacement
-        if (name.startsWith("LCR_")
-                || type == Mutator.MutatorType.LOGICAL_AND_TO_OR
-                || type == Mutator.MutatorType.LOGICAL_OR_TO_AND) {
-            JavaScriptLCRVisitor v = new JavaScriptLCRVisitor(file, type);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // RVM — Return Value Mutations (all variants)
-        if (name.startsWith("RVM_")) {
-            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type, sourceCode);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // AOR — Arithmetic Operator Replacement (including ++ / --)
-        if (name.startsWith("AOR_")) {
-            // Increment/decrement are a subset of AOR
-            if (type == Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT
-                    || type == Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT) {
-                JavaScriptIncrementVisitor v = new JavaScriptIncrementVisitor(file, type);
-                v.visit(tree); return v.getMutations();
-            }
-            JavaScriptAORVisitor v = new JavaScriptAORVisitor(file, type);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // VML — Void Method Call removal
-        if (name.startsWith("VML_")) {
-            JavaScriptVMLVisitor v = new JavaScriptVMLVisitor(file, type);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // INEG — Invert Negatives
-        if (name.startsWith("INEG_")) {
-            JavaScriptINEGVisitor v = new JavaScriptINEGVisitor(file, type);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // Additional PIT-style mutations for JavaScript.
-        if (type == Mutator.MutatorType.CONDITIONAL_TRUE
-                || type == Mutator.MutatorType.CONDITIONAL_FALSE
-                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS
-                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
-                || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
-                || type == Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ
-                || type == Mutator.MutatorType.JS_STRICT_NE_TO_LOOSE_NE) {
-            JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
-            v.visit(tree); return v.getMutations();
-        }
-
-        if (type == Mutator.MutatorType.BOR_AND_TO_OR) {
-            JavaScriptPitStyleVisitor v = new JavaScriptPitStyleVisitor(file, type, sourceCode);
-            v.visit(tree); return v.getMutations();
-        }
-
-        if (type == Mutator.MutatorType.EMPTY_RETURNS) {
-            JavaScriptRVMVisitor v = new JavaScriptRVMVisitor(file, type, sourceCode);
-            v.visit(tree); return v.getMutations();
-        }
-
-        // Types without an AST visitor keep their dictionary-based scanning.
-        if (!name.startsWith("NLT_")) {
-            return DictionaryMutationScanner.scanFile(file, type);
-        }
-
-        // NLT — Numeric Literal Transformations
-        NLTVisitor visitor = new NLTVisitor(file, type);
-        visitor.visit(tree);
-        return visitor.getMutationPoints();
-    }
-
-    // ── NLT visitor ──────────────────────────────────────────────────────────
-
-    private static class NLTVisitor extends JavaScriptParserBaseVisitor<Void> {
-        private final File sourceFile;
-        private final Mutator.MutatorType mutationType;
-        private final List<MutationPoint> mutationPoints = new ArrayList<>();
-
-        NLTVisitor(File sourceFile, Mutator.MutatorType mutationType) {
-            this.sourceFile = sourceFile;
-            this.mutationType = mutationType;
-        }
-
-        List<MutationPoint> getMutationPoints() { return mutationPoints; }
-
-        @Override
-        public Void visitVariableDeclaration(JavaScriptParser.VariableDeclarationContext ctx) {
-            if (ctx.assignable() != null && ctx.singleExpression() != null) {
-                JavaScriptParser.SingleExpressionContext expr = ctx.singleExpression();
-                if (isNumericLiteral(expr)) createNumericLiteralMutation(expr.getText(), expr.start);
-            }
-            return visitChildren(ctx);
-        }
-
-        private boolean isNumericLiteral(JavaScriptParser.SingleExpressionContext ctx) {
-            if (ctx instanceof JavaScriptParser.LiteralExpressionContext litCtx)
-                return litCtx.literal() != null && litCtx.literal().numericLiteral() != null;
-            return false;
-        }
-
-        private void createNumericLiteralMutation(String literalText, Token token) {
-            NumericLiteralType kind = classify(literalText);
-            String replacement = getReplacement(literalText, kind);
-            if (replacement != null)
-                mutationPoints.add(new MutationPoint(sourceFile, token.getLine(),
-                        token.getCharPositionInLine(), literalText, replacement, mutationType));
-        }
-
-        private NumericLiteralType classify(String literal) {
-            if (literal.toLowerCase().contains("e")) return NumericLiteralType.EXPONENTIAL;
-            if (literal.contains("."))                return NumericLiteralType.FLOAT;
-            return NumericLiteralType.INTEGER;
-        }
-
-        private String getReplacement(String original, NumericLiteralType kind) {
-            return switch (kind) {
-                case INTEGER -> switch (mutationType) {
-                    case NLT_INTEGER_TO_FLOAT       -> original + ".0";
-                    case NLT_INTEGER_TO_EXPONENTIAL -> toExponential(original);
-                    default -> null;
-                };
-                case FLOAT -> switch (mutationType) {
-                    case NLT_FLOAT_TO_INTEGER -> { int d = original.indexOf('.'); yield d > 0 ? original.substring(0, d) : null; }
-                    case NLT_FLOAT_TO_EXPONENTIAL -> original + "e0";
-                    default -> null;
-                };
-                case EXPONENTIAL -> switch (mutationType) {
-                    case NLT_EXPONENTIAL_TO_INTEGER -> toInteger(original);
-                    case NLT_EXPONENTIAL_TO_FLOAT   -> toInteger(original) + ".0";
-                    default -> null;
-                };
-            };
-        }
-
-        private String toExponential(String integer) {
-            try {
-                long value = Long.parseLong(integer);
-                if (value == 0) return "0e0";
-                int exp = 0; double mantissa = Math.abs(value);
-                while (mantissa >= 10) { mantissa /= 10; exp++; }
-                return String.format("%s%.1fe%d", value < 0 ? "-" : "", mantissa, exp);
-            } catch (NumberFormatException e) { return null; }
-        }
-
-        private String toInteger(String exp) {
-            try { return String.valueOf((long) Double.parseDouble(exp)); }
-            catch (NumberFormatException e) { return null; }
-        }
-    }
-
-    private enum NumericLiteralType { INTEGER, FLOAT, EXPONENTIAL }
 
     // ── MSL adapter ──────────────────────────────────────────────────────────
 
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-        final String[] sourceLines = sourceCode.split("\n", -1);
 
-        CharStream input = CharStreams.fromString(sourceCode);
+        CharStream input = mutationtester.msl.CstNodes.utf16(sourceCode);
         JavaScriptLexer lexer = new JavaScriptLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         JavaScriptParser parser = new JavaScriptParser(tokens);
         ParseTree tree = parser.program();
 
         return new MSLScannerAdapter() {
-            private final java.util.regex.Pattern invocationStatement = java.util.regex.Pattern.compile(
-                    "^(await)?[A-Za-z_$][A-Za-z0-9_$\\.\\[\\]]*\\(.*\\);$",
-                    java.util.regex.Pattern.DOTALL
-            );
 
             // JavaScript has no // operator; Math.floor(a / b) is how floor
             // division is written, so it stands in for a // b. Its inner "/" is
@@ -316,14 +142,6 @@ public class JavaScriptMutationScanner {
                 return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), true);
             }
             @Override
-            public String getSourceLine(ParseTree ctx) {
-                int[] pos = getTokenPosition(ctx);
-                int lineIndex = pos[0] - 1;
-                if (lineIndex >= 0 && lineIndex < sourceLines.length) return sourceLines[lineIndex];
-                return "";
-            }
-
-            @Override
             public String getNodeText(ParseTree ctx) {
                 if (ctx instanceof ParserRuleContext prc) {
                     Token start = prc.getStart();
@@ -338,14 +156,50 @@ public class JavaScriptMutationScanner {
                 return ctx.getText();
             }
 
-            // JavaScript has no IsNullOrEmpty; s == null || s === "" is the check.
-            private static final List<java.util.regex.Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*===?\\s*(?:null|undefined)\\s*\\|\\|\\s*\\1\\s*===?\\s*(?:\"\"|'')"),
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*===?\\s*(?:null|undefined)\\s*\\|\\|\\s*\\1\\.length\\s*===?\\s*0"));
+            // MSL's "s is null" is a null-or-empty check; JavaScript writes it
+            // as s == null || s === "" (or s.length === 0).
+            @Override
+            public ParseTree nullCheckSubject(ParseTree ctx) {
+                if (ctx instanceof JavaScriptParser.ArgumentsExpressionContext call
+                        && call.singleExpression().getText().equals("string.IsNullOrEmpty")) {
+                    List<JavaScriptParser.ArgumentContext> args = call.arguments().argument();
+                    return args.size() == 1 && args.get(0).singleExpression() != null
+                            ? args.get(0).singleExpression() : null;
+                }
+                if (!(ctx instanceof JavaScriptParser.LogicalOrExpressionContext or)) return null;
+                ParseTree left = or.singleExpression(0);
+                ParseTree right = or.singleExpression(1);
+                if (!isEquality(left) || !CstNodes.isDottedName(left.getChild(0))) return null;
+                String nothing = left.getChild(2).getText();
+                if (!nothing.equals("null") && !nothing.equals("undefined")) return null;
+                ParseTree subject = left.getChild(0);
+                String s = subject.getText();
+                if (!isEquality(right)) return null;
+                String lhs = right.getChild(0).getText();
+                String rhs = right.getChild(2).getText();
+                boolean emptyString = lhs.equals(s) && (rhs.equals("\"\"") || rhs.equals("''"));
+                boolean zeroLength = lhs.equals(s + ".length") && rhs.equals("0");
+                return emptyString || zeroLength ? subject : null;
+            }
 
             @Override
-            public String getNullOrEmptySubject(ParseTree ctx) {
-                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            public List<ParseTree> callArguments(ParseTree ctx, String functionName) {
+                if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext call)
+                        || !call.singleExpression().getText().equals(functionName)) {
+                    return null;
+                }
+                List<ParseTree> args = new ArrayList<>();
+                for (JavaScriptParser.ArgumentContext arg : call.arguments().argument()) {
+                    if (arg.Ellipsis() != null || arg.singleExpression() == null) return null;
+                    args.add(arg.singleExpression());
+                }
+                return args;
+            }
+
+            /** a == b or a === b. */
+            private boolean isEquality(ParseTree node) {
+                return node instanceof JavaScriptParser.EqualityExpressionContext
+                        && (node.getChild(1).getText().equals("==") || node.getChild(1).getText().equals("==="));
             }
 
             @Override
@@ -362,69 +216,270 @@ public class JavaScriptMutationScanner {
                         return false;
                     }
                 }
-                String text = getNodeText(ctx);
-                if (text == null || text.isBlank()) {
+                // A one-line piece of code that starts like a call, name(.name|[i])*( ,
+                // and ends with ");" - a call statement, or a statement around one.
+                List<Token> t = CstNodes.tokens(ctx);
+                if (t.size() < 4 || t.get(t.size() - 1).getType() != JavaScriptLexer.SemiColon
+                        || t.get(t.size() - 2).getType() != JavaScriptLexer.CloseParen) {
                     return false;
                 }
-                String compact = text.replaceAll("\\s+", "");
-                if (compact.startsWith("return") || compact.startsWith("throw")) {
+                String first = t.get(0).getText();
+                if (first.startsWith("return") || first.startsWith("throw")
+                        || first.isEmpty() || (!Character.isLetter(first.charAt(0)) && first.charAt(0) != '_'
+                            && first.charAt(0) != '$')) {
                     return false;
                 }
-                return invocationStatement.matcher(compact).matches();
+                for (Token token : t) {
+                    if (token.getType() == JavaScriptLexer.OpenParen) return true;
+                    String text = token.getText();
+                    boolean nameLike = !text.isEmpty();
+                    for (int i = 0; i < text.length(); i++) {
+                        char c = text.charAt(i);
+                        if (!Character.isLetterOrDigit(c) && c != '_' && c != '$' && c != '.' && c != '[' && c != ']') {
+                            nameLike = false;
+                        }
+                    }
+                    if (!nameLike) return false;
+                }
+                return false;
+            }
+
+            // ── Statements, for Except: trees ────────────────────────────
+
+            @Override
+            public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                switch (pattern.kind()) {
+                    case mutationtester.msl.MSLNode.IF -> {
+                        ParseTree s = statementBody(ctx);
+                        return s instanceof JavaScriptParser.IfStatementContext i
+                                ? List.of(i.expressionSequence(), i.statement(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WHILE -> {
+                        ParseTree s = statementBody(ctx);
+                        return s instanceof JavaScriptParser.WhileStatementContext w
+                                ? List.of(w.expressionSequence(), w.statement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR -> {
+                        ParseTree s = statementBody(ctx);
+                        if (!(s instanceof JavaScriptParser.ForStatementContext f)) return null;
+                        // for (init; condition; update): place each part by the ';' around it.
+                        ParseTree[] parts = new ParseTree[3];
+                        int part = 0;
+                        for (int i = 2; i < f.getChildCount() && part < 3; i++) {
+                            ParseTree child = f.getChild(i);
+                            String text = child.getText();
+                            if (child instanceof TerminalNode && (text.equals(";") || text.equals(")"))) {
+                                part++;
+                            } else if (!(child instanceof TerminalNode)) {
+                                parts[part] = child;
+                            }
+                        }
+                        return java.util.Arrays.asList(parts[0], parts[1], parts[2], f.statement());
+                    }
+                    case mutationtester.msl.MSLNode.ASSIGN -> {
+                        ParseTree s = statementBody(ctx);
+                        ParseTree expr = s instanceof JavaScriptParser.ExpressionStatementContext e
+                                && e.expressionSequence().singleExpression().size() == 1
+                                ? e.expressionSequence().singleExpression(0) : ctx;
+                        return expr instanceof JavaScriptParser.AssignmentExpressionContext a
+                                ? List.of(a.singleExpression(0), a.singleExpression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.BLOCK -> {
+                        ParseTree s = statementBody(ctx);
+                        if (!(s instanceof JavaScriptParser.BlockContext b) || b.statementList() == null
+                                || b.statementList().statement().size() < pattern.children().size()) {
+                            return null;
+                        }
+                        return new ArrayList<>(b.statementList().statement().subList(0, pattern.children().size()));
+                    }
+                    default -> {
+                        return MSLScannerAdapter.super.matchNode(pattern, ctx);
+                    }
+                }
+            }
+
+            /** The specific statement inside a statement wrapper (statement: ifStatement | block | ...). */
+            private ParseTree statementBody(ParseTree ctx) {
+                ParseTree p = ctx;
+                while ((p instanceof JavaScriptParser.StatementContext || p instanceof JavaScriptParser.IterationStatementContext)
+                        && p.getChildCount() == 1) {
+                    p = p.getChild(0);
+                }
+                return p;
+            }
+
+            // ── Increments ───────────────────────────────────────────────
+
+            @Override
+            public ParseTree incrementOperand(String operator, ParseTree ctx) {
+                if (operator.equals("++")) {
+                    if (ctx instanceof JavaScriptParser.PostIncrementExpressionContext e) return e.singleExpression();
+                    if (ctx instanceof JavaScriptParser.PreIncrementExpressionContext e) return e.singleExpression();
+                } else if (operator.equals("--")) {
+                    if (ctx instanceof JavaScriptParser.PostDecreaseExpressionContext e) return e.singleExpression();
+                    if (ctx instanceof JavaScriptParser.PreDecreaseExpressionContext e) return e.singleExpression();
+                }
+                return null;
             }
 
             @Override
-            public String getSingleArgumentText(ParseTree ctx, String functionName) {
-                String text = getNodeText(ctx);
-                if (text == null) return null;
-                String inner = MSLScannerAdapter.argumentText(text, functionName);
-                if (inner == null || inner.isEmpty() || hasTopLevelComma(inner)) {
-                    return null;
-                }
-                return inner;
+            public ParseTree expressionStatement(ParseTree ctx) {
+                return ctx.getParent() instanceof JavaScriptParser.ExpressionSequenceContext seq
+                        && seq.singleExpression().size() == 1
+                        && seq.getParent() instanceof JavaScriptParser.ExpressionStatementContext statement
+                        ? statement : null;
             }
 
-            private boolean hasTopLevelComma(String text) {
-                int parenDepth = 0;
-                int bracketDepth = 0;
-                int braceDepth = 0;
-                boolean inString = false;
-                char stringDelimiter = '\0';
+            @Override
+            public boolean discardsValue(ParseTree ctx) {
+                if (expressionStatement(ctx) != null) return true;
+                // for (...; ...; i++): the update follows the header's second ';'
+                if (!(ctx.getParent() instanceof JavaScriptParser.ExpressionSequenceContext seq)
+                        || !(seq.getParent() instanceof JavaScriptParser.ForStatementContext f)) {
+                    return false;
+                }
+                int semicolons = 0;
+                for (int i = 0; i < f.getChildCount() && f.getChild(i) != seq; i++) {
+                    if (f.getChild(i) instanceof TerminalNode t && t.getText().equals(";")) semicolons++;
+                }
+                return semicolons == 2;
+            }
 
-                for (int i = 0; i < text.length(); i++) {
-                    char c = text.charAt(i);
-                    if (i > 0 && text.charAt(i - 1) == '\\') {
-                        continue;
-                    }
-                    if (inString) {
-                        if (c == stringDelimiter) {
-                            inString = false;
-                            stringDelimiter = '\0';
+            @Override
+            public java.util.Set<String> supportedKinds() {
+                return java.util.Set.of("binary", "predicate", "literal", "identifier", "call",
+                        "if", "while", "for", "assign", "block", "increment");
+            }
+
+            @Override
+            public java.util.Set<String> supportedPlaceholders() {
+                return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
+                        "return_value", "constructor_call", "non_void_method_call",
+                        "equality_condition", "order_condition");
+            }
+
+            // ── PIT-style placeholders ───────────────────────────────────
+
+            @Override
+            public boolean matchesPlaceholder(String type, ParseTree ctx) {
+                return switch (type) {
+                    case "statement" -> ctx instanceof JavaScriptParser.StatementContext;
+                    case "return_value" -> ctx instanceof JavaScriptParser.ExpressionSequenceContext
+                            && ctx.getParent() instanceof JavaScriptParser.ReturnStatementContext
+                            && renderValue("empty_value", ctx) != null;
+                    case "constructor_call" -> isConstructorCall(ctx);
+                    case "non_void_method_call" -> isReturnedCall(ctx) || isAssignedCall(ctx);
+                    case "equality_condition" -> isCondition(ctx) && CstNodes.anyTokenContains(ctx, "==", "!=");
+                    case "order_condition" -> isCondition(ctx) && CstNodes.anyTokenContains(ctx, "<", ">");
+                    default -> MSLScannerAdapter.super.matchesPlaceholder(type, ctx);
+                };
+            }
+
+            private boolean singleLine(ParseTree ctx) {
+                Token start = CstNodes.start(ctx);
+                Token stop = CstNodes.stop(ctx);
+                return start != null && stop != null && start.getLine() == stop.getLine();
+            }
+
+            /**
+             * new T(...) on one line. Inside another constructor call only when
+             * that outer call spans several lines (and so isn't replaced itself).
+             */
+            private boolean isConstructorCall(ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.NewExpressionContext) || !singleLine(ctx)) return false;
+                JavaScriptParser.NewExpressionContext outer = null;
+                for (ParseTree p = ctx.getParent(); p != null; p = p.getParent()) {
+                    if (p instanceof JavaScriptParser.NewExpressionContext n) outer = n;
+                }
+                return outer == null || !singleLine(outer);
+            }
+
+            /** return f(...) on one line, where the call is the whole value. */
+            private boolean isReturnedCall(ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext) || !singleLine(ctx)
+                        || !(ctx.getParent() instanceof JavaScriptParser.ExpressionSequenceContext seq)
+                        || seq.singleExpression().size() != 1
+                        || !(seq.getParent() instanceof JavaScriptParser.ReturnStatementContext ret)) {
+                    return false;
+                }
+                // A call inside an already-replaced returned call is left alone.
+                for (ParseTree p = ret.getParent(); p != null; p = p.getParent()) {
+                    if (p instanceof JavaScriptParser.ArgumentsExpressionContext outer && isReturnedCall(outer)) return false;
+                }
+                return true;
+            }
+
+            /** name(...) or a.b.name(...) right after an '=' on its line, closed on that line. */
+            private boolean isAssignedCall(ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext call) || !singleLine(ctx)
+                        || !CstNodes.isDottedName(call.singleExpression())) {
+                    return false;
+                }
+                Token first = call.getStart();
+                char initial = first.getText().charAt(0);
+                if (initial == '$' || CALL_LIKE_KEYWORDS.contains(first.getText())) return false;
+                Token previous = null;
+                for (int i = first.getTokenIndex() - 1; i >= 0 && previous == null; i--) {
+                    if (tokens.get(i).getChannel() == Token.DEFAULT_CHANNEL) previous = tokens.get(i);
+                }
+                return previous != null && previous.getType() == JavaScriptLexer.Assign
+                        && previous.getLine() == first.getLine();
+            }
+
+            private static final java.util.Set<String> CALL_LIKE_KEYWORDS = java.util.Set.of(
+                    "function", "switch", "if", "while", "for", "typeof", "await", "yield");
+
+            /** The condition of an if, while or do-while. */
+            private boolean isCondition(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                return ctx instanceof JavaScriptParser.ExpressionSequenceContext
+                        && (parent instanceof JavaScriptParser.IfStatementContext
+                            || parent instanceof JavaScriptParser.WhileStatementContext
+                            || parent instanceof JavaScriptParser.DoStatementContext);
+            }
+
+            @Override
+            public String renderValue(String placeholderType, ParseTree ctx) {
+                switch (placeholderType) {
+                    case "empty_value" -> {
+                        // A returned string, array or object literal becomes empty;
+                        // another one-line "return x;" gets a value judged from x.
+                        String compact = ctx.getText();
+                        String empty = emptyLiteral(compact);
+                        if (empty != null && !empty.isEmpty()) return empty;
+                        Token next = null;
+                        for (int i = ((ParserRuleContext) ctx).getStop().getTokenIndex() + 1; i < tokens.size() && next == null; i++) {
+                            if (tokens.get(i).getChannel() == Token.DEFAULT_CHANNEL) next = tokens.get(i);
                         }
-                        continue;
-                    }
-                    if (c == '"' || c == '\'') {
-                        inString = true;
-                        stringDelimiter = c;
-                        continue;
-                    }
-                    switch (c) {
-                        case '(' -> parenDepth++;
-                        case ')' -> parenDepth--;
-                        case '[' -> bracketDepth++;
-                        case ']' -> bracketDepth--;
-                        case '{' -> braceDepth++;
-                        case '}' -> braceDepth--;
-                        case ',' -> {
-                            if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
-                                return true;
-                            }
+                        Token start = ((ParserRuleContext) ctx).getStart();
+                        Token returnToken = ((ParserRuleContext) ctx.getParent()).getStart();
+                        if (next == null || next.getType() != JavaScriptLexer.SemiColon || !singleLine(ctx)
+                                || next.getLine() != start.getLine() || returnToken.getLine() != start.getLine()) {
+                            return null;
                         }
-                        default -> {
-                        }
+                        return TypedEmptyValues.forExpression(getNodeText(ctx), "null", "false");
+                    }
+                    case "default_value" -> {
+                        return "null";
+                    }
+                    default -> {
+                        return null;
                     }
                 }
-                return false;
+            }
+
+            /** The empty form of a non-empty string, array or object literal; "" when it is already empty; null otherwise. */
+            private String emptyLiteral(String value) {
+                if (isDelimited(value, '"', '"') || isDelimited(value, '\'', '\'') || isDelimited(value, '`', '`')) {
+                    return value.length() == 2 ? "" : "\"\"";
+                }
+                if (isDelimited(value, '[', ']')) return value.equals("[]") ? "" : "[]";
+                if (isDelimited(value, '{', '}')) return value.equals("{}") ? "" : "{}";
+                return null;
+            }
+
+            private boolean isDelimited(String value, char open, char close) {
+                return !value.isEmpty() && value.charAt(0) == open && value.charAt(value.length() - 1) == close;
             }
 
             @Override

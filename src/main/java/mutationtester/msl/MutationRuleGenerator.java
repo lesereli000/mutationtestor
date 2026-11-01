@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import mutationtester.model.Mutator;
-
 /**
  * Parses a .spec file into a list of MutationRule objects.
  *
@@ -15,26 +13,51 @@ import mutationtester.model.Mutator;
  *
  * <Group Name>
  *
- * Replace: {quantity} <op> {quantity}
- * With: {quantity} <op> {quantity}
- * [Except: <context pattern>]   ← optional, may repeat
- * [And: Inverse]                ← optional; generates the reverse rule too
+ * Replace: <pattern>
+ * With: <pattern>
+ * [Except: <pattern containing {match}>]   ← optional, may repeat
+ * [And: Inverse]                           ← optional; generates the reverse rule too
+ *
+ * Delete: <pattern>
+ * [Except: ...]
+ *
+ * Insert: <pattern>
+ * Before: <pattern>    (or After: <pattern>)
+ * [Except: ...]
  *
  * End
  *
- * The "Except:" clause suppresses the mutation when the source line
- * matches the given context pattern. Multiple Except: lines are allowed.
+ * Only the keywords are read as text; every pattern is parsed into an
+ * {@link MSLTree} by {@link MSLPatternParser}. An Except: tree suppresses a
+ * mutation when it matches an ancestor of the mutated node with the mutated
+ * node in its {match} position.
  *
  * Example:
  *   Replace: {quantity} <= {quantity}
  *   With: {quantity} < {quantity}
- *   Except: if ({quantity} <= 0) {quantity} = 0
+ *   Except: if ({match: {quantity} <= 0}) {quantity} = 0
  *   And: Inverse
  */
 public class MutationRuleGenerator {
 
+    private static final String REPLACE = "Replace:";
+    private static final String WITH = "With:";
+    private static final String DELETE = "Delete:";
+    private static final String INSERT = "Insert:";
+    private static final String BEFORE = "Before:";
+    private static final String AFTER = "After:";
+    private static final String EXCEPT = "Except:";
+    private static final String INVERSE = "And: Inverse";
+
+    private static final List<String> RULE_KEYWORDS = List.of(REPLACE, DELETE, INSERT);
+    private static final List<String> CLAUSE_KEYWORDS = List.of(WITH, BEFORE, AFTER, EXCEPT, INVERSE);
+
     public static List<MutationRule> generateRules(File specFile) throws IOException {
-        List<String> rawLines = Files.readAllLines(specFile.toPath());
+        return generateRules(Files.readAllLines(specFile.toPath()));
+    }
+
+    /** Parses spec text that is already in memory. */
+    public static List<MutationRule> generateRules(List<String> rawLines) throws IOException {
         List<String> lines = rawLines.stream()
                 .map(String::strip)
                 .toList();
@@ -51,8 +74,8 @@ public class MutationRuleGenerator {
             i++;
         }
 
-        // Parse Replace blocks. A spec may hold several groups, each closed by
-        // "End"; the first non-blank line after an "End" names the next group.
+        // A spec may hold several groups, each closed by "End"; the first
+        // non-blank line after an "End" names the next group.
         boolean groupEnded = false;
         while (i < lines.size()) {
             String line = lines.get(i);
@@ -66,7 +89,14 @@ public class MutationRuleGenerator {
                 i++;
                 continue;
             }
-            if (groupEnded && !line.startsWith("Replace:")) {
+            String keyword = keywordOf(line, RULE_KEYWORDS);
+            if (keyword == null && keywordOf(line, CLAUSE_KEYWORDS) == null && looksLikeKeyword(line)) {
+                // A misspelled keyword would otherwise be skipped as a note,
+                // silently dropping the rule.
+                throw new IOException("Unknown keyword '" + line.substring(0, line.indexOf(':') + 1) + "' at line "
+                        + (i + 1) + "; rules start with Replace:, Delete: or Insert:");
+            }
+            if (groupEnded && keyword == null) {
                 groupLabel = toGroupLabel(line);
                 groupEnded = false;
                 i++;
@@ -74,61 +104,153 @@ public class MutationRuleGenerator {
             }
             groupEnded = false;
 
-            if (line.startsWith("Replace:")) {
-                String fromPattern = line.substring("Replace:".length()).strip();
+            if (keyword == null) {
+                String misplaced = keywordOf(line, CLAUSE_KEYWORDS);
+                if (misplaced != null) {
+                    throw new IOException("'" + misplaced + "' at line " + (i + 1)
+                            + " must follow a Replace:, Delete: or Insert: line");
+                }
+                // Anything else (notes, comments) is skipped.
                 i++;
-
-                // Expect "With: ..."
-                while (i < lines.size() && lines.get(i).isEmpty())
-                    i++;
-                if (i >= lines.size() || !lines.get(i).startsWith("With:")) {
-                    throw new IOException("Expected 'With:' after 'Replace:' at line " + (i + 1));
-                }
-                String toPattern = lines.get(i).substring("With:".length()).strip();
-                i++;
-
-                // Optional "Except: ..." — may appear multiple times
-                List<ExceptPattern> exceptPatterns = new ArrayList<>();
-                while (i < lines.size()) {
-                    while (i < lines.size() && lines.get(i).isEmpty())
-                        i++;
-                    if (i < lines.size() && lines.get(i).startsWith("Except:")) {
-                        String exceptTemplate = lines.get(i).substring("Except:".length()).strip();
-                        exceptPatterns.add(new ExceptPattern(exceptTemplate));
-                        i++;
-                    } else {
-                        break;
-                    }
-                }
-
-                // Optional "And: Inverse"
-                boolean inverse = false;
-                while (i < lines.size() && lines.get(i).isEmpty())
-                    i++;
-                if (i < lines.size() && lines.get(i).startsWith("And: Inverse")) {
-                    inverse = true;
-                    i++;
-                }
-
-                MutationRule rule = createRule(fromPattern, toPattern, exceptPatterns, groupLabel);
-                rules.add(rule);
-
-                if (inverse) {
-                    // The inverse rule inherits the same Except: clauses as the forward rule.
-                    // This ensures that guarded contexts (e.g., clamp/guard patterns) are also
-                    // suppressed when the operator is mutated in the opposite direction.
-                    MutationRule inverseRule = createRule(toPattern, fromPattern,
-                            exceptPatterns, groupLabel);
-                    rules.add(inverseRule);
-                }
                 continue;
             }
 
-            // Unknown line — skip
-            i++;
+            int ruleLine = i + 1;
+            MSLTree target = parse(line.substring(keyword.length()), ruleLine);
+            i = skipBlank(lines, i + 1);
+
+            switch (keyword) {
+                case REPLACE -> {
+                    if (i >= lines.size() || !lines.get(i).startsWith(WITH)) {
+                        throw new IOException("Expected 'With:' after 'Replace:' at line " + (i + 1));
+                    }
+                    MSLTree to = parse(lines.get(i).substring(WITH.length()), i + 1);
+                    checkPlaceholdersBound(to, target, i + 1);
+                    i = skipBlank(lines, i + 1);
+                    List<MSLTree> excepts = new ArrayList<>();
+                    i = readExcepts(lines, i, excepts);
+                    boolean inverse = i < lines.size() && lines.get(i).startsWith(INVERSE);
+                    if (inverse) i++;
+
+                    rules.add(new ReplaceRule(target, to, excepts, groupLabel + ": " + describeReplace(target, to)));
+                    if (inverse) {
+                        // The inverse rule inherits the same Except: clauses, so guarded
+                        // contexts (e.g. clamp/guard patterns) are also suppressed when
+                        // the operator is mutated in the opposite direction.
+                        checkPlaceholdersBound(target, to, ruleLine);
+                        rules.add(new ReplaceRule(to, target, excepts, groupLabel + ": " + describeReplace(to, target)));
+                    }
+                }
+                case DELETE -> {
+                    List<MSLTree> excepts = new ArrayList<>();
+                    i = readExcepts(lines, i, excepts);
+                    rules.add(new DeleteRule(target, excepts, groupLabel + ": delete " + describe(target)));
+                }
+                case INSERT -> {
+                    boolean before = i < lines.size() && lines.get(i).startsWith(BEFORE);
+                    boolean after = i < lines.size() && lines.get(i).startsWith(AFTER);
+                    if (!before && !after) {
+                        throw new IOException("Expected 'Before:' or 'After:' after 'Insert:' at line " + (i + 1));
+                    }
+                    MSLTree anchor = parse(lines.get(i).substring((before ? BEFORE : AFTER).length()), i + 1);
+                    checkPlaceholdersBound(target, anchor, ruleLine);
+                    i = skipBlank(lines, i + 1);
+                    if (i < lines.size() && (lines.get(i).startsWith(BEFORE) || lines.get(i).startsWith(AFTER))) {
+                        throw new IOException("An Insert: takes either 'Before:' or 'After:', not both (line " + (i + 1) + ")");
+                    }
+                    List<MSLTree> excepts = new ArrayList<>();
+                    i = readExcepts(lines, i, excepts);
+                    rules.add(new InsertRule(target, anchor, before, excepts, groupLabel + ": insert "
+                            + describe(target) + (before ? " before " : " after ") + describe(anchor)));
+                }
+                default -> throw new IllegalStateException(keyword);
+            }
+            if (i < lines.size() && lines.get(i).startsWith(INVERSE)) {
+                throw new IOException("'And: Inverse' at line " + (i + 1) + " is only allowed on a Replace: rule");
+            }
         }
 
         return rules;
+    }
+
+    private static int readExcepts(List<String> lines, int i, List<MSLTree> excepts) throws IOException {
+        while (i < lines.size() && lines.get(i).startsWith(EXCEPT)) {
+            MSLTree except = parse(lines.get(i).substring(EXCEPT.length()), i + 1);
+            int matches = countMatchPlaceholders(except);
+            if (matches != 1) {
+                throw new IOException("An Except: pattern must contain exactly one {match} (line " + (i + 1)
+                        + " has " + matches + ")");
+            }
+            excepts.add(except);
+            i = skipBlank(lines, i + 1);
+        }
+        return i;
+    }
+
+    private static MSLTree parse(String pattern, int lineNumber) throws IOException {
+        try {
+            return MSLPatternParser.parse(pattern);
+        } catch (IllegalArgumentException e) {
+            throw new IOException(e.getMessage() + " (line " + lineNumber + ")", e);
+        }
+    }
+
+    private static int skipBlank(List<String> lines, int i) {
+        while (i < lines.size() && lines.get(i).isEmpty()) i++;
+        return i;
+    }
+
+    private static String keywordOf(String line, List<String> keywords) {
+        for (String keyword : keywords) {
+            if (line.startsWith(keyword)) return keyword;
+        }
+        return null;
+    }
+
+    /**
+     * Each placeholder that {@code uses} reads back must have been matched by
+     * {@code source}. A type the source never matches is an output placeholder,
+     * such as {empty_value}, whose value the adapter supplies.
+     */
+    private static void checkPlaceholdersBound(MSLTree uses, MSLTree source, int lineNumber) throws IOException {
+        java.util.Map<String, Integer> available = new java.util.HashMap<>();
+        countPlaceholders(source, available);
+        java.util.Map<String, Integer> used = new java.util.HashMap<>();
+        countPlaceholders(uses, used);
+        for (var entry : used.entrySet()) {
+            Integer have = available.get(entry.getKey());
+            if (have != null && entry.getValue() > have) {
+                throw new IOException("Line " + lineNumber + " uses {" + entry.getKey() + "} " + entry.getValue()
+                        + " times but the pattern it refers to matches only " + have);
+            }
+        }
+    }
+
+    private static void countPlaceholders(MSLTree tree, java.util.Map<String, Integer> counts) {
+        if (tree instanceof MSLPlaceholder p) {
+            if (!p.isMatch()) counts.merge(p.type(), 1, Integer::sum);
+        } else {
+            for (MSLTree child : ((MSLNode) tree).children()) countPlaceholders(child, counts);
+        }
+    }
+
+    private static int countMatchPlaceholders(MSLTree tree) {
+        if (tree instanceof MSLPlaceholder p) {
+            return p.isMatch() ? 1 + (p.constraint() == null ? 0 : countMatchPlaceholders(p.constraint())) : 0;
+        }
+        int n = 0;
+        for (MSLTree child : ((MSLNode) tree).children()) n += countMatchPlaceholders(child);
+        return n;
+    }
+
+    /** "Word: text", the shape of a keyword line ("Remove: {quantity}++"). */
+    private static boolean looksLikeKeyword(String line) {
+        int colon = line.indexOf(':');
+        if (colon <= 0 || colon == line.length() - 1) return false;
+        for (int c = 0; c < colon; c++) {
+            if (!Character.isLetter(line.charAt(c))) return false;
+        }
+        return true;
     }
 
     /** Group headings may be written with a trailing colon ("Math Operators:"). */
@@ -137,91 +259,20 @@ public class MutationRuleGenerator {
         return label.endsWith(":") ? label.substring(0, label.length() - 1).strip() : label;
     }
 
-    private static final java.util.regex.Pattern FUNC_CALL_PATTERN =
-            java.util.regex.Pattern.compile("^([A-Za-z_][A-Za-z0-9_.]*)\\(\\{quantity\\}\\)$");
-
-    private static MutationRule createRule(String fromPattern, String toPattern,
-                                           List<ExceptPattern> exceptPatterns,
-                                           String groupLabel) {
-
-        if (fromPattern.equals("{invocation_statement}") && toPattern.equals(";")) {
-            return new StatementRemovalRule(groupLabel + ": statement \u2192 ;");
+    /** "+ → -" for operator swaps, otherwise both trees spelled out. */
+    private static String describeReplace(MSLTree from, MSLTree to) {
+        if (isOperatorOnPlaceholders(from) && isOperatorOnPlaceholders(to)) {
+            return ((MSLNode) from).value() + " → " + ((MSLNode) to).value();
         }
+        return describe(from) + " → " + describe(to);
+    }
 
-        if (fromPattern.equals("{return_value}") && toPattern.equals("{empty_value}")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.EMPTY_RETURNS,
-                    groupLabel + ": return value \u2192 empty value");
-        }
+    private static boolean isOperatorOnPlaceholders(MSLTree tree) {
+        return tree instanceof MSLNode node && node.kind().equals(MSLNode.BINARY)
+                && node.children().stream().allMatch(c -> c instanceof MSLPlaceholder);
+    }
 
-        if (fromPattern.equals("{constructor_call}") && toPattern.equals("null")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.CONSTRUCTOR_CALLS,
-                    groupLabel + ": constructor call \u2192 null");
-        }
-
-        if (fromPattern.equals("{non_void_method_call}") && toPattern.equals("{default_value}")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.NON_VOID_METHOD_CALLS,
-                    groupLabel + ": non-void method call \u2192 default value");
-        }
-
-        if (fromPattern.equals("{equality_condition}") && toPattern.equals("true")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF,
-                    groupLabel + ": equality condition \u2192 true");
-        }
-
-        if (fromPattern.equals("{equality_condition}") && toPattern.equals("false")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE,
-                    groupLabel + ": equality condition \u2192 false");
-        }
-
-        if (fromPattern.equals("{order_condition}") && toPattern.equals("true")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF,
-                    groupLabel + ": order condition \u2192 true");
-        }
-
-        if (fromPattern.equals("{order_condition}") && toPattern.equals("false")) {
-            return new ScannerBackedRule(
-                    Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
-                    groupLabel + ": order condition \u2192 false");
-        }
-
-        if (fromPattern.equals("string.IsNullOrEmpty({quantity})")) {
-            if (toPattern.equals("{quantity} != null")) {
-                return new StringCallReplacementRule(
-                        "string.IsNullOrEmpty",
-                        "!= null",
-                        groupLabel + ": string.IsNullOrEmpty \u2192 not null");
-            }
-            if (toPattern.equals("{quantity} != \"\"")) {
-                return new StringCallReplacementRule(
-                        "string.IsNullOrEmpty",
-                        "!= \"\"",
-                        groupLabel + ": string.IsNullOrEmpty \u2192 not empty");
-            }
-        }
-
-        java.util.regex.Matcher m = FUNC_CALL_PATTERN.matcher(fromPattern);
-        if (m.matches()) {
-            String funcName = m.group(1);
-            String suffix;
-            if (toPattern.startsWith("{quantity}")) {
-                suffix = toPattern.substring("{quantity}".length()).strip();
-            } else {
-                suffix = toPattern;
-            }
-            String label = groupLabel + ": " + funcName + "({quantity}) \u2192 " + toPattern;
-            return new StringCallReplacementRule(funcName, suffix, label);
-        }
-
-        BinaryOpNode fromExpr = (BinaryOpNode) MSLExpressionFactory.parse(fromPattern);
-        BinaryOpNode toExpr = (BinaryOpNode) MSLExpressionFactory.parse(toPattern);
-        String label = groupLabel + ": " + fromExpr.getOperator()
-                + " \u2192 " + toExpr.getOperator();
-        return new ReplacementRule(fromExpr, toExpr, label, exceptPatterns);
+    private static String describe(MSLTree tree) {
+        return tree instanceof MSLPlaceholder p && p.constraint() == null ? p.describe() : tree.toSpecText();
     }
 }
