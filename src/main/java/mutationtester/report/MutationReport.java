@@ -66,7 +66,8 @@ public class MutationReport {
                 MutantResult r = survivedList.get(i);
                 MutationPoint p = r.getMutationPoint();
 
-                String label = p.getCustomLabel() != null ? " [" + p.getCustomLabel() + "]" : "";
+                String label = p.getCustomLabel() != null
+                        ? " [" + ReportLabels.normalize(p.getCustomLabel()) + "]" : "";
                 System.out.printf("[%d] %s:%d:%d - %s -> %s %s\n",
                         i + 1,
                         p.getSourceFile().getName(),
@@ -93,7 +94,8 @@ public class MutationReport {
             for (int i = 0; i < noCoverageList.size(); i++) {
                 MutantResult r = noCoverageList.get(i);
                 MutationPoint p = r.getMutationPoint();
-                String label = p.getCustomLabel() != null ? " [" + p.getCustomLabel() + "]" : "";
+                String label = p.getCustomLabel() != null
+                        ? " [" + ReportLabels.normalize(p.getCustomLabel()) + "]" : "";
                 System.out.printf("[%d] %s:%d:%d - %s -> %s %s\n",
                         i + 1,
                         p.getSourceFile().getName(),
@@ -122,7 +124,8 @@ public class MutationReport {
 
                 for (MutantResult result : killedList) {
                     MutationPoint point = result.getMutationPoint();
-                    String label = point.getCustomLabel() != null ? " [" + point.getCustomLabel() + "]" : "";
+                    String label = point.getCustomLabel() != null
+                            ? " [" + ReportLabels.normalize(point.getCustomLabel()) + "]" : "";
                     System.out.printf("  %s:%d - %s -> %s%s\n",
                             point.getSourceFile().getName(),
                             point.getLineNumber(),
