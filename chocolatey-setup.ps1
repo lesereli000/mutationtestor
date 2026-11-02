@@ -124,6 +124,9 @@ function Invoke-Native {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError  = $true
     $psi.RedirectStandardInput  = $true      # anything that prompts gets EOF instead of hanging
+    # Process.Start uses the .NET cwd, which Push-Location doesn't move.
+    $here = (Get-Location -PSProvider FileSystem).ProviderPath
+    if ($here) { $psi.WorkingDirectory = $here }
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
 
@@ -907,7 +910,7 @@ function Invoke-Restore {
     Push-Location $WorkDir
     try {
         $out = Invoke-Native $Exe $Argv -TimeoutSec $TimeoutSec
-        $bad = @($out -split "`r?`n" | Where-Object { $_ -match 'BUILD FAILURE|^\[ERROR\]|error [A-Z]+\d+|npm ERR!' })
+        $bad = @($out -split "`r?`n" | Where-Object { $_ -match 'BUILD FAILURE|^\[ERROR\]|error [A-Z]+\d+|npm ERR!|^npm error' })
         if ($bad.Count -gt 0) {
             Warn "$Label reported problems:"
             $bad | Select-Object -First 8 | ForEach-Object { Write-Host "       $_" -ForegroundColor DarkYellow }
@@ -918,6 +921,18 @@ function Invoke-Restore {
         Pop-Location
         $sw.Stop()
     }
+}
+
+# Ask the sample's own puppeteer where its pinned Chrome lives, so a download
+# that failed quietly is caught here instead of as a JS test failure later.
+function Get-PuppeteerChrome {
+    param([string]$NodeExe, [string]$JsDir)
+    $js = "try{const p=require('puppeteer').executablePath();console.log((require('fs').existsSync(p)?'OK ':'MISSING ')+p)}catch(e){console.log('MISSING '+e.message.split('\n')[0])}"
+    Push-Location $JsDir
+    try { $out = Invoke-Native $NodeExe @('-e', $js) -TimeoutSec 60 } finally { Pop-Location }
+    $line = @($out -split "`r?`n" | Where-Object { $_ -match '^(OK|MISSING) ' }) | Select-Object -First 1
+    if (-not $line) { return @{ Ok = $false; Detail = 'could not load puppeteer from samples\JSProject\node_modules' } }
+    return @{ Ok = $line.StartsWith('OK '); Detail = $line.Substring($line.IndexOf(' ') + 1) }
 }
 
 function Restore-Project {
@@ -954,8 +969,21 @@ function Restore-Project {
                 Info 'Skipping the Puppeteer Chrome download (--minimal).'
             } else {
                 $npx = Join-Path (Split-Path -Parent $node.Exe) 'npx.cmd'
-                Info 'Puppeteer Chrome is a silent ~170 MB download; allow a few minutes.'
-                Invoke-Restore 'Puppeteer Chrome' $jsDir $npx @('--yes', 'puppeteer', 'browsers', 'install', 'chrome') 2400
+                $chrome = Get-PuppeteerChrome $node.Exe $jsDir
+                if ($chrome.Ok) {
+                    Ok "Puppeteer Chrome already installed ($($chrome.Detail))."
+                } else {
+                    Info 'Puppeteer Chrome is a silent ~170 MB download; allow a few minutes.'
+                    Invoke-Restore 'Puppeteer Chrome' $jsDir $npx @('--yes', 'puppeteer', 'browsers', 'install', 'chrome') 2400
+                    $chrome = Get-PuppeteerChrome $node.Exe $jsDir
+                    if ($chrome.Ok) {
+                        Ok "Puppeteer Chrome verified ($($chrome.Detail))."
+                    } else {
+                        Warn "Puppeteer Chrome is still missing: $($chrome.Detail)"
+                        Warn 'The JS browser test (testRunCommandUnmutatedJSProject) will fail until it is installed.'
+                        Warn "Retry by hand:  cd samples\JSProject ; npx puppeteer browsers install chrome"
+                    }
+                }
             }
         }
     }

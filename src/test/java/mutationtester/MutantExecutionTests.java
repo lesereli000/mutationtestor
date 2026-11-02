@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -27,6 +28,9 @@ public class MutantExecutionTests {
 
         // grade output
         assertFalse(output.isEmpty(), "Test output should not be empty for command: " + testCommand);
+        // Puppeteer's Chrome is optional (the setup script skips it with --minimal).
+        assumeFalse(output.contains("Could not find Chrome"),
+                "Skipping: Puppeteer's Chrome is not installed. Run 'npx puppeteer browsers install chrome' in samples/JSProject.");
         assertEquals(expectFailure, Main.hasTestFailures(output),
                 "Failure detection mismatch for: " + testCommand + "\nOutput:\n" + output);
     }
