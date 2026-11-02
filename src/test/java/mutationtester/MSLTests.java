@@ -405,6 +405,71 @@ public class MSLTests {
         assertEquals(2, rules.size());
     }
 
+    // ── Bad spec files: one clear line naming the file, line and fix ──────────
+
+    private static java.io.IOException specError(java.nio.file.Path dir, String content) throws Exception {
+        java.nio.file.Path spec = dir.resolve("bad.spec");
+        java.nio.file.Files.writeString(spec, content);
+        return assertThrows(java.io.IOException.class,
+                () -> MutationRuleGenerator.generateRules(spec.toFile()));
+    }
+
+    @Test
+    void badSpecWithAnOperatorAliasNamesTheFileLineAndFix(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.io.IOException e = specError(tmp,
+            "Boundary\n\n\tReplace: {quantity} LE {quantity}\n\tWith: {quantity} < {quantity}\nEnd\n");
+        assertEquals("bad.spec, line 3: Unsupported MSL operator \"LE\". Use the canonical operator \"<=\".",
+            e.getMessage());
+    }
+
+    @Test
+    void badSpecWithAWordOperatorNamesTheFix(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.io.IOException e = specError(tmp,
+            "Logic\n\n\tReplace: {quantity} and {quantity}\n\tWith: {quantity} || {quantity}\nEnd\n");
+        assertTrue(e.getMessage().startsWith("bad.spec, line 3: "), e.getMessage());
+        assertTrue(e.getMessage().contains("Use the canonical operator \"&&\""), e.getMessage());
+    }
+
+    @Test
+    void badSpecWithReplaceButNoWithPointsAtTheReplaceLine(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.io.IOException e = specError(tmp,
+            "Math\n\n\tReplace: {quantity} + {quantity}\n\n\tReplace: {quantity} - {quantity}\n"
+            + "\tWith: {quantity} + {quantity}\nEnd\n");
+        assertTrue(e.getMessage().startsWith("bad.spec, line 3: \"Replace:\" has no \"With:\""), e.getMessage());
+    }
+
+    @Test
+    void badSpecWithAMistypedRuleLineIsNotSilentlySkipped(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.io.IOException e = specError(tmp,
+            "Math\n\n\tReplace {quantity} + {quantity}\n\tWith: {quantity} - {quantity}\nEnd\n");
+        assertTrue(e.getMessage().startsWith("bad.spec, line 3: \"Replace {quantity} + {quantity}\" isn't part of a rule"),
+            e.getMessage());
+    }
+
+    @Test
+    void missingSpecFileSaysNotFound() {
+        java.io.IOException e = assertThrows(java.io.IOException.class,
+            () -> MutationRuleGenerator.generateRules(new File("no-such-spec.txt")));
+        assertTrue(e.getMessage().startsWith("Spec file not found: "), e.getMessage());
+    }
+
+    @Test
+    void everySpecFileInTheRepoStillLoads() throws Exception {
+        List<File> specs = new java.util.ArrayList<>(List.of(new File("OperatorMutations.txt"),
+            new File("StatementMutation.txt"), new File("StringMutation.txt")));
+        for (String dir : List.of("specs", "proto-operator-verify")) {
+            File[] found = new File(dir).listFiles((d, n) -> n.endsWith(".spec"));
+            if (found != null) specs.addAll(List.of(found));
+        }
+        for (File spec : specs) {
+            assertFalse(MutationRuleGenerator.generateRules(spec).isEmpty(), spec + " has no rules");
+        }
+    }
+
     @Test
     void ruleGeneratorParsesPitStyleScannerBackedRules(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {

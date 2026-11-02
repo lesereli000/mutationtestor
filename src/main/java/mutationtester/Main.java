@@ -212,6 +212,21 @@ public class Main {
         }
         testTimeoutMillis = config.testTimeoutSeconds * 1000;
 
+        // Check the spec file before running any tests, so a mistake in it is
+        // reported straight away as one line, not after the baseline run
+        if ("CUSTOM".equalsIgnoreCase(config.mutatorType)) {
+            if (config.customMutationSpec == null || config.customMutationSpec.isEmpty()) {
+                System.err.println("ERROR: mutator_type=CUSTOM needs custom_mutation_spec=<spec file> in the config.");
+                return;
+            }
+            try {
+                MutationRuleGenerator.generateRules(new File(config.customMutationSpec));
+            } catch (IOException e) {
+                System.err.println("ERROR: " + e.getMessage());
+                return;
+            }
+        }
+
         if ("ALL".equalsIgnoreCase(config.mutatorType)) {
             multiMutationTest(
                     projectDirectory,
