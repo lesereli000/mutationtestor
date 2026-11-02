@@ -3,8 +3,11 @@ package mutationtester.scanner;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -187,6 +190,7 @@ public class RacketMutationScanner {
         if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
             // Structs may be defined after their first use, so collect them up front
             visitor.collectStructConstructors(tree);
+            visitor.structConstructors.addAll(requiredStructConstructors(file));
         }
         visitor.visit(tree);
 
@@ -945,7 +949,7 @@ public class RacketMutationScanner {
         // null. Racket's equivalent of `new` is a struct constructor call.
         // -------------------------------------------------------------------------
 
-        // Constructor names of the structs declared in this file
+        // Constructor names of the structs declared in this file or a file it requires
         private final java.util.Set<String> structConstructors = new java.util.HashSet<>();
 
         /**
@@ -976,7 +980,7 @@ public class RacketMutationScanner {
         private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
             if (head.getType() != ISLLexer.NAME) return;
 
-            // A struct declared in this file, or a built-in like make-hash. Other
+            // A struct declared here or in a required file, or a built-in like make-hash. Other
             // make-... names are ordinary functions (make-report, make-counter).
             String name = head.getText();
             boolean isConstructor = structConstructors.contains(name) || isBuiltInConstructor(name);
@@ -1161,6 +1165,177 @@ public class RacketMutationScanner {
     /** True for a built-in constructor such as make-hash (CONSTRUCTOR_CALLS). */
     public static boolean isBuiltInConstructor(String name) {
         return BUILT_IN_CONSTRUCTORS.contains(name);
+    }
+
+    // -------------------------------------------------------------------------
+    // Structs declared in required files (CONSTRUCTOR_CALLS)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Constructors of the structs declared in the local files this one requires,
+     * so (posn 1 2) counts as a constructor call when (struct posn ...) lives in
+     * another file. Handles (require "shapes.rkt") and (file "..."), wrapped in
+     * only-in, except-in, prefix-in, rename-in or combine-in, and follows those
+     * files' own requires, since a module can re-export what it requires.
+     * Collection paths like racket/list aren't local files and are skipped.
+     */
+    public static Set<String> requiredStructConstructors(File file) {
+        Path path = file.toPath().toAbsolutePath().normalize();
+        Set<Path> open = new HashSet<>(List.of(path));
+        Set<String> names = new HashSet<>();
+        for (Object spec : requireSpecs(readForms(path))) {
+            names.addAll(constructorsFromSpec(spec, path.getParent(), open));
+        }
+        return names;
+    }
+
+    // A string literal in readForms' output; atoms are plain Strings
+    private record Str(String value) {}
+
+    /** The names one require spec brings in that are struct constructors. */
+    private static Set<String> constructorsFromSpec(Object spec, Path dir, Set<Path> open) {
+        if (spec instanceof Str s) return constructorsInFile(dir.resolve(s.value()), open);
+        if (!(spec instanceof List<?> form) || form.size() < 2 || !(form.get(0) instanceof String head)) {
+            return Set.of();
+        }
+        Set<String> names = new HashSet<>();
+        switch (head) {
+            case "file" -> names.addAll(constructorsFromSpec(form.get(1), dir, open));
+            case "combine-in" -> {
+                for (Object sub : form.subList(1, form.size())) names.addAll(constructorsFromSpec(sub, dir, open));
+            }
+            case "prefix-in" -> {
+                if (form.size() >= 3 && form.get(1) instanceof String prefix) {
+                    for (String name : constructorsFromSpec(form.get(2), dir, open)) names.add(prefix + name);
+                }
+            }
+            case "only-in" -> {
+                // (only-in spec id [old-id new-id] ...) keeps just the listed names
+                Set<String> base = constructorsFromSpec(form.get(1), dir, open);
+                for (Object item : form.subList(2, form.size())) {
+                    if (item instanceof String id && base.contains(id)) names.add(id);
+                    String[] pair = renamePair(item);
+                    if (pair != null && base.contains(pair[0])) names.add(pair[1]);
+                }
+            }
+            case "except-in" -> {
+                names.addAll(constructorsFromSpec(form.get(1), dir, open));
+                names.removeAll(form.subList(2, form.size()));
+            }
+            case "rename-in" -> {
+                names.addAll(constructorsFromSpec(form.get(1), dir, open));
+                for (Object item : form.subList(2, form.size())) {
+                    String[] pair = renamePair(item);
+                    if (pair != null && names.remove(pair[0])) names.add(pair[1]);
+                }
+            }
+            default -> { }   // for-syntax, planet and other specs
+        }
+        return names;
+    }
+
+    /** [old-id new-id] in only-in or rename-in, or null. */
+    private static String[] renamePair(Object item) {
+        if (item instanceof List<?> pair && pair.size() == 2
+                && pair.get(0) instanceof String from && pair.get(1) instanceof String to) {
+            return new String[] { from, to };
+        }
+        return null;
+    }
+
+    /** Struct constructors a required file declares or re-exports from its own requires. */
+    private static Set<String> constructorsInFile(Path path, Set<Path> open) {
+        path = path.normalize();
+        // open is the chain of files being read, so a require cycle stops here
+        if (!Files.isRegularFile(path) || !open.add(path)) return Set.of();
+        try {
+            List<Object> forms = readForms(path);
+            Set<String> names = new HashSet<>();
+            collectDeclaredStructs(forms, names);
+            for (Object spec : requireSpecs(forms)) {
+                names.addAll(constructorsFromSpec(spec, path.getParent(), open));
+            }
+            return names;
+        } finally {
+            open.remove(path);
+        }
+    }
+
+    /** (struct posn ...) binds posn, (define-struct posn ...) binds make-posn. */
+    private static void collectDeclaredStructs(Object node, Set<String> names) {
+        if (!(node instanceof List<?> form)) return;
+        if (form.size() >= 3 && form.get(0) instanceof String head && form.get(1) instanceof String name) {
+            if (head.equals("struct")) names.add(name);
+            if (head.equals("define-struct")) names.add("make-" + name);
+        }
+        for (Object child : form) collectDeclaredStructs(child, names);
+    }
+
+    /** The specs of every (require ...) form, including those in submodules. */
+    private static List<Object> requireSpecs(Object node) {
+        List<Object> specs = new ArrayList<>();
+        if (node instanceof List<?> form) {
+            if (!form.isEmpty() && "require".equals(form.get(0))) {
+                specs.addAll(form.subList(1, form.size()));
+            } else {
+                for (Object child : form) specs.addAll(requireSpecs(child));
+            }
+        }
+        return specs;
+    }
+
+    /**
+     * Reads a file as s-expressions: a List per form, a String per atom and a Str
+     * per string literal, without comments. Enough to find requires and struct
+     * declarations; an unreadable file reads as no forms.
+     */
+    private static List<Object> readForms(Path path) {
+        String src;
+        try {
+            src = Files.readString(path);
+        } catch (IOException e) {
+            return List.of();
+        }
+        List<Object> top = new ArrayList<>();
+        java.util.Deque<List<Object>> stack = new java.util.ArrayDeque<>();
+        stack.push(top);
+        int i = 0;
+        int n = src.length();
+        while (i < n) {
+            char c = src.charAt(i);
+            if (Character.isWhitespace(c)) {
+                i++;
+            } else if (c == ';') {
+                while (i < n && src.charAt(i) != '\n') i++;
+            } else if (src.startsWith("#|", i)) {
+                int end = src.indexOf("|#", i + 2);
+                i = end < 0 ? n : end + 2;
+            } else if (c == '(' || c == '[' || c == '{') {
+                List<Object> list = new ArrayList<>();
+                stack.peek().add(list);
+                stack.push(list);
+                i++;
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (stack.size() > 1) stack.pop();
+                i++;
+            } else if (c == '"') {
+                StringBuilder value = new StringBuilder();
+                i++;
+                while (i < n && src.charAt(i) != '"') {
+                    if (src.charAt(i) == '\\' && i + 1 < n) i++;
+                    value.append(src.charAt(i++));
+                }
+                i++;
+                stack.peek().add(new Str(value.toString()));
+            } else {
+                int start = i;
+                // A character literal like #\( isn't a paren
+                if (src.startsWith("#\\", i)) i = Math.min(i + 3, n);
+                while (i < n && !Character.isWhitespace(src.charAt(i)) && "()[]{}\";".indexOf(src.charAt(i)) < 0) i++;
+                stack.peek().add(src.substring(start, i));
+            }
+        }
+        return top;
     }
 
     /** True if a call to this function is an equality test. */

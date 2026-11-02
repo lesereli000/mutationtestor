@@ -369,11 +369,11 @@ public class ScannerBackedRule implements MutationRule {
         if (extension.endsWith(".rkt")) {
             List<MutationPoint> points = new ArrayList<>();
             // Racket constructors are ordinary calls, so the same ones as
-            // RacketMutationScanner: a struct declared in the file ((struct name ...)
-            // binds name, (define-struct name ...) binds make-name), a built-in like
-            // make-hash, and racket/class's (new thing% ...). Other make-... names
-            // are ordinary functions.
-            Set<String> constructors = new TreeSet<>();
+            // RacketMutationScanner: a struct declared in the file or a file it
+            // requires ((struct name ...) binds name, (define-struct name ...) binds
+            // make-name), a built-in like make-hash, and racket/class's
+            // (new thing% ...). Other make-... names are ordinary functions.
+            Set<String> constructors = new TreeSet<>(RacketMutationScanner.requiredStructConstructors(sourceFile));
             Matcher def = Pattern.compile("\\((struct|define-struct)\\s+([^\\s()\\[\\]]+)")
                     .matcher(String.join("\n", lines));
             while (def.find()) {

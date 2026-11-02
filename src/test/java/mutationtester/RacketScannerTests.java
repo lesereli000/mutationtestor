@@ -1226,6 +1226,49 @@ public class RacketScannerTests {
     }
 
     @Test
+    public void testStructsFromRequiredFilesAreConstructors() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("required-structs");
+        java.nio.file.Files.createDirectories(dir.resolve("model"));
+        java.nio.file.Files.createDirectories(dir.resolve("src"));
+        java.nio.file.Files.writeString(dir.resolve("shapes.rkt"), String.join("\n",
+                "#lang racket",
+                "(provide (all-defined-out))",
+                "(struct posn (x y))",
+                "(define-struct box (v))",
+                "; (struct commented-out (x))",
+                "(module+ test (require \"src/main.rkt\"))",   // a cycle back to main.rkt
+                ""));
+        java.nio.file.Files.writeString(dir.resolve("model/all.rkt"), String.join("\n",
+                "#lang racket",
+                "(require \"../shapes.rkt\")",
+                "(provide (all-defined-out) (all-from-out \"../shapes.rkt\"))",
+                "(struct circle (r))",
+                ""));
+        java.nio.file.Files.writeString(dir.resolve("src/main.rkt"), String.join("\n",
+                "#lang racket",
+                "(require \"../shapes.rkt\"",
+                "         (prefix-in m: \"../model/all.rkt\")",
+                "         (rename-in (file \"../shapes.rkt\") [posn point])",
+                "         racket/list)",
+                "(define (helper a) a)",
+                "(define (build a)",
+                "  (list (posn a 1) (make-box a) (m:circle a) (m:posn a a) (point 1 2)",
+                "        (circle a) (commented-out a) (helper a)))",
+                ""));
+
+        // circle is only reachable as m:circle; commented-out and helper aren't structs
+        List<String> expected = List.of("(posn a 1)", "(make-box a)", "(m:circle a)", "(m:posn a a)", "(point 1 2)");
+        assertEquals(expected, RacketMutationScanner.scanFile(dir.resolve("src/main.rkt").toFile(),
+                Mutator.MutatorType.CONSTRUCTOR_CALLS).stream().map(MutationPoint::getOperator).toList());
+
+        List<String> spec = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("constructor call → null"))
+                .filter(p -> p.getSourceFile().getName().equals("main.rkt"))
+                .map(MutationPoint::getOperator).toList();
+        assertEquals(expected, spec);
+    }
+
+    @Test
     public void testConstructorCallsFindsDeclaredStructsAndSkipsOtherCalls() throws IOException {
         File tmp = File.createTempFile("constructor-calls", ".rkt");
         tmp.deleteOnExit();

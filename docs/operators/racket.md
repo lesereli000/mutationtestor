@@ -90,6 +90,12 @@ predicates (names ending in `?`), `0` for numeric functions such as `add1` or
 `make-string` and `make-posn`. Other functions whose names start with `make-`,
 like your own `make-report`, are ordinary calls.
 
+Structs declared in another of your files count too, when this file requires
+it by path: `(require "shapes.rkt")` or `(file "…")`, including inside
+`only-in`, `except-in`, `prefix-in`, `rename-in` and `combine-in`, so
+`(prefix-in s: "shapes.rkt")` makes `s:posn` a constructor. Files that file
+requires are followed as well, for structs it re-exports.
+
 ### Return values
 
 These mutate what a function returns, which in Racket is the last expression of
@@ -152,7 +158,8 @@ and find nothing in Racket.
 
 ## Known limitations
 
-- **Structs declared in another file** aren't recognized as constructors,
-  because the scanner reads one file at a time.
+- **Structs from collections and packages** (`(require racket/list)`,
+  `(require my-pkg/shapes)`) aren't recognized as constructors; only files
+  required by path are read.
 - **`JS_STRICT_EQ_TO_LOOSE_EQ`** keeps its JavaScript name because the same
   operator name is shared across languages.
