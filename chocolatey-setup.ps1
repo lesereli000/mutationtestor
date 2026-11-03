@@ -1056,6 +1056,7 @@ if ($blocking.Count -eq 0) {
     Ok 'All required tools are available.'
     Write-Host ''
     Write-Host 'Next steps:'
+    Write-Host '  Set-ExecutionPolicy -Scope Process Bypass -Force   # only if scripts are blocked'
     Write-Host '  . .\demo-env.ps1                       # load the toolchain into this shell'
     Write-Host '  mvn package -DskipTests'
     Write-Host '  java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples\MavenProject maven.config'

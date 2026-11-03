@@ -102,6 +102,13 @@ Before building or running, load the toolchain into your shell:
 . .\demo-env.ps1
 ```
 
+> **If PowerShell says "running scripts is disabled on this system"**, allow scripts for this window only, then load it again:
+>
+> ```powershell
+> Set-ExecutionPolicy -Scope Process Bypass -Force
+> . .\demo-env.ps1
+> ```
+
 ```cmd
 :: cmd.exe
 demo-env.cmd
