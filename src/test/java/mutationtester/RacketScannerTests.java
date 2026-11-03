@@ -642,6 +642,50 @@ public class RacketScannerTests {
         assertEquals("", p.getReplacement());
     }
 
+    @Test
+    public void testStatementRemovalCoversEveryBodyNotJustBegin() throws IOException {
+        File tmp = File.createTempFile("statements", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(define (body x)",
+                "  (displayln x)",
+                "  (add1 x))",
+                "(define (in-let x)",
+                "  (let ([y (add1 x)])",
+                "    (log-it y)",
+                "    (* y 2)))",
+                "(define (in-lambda) (lambda (x) (note x) x))",
+                "(define (in-when x) (when (> x 0) (warn x) (add1 x)))",
+                "(define (in-begin0 x) (begin0 (compute x) (record x)))",
+                "(define (nested x)",
+                "  (when (> x 0) (alert x))",
+                "  (set! x 1)",
+                "  x)",
+                ""));
+
+        // The discarded calls in a function, let, lambda, when and begin0 body, and
+        // (alert x), the value of a when whose own value is discarded. Values that
+        // are used stay: (add1 x), (* y 2), (compute x) (begin0's value), and the
+        // when and set! forms themselves aren't calls.
+        List<String> expected = List.of("(displayln x)", "(log-it y)", "(note x)", "(warn x)",
+                "(record x)", "(alert x)");
+        for (Mutator.MutatorType type : List.of(Mutator.MutatorType.STATEMENT_MUTATION,
+                Mutator.MutatorType.VML_VOID_METHOD_CALL)) {
+            List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, type);
+            assertEquals(expected, points.stream().map(MutationPoint::getOperator).toList(), type.name());
+        }
+
+        // NON_VOID_METHOD_CALLS uses the same positions: none of those calls is
+        // treated as a used value, and the used values are
+        List<String> nonVoid = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS)
+                .stream().map(MutationPoint::getOperator).toList();
+        for (String statement : expected) {
+            assertFalse(nonVoid.contains(statement), "statement mutated as a used value: " + statement);
+        }
+        assertTrue(nonVoid.containsAll(List.of("(add1 x)", "(compute x)")), nonVoid.toString());
+    }
+
     // -------------------------------------------------------------------------
     // AOR_INCREMENT_TO_DECREMENT  (add1 → sub1)
     // -------------------------------------------------------------------------
@@ -998,13 +1042,15 @@ public class RacketScannerTests {
 
         List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.EMPTY_RETURNS);
 
-        // a/b/c already empty, d/e not a string or list, h spans two lines;
-        // only the let body in f and the last begin expr in g are mutated
-        assertEquals(2, points.size());
+        // a/b/c already empty, d/e not a string or list; the let body in f, the
+        // last begin expr in g, and h's list, which spans two lines
+        assertEquals(3, points.size());
         assertEquals("(map add1 y)", points.get(0).getOperator());
         assertEquals("'()", points.get(0).getReplacement());
         assertEquals("(format \"~a\" x)", points.get(1).getOperator());
         assertEquals("\"\"", points.get(1).getReplacement());
+        assertEquals("(list 1\n                  2)", points.get(2).getOperator());
+        assertEquals("'()", points.get(2).getReplacement());
     }
 
     @Test
@@ -1095,10 +1141,12 @@ public class RacketScannerTests {
         List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.NON_VOID_METHOD_CALLS);
 
         // Skipped: helper/log-it/after/prep (result discarded), set-box!/printf (void),
-        // when (macro, not a call), list (spans several lines)
+        // when (macro, not a call). The list call spans several lines and is mutated whole.
         List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
+        assertTrue(mutated.get(0).startsWith("(list (begin (log-it x) (compute x))\n"), mutated.get(0));
+        assertTrue(mutated.get(0).endsWith("(outer (inner x)))"), mutated.get(0));
         assertEquals(List.of("(compute x)", "(first-val x)", "(ready? x)", "(finish x)",
-                "(outer (inner x))", "(inner x)"), mutated);
+                "(outer (inner x))", "(inner x)"), mutated.subList(1, mutated.size()));
         assertEquals("#f", findByOperator(points, "(ready? x)").getReplacement());
         assertEquals("'()", findByOperator(points, "(inner x)").getReplacement());
     }
@@ -1124,6 +1172,103 @@ public class RacketScannerTests {
     }
 
     @Test
+    public void testMultiLineCallsAndValuesAreMutatedWhole() throws IOException {
+        File tmp = File.createTempFile("multi-line", ".rkt");
+        tmp.deleteOnExit();
+        java.nio.file.Files.writeString(tmp.toPath(), String.join("\n",
+                "#lang racket",
+                "(struct posn (x y))",
+                "(define (build a)",
+                "  (posn a",
+                "        a))",
+                "(define (greet name)",
+                "  (string-append \"Hello, \"",
+                "                 name))",
+                ""));
+        String source = java.nio.file.Files.readString(tmp.toPath());
+
+        // Each operator finds the call that spans two lines, and Main replaces all of it
+        MutationPoint constructor = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.CONSTRUCTOR_CALLS).get(0);
+        assertEquals("(posn a\n        a)", constructor.getOperator());
+        assertTrue(Main.applyMutation(source, constructor).contains("(define (build a)\n  '())"));
+
+        MutationPoint nonVoid = findByOperator(RacketMutationScanner.scanFile(tmp,
+                Mutator.MutatorType.NON_VOID_METHOD_CALLS), "(string-append \"Hello, \"\n                 name)");
+        assertTrue(Main.applyMutation(source, nonVoid).contains("(define (greet name)\n  \"\")"));
+
+        MutationPoint empty = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.EMPTY_RETURNS).get(0);
+        assertEquals(nonVoid.getOperator(), empty.getOperator());
+        assertTrue(Main.applyMutation(source, empty).contains("(define (greet name)\n  \"\")"));
+    }
+
+    @Test
+    public void testOnlyDeclaredStructsAndBuiltInsAreConstructors() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("make-functions");
+        java.nio.file.Files.writeString(dir.resolve("make.rkt"), String.join("\n",
+                "#lang racket",
+                "(struct point (x y))",
+                "(define-struct box (v))",
+                "(define (make-report x) (list x))",
+                "(define (build a)",
+                "  (list (point a 1) (make-box a) (make-hash) (make-vector 3 0) (make-report a)))",
+                ""));
+
+        // make-report is an ordinary function that happens to start with make-
+        List<String> expected = List.of("(point a 1)", "(make-box a)", "(make-hash)", "(make-vector 3 0)");
+        assertEquals(expected, RacketMutationScanner.scanFile(dir.resolve("make.rkt").toFile(),
+                Mutator.MutatorType.CONSTRUCTOR_CALLS).stream().map(MutationPoint::getOperator).toList());
+
+        // The spec rule, including ScannerBackedRule's text fallback, agrees
+        List<String> spec = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("constructor call → null"))
+                .map(MutationPoint::getOperator).toList();
+        assertEquals(expected, spec);
+    }
+
+    @Test
+    public void testStructsFromRequiredFilesAreConstructors() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("required-structs");
+        java.nio.file.Files.createDirectories(dir.resolve("model"));
+        java.nio.file.Files.createDirectories(dir.resolve("src"));
+        java.nio.file.Files.writeString(dir.resolve("shapes.rkt"), String.join("\n",
+                "#lang racket",
+                "(provide (all-defined-out))",
+                "(struct posn (x y))",
+                "(define-struct box (v))",
+                "; (struct commented-out (x))",
+                "(module+ test (require \"src/main.rkt\"))",   // a cycle back to main.rkt
+                ""));
+        java.nio.file.Files.writeString(dir.resolve("model/all.rkt"), String.join("\n",
+                "#lang racket",
+                "(require \"../shapes.rkt\")",
+                "(provide (all-defined-out) (all-from-out \"../shapes.rkt\"))",
+                "(struct circle (r))",
+                ""));
+        java.nio.file.Files.writeString(dir.resolve("src/main.rkt"), String.join("\n",
+                "#lang racket",
+                "(require \"../shapes.rkt\"",
+                "         (prefix-in m: \"../model/all.rkt\")",
+                "         (rename-in (file \"../shapes.rkt\") [posn point])",
+                "         racket/list)",
+                "(define (helper a) a)",
+                "(define (build a)",
+                "  (list (posn a 1) (make-box a) (m:circle a) (m:posn a a) (point 1 2)",
+                "        (circle a) (commented-out a) (helper a)))",
+                ""));
+
+        // circle is only reachable as m:circle; commented-out and helper aren't structs
+        List<String> expected = List.of("(posn a 1)", "(make-box a)", "(m:circle a)", "(m:posn a a)", "(point 1 2)");
+        assertEquals(expected, RacketMutationScanner.scanFile(dir.resolve("src/main.rkt").toFile(),
+                Mutator.MutatorType.CONSTRUCTOR_CALLS).stream().map(MutationPoint::getOperator).toList());
+
+        List<String> spec = Main.scanForMutations(dir, Mutator.MutatorType.CUSTOM, "StatementMutation.txt")
+                .stream().filter(p -> p.getCustomLabel().endsWith("constructor call → null"))
+                .filter(p -> p.getSourceFile().getName().equals("main.rkt"))
+                .map(MutationPoint::getOperator).toList();
+        assertEquals(expected, spec);
+    }
+
+    @Test
     public void testConstructorCallsFindsDeclaredStructsAndSkipsOtherCalls() throws IOException {
         File tmp = File.createTempFile("constructor-calls", ".rkt");
         tmp.deleteOnExit();
@@ -1142,12 +1287,12 @@ public class RacketScannerTests {
 
         List<MutationPoint> points = RacketMutationScanner.scanFile(tmp, Mutator.MutatorType.CONSTRUCTOR_CALLS);
 
-        // posn is found although its struct is declared after the calls.
-        // Skipped: list/helper/wrap (not constructors), the (struct ...) declaration,
-        // and the posn call that spans several lines
+        // posn is found although its struct is declared after the calls, including the
+        // call that spans several lines. Skipped: list/helper/wrap (not constructors)
+        // and the (struct ...) declaration
         List<String> mutated = points.stream().map(MutationPoint::getOperator).toList();
         assertEquals(List.of("(posn a 1)", "(make-hash)", "(posn (posn 1 2) 3)", "(posn 1 2)",
-                "(make-box 5)"), mutated);
+                "(posn 1\n        2)", "(make-box 5)"), mutated);
         assertTrue(points.stream().allMatch(p -> p.getReplacement().equals("'()")));
     }
 
@@ -1279,6 +1424,7 @@ public class RacketScannerTests {
                 "(define-syntax-rule (with-value v e)",
                 "  (let () (define v (compute 1)) e))",
                 "(define (after x) (if (> x 0) (+ x 1) (make-widget x)))",
+                "(define-struct widget (n))",
                 ""));
         return tmp;
     }

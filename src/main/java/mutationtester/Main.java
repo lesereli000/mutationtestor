@@ -44,6 +44,10 @@ import mutationtester.safety.SafetyAssessment;
 
 public class Main {
     private static final long MAX_CMD_TIME = 180000;
+    static final long DEFAULT_TEST_TIMEOUT_SECONDS = MAX_CMD_TIME / 1000;
+    // How long one run of the test command may take (config: test_timeout_seconds).
+    // A mutant that makes the tests loop forever is stopped at this limit.
+    static long testTimeoutMillis = MAX_CMD_TIME;
     private static final String OUTPUT_ROOT = "output";
     private static final String WORKING_DIR_PREFIX = "workdir-";
     private static final SafetyController SAFETY = SafetyController.fromEnvironment(
@@ -58,9 +62,19 @@ public class Main {
         String customMutationSpec; // path to .spec file when mutatorType=CUSTOM; null otherwise
         String coverageCommand;   // optional command that writes a coverage report
         String coverageReport;    // optional lcov/cobertura/jacoco report path, relative to project dir
+        long testTimeoutSeconds = DEFAULT_TEST_TIMEOUT_SECONDS; // limit for one run of test_command
     }
 
     static String runCommand(String command, String directory) {
+        return runCommand(command, directory, MAX_CMD_TIME);
+    }
+
+    /** Runs the project's test command with the configured test_timeout_seconds limit. */
+    static String runTests(String testCommand, String directory) {
+        return runCommand(testCommand, directory, testTimeoutMillis);
+    }
+
+    static String runCommand(String command, String directory, long timeoutMillis) {
         Process process;
         List<String> commandList = new ArrayList<>(Arrays.asList(command.split(" ")));
         try {
@@ -100,10 +114,11 @@ public class Main {
         });
 
         try {
-            boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+            boolean completed = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS);
             if (!completed) {
                 destroyProcessTree(process);
-                System.out.println("Process " + commandList.get(0) + " timed out.");
+                System.out.println("Process " + commandList.get(0) + " timed out after "
+                        + (timeoutMillis / 1000) + " s.");
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
                 outputFuture.cancel(true);
                 return output.toString();
@@ -135,6 +150,14 @@ public class Main {
             return "";
         } finally {
             outputExecutor.shutdownNow();
+        }
+    }
+
+    /** Explains a baseline failure that was really the test_timeout_seconds limit. */
+    private static void printTimeoutHint(String baselineOutput) {
+        if (baselineOutput.contains("PROCESS_TIMEOUT")) {
+            System.err.println("The tests took longer than test_timeout_seconds ("
+                    + (testTimeoutMillis / 1000) + " s) on the original code. Raise test_timeout_seconds in the config.");
         }
     }
 
@@ -186,6 +209,22 @@ public class Main {
         } catch (IOException e) {
             System.out.println("Error reading config file " + configFile + ": " + e.getMessage());
             return;
+        }
+        testTimeoutMillis = config.testTimeoutSeconds * 1000;
+
+        // Check the spec file before running any tests, so a mistake in it is
+        // reported straight away as one line, not after the baseline run
+        if ("CUSTOM".equalsIgnoreCase(config.mutatorType)) {
+            if (config.customMutationSpec == null || config.customMutationSpec.isEmpty()) {
+                System.err.println("ERROR: mutator_type=CUSTOM needs custom_mutation_spec=<spec file> in the config.");
+                return;
+            }
+            try {
+                MutationRuleGenerator.generateRules(new File(config.customMutationSpec));
+            } catch (IOException e) {
+                System.err.println("ERROR: " + e.getMessage());
+                return;
+            }
         }
 
         if ("ALL".equalsIgnoreCase(config.mutatorType)) {
@@ -271,6 +310,19 @@ public class Main {
         config.coverageCommand = values.getOrDefault("coverage_command", "");
         config.coverageReport = values.getOrDefault("coverage_report", "");
 
+        String timeout = values.get("test_timeout_seconds");
+        if (timeout != null && !timeout.isEmpty()) {
+            try {
+                config.testTimeoutSeconds = Long.parseLong(timeout);
+            } catch (NumberFormatException e) {
+                config.testTimeoutSeconds = 0;
+            }
+            if (config.testTimeoutSeconds <= 0) {
+                throw new IOException("test_timeout_seconds must be a whole number of seconds above 0, not \""
+                        + timeout + "\"");
+            }
+        }
+
         if (config.sourceCodeDirectory == null || config.sourceCodeDirectory.isEmpty()) {
             throw new IOException("Missing source_code_directory in config file");
         }
@@ -311,9 +363,10 @@ public class Main {
         if (!command1.isEmpty()) {
             runCommand(command1, mutantPath.toString());
         }
-        String baselineOutput = runCommand(command2, mutantPath.toString());
+        String baselineOutput = runTests(command2, mutantPath.toString());
         if (hasTestFailures(baselineOutput)) {
             System.err.println("ERROR: Tests fail on original code! Fix tests before running mutation testing.");
+            printTimeoutHint(baselineOutput);
             System.err.println("Baseline output:\n" + baselineOutput);
             return;
         }
@@ -536,7 +589,9 @@ public class Main {
                 }
             }
 
-            String testOutput = runCommand(testCommand, workingDir.toString());
+            // A mutant that makes the tests hang is stopped at test_timeout_seconds
+            // and counted as killed, as PIT does
+            String testOutput = runTests(testCommand, workingDir.toString());
 
             boolean testsPass = !hasTestFailures(testOutput);
 
@@ -913,9 +968,10 @@ public class Main {
         try {
             System.out.println("\nRunning baseline tests");
             if (!command1.isEmpty()) runCommand(command1, mutantPath.toString());
-            String baselineOutput = runCommand(command2, mutantPath.toString());
+            String baselineOutput = runTests(command2, mutantPath.toString());
             if (hasTestFailures(baselineOutput)) {
                 System.err.println("ERROR: Tests fail on original code!");
+                printTimeoutHint(baselineOutput);
                 return;
             }
             System.out.println("Baseline tests pass");

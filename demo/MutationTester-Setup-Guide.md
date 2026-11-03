@@ -102,6 +102,13 @@ Before building or running, load the toolchain into your shell:
 . .\demo-env.ps1
 ```
 
+> **If PowerShell says "running scripts is disabled on this system"**, allow scripts for this window only, then load it again:
+>
+> ```powershell
+> Set-ExecutionPolicy -Scope Process Bypass -Force
+> . .\demo-env.ps1
+> ```
+
 ```cmd
 :: cmd.exe
 demo-env.cmd
@@ -293,6 +300,7 @@ test_command=mvn test
 - `compile_command` - command to build the project before testing; leave blank if no compile step is needed
 - `test_command` - command to run the test suite (must pass on the original code before mutation begins)
 - `coverage_command` / `coverage_report` - optional; used to attach a coverage report to the output
+- `test_timeout_seconds` - optional; the longest one run of `test_command` may take, in seconds (default `180`). A mutant that makes the tests loop forever is stopped at this limit and counted as killed. Set it a little above how long your tests normally take, e.g. `test_timeout_seconds=10` for a suite that runs in 3 seconds
 
 **Language-specific examples:**
 

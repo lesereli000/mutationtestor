@@ -33,7 +33,16 @@ import mutationtester.model.Mutator;
  */
 public class MutationRuleGenerator {
 
+    /**
+     * Reads a spec file. A mistake in it is reported as an IOException whose
+     * message is one line naming the file, the line number and the fix, e.g.
+     * {@code my-rules.txt, line 3: Unsupported MSL operator "LE". Use the canonical operator "<=".}
+     */
     public static List<MutationRule> generateRules(File specFile) throws IOException {
+        if (!specFile.isFile()) {
+            throw new IOException("Spec file not found: " + specFile.getPath());
+        }
+        String name = specFile.getName();
         List<String> rawLines = Files.readAllLines(specFile.toPath());
         List<String> lines = rawLines.stream()
                 .map(String::strip)
@@ -75,6 +84,7 @@ public class MutationRuleGenerator {
             groupEnded = false;
 
             if (line.startsWith("Replace:")) {
+                int replaceLine = i + 1;
                 String fromPattern = line.substring("Replace:".length()).strip();
                 i++;
 
@@ -82,46 +92,61 @@ public class MutationRuleGenerator {
                 while (i < lines.size() && lines.get(i).isEmpty())
                     i++;
                 if (i >= lines.size() || !lines.get(i).startsWith("With:")) {
-                    throw new IOException("Expected 'With:' after 'Replace:' at line " + (i + 1));
+                    throw new IOException(name + ", line " + replaceLine
+                            + ": \"Replace:\" has no \"With:\" line after it."
+                            + " Add one, e.g. \"With: {quantity} - {quantity}\".");
                 }
                 String toPattern = lines.get(i).substring("With:".length()).strip();
                 i++;
 
-                // Optional "Except: ..." — may appear multiple times
-                List<ExceptPattern> exceptPatterns = new ArrayList<>();
-                while (i < lines.size()) {
+                try {
+                    // Optional "Except: ..." — may appear multiple times
+                    List<ExceptPattern> exceptPatterns = new ArrayList<>();
+                    while (i < lines.size()) {
+                        while (i < lines.size() && lines.get(i).isEmpty())
+                            i++;
+                        if (i < lines.size() && lines.get(i).startsWith("Except:")) {
+                            String exceptTemplate = lines.get(i).substring("Except:".length()).strip();
+                            exceptPatterns.add(new ExceptPattern(exceptTemplate));
+                            i++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Optional "And: Inverse"
+                    boolean inverse = false;
                     while (i < lines.size() && lines.get(i).isEmpty())
                         i++;
-                    if (i < lines.size() && lines.get(i).startsWith("Except:")) {
-                        String exceptTemplate = lines.get(i).substring("Except:".length()).strip();
-                        exceptPatterns.add(new ExceptPattern(exceptTemplate));
+                    if (i < lines.size() && lines.get(i).startsWith("And: Inverse")) {
+                        inverse = true;
                         i++;
-                    } else {
-                        break;
                     }
-                }
 
-                // Optional "And: Inverse"
-                boolean inverse = false;
-                while (i < lines.size() && lines.get(i).isEmpty())
-                    i++;
-                if (i < lines.size() && lines.get(i).startsWith("And: Inverse")) {
-                    inverse = true;
-                    i++;
-                }
+                    MutationRule rule = createRule(fromPattern, toPattern, exceptPatterns, groupLabel);
+                    rules.add(rule);
 
-                MutationRule rule = createRule(fromPattern, toPattern, exceptPatterns, groupLabel);
-                rules.add(rule);
-
-                if (inverse) {
-                    // The inverse rule inherits the same Except: clauses as the forward rule.
-                    // This ensures that guarded contexts (e.g., clamp/guard patterns) are also
-                    // suppressed when the operator is mutated in the opposite direction.
-                    MutationRule inverseRule = createRule(toPattern, fromPattern,
-                            exceptPatterns, groupLabel);
-                    rules.add(inverseRule);
+                    if (inverse) {
+                        // The inverse rule inherits the same Except: clauses as the forward rule.
+                        // This ensures that guarded contexts (e.g., clamp/guard patterns) are also
+                        // suppressed when the operator is mutated in the opposite direction.
+                        MutationRule inverseRule = createRule(toPattern, fromPattern,
+                                exceptPatterns, groupLabel);
+                        rules.add(inverseRule);
+                    }
+                } catch (IllegalArgumentException e) {
+                    // An unsupported operator or pattern, e.g. LE instead of <=
+                    throw new IOException(name + ", line " + replaceLine + ": " + e.getMessage(), e);
                 }
                 continue;
+            }
+
+            // A rule line that doesn't start a rule, e.g. "Replace {quantity} ..." with
+            // no colon, would otherwise be skipped and the rule silently lost
+            if (line.contains("{quantity}") || line.startsWith("With:")
+                    || line.startsWith("Except:") || line.startsWith("And:")) {
+                throw new IOException(name + ", line " + (i + 1) + ": \"" + line
+                        + "\" isn't part of a rule. A rule starts with \"Replace:\" followed by a \"With:\" line.");
             }
 
             // Unknown line — skip
