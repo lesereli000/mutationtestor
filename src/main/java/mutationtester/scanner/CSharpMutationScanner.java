@@ -624,9 +624,7 @@ public class CSharpMutationScanner {
             public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
                 switch (pattern.kind()) {
                     case mutationtester.msl.MSLNode.IF -> {
-                        ParseTree s = statementBody(ctx);
-                        return s instanceof CSharpParser.If_statementContext i
-                                ? List.of(i.boolean_expression(), i.embedded_statement(0)) : null;
+                        return matchIf(pattern, ctx, false);
                     }
                     case mutationtester.msl.MSLNode.WHILE -> {
                         ParseTree s = statementBody(ctx);
@@ -658,6 +656,228 @@ public class CSharpMutationScanner {
                         }
                         return new ArrayList<>(b.statement_list().statement().subList(0, pattern.children().size()));
                     }
+                    case mutationtester.msl.MSLNode.UNARY -> {
+                        if (!(ctx instanceof CSharpParser.Unary_expressionContext u) || u.getChildCount() != 2
+                                || !(u.getChild(1) instanceof CSharpParser.Unary_expressionContext)) {
+                            return null;
+                        }
+                        return u.getChild(0).getText().equals(pattern.value()) ? List.of(u.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONDITIONAL -> {
+                        return ctx instanceof CSharpParser.Conditional_expressionContext c && c.getChildCount() == 5
+                                ? List.of(c.getChild(0), c.getChild(2), c.getChild(4)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.COMPOUND_ASSIGN -> {
+                        return ctx instanceof CSharpParser.AssignmentContext a
+                                && a.assignment_operator().getText().equals(pattern.value())
+                                ? List.of(a.unary_expression(), a.expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INDEX -> {
+                        if (!(ctx instanceof CSharpParser.Element_accessContext e) || e.getChildCount() != 4
+                                || !(e.getChild(2) instanceof CSharpParser.Argument_listContext args)
+                                || args.argument().size() != 1) {
+                            return null;
+                        }
+                        return List.of(e.getChild(0), args.argument(0));
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER -> {
+                        if (!(ctx instanceof CSharpParser.Member_accessContext m) || m.getChildCount() != 3
+                                || !m.getChild(1).getText().equals(".")) {
+                            return null;
+                        }
+                        // o.Add of o.Add(1) is a method call, not a member access.
+                        return isCallee(m) ? null : List.of(m.getChild(0), m.getChild(2));
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER_CALL -> {
+                        if (!(ctx instanceof CSharpParser.Invocation_expressionContext call)
+                                || !(unwrapPrimary(call.getChild(0)) instanceof CSharpParser.Member_accessContext m)
+                                || m.getChildCount() != 3) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(m.getChild(0), m.getChild(2)));
+                        parts.addAll(invocationArguments(call));
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.RETURN -> {
+                        if (!(jump(ctx) instanceof CSharpParser.Return_statementContext r) || r.variable_reference() != null) {
+                            return null;
+                        }
+                        return r.expression() == null ? List.of() : List.of(r.expression());
+                    }
+                    case mutationtester.msl.MSLNode.BREAK -> {
+                        return jump(ctx) instanceof CSharpParser.Break_statementContext ? List.of() : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONTINUE -> {
+                        return jump(ctx) instanceof CSharpParser.Continue_statementContext ? List.of() : null;
+                    }
+                    case mutationtester.msl.MSLNode.THROW -> {
+                        return jump(ctx) instanceof CSharpParser.Throw_statementContext t && t.expression() != null
+                                ? List.of(t.expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DO_WHILE -> {
+                        return statementBody(ctx) instanceof CSharpParser.Do_statementContext d
+                                ? List.of(d.embedded_statement(), d.boolean_expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR_EACH -> {
+                        return statementBody(ctx) instanceof CSharpParser.Foreach_statementContext f && f.identifier() != null
+                                ? List.of(f.identifier(), f.expression(), f.embedded_statement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TRY -> {
+                        if (!(statementBody(ctx) instanceof CSharpParser.Try_statementContext t)) return null;
+                        ParseTree handler = null;
+                        if (t.catch_clauses() != null) {
+                            CSharpParser.Catch_clausesContext c = t.catch_clauses();
+                            handler = !c.specific_catch_clause().isEmpty() ? c.specific_catch_clause(0).block()
+                                    : c.general_catch_clause() != null ? c.general_catch_clause().block() : null;
+                        }
+                        return java.util.Arrays.asList(t.block(), handler,
+                                t.finally_clause() == null ? null : t.finally_clause().block());
+                    }
+                    case mutationtester.msl.MSLNode.CASE, mutationtester.msl.MSLNode.DEFAULT_CASE -> {
+                        if (!(ctx instanceof CSharpParser.Switch_sectionContext s) || s.switch_label().size() != 1) {
+                            return null;
+                        }
+                        CSharpParser.Switch_labelContext label = s.switch_label(0);
+                        boolean isCase = label.getChild(0).getText().equals("case");
+                        if (pattern.kind().equals("case")) {
+                            return isCase && label.pattern() != null && label.case_guard() == null
+                                    ? List.of(label.pattern(), s.statement_list()) : null;
+                        }
+                        return !isCase ? List.of(s.statement_list()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DECLARE -> {
+                        if (!(ctx instanceof CSharpParser.Local_variable_declarationContext d)) return null;
+                        if (d.implicitly_typed_local_variable_declaration() != null) {
+                            CSharpParser.Implicitly_typed_local_variable_declaratorContext v =
+                                    d.implicitly_typed_local_variable_declaration().implicitly_typed_local_variable_declarator();
+                            return v == null ? null : List.of(v.identifier(), v.expression());
+                        }
+                        if (d.explicitly_typed_local_variable_declaration() == null) return null;
+                        List<CSharpParser.Explicitly_typed_local_variable_declaratorContext> declarators =
+                                d.explicitly_typed_local_variable_declaration().explicitly_typed_local_variable_declarators()
+                                        .explicitly_typed_local_variable_declarator();
+                        if (declarators.size() != 1 || declarators.get(0).local_variable_initializer() == null) return null;
+                        return List.of(declarators.get(0).identifier(), declarators.get(0).local_variable_initializer());
+                    }
+                    case mutationtester.msl.MSLNode.COLLECTION -> {
+                        if (ctx instanceof CSharpParser.Array_initializerContext a) {
+                            return a.variable_initializer_list() == null ? new ArrayList<>()
+                                    : new ArrayList<>(a.variable_initializer_list().variable_initializer());
+                        }
+                        return ctx instanceof CSharpParser.Collection_expressionContext c ? new ArrayList<>(c.collection_element()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LAMBDA -> {
+                        if (!(ctx instanceof CSharpParser.Lambda_expressionContext l)) return null;
+                        List<ParseTree> parts = descendants(l.anonymous_function_signature(), "anonymous_function_parameterContext");
+                        parts.add(l.anonymous_function_body());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof CSharpParser.Method_declarationContext m) || m.method_header() == null
+                                || m.method_body() == null || m.method_body().block() == null) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(m.method_header().member_name()));
+                        parts.addAll(descendants(m.method_header(), "Fixed_parameterContext"));
+                        parts.add(m.method_body().block());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.PARAMETER -> {
+                        if (!(ctx instanceof CSharpParser.Fixed_parameterContext p) || p.identifier() == null) return null;
+                        return p.default_argument() == null ? List.of(p.identifier())
+                                : List.of(p.identifier(), p.default_argument().expression());
+                    }
+                    case mutationtester.msl.MSLNode.TYPE_CHECK -> {
+                        return ctx instanceof CSharpParser.Relational_expressionContext r && r.getChildCount() == 3
+                                && r.getChild(1).getText().equals("is") && r.getChild(2) instanceof CSharpParser.TypeContext
+                                ? List.of(r.getChild(0), r.getChild(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.CAST -> {
+                        return ctx instanceof CSharpParser.Cast_expressionContext c ? List.of(c.type(), c.unary_expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.SAFE_MEMBER -> {
+                        return ctx instanceof CSharpParser.Null_conditional_member_accessContext n && n.getChildCount() >= 4
+                                ? List.of(n.getChild(0), n.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FIELD -> {
+                        if (!(ctx instanceof CSharpParser.Field_declarationContext f)
+                                || f.variable_declarators().variable_declarator().size() != 1) {
+                            return null;
+                        }
+                        CSharpParser.Variable_declaratorContext v = f.variable_declarators().variable_declarator(0);
+                        return v.variable_initializer() == null ? List.of(v.identifier())
+                                : List.of(v.identifier(), v.variable_initializer());
+                    }
+                    case mutationtester.msl.MSLNode.INITIALIZED_NEW -> {
+                        // new T { A = 1, B = 2 }
+                        if (!(ctx instanceof CSharpParser.Object_creation_expressionContext o)
+                                || o.object_or_collection_initializer() == null
+                                || o.object_or_collection_initializer().object_initializer() == null) {
+                            return null;
+                        }
+                        CSharpParser.Object_initializerContext init = o.object_or_collection_initializer().object_initializer();
+                        List<ParseTree> parts = new ArrayList<>(List.of(o.type()));
+                        if (init.member_initializer_list() != null) parts.addAll(init.member_initializer_list().member_initializer());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.WITH -> {
+                        ParseTree s = statementBody(ctx);
+                        if (s instanceof CSharpParser.Using_statementContext u) return List.of(u.resource_acquisition(), u.embedded_statement());
+                        return s instanceof CSharpParser.Lock_statementContext l ? List.of(l.expression(), l.embedded_statement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.YIELD -> {
+                        if (!(jump(ctx) instanceof CSharpParser.Yield_statementContext y)) return null;
+                        return y.expression() == null ? List.of() : List.of(y.expression());
+                    }
+                    case mutationtester.msl.MSLNode.ARM -> {
+                        return ctx instanceof CSharpParser.Switch_expression_armContext a && a.case_guard() == null
+                                ? List.of(a.pattern(), a.switch_expression_arm_expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TUPLE -> {
+                        return ctx instanceof CSharpParser.Tuple_expressionContext t && !t.tuple_element().isEmpty()
+                                ? new ArrayList<>(t.tuple_element()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.SPREAD -> {
+                        return ctx instanceof CSharpParser.Collection_elementContext e && e.getChildCount() == 2
+                                ? List.of(e.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.SLICE -> {
+                        // a[i..j]: an element access whose one argument is a range
+                        List<ParseTree> index = matchNode(new mutationtester.msl.MSLNode(mutationtester.msl.MSLNode.INDEX, "",
+                                new mutationtester.msl.MSLPlaceholder("quantity"), new mutationtester.msl.MSLPlaceholder("quantity")), ctx);
+                        if (index == null) return null;
+                        ParseTree range = index.get(1);
+                        while (range.getChildCount() == 1 && !(range instanceof CSharpParser.Range_expressionContext)) {
+                            range = range.getChild(0);
+                        }
+                        if (!(range instanceof CSharpParser.Range_expressionContext r) || r.getChildCount() < 1) return null;
+                        ParseTree from = null;
+                        ParseTree to = null;
+                        boolean afterDots = false;
+                        for (int i = 0; i < r.getChildCount(); i++) {
+                            if (r.getChild(i).getText().equals("..")) afterDots = true;
+                            else if (afterDots) to = r.getChild(i);
+                            else from = r.getChild(i);
+                        }
+                        return afterDots ? java.util.Arrays.asList(index.get(0), from, to) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INTERPOLATION -> {
+                        return ctx instanceof CSharpParser.Interpolated_regular_string_expressionContext s
+                                ? new ArrayList<>(interpolationHoles(s)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.ANNOTATION -> {
+                        if (!(ctx instanceof CSharpParser.Attribute_sectionContext a) || a.attribute_list().attribute().size() != 1) {
+                            return null;
+                        }
+                        CSharpParser.AttributeContext attr = a.attribute_list().attribute(0);
+                        return attr.attribute_arguments() == null ? List.of(attr.attribute_name()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.AWAIT -> {
+                        return ctx instanceof CSharpParser.Await_expressionContext a ? List.of(a.unary_expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WHERE -> {
+                        return ctx instanceof CSharpParser.Where_clauseContext w ? List.of(w.boolean_expression()) : null;
+                    }
                     default -> {
                         return MSLScannerAdapter.super.matchNode(pattern, ctx);
                     }
@@ -674,6 +894,222 @@ public class CSharpMutationScanner {
                     p = p.getChild(0);
                 }
                 return p;
+            }
+
+            /** The member accesses that are a call's callee (the o.Add of o.Add(1)). */
+            private java.util.Set<ParseTree> callees;
+
+            /** Searched from the root: inserted invocation nodes don't re-parent their children. */
+            private boolean isCallee(ParseTree member) {
+                if (callees == null) {
+                    callees = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                    java.util.ArrayDeque<ParseTree> todo = new java.util.ArrayDeque<>(List.of(getRootContext()));
+                    while (!todo.isEmpty()) {
+                        ParseTree node = todo.pop();
+                        if (node instanceof CSharpParser.Invocation_expressionContext call) {
+                            callees.add(unwrapPrimary(call.getChild(0)));
+                        }
+                        for (int i = 0; i < node.getChildCount(); i++) todo.push(node.getChild(i));
+                    }
+                }
+                return callees.contains(member);
+            }
+
+            /** The node inside single-child primary_expression wrappers. */
+            private ParseTree unwrapPrimary(ParseTree node) {
+                ParseTree p = node;
+                while (p instanceof CSharpParser.Primary_expressionContext && p.getChildCount() == 1) p = p.getChild(0);
+                return p;
+            }
+
+            /** f(a, b): [f, a, b]. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Invocation_expressionContext call)) return null;
+                List<ParseTree> parts = new ArrayList<>(List.of(call.getChild(0)));
+                parts.addAll(invocationArguments(call));
+                return parts;
+            }
+
+            private List<ParseTree> invocationArguments(CSharpParser.Invocation_expressionContext call) {
+                for (int i = 0; i < call.getChildCount(); i++) {
+                    if (call.getChild(i) instanceof CSharpParser.Argument_listContext args) {
+                        return new ArrayList<>(args.argument());
+                    }
+                }
+                return List.of();
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.CSHARP, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                // int n = 42.0; and a[1.0] don't compile: keep integers where the code needs one.
+                if (!from.typeName() && from.fits("integer") && !toType.equals("integer")
+                        && !toType.equals("based_integer") && Literals.needsInteger(node)) {
+                    return null;
+                }
+                return Literals.convert(Literals.Lang.CSHARP, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (!(statementBody(ctx) instanceof CSharpParser.If_statementContext i)) return null;
+                return java.util.Arrays.asList(i.boolean_expression(), i.embedded_statement(0),
+                        i.embedded_statement().size() > 1 ? i.embedded_statement(1) : null);
+            }
+
+            /** The specific jump statement (return, break, ...) inside the statement wrappers. */
+            private ParseTree jump(ParseTree ctx) {
+                ParseTree p = statementBody(ctx);
+                return p instanceof CSharpParser.Jump_statementContext j && j.getChildCount() == 1 ? j.getChild(0) : p;
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                return statementBody(ctx) instanceof CSharpParser.BlockContext;
+            }
+
+            /** Keeps the declared type: int n = 0, not var n = 0. */
+            @Override
+            public String renderDeclaration(String name, String value, ParseTree ctx) {
+                String type = ctx instanceof CSharpParser.Local_variable_declarationContext d
+                        && d.explicitly_typed_local_variable_declaration() != null
+                        ? d.explicitly_typed_local_variable_declaration().type().getText() : "var";
+                return type + " " + name + " = " + value;
+            }
+
+            @Override
+            public String renderForEach(String name, String collection, String body, ParseTree ctx) {
+                return "foreach (var " + name + " in " + collection + ") " + body;
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            /** The nodes under {@code root} whose rule class name ends with {@code suffix}. */
+            private List<ParseTree> descendants(ParseTree root, String suffix) {
+                List<ParseTree> found = new ArrayList<>();
+                if (root == null) return found;
+                java.util.ArrayDeque<ParseTree> todo = new java.util.ArrayDeque<>(List.of(root));
+                while (!todo.isEmpty()) {
+                    ParseTree node = todo.removeFirst();
+                    if (node.getClass().getSimpleName().endsWith(suffix)) {
+                        found.add(node);
+                        continue;
+                    }
+                    for (int i = node.getChildCount() - 1; i >= 0; i--) todo.addFirst(node.getChild(i));
+                }
+                return found;
+            }
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return ctx instanceof CSharpParser.Lambda_expressionContext;
+            }
+
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                return ctx instanceof CSharpParser.TypeContext;
+            }
+
+            @Override
+            public boolean isField(ParseTree ctx) {
+                return ctx instanceof CSharpParser.Field_declarationContext;
+            }
+
+            /** { 1, 2 } for an array initializer, [1, 2] for a collection expression. */
+            @Override
+            public String renderCollection(List<String> elements, ParseTree ctx) {
+                return ctx instanceof CSharpParser.Array_initializerContext ? "{ " + String.join(", ", elements) + " }"
+                        : "[" + String.join(", ", elements) + "]";
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return ctx instanceof CSharpParser.Array_initializerContext ? "{ }" : "[]";
+            }
+
+            /** Keeps the declared type: int count = 0. */
+            @Override
+            public String renderParameter(String name, String defaultValue, ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Fixed_parameterContext p) || p.type() == null) return null;
+                return p.type().getText() + " " + name + (defaultValue == null ? "" : " = " + defaultValue);
+            }
+
+            @Override
+            public String renderField(String name, String value, ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Field_declarationContext f)) return null;
+                String modifiers = f.field_modifier().stream().map(ParseTree::getText).reduce("", (a, b) -> a + b + " ");
+                return modifiers + f.type().getText() + " " + name + (value == null ? "" : " = " + value) + ";";
+            }
+
+            @Override
+            public String renderTypeCheck(String value, String type, ParseTree ctx) {
+                return value + " is " + type;
+            }
+
+            @Override
+            public String renderCast(String type, String value, ParseTree ctx) {
+                return "(" + type + ") " + value;
+            }
+
+            @Override
+            public String renderSafeMember(String object, String member, ParseTree ctx) {
+                return object + "?." + member;
+            }
+
+            @Override
+            public String renderInitializedNew(String type, List<String> initializers, ParseTree ctx) {
+                return initializers.isEmpty() ? "new " + type + "()" : "new " + type + " { " + String.join(", ", initializers) + " }";
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            private List<ParseTree> interpolationHoles(CSharpParser.Interpolated_regular_string_expressionContext s) {
+                List<ParseTree> holes = new ArrayList<>();
+                for (CSharpParser.Regular_interpolationContext i : s.regular_interpolation()) holes.add(i.expression());
+                return holes;
+            }
+
+            @Override
+            public String renderKeywordStatement(String kind, String value, ParseTree ctx) {
+                return kind.equals("annotation") ? "[" + value + "]" : null;
+            }
+
+            /** yield return v, or yield break. */
+            @Override
+            public String renderYield(String value, ParseTree ctx) {
+                return value == null ? "yield break" : "yield return " + value;
+            }
+
+            @Override
+            public String renderArm(String pattern, String value, ParseTree ctx) {
+                return pattern + " => " + value;
+            }
+
+            @Override
+            public String renderSpread(String value, ParseTree ctx) {
+                return ".." + value;
+            }
+
+            @Override
+            public String renderSlice(String collection, String from, String to, ParseTree ctx) {
+                return collection + "[" + from + ".." + to + "]";
+            }
+
+            @Override
+            public String renderInterpolation(List<String> holes, ParseTree ctx) {
+                if (!(ctx instanceof CSharpParser.Interpolated_regular_string_expressionContext s)) return null;
+                return mutationtester.msl.CstNodes.replaceHoles(s, interpolationHoles(s), holes, getNodeText(s));
             }
 
             // ── Increments ───────────────────────────────────────────────
@@ -710,14 +1146,19 @@ public class CSharpMutationScanner {
             @Override
             public Set<String> supportedKinds() {
                 return Set.of("binary", "predicate", "literal", "identifier", "call", "if", "while", "for", "assign", "block",
-                        "increment");
+                        "increment", "return", "break", "continue", "declare", "for_each", "do_while", "case", "default_case", "throw", "try", "unary", "conditional", "compound_assign", "index", "member", "member_call",
+                        "collection", "lambda", "function", "parameter", "type_check", "cast", "safe_member", "field",
+                        "initialized_new", "with", "yield", "arm", "tuple", "spread", "slice", "interpolation",
+                        "annotation", "await", "where");
             }
 
             @Override
             public Set<String> supportedPlaceholders() {
                 return Set.of("quantity", "match", "statement", "invocation_statement",
                         "return_value", "constructor_call", "non_void_method_call",
-                        "equality_condition", "order_condition");
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "exponential", "based_integer", "string", "char", "boolean",
+                        "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type", "field");
             }
 
             // ── PIT-style placeholders ───────────────────────────────────
@@ -726,7 +1167,8 @@ public class CSharpMutationScanner {
             public boolean matchesPlaceholder(String type, ParseTree ctx) {
                 return switch (type) {
                     case "statement" -> ctx instanceof CSharpParser.StatementContext
-                            || ctx instanceof CSharpParser.Embedded_statementContext;
+                            || ctx instanceof CSharpParser.Embedded_statementContext
+                            || ctx instanceof CSharpParser.Statement_listContext;
                     case "return_value" -> returnedExpression(ctx) && renderValue("empty_value", ctx) != null;
                     case "constructor_call" -> isConstructorCall(ctx);
                     case "non_void_method_call" -> nonVoidCallType(ctx) != null;

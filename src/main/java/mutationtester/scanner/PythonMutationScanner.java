@@ -223,12 +223,79 @@ public class PythonMutationScanner {
             /** Python statements end at the line, without a ';'. */
             @Override
             public String renderStatement(MSLTree tree, MSLBindings.Cursor bindings, ParseTree ctx) {
-                if (tree instanceof MSLNode node && node.kind().equals(MSLNode.ASSIGN)) {
-                    String target = render(node.child(0), bindings, ctx);
-                    String value = render(node.child(1), bindings, ctx);
-                    return target == null || value == null ? null : target + " = " + value;
-                }
                 return render(tree, bindings, ctx);
+            }
+
+            @Override
+            public String renderUnary(String operator, String operand, ParseTree ctx) {
+                return operator.equals("!") ? "not " + operand : operator + operand;
+            }
+
+            /** Python statements: colon and indented body, pass for empty, no C-style for. */
+            @Override
+            public String renderStatementNode(MSLNode node, MSLBindings.Cursor bindings, ParseTree ctx) {
+                switch (node.kind()) {
+                    case MSLNode.IF, MSLNode.WHILE -> {
+                        String condition = render(node.child(0), bindings, ctx);
+                        String body = suite(node.child(1), bindings, ctx);
+                        if (condition == null || body == null) return null;
+                        String head = (node.kind().equals(MSLNode.IF) ? "if " : "while ") + condition + ":" + body;
+                        if (node.children().size() < 3) return head;
+                        String otherwise = suite(node.child(2), bindings, ctx);
+                        return otherwise == null ? null : head + "\nelse:" + otherwise;
+                    }
+                    case MSLNode.BLOCK -> {
+                        List<String> statements = new ArrayList<>();
+                        for (MSLTree child : node.children()) {
+                            String text = renderStatement(child, bindings, ctx);
+                            if (text == null) return null;
+                            statements.add(text);
+                        }
+                        return statements.isEmpty() ? "pass" : String.join("\n", statements);
+                    }
+                    case MSLNode.FOR, MSLNode.DO_WHILE, MSLNode.CASE, MSLNode.DEFAULT_CASE -> {
+                        return null;
+                    }
+                    default -> {
+                        return MSLScannerAdapter.super.renderStatementNode(node, bindings, ctx);
+                    }
+                }
+            }
+
+            /** ":" then the statement on its own lines, indented one level. */
+            private String suite(MSLTree statement, MSLBindings.Cursor bindings, ParseTree ctx) {
+                String text = renderStatement(statement, bindings, ctx);
+                return text == null ? null : "\n    " + text.replace("\n", "\n    ");
+            }
+
+            /** Matched text with its own indentation removed, for re-indenting. */
+            @Override
+            public String boundText(ParseTree node) {
+                String text = getNodeText(node);
+                if (text.indexOf('\n') < 0) return text;
+                List<String> lines = mutationtester.msl.CstNodes.lines(text.strip());
+                int indent = Integer.MAX_VALUE;
+                for (int i = 1; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    if (line.isBlank()) continue;
+                    int n = 0;
+                    while (n < line.length() && line.charAt(n) == ' ') n++;
+                    indent = Math.min(indent, n);
+                }
+                // The first line starts at the node's column; later lines are
+                // indented relative to that.
+                int base = Math.min(indent, Math.max(getTokenPosition(node)[1], 0));
+                StringBuilder out = new StringBuilder(lines.get(0).strip());
+                for (int i = 1; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    out.append('\n').append(line.length() >= base ? line.substring(base) : line.strip());
+                }
+                return out.toString();
+            }
+
+            @Override
+            public String placeLines(String text, ParseTree ctx) {
+                return text.replace("\n", "\n" + getIndentation(ctx));
             }
 
             @Override
@@ -247,12 +314,14 @@ public class PythonMutationScanner {
             public List<ParseTree> matchNode(MSLNode pattern, ParseTree ctx) {
                 switch (pattern.kind()) {
                     case MSLNode.IF -> {
-                        if (ctx instanceof PythonParser.If_stmtContext s) return List.of(s.cond, s.suite());
-                        if (ctx instanceof PythonParser.Elif_clauseContext s) return List.of(s.test(), s.suite());
-                        return null;
+                        return matchIf(pattern, ctx, false);
                     }
                     case MSLNode.WHILE -> {
-                        return ctx instanceof PythonParser.While_stmtContext s ? List.of(s.test(), s.suite()) : null;
+                        if (!(ctx instanceof PythonParser.While_stmtContext s)) return null;
+                        if (pattern.children().size() == 3) {
+                            return s.else_clause() == null ? null : List.of(s.test(), s.suite(), s.else_clause().suite());
+                        }
+                        return List.of(s.test(), s.suite());
                     }
                     case MSLNode.ASSIGN -> {
                         PythonParser.Expr_stmtContext stmt = singleExpressionStatement(ctx);
@@ -268,6 +337,231 @@ public class PythonMutationScanner {
                             return null;
                         }
                         return new ArrayList<>(suite.stmt().subList(0, pattern.children().size()));
+                    }
+                    case MSLNode.UNARY -> {
+                        if (pattern.value().equals("!")) {
+                            return ctx instanceof PythonParser.Logical_testContext t && t.NOT() != null
+                                    && t.logical_test().size() == 1 ? List.of(t.logical_test(0)) : null;
+                        }
+                        if (!(ctx instanceof PythonParser.ExprContext e) || e.op == null || e.expr().size() != 1
+                                || e.getChildCount() != 2) {
+                            return null;
+                        }
+                        String op = e.op.getType() == PythonParser.MINUS ? "-" : e.op.getType() == PythonParser.NOT_OP ? "~" : "";
+                        return op.equals(pattern.value()) ? List.of(e.expr(0)) : null;
+                    }
+                    case MSLNode.CONDITIONAL -> {
+                        return ctx instanceof PythonParser.TestContext t && t.IF() != null
+                                ? List.of(t.logical_test(1), t.logical_test(0), t.test()) : null;
+                    }
+                    case MSLNode.COMPOUND_ASSIGN -> {
+                        PythonParser.Expr_stmtContext stmt = singleExpressionStatement(ctx);
+                        if (stmt == null || stmt.assign_part() == null || stmt.assign_part().op == null
+                                || stmt.assign_part().testlist() == null
+                                || !stmt.assign_part().op.getText().equals(pattern.value())) {
+                            return null;
+                        }
+                        return List.of(stmt.testlist_star_expr(), stmt.assign_part().testlist());
+                    }
+                    case MSLNode.INDEX -> {
+                        PythonParser.TrailerContext last = lastTrailer(ctx);
+                        if (last == null || last.arguments() == null || last.arguments().OPEN_BRACKET() == null
+                                || last.arguments().subscriptlist().subscript().size() != 1) {
+                            return null;
+                        }
+                        PythonParser.SubscriptContext sub = last.arguments().subscriptlist().subscript(0);
+                        if (sub.getChildCount() != 1 || sub.test().size() != 1) return null;
+                        return List.of(receiver(ctx), sub.test(0));
+                    }
+                    case MSLNode.MEMBER -> {
+                        PythonParser.TrailerContext last = lastTrailer(ctx);
+                        return last != null && last.DOT() != null && last.arguments() == null
+                                ? List.of(receiver(ctx), last.name()) : null;
+                    }
+                    case MSLNode.MEMBER_CALL -> {
+                        PythonParser.TrailerContext last = lastTrailer(ctx);
+                        if (last == null || last.DOT() == null || last.arguments() == null
+                                || last.arguments().OPEN_PAREN() == null) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(receiver(ctx), last.name()));
+                        parts.addAll(callArgumentList(last.arguments()));
+                        return parts;
+                    }
+                    case MSLNode.RETURN -> {
+                        if (!(smallStatement(ctx) instanceof PythonParser.Return_stmtContext r)) return null;
+                        return r.testlist() == null ? List.of() : List.of(r.testlist());
+                    }
+                    case MSLNode.BREAK -> {
+                        return smallStatement(ctx) instanceof PythonParser.Break_stmtContext ? List.of() : null;
+                    }
+                    case MSLNode.CONTINUE -> {
+                        return smallStatement(ctx) instanceof PythonParser.Continue_stmtContext ? List.of() : null;
+                    }
+                    case MSLNode.THROW -> {
+                        return smallStatement(ctx) instanceof PythonParser.Raise_stmtContext r && !r.test().isEmpty()
+                                ? List.of(r.test(0)) : null;
+                    }
+                    case MSLNode.FOR_EACH -> {
+                        if (!(ctx instanceof PythonParser.For_stmtContext f)) return null;
+                        if (pattern.children().size() == 4) {
+                            return f.else_clause() == null ? null
+                                    : List.of(f.exprlist(), f.testlist(), f.suite(), f.else_clause().suite());
+                        }
+                        return List.of(f.exprlist(), f.testlist(), f.suite());
+                    }
+                    case MSLNode.TRY -> {
+                        if (!(ctx instanceof PythonParser.Try_stmtContext t)) return null;
+                        return java.util.Arrays.asList(t.suite(),
+                                t.except_clause().isEmpty() ? null : t.except_clause(0).suite(),
+                                t.finally_clause() == null ? null : t.finally_clause().suite());
+                    }
+                    case MSLNode.DECLARE -> {
+                        // A first assignment is a Python variable's declaration.
+                        PythonParser.Expr_stmtContext stmt = singleExpressionStatement(ctx);
+                        if (stmt == null || stmt.assign_part() == null) return null;
+                        PythonParser.Assign_partContext assign = stmt.assign_part();
+                        if (assign.ASSIGN().size() != 1 || assign.testlist_star_expr().size() != 1
+                                || !mutationtester.msl.CstNodes.isName(stmt.testlist_star_expr().getText())) {
+                            return null;
+                        }
+                        return List.of(stmt.testlist_star_expr(), assign.testlist_star_expr(0));
+                    }
+                    case MSLNode.COLLECTION -> {
+                        if (!(ctx instanceof PythonParser.AtomContext a) || a.OPEN_BRACKET() == null) return null;
+                        return a.testlist_comp() == null ? new ArrayList<>() : listElements(a.testlist_comp());
+                    }
+                    case MSLNode.OBJECT -> {
+                        if (!(ctx instanceof PythonParser.AtomContext a) || a.OPEN_BRACE() == null) return null;
+                        if (a.dictorsetmaker() == null) return new ArrayList<>();
+                        return dictEntries(a.dictorsetmaker());
+                    }
+                    case MSLNode.ENTRY -> {
+                        return mutationtester.msl.CstNodes.isSpan(ctx) && ctx.getChildCount() == 3
+                                && ctx.getChild(1).getText().equals(":") ? List.of(ctx.getChild(0), ctx.getChild(2)) : null;
+                    }
+                    case MSLNode.LAMBDA -> {
+                        if (!(ctx instanceof PythonParser.TestContext t) || t.LAMBDA() == null) return null;
+                        List<ParseTree> parts = new ArrayList<>();
+                        if (t.varargslist() != null) {
+                            for (PythonParser.Vardef_parametersContext list : t.varargslist().vardef_parameters()) {
+                                parts.addAll(list.vardef_parameter());
+                            }
+                        }
+                        parts.add(t.test());
+                        return parts;
+                    }
+                    case MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof PythonParser.FuncdefContext f)) return null;
+                        List<ParseTree> parts = new ArrayList<>(List.of(f.name()));
+                        if (f.typedargslist() != null) {
+                            for (PythonParser.Def_parametersContext list : f.typedargslist().def_parameters()) {
+                                parts.addAll(list.def_parameter());
+                            }
+                        }
+                        parts.add(f.suite());
+                        return parts;
+                    }
+                    case MSLNode.PARAMETER -> {
+                        if (ctx instanceof PythonParser.Def_parameterContext d && d.named_parameter() != null) {
+                            return d.test() == null ? List.of(d.named_parameter().name())
+                                    : List.of(d.named_parameter().name(), d.test());
+                        }
+                        if (ctx instanceof PythonParser.Vardef_parameterContext v && v.name() != null) {
+                            return v.test() == null ? List.of(v.name()) : List.of(v.name(), v.test());
+                        }
+                        return null;
+                    }
+                    case MSLNode.TYPE_CHECK -> {
+                        List<ParseTree> args = callArguments(ctx, "isinstance");
+                        return args != null && args.size() == 2 ? args : null;
+                    }
+                    case MSLNode.FIELD -> {
+                        // An assignment directly in a class body.
+                        PythonParser.Expr_stmtContext stmt = singleExpressionStatement(ctx);
+                        if (stmt == null || stmt.assign_part() == null || !isClassLevel(stmt)) return null;
+                        PythonParser.Assign_partContext assign = stmt.assign_part();
+                        if (assign.ASSIGN().size() != 1 || assign.testlist_star_expr().size() != 1) return null;
+                        return List.of(stmt.testlist_star_expr(), assign.testlist_star_expr(0));
+                    }
+                    case MSLNode.ASSERT -> {
+                        return smallStatement(ctx) instanceof PythonParser.Assert_stmtContext a ? List.of(a.test(0)) : null;
+                    }
+                    case MSLNode.WITH -> {
+                        return ctx instanceof PythonParser.With_stmtContext w && w.with_item().size() == 1
+                                ? List.of(w.with_item(0), w.suite()) : null;
+                    }
+                    case MSLNode.YIELD -> {
+                        ParseTree s = smallStatement(ctx);
+                        PythonParser.Yield_exprContext y = s instanceof PythonParser.Yield_stmtContext ys ? ys.yield_expr()
+                                : ctx instanceof PythonParser.Yield_exprContext ye ? ye : null;
+                        if (y == null) return null;
+                        return y.yield_arg() == null ? List.of() : List.of(y.yield_arg());
+                    }
+                    case MSLNode.MEMBERSHIP -> {
+                        if (!(ctx instanceof PythonParser.ComparisonContext c) || c.IN() == null || c.comparison().size() != 2) return null;
+                        boolean negated = c.optional != null;
+                        return negated == pattern.value().equals("not in") ? List.of(c.comparison(0), c.comparison(1)) : null;
+                    }
+                    case MSLNode.SLICE -> {
+                        PythonParser.TrailerContext last = lastTrailer(ctx);
+                        if (last == null || last.arguments() == null || last.arguments().OPEN_BRACKET() == null
+                                || last.arguments().subscriptlist().subscript().size() != 1) {
+                            return null;
+                        }
+                        PythonParser.SubscriptContext sub = last.arguments().subscriptlist().subscript(0);
+                        if (sub.COLON() == null || sub.sliceop() != null) return null;
+                        ParseTree from = null;
+                        ParseTree to = null;
+                        boolean afterColon = false;
+                        for (int i = 0; i < sub.getChildCount(); i++) {
+                            if (sub.getChild(i) == sub.COLON()) afterColon = true;
+                            else if (afterColon) to = sub.getChild(i);
+                            else from = sub.getChild(i);
+                        }
+                        return java.util.Arrays.asList(receiver(ctx), from, to);
+                    }
+                    case MSLNode.TUPLE -> {
+                        // a, b on either side of an assignment
+                        if (!(ctx instanceof PythonParser.Testlist_star_exprContext || ctx instanceof PythonParser.TestlistContext)
+                                || ctx.getChildCount() < 3) {
+                            return null;
+                        }
+                        List<ParseTree> elements = new ArrayList<>();
+                        for (int i = 0; i < ctx.getChildCount(); i++) {
+                            if (!(ctx.getChild(i) instanceof TerminalNode)) elements.add(ctx.getChild(i));
+                        }
+                        return elements;
+                    }
+                    case MSLNode.SPREAD -> {
+                        if (ctx instanceof PythonParser.Star_exprContext s) return List.of(s.expr());
+                        return ctx instanceof PythonParser.ArgumentContext a && a.STAR() != null ? List.of(a.test(0)) : null;
+                    }
+                    case MSLNode.DELETE -> {
+                        return smallStatement(ctx) instanceof PythonParser.Del_stmtContext d ? List.of(d.exprlist()) : null;
+                    }
+                    case MSLNode.ANNOTATION -> {
+                        return ctx instanceof PythonParser.DecoratorContext d && d.arglist() == null && d.OPEN_PAREN() == null
+                                ? List.of(d.dotted_name()) : null;
+                    }
+                    case MSLNode.AWAIT -> {
+                        if (!(ctx instanceof PythonParser.ExprContext e) || e.AWAIT() == null) return null;
+                        List<ParseTree> parts = new ArrayList<>(List.of(e.atom()));
+                        parts.addAll(e.trailer());
+                        return List.of(mutationtester.msl.CstNodes.span(parts));
+                    }
+                    case MSLNode.COMPREHENSION -> {
+                        if (!(ctx instanceof PythonParser.AtomContext a) || a.OPEN_BRACKET() == null || a.testlist_comp() == null
+                                || a.testlist_comp().comp_for() == null) {
+                            return null;
+                        }
+                        PythonParser.Comp_forContext loop = a.testlist_comp().comp_for();
+                        List<ParseTree> parts = new ArrayList<>(List.of(a.testlist_comp().getChild(0), loop.exprlist(),
+                                loop.logical_test()));
+                        PythonParser.Comp_iterContext rest = loop.comp_iter();
+                        if (rest != null && (rest.comp_for() != null || rest.comp_iter() != null)) return null;
+                        if (rest != null) parts.add(rest.test());
+                        return parts;
                     }
                     default -> {
                         return MSLScannerAdapter.super.matchNode(pattern, ctx);
@@ -288,6 +582,246 @@ public class PythonMutationScanner {
                     p = simple.small_stmt(0);
                 }
                 return p instanceof PythonParser.Expr_stmtContext e ? e : null;
+            }
+
+            /** The last trailer of atom trailer*, for indexing, member access and calls. */
+            private PythonParser.TrailerContext lastTrailer(ParseTree ctx) {
+                if (!(ctx instanceof PythonParser.ExprContext e) || e.atom() == null || e.trailer().isEmpty()
+                        || e.AWAIT() != null) {
+                    return null;
+                }
+                return e.trailer(e.trailer().size() - 1);
+            }
+
+            /** Everything before the last trailer: a.b in a.b.c(x), as one node. */
+            private ParseTree receiver(ParseTree ctx) {
+                PythonParser.ExprContext e = (PythonParser.ExprContext) ctx;
+                List<ParseTree> parts = new ArrayList<>(List.of(e.atom()));
+                parts.addAll(e.trailer().subList(0, e.trailer().size() - 1));
+                return mutationtester.msl.CstNodes.span(parts);
+            }
+
+            private List<ParseTree> callArgumentList(PythonParser.ArgumentsContext call) {
+                return call.arglist() == null ? List.of() : new ArrayList<>(call.arglist().argument());
+            }
+
+            /** f(a, b): [f, a, b], when the call is the last trailer. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                PythonParser.TrailerContext last = lastTrailer(ctx);
+                if (last == null || last.DOT() != null || last.arguments() == null
+                        || last.arguments().OPEN_PAREN() == null) {
+                    return null;
+                }
+                List<ParseTree> parts = new ArrayList<>(List.of(receiver(ctx)));
+                parts.addAll(callArgumentList(last.arguments()));
+                return parts;
+            }
+
+            @Override
+            public String renderConditional(String condition, String then, String otherwise, ParseTree ctx) {
+                return "(" + then + " if " + condition + " else " + otherwise + ")";
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.PYTHON, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                return Literals.convert(Literals.Lang.PYTHON, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            /** [condition, body, else]; an elif's else is the next elif or the else suite. */
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (ctx instanceof PythonParser.If_stmtContext s) {
+                    ParseTree otherwise = !s.elif_clause().isEmpty() ? s.elif_clause(0)
+                            : s.else_clause() == null ? null : s.else_clause().suite();
+                    return java.util.Arrays.asList(s.cond, s.suite(), otherwise);
+                }
+                if (ctx instanceof PythonParser.Elif_clauseContext e && e.getParent() instanceof PythonParser.If_stmtContext s) {
+                    int i = s.elif_clause().indexOf(e);
+                    ParseTree otherwise = i + 1 < s.elif_clause().size() ? s.elif_clause(i + 1)
+                            : s.else_clause() == null ? null : s.else_clause().suite();
+                    return java.util.Arrays.asList(e.test(), e.suite(), otherwise);
+                }
+                return null;
+            }
+
+            /** The small statement (return, break, raise, ...) a statement line holds, or ctx. */
+            private ParseTree smallStatement(ParseTree ctx) {
+                ParseTree p = ctx;
+                if (p instanceof PythonParser.StmtContext stmt && stmt.simple_stmt() != null) p = stmt.simple_stmt();
+                if (p instanceof PythonParser.Simple_stmtContext simple && simple.small_stmt().size() == 1) {
+                    p = simple.small_stmt(0);
+                }
+                return p;
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                return ctx instanceof PythonParser.SuiteContext suite && suite.INDENT() != null;
+            }
+
+            @Override
+            public String emptyBlock(ParseTree ctx) {
+                return "pass";
+            }
+
+            @Override
+            public String renderThrow(String value, ParseTree ctx) {
+                return "raise " + value;
+            }
+
+            @Override
+            public String renderDeclaration(String name, String value, ParseTree ctx) {
+                return name + " = " + value;
+            }
+
+            @Override
+            public String renderForEach(String name, String collection, String body, ParseTree ctx) {
+                return "for " + name + " in " + collection + ":\n    " + body.replace("\n", "\n    ");
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            /** [1, 2]: its elements, unless it is a comprehension. */
+            private List<ParseTree> listElements(PythonParser.Testlist_compContext list) {
+                if (list.comp_for() != null) return null;
+                List<ParseTree> elements = new ArrayList<>();
+                for (int i = 0; i < list.getChildCount(); i++) {
+                    if (!(list.getChild(i) instanceof TerminalNode)) elements.add(list.getChild(i));
+                }
+                return elements;
+            }
+
+            /** {k: v, ...}: each k: v as one node. */
+            private List<ParseTree> dictEntries(PythonParser.DictorsetmakerContext dict) {
+                List<ParseTree> entries = new ArrayList<>();
+                for (int i = 0; i + 2 < dict.getChildCount(); i++) {
+                    if (dict.getChild(i + 1).getText().equals(":")) {
+                        entries.add(mutationtester.msl.CstNodes.span(List.of(dict.getChild(i), dict.getChild(i + 1), dict.getChild(i + 2))));
+                        i += 2;
+                    } else if (!(dict.getChild(i) instanceof TerminalNode)) {
+                        return null;   // a set, a comprehension or **unpacking
+                    }
+                }
+                return entries;
+            }
+
+            private boolean isClassLevel(ParseTree stmt) {
+                ParseTree p = stmt.getParent();
+                for (int depth = 0; p != null && depth < 5; depth++, p = p.getParent()) {
+                    if (p instanceof PythonParser.ClassdefContext) return true;
+                    if (p instanceof PythonParser.FuncdefContext) return false;
+                }
+                return false;
+            }
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return ctx instanceof PythonParser.TestContext t && t.LAMBDA() != null;
+            }
+
+            /** A type in an annotation, or the class isinstance tests for. */
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                if (!isName(ctx)) return false;
+                ParseTree child = ctx;
+                for (ParseTree p = ctx.getParent(); p != null; child = p, p = p.getParent()) {
+                    if (p instanceof PythonParser.Named_parameterContext n) return n.test() == child;
+                    if (p instanceof PythonParser.FuncdefContext f) return f.test() == child;
+                    if (p instanceof PythonParser.StmtContext) return false;
+                    if (p instanceof PythonParser.ArglistContext) {
+                        // arglist < arguments < trailer < expr: the isinstance(...) call
+                        ParseTree call = p;
+                        while (call != null && !(call instanceof PythonParser.ExprContext)) call = call.getParent();
+                        List<ParseTree> isinstance = callArguments(call, "isinstance");
+                        return isinstance != null && isinstance.size() == 2 && isSameNode(isinstance.get(1), ctx);
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public boolean isField(ParseTree ctx) {
+                return ctx instanceof PythonParser.Expr_stmtContext stmt && stmt.assign_part() != null && isClassLevel(stmt);
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return ctx instanceof PythonParser.AtomContext a && a.OPEN_BRACE() != null ? "{}" : "[]";
+            }
+
+            @Override
+            public String renderObject(List<String> entries, ParseTree ctx) {
+                return "{" + String.join(", ", entries) + "}";
+            }
+
+            @Override
+            public String renderLambda(List<String> parameters, String body, ParseTree ctx) {
+                return parameters.isEmpty() ? "lambda: " + body : "lambda " + String.join(", ", parameters) + ": " + body;
+            }
+
+            /** Keeps the annotation: x: int=5. */
+            @Override
+            public String renderParameter(String name, String defaultValue, ParseTree ctx) {
+                String annotation = ctx instanceof PythonParser.Def_parameterContext d && d.named_parameter() != null
+                        && d.named_parameter().test() != null ? ": " + getNodeText(d.named_parameter().test()) : "";
+                return name + annotation + (defaultValue == null ? "" : "=" + defaultValue);
+            }
+
+            @Override
+            public String renderTypeCheck(String value, String type, ParseTree ctx) {
+                return "isinstance(" + value + ", " + type + ")";
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            @Override
+            public String renderKeywordStatement(String kind, String value, ParseTree ctx) {
+                return switch (kind) {
+                    case "assert" -> "assert " + value;
+                    case "delete" -> "del " + value;
+                    case "annotation" -> "@" + value;
+                    default -> null;
+                };
+            }
+
+            @Override
+            public String renderMembership(String operator, String item, String container, ParseTree ctx) {
+                return item + " " + operator + " " + container;
+            }
+
+            @Override
+            public String renderTuple(List<String> elements, ParseTree ctx) {
+                return String.join(", ", elements);
+            }
+
+            @Override
+            public String renderSpread(String value, ParseTree ctx) {
+                return "*" + value;
+            }
+
+            @Override
+            public String renderSlice(String collection, String from, String to, ParseTree ctx) {
+                return collection + "[" + from + ":" + to + "]";
+            }
+
+            // ── Language-only ───────────────────────────────────────────────
+
+            @Override
+            public String renderComprehension(List<String> parts, ParseTree ctx) {
+                return "[" + parts.get(0) + " for " + parts.get(1) + " in " + parts.get(2)
+                        + (parts.size() > 3 ? " if " + parts.get(3) : "") + "]";
             }
 
             // ── Increments ───────────────────────────────────────────────
@@ -315,22 +849,31 @@ public class PythonMutationScanner {
                 // x += 1 is a statement itself; foo() is an expression inside one.
                 if (ctx instanceof PythonParser.Expr_stmtContext stmt) return stmt;
                 ParseTree p = ctx;
-                while (p.getParent() != null && p.getParent().getChildCount() == 1) p = p.getParent();
-                return p.getParent() instanceof PythonParser.Expr_stmtContext stmt && stmt.assign_part() == null
-                        ? stmt : null;
+                while (!(p instanceof PythonParser.Expr_stmtContext) && p.getParent() != null
+                        && p.getParent().getChildCount() == 1) {
+                    p = p.getParent();
+                }
+                return p instanceof PythonParser.Expr_stmtContext stmt && stmt.assign_part() == null ? stmt : null;
             }
 
             @Override
             public java.util.Set<String> supportedKinds() {
                 return java.util.Set.of("binary", "predicate", "literal", "identifier", "call",
-                        "if", "while", "assign", "block", "increment");
+                        "if", "while", "assign", "block", "increment", "return", "break", "continue", "declare", "for_each",
+                        "throw", "try",
+                        "unary", "conditional", "compound_assign", "index", "member", "member_call",
+                        "collection", "object", "entry", "lambda", "function", "parameter", "type_check", "field",
+                        "assert", "with", "yield", "membership", "slice", "tuple", "spread", "delete", "annotation", "await",
+                        "comprehension");
             }
 
             @Override
             public java.util.Set<String> supportedPlaceholders() {
                 return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
                         "return_value", "constructor_call", "non_void_method_call",
-                        "equality_condition", "order_condition");
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "exponential", "based_integer", "complex", "string", "bytes",
+                        "boolean", "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type", "field");
             }
 
             // ── PIT-style placeholders ───────────────────────────────────

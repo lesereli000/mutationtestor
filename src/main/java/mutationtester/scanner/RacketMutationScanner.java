@@ -1016,15 +1016,54 @@ public class RacketMutationScanner {
                 return buildCall(node.value(), List.of(left, right));
             }
 
+            /** Racket forms need no terminator. */
             @Override
             public String renderStatement(mutationtester.msl.MSLTree tree, mutationtester.msl.MSLBindings.Cursor bindings,
                                           ParseTree ctx) {
-                if (tree instanceof mutationtester.msl.MSLNode node && node.kind().equals(mutationtester.msl.MSLNode.ASSIGN)) {
-                    String target = render(node.child(0), bindings, ctx);
-                    String value = render(node.child(1), bindings, ctx);
-                    return target == null || value == null ? null : "(set! " + target + " " + value + ")";
-                }
                 return render(tree, bindings, ctx);
+            }
+
+            @Override
+            public String renderCall(String function, List<String> arguments, ParseTree ctx) {
+                return arguments.isEmpty() ? "(" + function + ")" : "(" + function + " " + String.join(" ", arguments) + ")";
+            }
+
+            @Override
+            public String renderUnary(String operator, String operand, ParseTree ctx) {
+                return switch (operator) {
+                    case "!" -> "(not " + operand + ")";
+                    case "-" -> "(- " + operand + ")";
+                    case "~" -> "(bitwise-not " + operand + ")";
+                    default -> null;
+                };
+            }
+
+            /** Racket forms: (set! x v), (if c a b), (begin ...), (void); no loops, if needs an else. */
+            @Override
+            public String renderStatementNode(mutationtester.msl.MSLNode node,
+                                              mutationtester.msl.MSLBindings.Cursor bindings, ParseTree ctx) {
+                List<String> parts = new ArrayList<>();
+                for (mutationtester.msl.MSLTree child : node.children()) {
+                    String part = render(child, bindings, ctx);
+                    if (part == null) return null;
+                    parts.add(part);
+                }
+                return switch (node.kind()) {
+                    case mutationtester.msl.MSLNode.ASSIGN -> "(set! " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.IF -> parts.size() == 3
+                            ? "(if " + parts.get(0) + " " + parts.get(1) + " " + parts.get(2) + ")" : null;
+                    case mutationtester.msl.MSLNode.BLOCK -> parts.isEmpty() ? "(void)" : "(begin " + String.join(" ", parts) + ")";
+                    case mutationtester.msl.MSLNode.EMPTY -> getEmptyStatement(ctx);
+                    // A function's result is its last form, so return v is just v.
+                    case mutationtester.msl.MSLNode.RETURN -> parts.isEmpty() ? null : parts.get(0);
+                    case mutationtester.msl.MSLNode.THROW -> "(raise " + parts.get(0) + ")";
+                    case mutationtester.msl.MSLNode.DECLARE -> isLetBindingValue(ctx) ? parts.get(1)
+                            : "(define " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.WHEN, mutationtester.msl.MSLNode.UNLESS ->
+                            "(" + node.kind() + " " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.FOR_EACH -> "(for ((" + parts.get(0) + " " + parts.get(1) + ")) " + parts.get(2) + ")";
+                    default -> null;
+                };
             }
 
             /** (f a b): its arguments, when f is the named function. */
@@ -1061,24 +1100,339 @@ public class RacketMutationScanner {
             public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
                 switch (pattern.kind()) {
                     case mutationtester.msl.MSLNode.IF -> {
-                        return isApplication(ctx, 2) && head(ctx).equals("if") && ctx.getChildCount() >= 5
-                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                        return matchIf(pattern, ctx, false);
                     }
                     case mutationtester.msl.MSLNode.ASSIGN -> {
-                        if (isApplication(ctx, 2) && head(ctx).equals("set!") && ctx.getChildCount() == 5) {
-                            return List.of(ctx.getChild(2), ctx.getChild(3));
+                        return isApplication(ctx, 2) && head(ctx).equals("set!") && ctx.getChildCount() == 5
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.UNARY -> {
+                        String function = switch (pattern.value()) {
+                            case "!" -> "not";
+                            case "-" -> "-";
+                            case "~" -> "bitwise-not";
+                            default -> null;
+                        };
+                        List<ParseTree> args = function == null ? null : callArguments(ctx, function);
+                        return args != null && args.size() == 1 ? args : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONDITIONAL -> {
+                        return isApplication(ctx, 3) && head(ctx).equals("if") && ctx.getChildCount() == 6
+                                ? List.of(ctx.getChild(2), ctx.getChild(3), ctx.getChild(4)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INDEX -> {
+                        if (!isApplication(ctx, 2) || ctx.getChildCount() != 5) return null;
+                        String h = head(ctx);
+                        return h.equals("list-ref") || h.equals("vector-ref") || h.equals("string-ref")
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.RETURN -> {
+                        return isFunctionResult(ctx) ? List.of(ctx) : null;
+                    }
+                    case mutationtester.msl.MSLNode.THROW -> {
+                        if (!isApplication(ctx, 1)) return null;
+                        String h = head(ctx);
+                        return h.equals("raise") || h.equals("error") ? List.of(ctx.getChild(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DECLARE -> {
+                        // a [name value] binding of let, let* or letrec, matched at its value
+                        if (isLetBindingValue(ctx)) {
+                            ParseTree p = ctx.getParent();
+                            for (int i = 0; i < p.getChildCount(); i++) {
+                                if (p.getChild(i) == ctx) return List.of(p.getChild(i - 1), ctx);
+                            }
                         }
-                        ParseTree parent = ctx.getParent();
-                        if (isApplication(parent, 2) && head(parent).equals("if") && parent.getChildCount() == 6
-                                && parent.getChild(3) == ctx) {
-                            return List.of(parent.getChild(4), ctx);
+                        return ctx instanceof ISLParser.DefinitionContext d && d.getChildCount() == 5
+                                && d.getChild(1).getText().equals("define") && !d.getChild(2).getText().equals("(")
+                                ? List.of(d.getChild(2), d.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR_EACH -> {
+                        // (for ([x xs]) body)
+                        ParseTree[] binding = singleBinding(ctx, "for");
+                        return binding == null ? null : List.of(binding[0], binding[1], ctx.getChild(3));
+                    }
+                    case mutationtester.msl.MSLNode.TRY -> {
+                        // (with-handlers ([predicate handler]) body)
+                        ParseTree[] binding = singleBinding(ctx, "with-handlers");
+                        return binding == null ? null : java.util.Arrays.asList(ctx.getChild(3), binding[1], null);
+                    }
+                    case mutationtester.msl.MSLNode.COLLECTION -> {
+                        return isApplication(ctx, 0) && (head(ctx).equals("list") || head(ctx).equals("vector"))
+                                ? callParts(ctx).subList(1, ctx.getChildCount() - 2) : null;
+                    }
+                    case mutationtester.msl.MSLNode.OBJECT -> {
+                        if (!isApplication(ctx, 0) || !head(ctx).equals("hash") || (ctx.getChildCount() - 3) % 2 != 0) return null;
+                        List<ParseTree> entries = new ArrayList<>();
+                        for (int i = 2; i + 1 < ctx.getChildCount() - 1; i += 2) {
+                            entries.add(mutationtester.msl.CstNodes.span(List.of(ctx.getChild(i), ctx.getChild(i + 1))));
                         }
-                        return null;
+                        return entries;
+                    }
+                    case mutationtester.msl.MSLNode.ENTRY -> {
+                        return mutationtester.msl.CstNodes.isSpan(ctx) && ctx.getChildCount() == 2
+                                ? List.of(ctx.getChild(0), ctx.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LAMBDA -> {
+                        if (!isApplication(ctx, 1) || !(head(ctx).equals("lambda") || head(ctx).equals("\u03BB"))) return null;
+                        List<ParseTree> parts = parameterNames(ctx, 2);
+                        // One body form: ( lambda ( names... ) body ), or ( lambda () body )
+                        int oneBody = ctx.getChild(2).getText().equals("()") ? 5 : (parts == null ? 0 : parts.size()) + 6;
+                        if (parts == null || ctx.getChildCount() != oneBody) return null;
+                        ParseTree body = ctx.getChild(ctx.getChildCount() - 2);
+                        parts.add(body);
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof ISLParser.DefinitionContext d) || !d.getChild(1).getText().equals("define")
+                                || !d.getChild(2).getText().equals("(")) {
+                            return null;
+                        }
+                        List<ParseTree> params = parameterNames(d, 2);
+                        if (params == null || params.isEmpty()) return null;
+                        List<ParseTree> parts = new ArrayList<>(params);
+                        int bodyStart = 2 + params.size() + 2;
+                        List<ParseTree> body = new ArrayList<>();
+                        for (int i = bodyStart; i < d.getChildCount() - 1; i++) body.add(d.getChild(i));
+                        if (body.isEmpty()) return null;
+                        parts.add(mutationtester.msl.CstNodes.span(body));
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.PARAMETER -> {
+                        return isParameterName(ctx) ? List.of(ctx) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TYPE_CHECK -> {
+                        return isApplication(ctx, 1) && ctx.getChildCount() == 4 && head(ctx).endsWith("?")
+                                ? List.of(ctx.getChild(2), ctx.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.ARM -> {
+                        // a (pattern value) clause of (match v clause ...)
+                        ParseTree p = ctx.getParent();
+                        return ctx.getChildCount() == 4 && isApplication(p, 1) && head(p).equals("match")
+                                && p.getChild(2) != ctx ? List.of(ctx.getChild(1), ctx.getChild(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WHEN, mutationtester.msl.MSLNode.UNLESS -> {
+                        return isApplication(ctx, 2) && ctx.getChildCount() == 5 && head(ctx).equals(pattern.kind())
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
                     }
                     default -> {
                         return MSLScannerAdapter.super.matchNode(pattern, ctx);
                     }
                 }
+            }
+
+            /** In Except: only, (if c v x) also reads as "if (c) x = v", covering clamps. */
+            @Override
+            public List<ParseTree> matchNodeInExcept(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                if (pattern.kind().equals(mutationtester.msl.MSLNode.ASSIGN)) {
+                    ParseTree parent = ctx.getParent();
+                    if (isApplication(parent, 2) && head(parent).equals("if") && parent.getChildCount() == 6
+                            && parent.getChild(3) == ctx) {
+                        return List.of(parent.getChild(4), ctx);
+                    }
+                }
+                return MSLScannerAdapter.super.matchNodeInExcept(pattern, ctx);
+            }
+
+            /** (f a b): [f, a, b]. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                if (!isApplication(ctx, 0) || !ctx.getChild(0).getText().equals("(")) return null;
+                List<ParseTree> parts = new ArrayList<>();
+                for (int i = 1; i < ctx.getChildCount() - 1; i++) parts.add(ctx.getChild(i));
+                return parts;
+            }
+
+            @Override
+            public String joinArguments(List<ParseTree> arguments, ParseTree ctx) {
+                List<String> texts = new ArrayList<>();
+                for (ParseTree argument : arguments) texts.add(boundText(argument));
+                return String.join(" ", texts);
+            }
+
+            @Override
+            public String renderConditional(String condition, String then, String otherwise, ParseTree ctx) {
+                return "(if " + condition + " " + then + " " + otherwise + ")";
+            }
+
+            /** (list-ref l i), or the original's own -ref form. */
+            @Override
+            public String renderIndex(String collection, String index, ParseTree ctx) {
+                String h = isApplication(ctx, 2) ? head(ctx) : "";
+                String form = h.equals("vector-ref") || h.equals("string-ref") ? h : "list-ref";
+                return "(" + form + " " + collection + " " + index + ")";
+            }
+
+            @Override
+            public String renderMember(String object, String member, ParseTree ctx) {
+                return null;
+            }
+
+            @Override
+            public String renderMemberCall(String object, String method, List<String> arguments, ParseTree ctx) {
+                return null;
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.RACKET, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                return Literals.convert(Literals.Lang.RACKET, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            /** (if c a b) always has an else; (when c s) is Racket's if without one. */
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (isApplication(ctx, 3) && head(ctx).equals("if") && ctx.getChildCount() == 6) {
+                    return java.util.Arrays.asList(ctx.getChild(2), ctx.getChild(3), ctx.getChild(4));
+                }
+                if (isApplication(ctx, 2) && head(ctx).equals("when") && ctx.getChildCount() == 5) {
+                    return java.util.Arrays.asList(ctx.getChild(2), ctx.getChild(3), null);
+                }
+                return null;
+            }
+
+            /** The value a function returns: the last form of a define or lambda body. */
+            private boolean isFunctionResult(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                if (parent == null || parent.getChildCount() < 4 || parent.getChild(parent.getChildCount() - 2) != ctx) {
+                    return false;
+                }
+                if (parent instanceof ISLParser.DefinitionContext d) {
+                    return d.getChild(1).getText().equals("define") && d.getChild(2).getText().equals("(");
+                }
+                String h = isApplication(parent, 1) ? head(parent) : "";
+                return h.equals("lambda") || h.equals("\u03BB");
+            }
+
+            /** [name, value] of the one binding in (form ([name value]) body). */
+            private ParseTree[] singleBinding(ParseTree ctx, String form) {
+                if (!isApplication(ctx, 2) || ctx.getChildCount() != 5 || !head(ctx).equals(form)) return null;
+                ParseTree bindings = ctx.getChild(2);
+                if (bindings.getChildCount() != 3) return null;
+                ParseTree binding = bindings.getChild(1);
+                return binding.getChildCount() == 4 ? new ParseTree[]{binding.getChild(1), binding.getChild(2)} : null;
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                // (begin ...), or a function's body forms
+                if (isApplication(ctx, 1) && head(ctx).equals("begin") || mutationtester.msl.CstNodes.isSpan(ctx)) return true;
+                // the one body form of (define (f ...) body)
+                return ctx.getParent() instanceof ISLParser.DefinitionContext d && d.getChild(2).getText().equals("(")
+                        && d.getChildCount() >= 5 && d.getChild(d.getChildCount() - 2) == ctx
+                        && d.getChild(d.getChildCount() - 3).getText().equals(")");
+            }
+
+            @Override
+            public String emptyBlock(ParseTree ctx) {
+                return "(void)";
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            /** The names in the "(...)" at {@code open}: (define (f a b) ...) or (lambda (a b) ...). */
+            private List<ParseTree> parameterNames(ParseTree form, int open) {
+                if (form.getChildCount() <= open) return null;
+                if (form.getChild(open).getText().equals("()")) return new ArrayList<>();
+                if (!form.getChild(open).getText().equals("(")) return null;
+                List<ParseTree> names = new ArrayList<>();
+                for (int i = open + 1; i < form.getChildCount() && !form.getChild(i).getText().equals(")"); i++) {
+                    names.add(form.getChild(i));
+                }
+                return names;
+            }
+
+            /** A parameter name in a (define (f a b) ...) header (not f) or a lambda's list. */
+            private boolean isParameterName(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                if (p == null) return false;
+                if (ctx instanceof ISLParser.NameContext && p.getParent() instanceof ISLParser.DefinitionContext) return false;
+                ParseTree form = p instanceof ISLParser.NameContext ? p.getParent() : p;
+                if (!(ctx instanceof TerminalNode) || form == null) return false;
+                if (form instanceof ISLParser.DefinitionContext d && d.getChild(2).getText().equals("(")) {
+                    List<ParseTree> names = parameterNames(d, 2);
+                    return names != null && names.indexOf(ctx) > 0;
+                }
+                if (isApplication(form, 1) && (head(form).equals("lambda") || head(form).equals("\u03BB"))) {
+                    List<ParseTree> names = parameterNames(form, 2);
+                    return names != null && names.contains(ctx);
+                }
+                return false;
+            }
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return isApplication(ctx, 1) && (head(ctx).equals("lambda") || head(ctx).equals("\u03BB"));
+            }
+
+            /** A predicate's name, the "type" of (number? x). */
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                return p != null && isApplication(p, 1) && p.getChildCount() == 4 && p.getChild(1) == ctx
+                        && ctx.getText().endsWith("?");
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return isApplication(ctx, 0) && head(ctx).equals("hash") ? "(hash)" : "'()";
+            }
+
+            @Override
+            public String renderCollection(List<String> elements, ParseTree ctx) {
+                return elements.isEmpty() ? "'()" : "(list " + String.join(" ", elements) + ")";
+            }
+
+            @Override
+            public String renderObject(List<String> entries, ParseTree ctx) {
+                return entries.isEmpty() ? "(hash)" : "(hash " + String.join(" ", entries) + ")";
+            }
+
+            @Override
+            public String renderEntry(String key, String value, ParseTree ctx) {
+                return key + " " + value;
+            }
+
+            @Override
+            public String renderLambda(List<String> parameters, String body, ParseTree ctx) {
+                return "(lambda (" + String.join(" ", parameters) + ") " + body + ")";
+            }
+
+            @Override
+            public String renderTypeCheck(String value, String type, ParseTree ctx) {
+                return "(" + type + " " + value + ")";
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            @Override
+            public String renderArm(String pattern, String value, ParseTree ctx) {
+                return "(" + pattern + " " + value + ")";
+            }
+
+            // ── Language-only ───────────────────────────────────────────────
+
+            /** The value of a [name value] binding in (let ([name value] ...) body). */
+            private boolean isLetBindingValue(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                if (p == null || p.getChildCount() < 4) return false;
+                String form = p.getChild(1).getText();
+                if (!form.equals("let") && !form.equals("let*") && !form.equals("letrec")) return false;
+                for (int i = 2; i + 1 < p.getChildCount(); i++) {
+                    if (p.getChild(i) == ctx) {
+                        return p.getChild(i - 2).getText().equals("[") && p.getChild(i + 1).getText().equals("]");
+                    }
+                }
+                return false;
             }
 
             // ── Increments ───────────────────────────────────────────────
@@ -1099,14 +1453,17 @@ public class RacketMutationScanner {
             @Override
             public java.util.Set<String> supportedKinds() {
                 return java.util.Set.of("binary", "predicate", "literal", "identifier", "call", "if", "assign",
-                        "increment");
+                        "increment", "unary", "conditional", "index", "return", "declare", "for_each", "throw", "try",
+                        "collection", "object", "entry", "lambda", "function", "parameter", "type_check", "arm", "when", "unless");
             }
 
             @Override
             public java.util.Set<String> supportedPlaceholders() {
                 return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
                         "return_value", "constructor_call", "non_void_method_call",
-                        "equality_condition", "order_condition");
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "based_integer", "rational", "string", "char", "boolean",
+                        "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type");
             }
 
             // ── PIT-style placeholders ───────────────────────────────────

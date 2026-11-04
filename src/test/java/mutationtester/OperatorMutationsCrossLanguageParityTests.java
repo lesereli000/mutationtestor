@@ -185,9 +185,8 @@ class OperatorMutationsCrossLanguageParityTests {
         for (MutationPoint point : points) {
             sections.add(point.getCustomLabel().substring(0, point.getCustomLabel().indexOf(':')));
         }
-        // Invert Negation (!{quantity}) is absent: no adapter matches unary ! yet.
-        assertEquals(s("Conditionals Boundary", "Logical Operand Removal", "Logical Operators", "Math Operators",
-                        "Negate Conditionals"),
+        assertEquals(s("Conditionals Boundary", "Invert Negation", "Logical Operand Removal", "Logical Operators",
+                        "Math Operators", "Negate Conditionals"),
                 sections);
     }
 

@@ -82,6 +82,13 @@ public class JavaScriptMutationScanner {
 
             @Override
             public OperatorEdit createOperatorEdit(ParseTree ctx, String fromOperator, String toOperator) {
+                // A rule written for === or !== means exactly that operator, so its
+                // replacement is written as given: === becomes ==.
+                if (fromOperator.equals("===") || fromOperator.equals("!==")) {
+                    ParseTree op = getOperatorToken(ctx);
+                    int[] pos = getTokenPosition(op);
+                    return new OperatorEdit(pos[0], pos[1], getNodeText(op), toOperator);
+                }
                 ParseTree floor = floorDivision(ctx);
                 boolean fromFloor = fromOperator.equals("//") && floor != null;
                 if (!fromFloor && !toOperator.equals("//")) {
@@ -250,9 +257,7 @@ public class JavaScriptMutationScanner {
             public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
                 switch (pattern.kind()) {
                     case mutationtester.msl.MSLNode.IF -> {
-                        ParseTree s = statementBody(ctx);
-                        return s instanceof JavaScriptParser.IfStatementContext i
-                                ? List.of(i.expressionSequence(), i.statement(0)) : null;
+                        return matchIf(pattern, ctx, false);
                     }
                     case mutationtester.msl.MSLNode.WHILE -> {
                         ParseTree s = statementBody(ctx);
@@ -292,6 +297,182 @@ public class JavaScriptMutationScanner {
                         }
                         return new ArrayList<>(b.statementList().statement().subList(0, pattern.children().size()));
                     }
+                    case mutationtester.msl.MSLNode.UNARY -> {
+                        boolean fits = switch (pattern.value()) {
+                            case "!" -> ctx instanceof JavaScriptParser.NotExpressionContext;
+                            case "-" -> ctx instanceof JavaScriptParser.UnaryMinusExpressionContext;
+                            case "~" -> ctx instanceof JavaScriptParser.BitNotExpressionContext;
+                            default -> false;
+                        };
+                        return fits ? List.of(((JavaScriptParser.SingleExpressionContext) ctx).getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONDITIONAL -> {
+                        return ctx instanceof JavaScriptParser.TernaryExpressionContext t
+                                ? List.of(t.singleExpression(0), t.singleExpression(1), t.singleExpression(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.COMPOUND_ASSIGN -> {
+                        return ctx instanceof JavaScriptParser.AssignmentOperatorExpressionContext a
+                                && a.assignmentOperator().getText().equals(pattern.value())
+                                ? List.of(a.singleExpression(0), a.singleExpression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INDEX -> {
+                        return ctx instanceof JavaScriptParser.MemberIndexExpressionContext m
+                                && !m.getText().contains("?.[") && m.expressionSequence().singleExpression().size() == 1
+                                ? List.of(m.singleExpression(), m.expressionSequence().singleExpression(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER -> {
+                        // a.b, but not the a.b of a call a.b(c), which is a method call
+                        return ctx instanceof JavaScriptParser.MemberDotExpressionContext m && isPlainDot(m)
+                                && !(m.getParent() instanceof JavaScriptParser.ArgumentsExpressionContext call
+                                    && call.singleExpression() == m)
+                                ? List.of(m.singleExpression(), m.identifierName()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER_CALL -> {
+                        if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext call)
+                                || !(call.singleExpression() instanceof JavaScriptParser.MemberDotExpressionContext m)
+                                || !isPlainDot(m)) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(m.singleExpression(), m.identifierName()));
+                        parts.addAll(call.arguments().argument());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.RETURN -> {
+                        if (!(statementBody(ctx) instanceof JavaScriptParser.ReturnStatementContext r)) return null;
+                        return r.expressionSequence() == null ? List.of() : List.of(r.expressionSequence());
+                    }
+                    case mutationtester.msl.MSLNode.BREAK -> {
+                        if (!(statementBody(ctx) instanceof JavaScriptParser.BreakStatementContext b)) return null;
+                        return b.identifier() == null ? List.of() : List.of(b.identifier());
+                    }
+                    case mutationtester.msl.MSLNode.CONTINUE -> {
+                        if (!(statementBody(ctx) instanceof JavaScriptParser.ContinueStatementContext c)) return null;
+                        return c.identifier() == null ? List.of() : List.of(c.identifier());
+                    }
+                    case mutationtester.msl.MSLNode.THROW -> {
+                        return statementBody(ctx) instanceof JavaScriptParser.ThrowStatementContext t
+                                ? List.of(t.expressionSequence()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DO_WHILE -> {
+                        return statementBody(ctx) instanceof JavaScriptParser.DoStatementContext d
+                                ? List.of(d.statement(), d.expressionSequence()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR_EACH -> {
+                        ParseTree s = statementBody(ctx);
+                        if (s instanceof JavaScriptParser.ForOfStatementContext f) {
+                            return List.of(loopVariable(f.singleExpression(), f.singleVariableDeclaration()),
+                                    f.expressionSequence(), f.statement());
+                        }
+                        if (s instanceof JavaScriptParser.ForInStatementContext f) {
+                            return List.of(loopVariable(f.singleExpression(), f.singleVariableDeclaration()),
+                                    f.expressionSequence(), f.statement());
+                        }
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.TRY -> {
+                        if (!(statementBody(ctx) instanceof JavaScriptParser.TryStatementContext t)) return null;
+                        return java.util.Arrays.asList(t.block(),
+                                t.catchProduction() == null ? null : t.catchProduction().block(),
+                                t.finallyProduction() == null ? null : t.finallyProduction().block());
+                    }
+                    case mutationtester.msl.MSLNode.CASE -> {
+                        return ctx instanceof JavaScriptParser.CaseClauseContext c && c.statementList() != null
+                                ? List.of(c.expressionSequence(), c.statementList()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DEFAULT_CASE -> {
+                        return ctx instanceof JavaScriptParser.DefaultClauseContext c && c.statementList() != null
+                                ? List.of(c.statementList()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DECLARE -> {
+                        if (!(ctx instanceof JavaScriptParser.VariableDeclarationListContext list)
+                                || list.variableDeclaration().size() != 1
+                                || list.variableDeclaration(0).singleExpression() == null) {
+                            return null;
+                        }
+                        JavaScriptParser.VariableDeclarationContext d = list.variableDeclaration(0);
+                        return List.of(d.assignable(), d.singleExpression());
+                    }
+                    case mutationtester.msl.MSLNode.COLLECTION -> {
+                        return ctx instanceof JavaScriptParser.ArrayLiteralExpressionContext a
+                                ? new ArrayList<>(a.arrayLiteral().elementList().arrayElement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.OBJECT -> {
+                        return ctx instanceof JavaScriptParser.ObjectLiteralExpressionContext o
+                                ? new ArrayList<>(o.objectLiteral().propertyAssignment()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.ENTRY -> {
+                        return ctx instanceof JavaScriptParser.PropertyExpressionAssignmentContext p
+                                ? List.of(p.propertyName(), p.singleExpression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LAMBDA -> {
+                        if (!(ctx instanceof JavaScriptParser.ArrowFunctionContext a)) return null;
+                        JavaScriptParser.ArrowFunctionParametersContext p = a.arrowFunctionParameters();
+                        List<ParseTree> parts = new ArrayList<>();
+                        if (p.propertyName() != null) parts.add(p.propertyName());
+                        else if (p.formalParameterList() != null) parts.addAll(p.formalParameterList().formalParameterArg());
+                        parts.add(a.arrowFunctionBody());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof JavaScriptParser.FunctionDeclarationContext f)) return null;
+                        List<ParseTree> parts = new ArrayList<>(List.of(f.identifier()));
+                        if (f.formalParameterList() != null) parts.addAll(f.formalParameterList().formalParameterArg());
+                        parts.add(f.functionBody());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.PARAMETER -> {
+                        if (!(ctx instanceof JavaScriptParser.FormalParameterArgContext p)) return null;
+                        return p.singleExpression() == null ? List.of(p.assignable()) : List.of(p.assignable(), p.singleExpression());
+                    }
+                    case mutationtester.msl.MSLNode.TYPE_CHECK -> {
+                        return ctx instanceof JavaScriptParser.InstanceofExpressionContext i
+                                ? List.of(i.singleExpression(0), i.singleExpression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.SAFE_MEMBER -> {
+                        if (ctx instanceof JavaScriptParser.MemberDotExpressionContext m && !isPlainDot(m)
+                                && m.getText().contains("?.")) {
+                            return List.of(m.singleExpression(), m.identifierName());
+                        }
+                        return ctx instanceof JavaScriptParser.OptionalChainExpressionContext o
+                                ? List.of(o.singleExpression(0), o.singleExpression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FIELD -> {
+                        if (!(ctx instanceof JavaScriptParser.FieldDefinitionContext f)) return null;
+                        return f.initializer() == null ? List.of(f.classElementName())
+                                : List.of(f.classElementName(), f.initializer().singleExpression());
+                    }
+                    case mutationtester.msl.MSLNode.YIELD -> {
+                        ParseTree s = ctx instanceof JavaScriptParser.YieldExpressionContext y ? y.yieldStatement() : statementBody(ctx);
+                        if (!(s instanceof JavaScriptParser.YieldStatementContext y)) return null;
+                        return y.expressionSequence() == null ? List.of() : List.of(y.expressionSequence());
+                    }
+                    case mutationtester.msl.MSLNode.LABELED -> {
+                        return statementBody(ctx) instanceof JavaScriptParser.LabelledStatementContext l
+                                ? List.of(l.identifier(), l.statement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.MEMBERSHIP -> {
+                        return pattern.value().equals("in") && ctx instanceof JavaScriptParser.InExpressionContext i
+                                ? List.of(i.singleExpression(0), i.singleExpression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TUPLE -> {
+                        // [a, b] as destructuring targets or an array of values
+                        return ctx instanceof JavaScriptParser.ArrayLiteralExpressionContext a
+                                ? new ArrayList<>(a.arrayLiteral().elementList().arrayElement()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.SPREAD -> {
+                        if (ctx instanceof JavaScriptParser.ArrayElementContext e && e.Ellipsis() != null) return List.of(e.singleExpression());
+                        if (ctx instanceof JavaScriptParser.ArgumentContext a && a.Ellipsis() != null) return List.of(a.getChild(1));
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.DELETE -> {
+                        return ctx instanceof JavaScriptParser.DeleteExpressionContext d ? List.of(d.singleExpression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INTERPOLATION -> {
+                        return ctx instanceof JavaScriptParser.TemplateStringLiteralContext t ? new ArrayList<>(templateHoles(t)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.AWAIT -> {
+                        return ctx instanceof JavaScriptParser.AwaitExpressionContext a ? List.of(a.singleExpression()) : null;
+                    }
                     default -> {
                         return MSLScannerAdapter.super.matchNode(pattern, ctx);
                     }
@@ -306,6 +487,136 @@ public class JavaScriptMutationScanner {
                     p = p.getChild(0);
                 }
                 return p;
+            }
+
+            /** a.b, not a?.b or a.#b. */
+            private boolean isPlainDot(JavaScriptParser.MemberDotExpressionContext m) {
+                for (int i = 0; i < m.getChildCount(); i++) {
+                    String t = m.getChild(i).getText();
+                    if (m.getChild(i) instanceof TerminalNode && (t.equals("?") || t.equals("#"))) return false;
+                }
+                return true;
+            }
+
+            /** f(a, b): [f, a, b]. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.ArgumentsExpressionContext call)) return null;
+                List<ParseTree> parts = new ArrayList<>(List.of(call.singleExpression()));
+                parts.addAll(call.arguments().argument());
+                return parts;
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.JAVASCRIPT, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                return Literals.convert(Literals.Lang.JAVASCRIPT, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (!(statementBody(ctx) instanceof JavaScriptParser.IfStatementContext i)) return null;
+                return java.util.Arrays.asList(i.expressionSequence(), i.statement(0),
+                        i.statement().size() > 1 ? i.statement(1) : null);
+            }
+
+            /** x in for (const x of xs): the name, not "const x". */
+            private ParseTree loopVariable(ParseTree expression, JavaScriptParser.SingleVariableDeclarationContext declaration) {
+                return declaration != null ? declaration.variableDeclaration().assignable() : expression;
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                return statementBody(ctx) instanceof JavaScriptParser.BlockContext
+                        || ctx instanceof JavaScriptParser.FunctionBodyContext;
+            }
+
+            /** Keeps the declaring keyword: const n = 0 stays const. */
+            @Override
+            public String renderDeclaration(String name, String value, ParseTree ctx) {
+                String keyword = ctx instanceof JavaScriptParser.VariableDeclarationListContext list
+                        ? list.varModifier().getText() : "let";
+                return keyword + " " + name + " = " + value;
+            }
+
+            @Override
+            public String renderForEach(String name, String collection, String body, ParseTree ctx) {
+                return "for (const " + name + " of " + collection + ") " + body;
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return ctx instanceof JavaScriptParser.ArrowFunctionContext
+                        || ctx instanceof JavaScriptParser.AnonymousFunctionDeclContext;
+            }
+
+            /** The right side of instanceof: the class it tests for. */
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                return ctx.getParent() instanceof JavaScriptParser.InstanceofExpressionContext i && i.singleExpression(1) == ctx;
+            }
+
+            @Override
+            public boolean isField(ParseTree ctx) {
+                return ctx instanceof JavaScriptParser.FieldDefinitionContext;
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return ctx instanceof JavaScriptParser.ObjectLiteralExpressionContext ? "{}" : "[]";
+            }
+
+            @Override
+            public String renderSafeMember(String object, String member, ParseTree ctx) {
+                return object + "?." + member;
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            private List<ParseTree> templateHoles(JavaScriptParser.TemplateStringLiteralContext t) {
+                List<ParseTree> holes = new ArrayList<>();
+                for (JavaScriptParser.TemplateStringAtomContext atom : t.templateStringAtom()) {
+                    if (atom.singleExpression() != null) holes.add(atom.singleExpression());
+                }
+                return holes;
+            }
+
+            @Override
+            public String renderKeywordStatement(String kind, String value, ParseTree ctx) {
+                return kind.equals("delete") ? "delete " + value : null;
+            }
+
+            @Override
+            public String renderMembership(String operator, String item, String container, ParseTree ctx) {
+                return operator.equals("in") ? item + " in " + container : "!(" + item + " in " + container + ")";
+            }
+
+            @Override
+            public String renderTuple(List<String> elements, ParseTree ctx) {
+                return "[" + String.join(", ", elements) + "]";
+            }
+
+            @Override
+            public String renderSpread(String value, ParseTree ctx) {
+                return "..." + value;
+            }
+
+            @Override
+            public String renderInterpolation(List<String> holes, ParseTree ctx) {
+                if (!(ctx instanceof JavaScriptParser.TemplateStringLiteralContext t)) return null;
+                return mutationtester.msl.CstNodes.replaceHoles(t, templateHoles(t), holes, getNodeText(t));
             }
 
             // ── Increments ───────────────────────────────────────────────
@@ -348,14 +659,19 @@ public class JavaScriptMutationScanner {
             @Override
             public java.util.Set<String> supportedKinds() {
                 return java.util.Set.of("binary", "predicate", "literal", "identifier", "call",
-                        "if", "while", "for", "assign", "block", "increment");
+                        "if", "while", "for", "assign", "block", "increment", "return", "break", "continue", "declare", "for_each", "do_while", "case", "default_case", "throw", "try",
+                        "unary", "conditional", "compound_assign", "index", "member", "member_call",
+                        "collection", "object", "entry", "lambda", "function", "parameter", "type_check", "safe_member",
+                        "field", "yield", "labeled", "membership", "tuple", "spread", "delete", "interpolation", "await");
             }
 
             @Override
             public java.util.Set<String> supportedPlaceholders() {
                 return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
                         "return_value", "constructor_call", "non_void_method_call",
-                        "equality_condition", "order_condition");
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "exponential", "based_integer", "string", "boolean",
+                        "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type", "field");
             }
 
             // ── PIT-style placeholders ───────────────────────────────────
@@ -363,7 +679,8 @@ public class JavaScriptMutationScanner {
             @Override
             public boolean matchesPlaceholder(String type, ParseTree ctx) {
                 return switch (type) {
-                    case "statement" -> ctx instanceof JavaScriptParser.StatementContext;
+                    case "statement" -> ctx instanceof JavaScriptParser.StatementContext
+                            || ctx instanceof JavaScriptParser.StatementListContext;
                     case "return_value" -> ctx instanceof JavaScriptParser.ExpressionSequenceContext
                             && ctx.getParent() instanceof JavaScriptParser.ReturnStatementContext
                             && renderValue("empty_value", ctx) != null;
