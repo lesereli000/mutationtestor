@@ -86,9 +86,8 @@ public class AllSurvivorsPageGenerator {
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
                     String sourceSnippet = readSourceLine(point.getSourceFile().toPath(), line);
-                        String operatorName = normalizeMutationLabel(
-                            point.getCustomLabel() != null ? point.getCustomLabel()
-                                : getMutationOperatorName(operator, replacement));
+                    String operatorName = ReportLabels.displayLabel(
+                            point.getCustomLabel(), operator, replacement);
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                     String mutantId = EquivalentMutantStore.buildMutantId(result);
                     Set<String> candidateMutantIds = EquivalentMutantStore.buildCandidateMutantIds(result);
@@ -117,9 +116,7 @@ public class AllSurvivorsPageGenerator {
                     customLabel = (String) mutant.getClass().getField("customLabel").get(mutant);
                 } catch (Exception e) {
                 }
-                String operatorName = normalizeMutationLabel(
-                    customLabel != null ? customLabel
-                        : getMutationOperatorName(operator, replacement));
+                String operatorName = ReportLabels.displayLabel(customLabel, operator, replacement);
                 String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                 String mutantId = file + ":" + line + ":" + column + ":UNKNOWN:" + operator + ":" + replacement;
 
@@ -160,70 +157,12 @@ public class AllSurvivorsPageGenerator {
         return "";
     }
 
-    private static String normalizeMutationLabel(String label) {
-        if (label == null) {
-            return null;
-        }
-        return label.replace(" ? ", " -> ").replace(" → ", " -> ");
-    }
-
-    private static String getMutationOperatorName(String original, String mutated) {
-        // Arithmetic Operator Replacement (AOR)
-        if (original.equals("+") && mutated.equals("-"))
-            return "AOR_PLUS_TO_MINUS";
-        if (original.equals("-") && mutated.equals("+"))
-            return "AOR_MINUS_TO_PLUS";
-        if (original.equals("*") && mutated.equals("/"))
-            return "AOR_MULTIPLY_TO_DIVIDE";
-        if (original.equals("/") && mutated.equals("*"))
-            return "AOR_DIVIDE_TO_MULTIPLY";
-        if (original.equals("%") && mutated.equals("*"))
-            return "AOR_MODULO_TO_MULTIPLY";
-
-        // Relational Operator Replacement (ROR)
-        if (original.equals(">") && mutated.equals(">="))
-            return "ROR_GT_TO_GE";
-        if (original.equals(">") && mutated.equals("<"))
-            return "ROR_GT_TO_LT";
-        if (original.equals(">=") && mutated.equals(">"))
-            return "ROR_GE_TO_GT";
-        if (original.equals("<") && mutated.equals("<="))
-            return "ROR_LT_TO_LE";
-        if (original.equals("<") && mutated.equals(">"))
-            return "ROR_LT_TO_GT";
-        if (original.equals("<=") && mutated.equals("<"))
-            return "ROR_LE_TO_LT";
-        if (original.equals("==") && mutated.equals("!="))
-            return "ROR_EQ_TO_NE";
-        if (original.equals("!=") && mutated.equals("=="))
-            return "ROR_NE_TO_EQ";
-
-        // Logical Connector Replacement (LCR)
-        if (original.equals("&&") && mutated.equals("||"))
-            return "LCR_AND_TO_OR";
-        if (original.equals("||") && mutated.equals("&&"))
-            return "LCR_OR_TO_AND";
-        if (original.equals("and") && mutated.equals("or"))
-            return "LCR_AND_TO_OR";
-        if (original.equals("or") && mutated.equals("and"))
-            return "LCR_OR_TO_AND";
-
-        // Bitwise Operator Replacement (BOR)
-        if (original.equals("&") && mutated.equals("|"))
-            return "BOR_AND_TO_OR";
-        if (original.equals("|") && mutated.equals("&"))
-            return "BOR_OR_TO_AND";
-
-        // Default
-        return "MUTATION_" + original.toUpperCase().replaceAll("[^A-Z0-9]", "") +
-                "_TO_" + mutated.toUpperCase().replaceAll("[^A-Z0-9]", "");
-    }
-
     private static String generateSearchAndFilters(List<SurvivorEntry> survivors) {
         StringBuilder sb = new StringBuilder();
 
         // Header
         sb.append("<div class=\"header\">\n");
+        sb.append("    <div class=\"report-nav\"><a href=\"mutation-report-demo.html\">Back to summary</a></div>\n");
         sb.append("    <h1>All Surviving Mutants</h1>\n");
         sb.append("    <div class=\"subtitle\">Click any mutant to jump to its location in the source code</div>\n");
         sb.append("</div>\n");
@@ -338,7 +277,9 @@ public class AllSurvivorsPageGenerator {
 
             sb.append("                <td><code class=\"code-snippet\">").append(escapeHtml(s.sourceCodeSnippet))
                     .append("</code></td>\n");
-            sb.append("                <td class=\"action-cell\"></td>\n");
+            sb.append("                <td class=\"action-cell\">")
+                    .append("<button type=\"button\" class=\"mark-equivalent-btn\">Mark as Equivalent</button>")
+                    .append("</td>\n");
             sb.append("            </tr>\n");
         }
 
@@ -371,6 +312,8 @@ public class AllSurvivorsPageGenerator {
                 "        .header { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }\n");
         sb.append("        .header h1 { font-size: 32px; margin-bottom: 10px; }\n");
         sb.append("        .header .subtitle { opacity: 0.9; font-size: 16px; }\n");
+        sb.append("        .report-nav { margin-bottom: 12px; }\n");
+        sb.append("        .report-nav a { color: white; font-weight: 600; text-decoration: underline; }\n");
         sb.append(
                 "        .controls { padding: 20px 30px; background: #fafafa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }\n");
         sb.append("        .search-box { flex: 1; min-width: 300px; }\n");
@@ -609,10 +552,15 @@ public class AllSurvivorsPageGenerator {
         sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
         sb.append("            const mutantId = row.dataset.mutantId;\n");
         sb.append("            const actionCell = row.querySelector('.action-cell');\n");
-        sb.append("            if (actionCell && !actionCell.querySelector('.mark-equivalent-btn')) {\n");
-        sb.append("                const btn = document.createElement('button');\n");
+        sb.append("            let btn = actionCell ? actionCell.querySelector('.mark-equivalent-btn') : null;\n");
+        sb.append("            if (actionCell && !btn) {\n");
+        sb.append("                btn = document.createElement('button');\n");
         sb.append("                btn.type = 'button';\n");
         sb.append("                btn.className = 'mark-equivalent-btn';\n");
+        sb.append("                btn.textContent = 'Mark as Equivalent';\n");
+        sb.append("                actionCell.appendChild(btn);\n");
+        sb.append("            }\n");
+        sb.append("            if (btn) {\n");
         sb.append("                btn.onclick = async (e) => {\n");
         sb.append("                    e.preventDefault();\n");
         sb.append("                    e.stopPropagation();\n");
@@ -624,7 +572,6 @@ public class AllSurvivorsPageGenerator {
         sb.append("                        await this.markAsEquivalent(mutantId);\n");
         sb.append("                    }\n");
         sb.append("                };\n");
-        sb.append("                actionCell.appendChild(btn);\n");
         sb.append("            }\n");
         sb.append("        });\n");
         sb.append("        this.updateUI();\n");

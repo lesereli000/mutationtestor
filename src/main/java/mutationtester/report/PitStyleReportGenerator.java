@@ -68,7 +68,7 @@ public class PitStyleReportGenerator {
         }
 
         StringBuilder html = new StringBuilder();
-        html.append(generateHeader());
+        html.append(generateHeader(outputPath));
         html.append(generateSummaryBar(totalMutants, killed, survived, noCoverage, mutationScore));
         html.append(generateSourceCodeView(sourceLines, mutationsByLine, sourceFilePath));
         html.append(generateFooter());
@@ -153,7 +153,12 @@ public class PitStyleReportGenerator {
         return false;
     }
 
-    private static String generateHeader() {
+    private static String generateHeader(String outputPath) {
+        String normalized = outputPath == null ? "" : outputPath.replace('\\', '/');
+        boolean nested = normalized.contains("/allFiles/");
+        String summaryHref = nested ? "../mutation-report-demo.html" : "mutation-report-demo.html";
+        String survivorsHref = nested ? "../all-survivors.html" : "all-survivors.html";
+
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
         sb.append("    <meta charset=\"UTF-8\">\n");
@@ -162,6 +167,9 @@ public class PitStyleReportGenerator {
         sb.append("        * { margin: 0; padding: 0; box-sizing: border-box; }\n");
         sb.append("        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }\n");
         sb.append("        .container { max-width: 1400px; margin: 0 auto; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n");
+        sb.append("        .report-nav { background: #1a252f; padding: 12px 30px; display: flex; gap: 20px; }\n");
+        sb.append("        .report-nav a { color: #ecf0f1; font-weight: 600; text-decoration: none; }\n");
+        sb.append("        .report-nav a:hover { text-decoration: underline; }\n");
         sb.append("        .summary-bar { background: #2c3e50; color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }\n");
         sb.append("        .stat { text-align: center; }\n");
         sb.append("        .stat-value { font-size: 28px; font-weight: bold; margin-bottom: 5px; }\n");
@@ -206,6 +214,10 @@ public class PitStyleReportGenerator {
         sb.append("        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }\n");
         sb.append("        .legend-box { width: 18px; height: 18px; border: 1px solid #ddd; }\n");
         sb.append("    </style>\n</head>\n<body>\n<div class=\"container\">\n");
+        sb.append("<div class=\"report-nav\">");
+        sb.append("<a href=\"").append(escapeHtml(summaryHref)).append("\">Back to summary</a>");
+        sb.append("<a href=\"").append(escapeHtml(survivorsHref)).append("\">All survivors</a>");
+        sb.append("</div>\n");
         return sb.toString();
     }
 
@@ -289,7 +301,8 @@ public class PitStyleReportGenerator {
             String statusClass = statusClass(m.status);
             String statusText = statusText(m.status);
             String statusIcon = statusIcon(m.status);
-            String operatorName = m.customLabel != null ? m.customLabel : m.mutationType;
+            String operatorName = ReportLabels.displayLabel(m.customLabel, m.original, m.mutated);
+            String sharedType = ReportLabels.displayType(m.mutationType, m.customLabel);
 
             tooltip.append("<div class=\"mutation-entry ").append(statusClass)
                     .append("\" data-mutant-id=\"").append(escapeHtml(m.mutantId))
@@ -297,9 +310,11 @@ public class PitStyleReportGenerator {
                     .append("<div>").append(statusIcon).append(" ")
                     .append("<strong>").append(escapeHtml(operatorName)).append("</strong>")
                     .append("</div>")
-                    .append("<div><b>Language:</b> ").append(escapeHtml(m.language)).append("</div>")
-                    .append("<div><b>Shared type:</b> ").append(escapeHtml(m.mutationType)).append("</div>")
-                    .append("<div><b>Original:</b> <code>").append(escapeHtml(m.original)).append("</code></div>")
+                    .append("<div><b>Language:</b> ").append(escapeHtml(m.language)).append("</div>");
+            if (sharedType != null) {
+                tooltip.append("<div><b>Shared type:</b> ").append(escapeHtml(sharedType)).append("</div>");
+            }
+            tooltip.append("<div><b>Original:</b> <code>").append(escapeHtml(m.original)).append("</code></div>")
                     .append("<div><b>Replacement:</b> <code>").append(escapeHtml(m.mutated)).append("</code></div>")
                     .append("<div><b>Column:</b> ").append(m.columnStart).append("</div>")
                     .append("<div class=\"mutation-status ").append(statusClass).append("\">")
@@ -340,83 +355,6 @@ public class PitStyleReportGenerator {
             case NO_COVERAGE -> "!";
             default -> "&#10007;";
         };
-    }
-
-    private static String getMutationOperatorName(String original, String mutated) {
-        if ("+".equals(original) && "-".equals(mutated)) return "AOR_PLUS_TO_MINUS";
-        if ("-".equals(original) && "+".equals(mutated)) return "AOR_MINUS_TO_PLUS";
-        if ("*".equals(original) && "/".equals(mutated)) return "AOR_MULTIPLY_TO_DIVIDE";
-        if ("/".equals(original) && "*".equals(mutated)) return "AOR_DIVIDE_TO_MULTIPLY";
-        if ("%".equals(original) && "*".equals(mutated)) return "AOR_MODULO_TO_MULTIPLY";
-        if ("++".equals(original) && "--".equals(mutated)) return "AOR_INCREMENT_TO_DECREMENT";
-        if ("--".equals(original) && "++".equals(mutated)) return "AOR_DECREMENT_TO_INCREMENT";
-        if ("-".equals(original) && "".equals(mutated)) return "INEG_INVERT_NEGATIVE";
-
-        if (">".equals(original) && ">=".equals(mutated)) return "ROR_GT_TO_GE";
-        if (">".equals(original) && "<".equals(mutated)) return "ROR_GT_TO_LT";
-        if (">".equals(original) && "<=".equals(mutated)) return "ROR_GT_TO_LE";
-        if (">".equals(original) && "==".equals(mutated)) return "ROR_GT_TO_EQ";
-        if (">".equals(original) && "!=".equals(mutated)) return "ROR_GT_TO_NE";
-
-        if (">=".equals(original) && ">".equals(mutated)) return "ROR_GE_TO_GT";
-        if (">=".equals(original) && "<".equals(mutated)) return "ROR_GE_TO_LT";
-        if (">=".equals(original) && "<=".equals(mutated)) return "ROR_GE_TO_LE";
-
-        if ("<".equals(original) && "<=".equals(mutated)) return "ROR_LT_TO_LE";
-        if ("<".equals(original) && ">".equals(mutated)) return "ROR_LT_TO_GT";
-        if ("<".equals(original) && ">=".equals(mutated)) return "ROR_LT_TO_GE";
-
-        if ("<=".equals(original) && "<".equals(mutated)) return "ROR_LE_TO_LT";
-        if ("<=".equals(original) && ">".equals(mutated)) return "ROR_LE_TO_GT";
-        if ("<=".equals(original) && ">=".equals(mutated)) return "ROR_LE_TO_GE";
-
-        if ("==".equals(original) && "!=".equals(mutated)) return "ROR_EQ_TO_NE";
-        if ("!=".equals(original) && "==".equals(mutated)) return "ROR_NE_TO_EQ";
-
-        if ("&&".equals(original) && "||".equals(mutated)) return "LCR_AND_TO_OR";
-        if ("||".equals(original) && "&&".equals(mutated)) return "LCR_OR_TO_AND";
-        if ("and".equals(original) && "or".equals(mutated)) return "LCR_AND_TO_OR";
-        if ("or".equals(original) && "and".equals(mutated)) return "LCR_OR_TO_AND";
-
-        if ("!".equals(original)) return "UOI_NEGATE";
-        if ("not".equals(original)) return "UOI_NEGATE";
-
-        if ("&".equals(original) && "|".equals(mutated)) return "BOR_AND_TO_OR";
-        if ("|".equals(original) && "&".equals(mutated)) return "BOR_OR_TO_AND";
-        if ("^".equals(original) && "&".equals(mutated)) return "BOR_XOR_TO_AND";
-        if ("<<".equals(original) && ">>".equals(mutated)) return "BOR_LSHIFT_TO_RSHIFT";
-        if (">>".equals(original) && "<<".equals(mutated)) return "BOR_RSHIFT_TO_LSHIFT";
-
-        // Return Value Mutations
-        if ("true".equals(original) && "false".equals(mutated))  return "RVM_TRUE_TO_FALSE";
-        if ("false".equals(original) && "true".equals(mutated))  return "RVM_FALSE_TO_TRUE";
-        if ("0".equals(original) && "1".equals(mutated))          return "RVM_ZERO_TO_ONE";
-        if (isNonZeroNumericLiteral(original) && "0".equals(mutated)) return "RVM_NONZERO_TO_ZERO";
-        if ("null".equals(mutated)) return "RVM_OBJECT_TO_NULL";
-        if ("\"\"".equals(mutated)) return "RVM_STRING_TO_EMPTY";
-
-        return "MUTATION_" + sanitizeOperatorName(original) + "_TO_" + sanitizeOperatorName(mutated);
-    }
-
-    private static String sanitizeOperatorName(String value) {
-        if (value == null || value.isEmpty()) {
-            return "UNKNOWN";
-        }
-        String sanitized = value.toUpperCase().replaceAll("[^A-Z0-9]+", "_");
-        sanitized = sanitized.replaceAll("^_+", "").replaceAll("_+$", "");
-        return sanitized.isEmpty() ? "UNKNOWN" : sanitized;
-    }
-
-    private static boolean isNonZeroNumericLiteral(String value) {
-        if (value == null || !value.matches("^[+-]?(\\d+\\.?\\d*|\\d*\\.\\d+)([eE][+-]?\\d+)?([fFdDmM])?$")) {
-            return false;
-        }
-
-        try {
-            return Double.parseDouble(value.replaceAll("[fFdDmM]$", "")) != 0.0;
-        } catch (NumberFormatException e) {
-            return false;
-        }
     }
 
     private static String generateLegend() {
