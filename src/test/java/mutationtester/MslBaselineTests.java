@@ -84,7 +84,12 @@ class MslBaselineTests {
         for (int i = 1; i <= 25; i++) {
             String spec = String.format("specs/single-operator/O%02d.spec", i);
             for (String corpus : SINGLE_OPERATOR_CORPORA) {
-                cases.add(Arguments.of(spec, corpus));
+                // Each single-operator spec only has mutants in some projects'
+                // Demo files; elsewhere there is nothing recorded to protect.
+                if (Files.exists(BASELINE_DIR.resolve(fileName(spec, corpus)))
+                        || Boolean.getBoolean("msl.baseline.update")) {
+                    cases.add(Arguments.of(spec, corpus));
+                }
             }
         }
         return cases.stream();

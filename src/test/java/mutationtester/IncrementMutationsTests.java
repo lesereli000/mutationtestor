@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -14,7 +13,6 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import mutationtester.model.MutationPoint;
 import mutationtester.msl.MSLNode;
 import mutationtester.msl.MSLPatternParser;
 import mutationtester.msl.MutationRuleGenerator;
@@ -53,16 +51,7 @@ class IncrementMutationsTests {
     Path dir;
 
     private Set<String> mutants(String fileName, String source) throws IOException {
-        Files.writeString(dir.resolve(fileName), source);
-        Path spec = Files.writeString(dir.resolve("increments.spec"), SPEC);
-        Path src = dir.resolve("src");
-        Files.createDirectories(src);
-        Files.move(dir.resolve(fileName), src.resolve(fileName));
-        Set<String> out = new TreeSet<>();
-        for (MutationPoint p : Main.scanForMutations(src, spec.toString())) {
-            out.add(p.getLineNumber() + ": " + p.getOperator() + " -> " + p.getReplacement());
-        }
-        return out;
+        return SpecFixture.mutants(dir, SPEC, fileName, source);
     }
 
     @Test
