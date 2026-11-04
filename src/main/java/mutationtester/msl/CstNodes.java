@@ -143,6 +143,65 @@ public final class CstNodes {
         return digits;
     }
 
+    /** One node covering consecutive siblings, e.g. a.b in Python's flat a.b(c). */
+    public static org.antlr.v4.runtime.tree.ParseTree span(
+            java.util.List<? extends org.antlr.v4.runtime.tree.ParseTree> siblings) {
+        if (siblings.size() == 1) return siblings.get(0);
+        org.antlr.v4.runtime.ParserRuleContext span = new org.antlr.v4.runtime.ParserRuleContext();
+        span.start = start(siblings.get(0));
+        span.stop = stop(siblings.get(siblings.size() - 1));
+        span.children = new java.util.ArrayList<>(siblings);
+        if (siblings.get(0).getParent() instanceof org.antlr.v4.runtime.ParserRuleContext parent) {
+            span.parent = parent;
+        }
+        return span;
+    }
+
+    /** {@code whole}'s text with each hole replaced, in order; null if the counts differ. */
+    public static String replaceHoles(org.antlr.v4.runtime.tree.ParseTree whole,
+                                      java.util.List<? extends org.antlr.v4.runtime.tree.ParseTree> holes,
+                                      java.util.List<String> replacements, String text) {
+        if (holes.size() != replacements.size()) return null;
+        int base = start(whole).getStartIndex();
+        StringBuilder out = new StringBuilder();
+        int at = 0;
+        for (int i = 0; i < holes.size(); i++) {
+            int from = start(holes.get(i)).getStartIndex() - base;
+            int to = stop(holes.get(i)).getStopIndex() + 1 - base;
+            if (from < at || to > text.length()) return null;
+            out.append(text, at, from).append(replacements.get(i));
+            at = to;
+        }
+        return out.append(text.substring(at)).toString();
+    }
+
+    /** True for a node made by {@link #span}. */
+    public static boolean isSpan(org.antlr.v4.runtime.tree.ParseTree node) {
+        return node != null && node.getClass() == org.antlr.v4.runtime.ParserRuleContext.class;
+    }
+
+    /** True when the lexer typed the token as an identifier (so never a keyword). */
+    public static boolean isIdentifierToken(org.antlr.v4.runtime.tree.TerminalNode node) {
+        org.antlr.v4.runtime.Token token = node.getSymbol();
+        if (!(token.getTokenSource() instanceof org.antlr.v4.runtime.Recognizer<?, ?> lexer)) return false;
+        String type = lexer.getVocabulary().getSymbolicName(token.getType());
+        return type != null && (type.toLowerCase().endsWith("identifier") || type.equals("NAME"));
+    }
+
+    /** The lines of text, split at '\n' (a '\r' before it is dropped). */
+    public static java.util.List<String> lines(String text) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        int start = 0;
+        for (int i = 0; i <= text.length(); i++) {
+            if (i == text.length() || text.charAt(i) == '\n') {
+                int end = i > start && text.charAt(i - 1) == '\r' ? i - 1 : i;
+                lines.add(text.substring(start, end));
+                start = i + 1;
+            }
+        }
+        return lines;
+    }
+
     /** True when text starts and ends with the same quote character. */
     public static boolean isQuoted(String text) {
         if (text.length() < 2) return false;

@@ -58,13 +58,67 @@ public interface MSLScannerAdapter {
             }
             case MSLNode.IDENTIFIER -> isSingleValue(ctx) && getNodeText(ctx).strip().equals(pattern.value())
                     ? List.of() : null;
-            case MSLNode.CALL -> callArguments(ctx, pattern.value());
+            case MSLNode.CALL -> pattern.value().isEmpty() ? callParts(ctx) : callArguments(ctx, pattern.value());
             case MSLNode.INCREMENT -> {
                 ParseTree operand = incrementOperand(pattern.value(), ctx);
                 yield operand == null ? null : List.of(operand);
             }
             default -> null;
         };
+    }
+
+    /** matchNode inside an Except: tree, for idioms that only count there. */
+    default List<ParseTree> matchNodeInExcept(MSLNode pattern, ParseTree ctx) {
+        // An if (c) s exception covers ifs with an else too, as it always has.
+        if (pattern.kind().equals(MSLNode.IF) && ifParts(ctx) != null) return matchIf(pattern, ctx, true);
+        return matchNode(pattern, ctx);
+    }
+
+    /** [condition, then, else or null] when ctx is an if statement, else null. */
+    default List<ParseTree> ifParts(ParseTree ctx) {
+        return null;
+    }
+
+    /** if (c) s matches ifs without an else (any if when lenient); if (c) s else s needs one. */
+    default List<ParseTree> matchIf(MSLNode pattern, ParseTree ctx, boolean lenient) {
+        List<ParseTree> parts = ifParts(ctx);
+        if (parts == null) return null;
+        if (pattern.children().size() == 2) {
+            return parts.get(2) == null || lenient ? List.of(parts.get(0), parts.get(1)) : null;
+        }
+        return parts.get(2) != null ? parts : null;
+    }
+
+    /** True when ctx meets a word constraint such as literal or int64. */
+    default boolean satisfies(String condition, String type, ParseTree ctx) {
+        if (!isSingleValue(ctx)) return false;
+        String text = getNodeText(ctx).strip();
+        ValueKind kind = valueKind(ctx);
+        return switch (condition) {
+            case "literal" -> kind != null ? !kind.typeName() : isLiteralText(text, ctx);
+            case "type" -> kind != null && kind.typeName();
+            case "null" -> text.equals(renderLiteral("null", ctx));
+            case "boolean" -> kind != null ? kind.type().equals("boolean")
+                    : text.equals(renderLiteral("true", ctx)) || text.equals(renderLiteral("false", ctx));
+            case "string" -> kind != null ? kind.type().equals("string") : isStringLiteral(ctx);
+            case "number" -> kind != null ? kind.isNumber() && !kind.typeName() : CstNodes.isNumberText(text);
+            case "integer", "float", "char", "bytes" -> kind != null && kind.fits(condition);
+            case "collection" -> false;
+            // Size words: int8 ... uint64, bigint, float32, float64, decimal
+            default -> kind != null && condition.equals(kind.size());
+        };
+    }
+
+    /** True when the single-token text is a literal: a number, string, boolean or null. */
+    default boolean isLiteralText(String text, ParseTree ctx) {
+        return CstNodes.isNumberText(text) || isStringLiteral(ctx)
+                || text.equals(renderLiteral("true", ctx)) || text.equals(renderLiteral("false", ctx))
+                || text.equals(renderLiteral("null", ctx));
+    }
+
+    /** {@code node} written as another type or size (42 as {float} is 42.0); null if impossible. */
+    default String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+        return null;
     }
 
     /**
@@ -102,16 +156,93 @@ public interface MSLScannerAdapter {
         return null;
     }
 
+    /** [callee, arguments...] when ctx is a call, else null. */
+    default List<ParseTree> callParts(ParseTree ctx) {
+        return null;
+    }
+
     /**
      * True when {@code ctx} fits a placeholder type. Adapters add the types
-     * their language supports; an unknown type matches nothing.
+     * their language supports; an unknown type matches nothing. Number, text
+     * and boolean placeholders are answered by {@link #valueKind}, {condition}
+     * by the adapter's own if, while, for and conditional matching, and
+     * {name} by the token type.
      */
     default boolean matchesPlaceholder(String type, ParseTree ctx) {
         return switch (type) {
             case MSLPlaceholder.QUANTITY -> isQuantity(ctx);
             case "invocation_statement" -> isInvocationStatement(ctx);
+            case "number", "integer", "float", "exponential", "based_integer", "rational", "complex",
+                 "string", "char", "bytes", "boolean" -> {
+                ValueKind kind = valueKind(ctx);
+                yield kind != null && kind.fits(type);
+            }
+            case "condition" -> isConditionPosition(ctx);
+            case "block" -> isBlock(ctx);
+            case "collection" -> matchNode(new MSLNode(MSLNode.COLLECTION, "", new MSLPlaceholder(MSLPlaceholder.ARGUMENTS)), ctx) != null;
+            case "lambda" -> isLambda(ctx);
+            case "type" -> isTypeName(ctx);
+            case "field" -> isField(ctx);
+            case "name" -> isName(ctx);
             default -> false;
         };
+    }
+
+    /** The kind of literal or numeric type name ctx is, or null. */
+    default ValueKind valueKind(ParseTree ctx) {
+        return null;
+    }
+
+    /** The slots that hold a condition: [kind, number of children, condition position]. */
+    Object[][] CONDITION_SLOTS = {
+        {MSLNode.IF, 2, 0}, {MSLNode.IF, 3, 0}, {MSLNode.WHILE, 2, 0}, {MSLNode.FOR, 4, 1},
+        {MSLNode.CONDITIONAL, 3, 0}, {"do_while", 2, 1}, {MSLNode.COMPREHENSION, 4, 3}, {MSLNode.WHERE, 1, 0},
+        {MSLNode.WHEN, 2, 0}, {MSLNode.UNLESS, 2, 0},
+    };
+
+    /** True when ctx is the condition of an if, loop or conditional expression. */
+    default boolean isConditionPosition(ParseTree ctx) {
+        ParseTree p = ctx.getParent();
+        for (int depth = 0; p != null && depth < 6; depth++, p = p.getParent()) {
+            for (Object[] slot : CONDITION_SLOTS) {
+                MSLTree[] holes = new MSLTree[(Integer) slot[1]];
+                java.util.Arrays.fill(holes, new MSLPlaceholder(MSLPlaceholder.QUANTITY));
+                List<ParseTree> children = matchNode(new MSLNode((String) slot[0], "", holes), p);
+                int at = (Integer) slot[2];
+                if (children != null && children.size() > at && children.get(at) != null
+                        && isSameNode(children.get(at), ctx)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** True when ctx is a lambda / anonymous function. */
+    default boolean isLambda(ParseTree ctx) {
+        return false;
+    }
+
+    /** True when ctx is a type name (in a declaration, cast, type check or annotation). */
+    default boolean isTypeName(ParseTree ctx) {
+        return false;
+    }
+
+    /** True when ctx is a field (member variable) declaration. */
+    default boolean isField(ParseTree ctx) {
+        return false;
+    }
+
+    /** True when ctx is a whole block of statements: { ... }, an indented suite, (begin ...). */
+    default boolean isBlock(ParseTree ctx) {
+        return false;
+    }
+
+    /** True when ctx is one identifier token (through single-child wrappers). */
+    default boolean isName(ParseTree ctx) {
+        ParseTree p = ctx;
+        while (p != null && !(p instanceof TerminalNode) && p.getChildCount() == 1) p = p.getChild(0);
+        return p instanceof TerminalNode token && CstNodes.isIdentifierToken(token);
     }
 
     /**
@@ -356,8 +487,19 @@ public interface MSLScannerAdapter {
         }
         String text = render(to, bindings.cursor(), ctx);
         if (text == null) return null;
+        text = placeLines(text, ctx);
+        String original = getNodeText(ctx);
+        // A statement's text can end with its line break (Python); keep it, so
+        // the next line stays on its own line.
+        String trailing = original.substring(original.stripTrailing().length());
+        // return x; written as return 0 keeps its ';'.
+        if (to instanceof MSLNode node && SIMPLE_STATEMENT_KINDS.contains(node.kind())
+                && original.stripTrailing().endsWith(";") && !text.stripTrailing().endsWith(";")) {
+            text = text.stripTrailing() + ";";
+        }
+        if (!trailing.isEmpty() && !text.endsWith(trailing)) text = text.stripTrailing() + trailing;
         int[] pos = getTokenPosition(ctx);
-        return new OperatorEdit(pos[0], pos[1], getNodeText(ctx), text);
+        return new OperatorEdit(pos[0], pos[1], original, text);
     }
 
     /** Both trees are the same kind of operator over the same placeholders, in the same order. */
@@ -369,11 +511,27 @@ public interface MSLScannerAdapter {
         }
         for (int i = 0; i < f.children().size(); i++) {
             if (!(f.child(i) instanceof MSLPlaceholder a) || !(t.child(i) instanceof MSLPlaceholder b)
-                    || !a.type().equals(b.type())) {
+                    || !a.type().equals(b.type()) || !java.util.Objects.equals(a.name(), b.name())) {
                 return false;
             }
         }
         return true;
+    }
+
+    /** Removes a list item (switch arm, annotation) and its trailing comma. */
+    default OperatorEdit deleteItem(ParseTree ctx) {
+        ParseTree parent = ctx.getParent();
+        ParseTree last = ctx;
+        if (parent != null) {
+            for (int i = 0; i + 1 < parent.getChildCount(); i++) {
+                if (parent.getChild(i) == ctx && parent.getChild(i + 1).getText().equals(",")) {
+                    last = parent.getChild(i + 1);
+                }
+            }
+        }
+        ParseTree item = last == ctx ? ctx : CstNodes.span(List.of(ctx, last));
+        int[] pos = getTokenPosition(ctx);
+        return new OperatorEdit(pos[0], pos[1], getNodeText(item), "");
     }
 
     /** Removes the matched statement, leaving the language's empty statement. */
@@ -389,6 +547,7 @@ public interface MSLScannerAdapter {
     default OperatorEdit insert(ParseTree anchor, MSLTree tree, boolean before, MSLBindings bindings) {
         String statement = renderStatement(tree, bindings.cursor(), anchor);
         if (statement == null) return null;
+        statement = placeLines(statement, anchor);
         String indent = getIndentation(anchor);
         if (before) {
             int[] pos = getTokenPosition(anchor);
@@ -405,27 +564,367 @@ public interface MSLScannerAdapter {
      */
     default String render(MSLTree tree, MSLBindings.Cursor bindings, ParseTree ctx) {
         if (tree instanceof MSLPlaceholder p) {
-            ParseTree bound = bindings.next(p.type());
-            return bound != null ? getNodeText(bound) : renderValue(p.type(), ctx);
+            return renderPlaceholder(p, bindings, ctx);
         }
         MSLNode node = (MSLNode) tree;
+        if (STATEMENT_KINDS.contains(node.kind())) {
+            return renderStatementNode(node, bindings, ctx);
+        }
         List<String> parts = new ArrayList<>();
         for (MSLTree child : node.children()) {
-            String part = render(child, bindings, ctx);
+            // A slice's missing bound is written as nothing.
+            String part = child instanceof MSLNode n && n.kind().equals(MSLNode.EMPTY) ? "" : render(child, bindings, ctx);
             if (part == null) return null;
             parts.add(part);
         }
+        if (node.kind().equals(MSLNode.SLICE)) return renderSlice(parts.get(0), parts.get(1), parts.get(2), ctx);
+        return renderExpression(node, parts, ctx);
+    }
+
+    /** Kinds written by {@link #renderStatementNode}, whose children may be statements. */
+    Set<String> STATEMENT_KINDS = Set.of(MSLNode.ASSIGN, MSLNode.COMPOUND_ASSIGN, MSLNode.IF, MSLNode.WHILE,
+            MSLNode.FOR, MSLNode.BLOCK, MSLNode.EMPTY, MSLNode.RETURN, MSLNode.BREAK, MSLNode.CONTINUE,
+            MSLNode.DECLARE, MSLNode.FOR_EACH, MSLNode.DO_WHILE, MSLNode.CASE, MSLNode.DEFAULT_CASE, MSLNode.THROW,
+            MSLNode.TRY, MSLNode.ASSERT, MSLNode.WITH, MSLNode.YIELD, MSLNode.LABELED, MSLNode.DELETE,
+            MSLNode.ANNOTATION, MSLNode.WHEN, MSLNode.UNLESS, MSLNode.WHERE);
+
+    /** Statement kinds written as one simple statement, which take the language's terminator. */
+    Set<String> SIMPLE_STATEMENT_KINDS = Set.of(MSLNode.ASSIGN, MSLNode.COMPOUND_ASSIGN, MSLNode.RETURN,
+            MSLNode.BREAK, MSLNode.CONTINUE, MSLNode.DECLARE, MSLNode.THROW, MSLNode.ASSERT, MSLNode.YIELD,
+            MSLNode.DELETE);
+
+    /** A placeholder's text: what it matched, converted within its family if needed, or an output value. */
+    default String renderPlaceholder(MSLPlaceholder p, MSLBindings.Cursor bindings, ParseTree ctx) {
+        java.util.Set<String> family = MSLPlaceholder.familyOf(p.type());
+        if (family != null) {
+            MSLBindings.Binding bound = p.isNamed() ? bindings.named(p.name()) : bindings.nextInFamily(family);
+            if (bound == null) return null;
+            if (bound.type().equals(p.type()) && p.condition() == null) return boundText(bound.node());
+            return convert(bound.node(), bound.type(), p.type(), p.condition(), ctx);
+        }
+        if (p.type().equals("empty_string")) return "\"\"";
+        if (p.type().equals("empty_block")) return emptyBlock(ctx);
+        if (p.type().equals("empty_collection")) return emptyCollection(ctx);
+        MSLBindings.Binding bound = p.isNamed() ? bindings.named(p.name()) : bindings.nextBinding(p.type());
+        if (bound == null) return p.isNamed() ? null : renderValue(p.type(), ctx);
+        return bound.nodes() != null ? joinArguments(bound.nodes(), ctx) : boundText(bound.node());
+    }
+
+    /** The text of a variadic {arguments} match: the arguments with the language's separator. */
+    default String joinArguments(List<ParseTree> arguments, ParseTree ctx) {
+        List<String> texts = new ArrayList<>();
+        for (ParseTree argument : arguments) texts.add(boundText(argument));
+        return String.join(", ", texts);
+    }
+
+    /** An empty collection of the kind ctx is: [], {}, new int[0], '(). */
+    default String emptyCollection(ParseTree ctx) {
+        return "[]";
+    }
+
+    /** A block with no statements: {} by default; pass in Python, (void) in Racket. */
+    default String emptyBlock(ParseTree ctx) {
+        return "{}";
+    }
+
+    /** The text a matched node contributes when written into a With: or Insert: tree. */
+    default String boundText(ParseTree node) {
+        return getNodeText(node);
+    }
+
+    /** Writes an expression node whose children are already written. */
+    default String renderExpression(MSLNode node, List<String> parts, ParseTree ctx) {
         return switch (node.kind()) {
             case MSLNode.LITERAL -> renderLiteral(node.value(), ctx);
             case MSLNode.IDENTIFIER -> node.value();
             case MSLNode.BINARY -> renderBinary(node, parts.get(0), parts.get(1), ctx);
-            case MSLNode.UNARY -> node.value() + parts.get(0);
+            case MSLNode.UNARY -> renderUnary(node.value(), parts.get(0), ctx);
             case MSLNode.INCREMENT -> renderIncrement(node.value(), parts.get(0), ctx);
-            case MSLNode.CALL -> node.value() + "(" + String.join(", ", parts) + ")";
-            // ";" in a With: means the statement is removed.
-            case MSLNode.EMPTY -> getEmptyStatement(ctx);
+            case MSLNode.CALL -> node.value().isEmpty()
+                    ? renderCall(parts.get(0), parts.subList(1, parts.size()), ctx)
+                    : renderCall(node.value(), parts, ctx);
+            case MSLNode.CONDITIONAL -> renderConditional(parts.get(0), parts.get(1), parts.get(2), ctx);
+            case MSLNode.COLLECTION -> renderCollection(parts, ctx);
+            case MSLNode.MEMBERSHIP -> renderMembership(node.value(), parts.get(0), parts.get(1), ctx);
+            case MSLNode.TUPLE -> renderTuple(parts, ctx);
+            case MSLNode.AWAIT -> renderAwait(parts.get(0), ctx);
+            case MSLNode.COMPREHENSION -> renderComprehension(parts, ctx);
+            case MSLNode.SPREAD -> renderSpread(parts.get(0), ctx);
+            case MSLNode.INTERPOLATION -> renderInterpolation(parts, ctx);
+            case MSLNode.ARM -> renderArm(parts.get(0), parts.get(1), ctx);
+            case MSLNode.OBJECT -> renderObject(parts, ctx);
+            case MSLNode.ENTRY -> renderEntry(parts.get(0), parts.get(1), ctx);
+            case MSLNode.LAMBDA -> renderLambda(parts.subList(0, parts.size() - 1), parts.get(parts.size() - 1), ctx);
+            case MSLNode.PARAMETER -> renderParameter(parts.get(0), parts.size() > 1 ? parts.get(1) : null, ctx);
+            case MSLNode.FIELD -> renderField(parts.get(0), parts.size() > 1 ? parts.get(1) : null, ctx);
+            case MSLNode.TYPE_CHECK -> renderTypeCheck(parts.get(0), parts.get(1), ctx);
+            case MSLNode.CAST -> renderCast(parts.get(0), parts.get(1), ctx);
+            case MSLNode.SAFE_MEMBER -> renderSafeMember(parts.get(0), parts.get(1), ctx);
+            case MSLNode.INITIALIZED_NEW -> renderInitializedNew(parts.get(0), parts.subList(1, parts.size()), ctx);
+            case MSLNode.INDEX -> renderIndex(parts.get(0), parts.get(1), ctx);
+            case MSLNode.MEMBER -> renderMember(parts.get(0), parts.get(1), ctx);
+            case MSLNode.MEMBER_CALL -> renderMemberCall(parts.get(0), parts.get(1), parts.subList(2, parts.size()), ctx);
             default -> null;
         };
+    }
+
+    /** {@code a in b} / {@code a not in b}; null where the language has no membership operator. */
+    default String renderMembership(String operator, String item, String container, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code await a}. */
+    default String renderAwait(String value, ParseTree ctx) {
+        return "await " + value;
+    }
+
+    /** {@code [e for x in xs if c]}; null where the language has no comprehensions. */
+    default String renderComprehension(List<String> parts, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code (a, b)}. */
+    default String renderTuple(List<String> elements, ParseTree ctx) {
+        return "(" + String.join(", ", elements) + ")";
+    }
+
+    /** {@code ...a}; null where the language has no spread. */
+    default String renderSpread(String value, ParseTree ctx) {
+        return null;
+    }
+
+    /** The original interpolated string with its holes written anew; null when it can't be. */
+    default String renderInterpolation(List<String> holes, ParseTree ctx) {
+        return null;
+    }
+
+    /** A switch-expression arm; null where the language has none. */
+    default String renderArm(String pattern, String value, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code [a, b]}. */
+    default String renderCollection(List<String> elements, ParseTree ctx) {
+        return "[" + String.join(", ", elements) + "]";
+    }
+
+    /** {@code { k: v }}. */
+    default String renderObject(List<String> entries, ParseTree ctx) {
+        return entries.isEmpty() ? "{}" : "{ " + String.join(", ", entries) + " }";
+    }
+
+    /** {@code k: v}, one entry of an object literal. */
+    default String renderEntry(String key, String value, ParseTree ctx) {
+        return key + ": " + value;
+    }
+
+    /** {@code (a, b) => body}; null when the language has no lambdas it can write here. */
+    default String renderLambda(List<String> parameters, String body, ParseTree ctx) {
+        return "(" + String.join(", ", parameters) + ") => " + body;
+    }
+
+    /** A function parameter, with its default value or without one. */
+    default String renderParameter(String name, String defaultValue, ParseTree ctx) {
+        return defaultValue == null ? name : name + " = " + defaultValue;
+    }
+
+    /** A field declaration, with its initial value or without one. */
+    default String renderField(String name, String value, ParseTree ctx) {
+        return value == null ? name : name + " = " + value;
+    }
+
+    /** {@code a instanceof T}. */
+    default String renderTypeCheck(String value, String type, ParseTree ctx) {
+        return value + " instanceof " + type;
+    }
+
+    /** {@code (T) a}; null when the language has no casts. */
+    default String renderCast(String type, String value, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code a?.name}; null when the language has no null-safe access. */
+    default String renderSafeMember(String object, String member, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code new T { a, b }}; null when the language has no object initializers. */
+    default String renderInitializedNew(String type, List<String> initializers, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code a[i:j]}; null where the language has no slices. */
+    default String renderSlice(String collection, String from, String to, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code (c ? a : b)}. */
+    default String renderConditional(String condition, String then, String otherwise, ParseTree ctx) {
+        return "(" + condition + " ? " + then + " : " + otherwise + ")";
+    }
+
+    /** {@code a[i]}. */
+    default String renderIndex(String collection, String index, ParseTree ctx) {
+        return collection + "[" + index + "]";
+    }
+
+    /** {@code obj.name}. */
+    default String renderMember(String object, String member, ParseTree ctx) {
+        return object + "." + member;
+    }
+
+    /** {@code obj.name(args)}. */
+    default String renderMemberCall(String object, String method, List<String> arguments, ParseTree ctx) {
+        return object + "." + method + "(" + String.join(", ", arguments) + ")";
+    }
+
+    /** {@code !x}, {@code -x}, {@code ~x}. */
+    default String renderUnary(String operator, String operand, ParseTree ctx) {
+        return operator + operand;
+    }
+
+    /** {@code f(a, b)}. */
+    default String renderCall(String function, List<String> arguments, ParseTree ctx) {
+        return function + "(" + String.join(", ", arguments) + ")";
+    }
+
+    /** Writes a statement node, C-like by default; multi-line text is indented relative to its first line. */
+    default String renderStatementNode(MSLNode node, MSLBindings.Cursor bindings, ParseTree ctx) {
+        switch (node.kind()) {
+            case MSLNode.ASSIGN, MSLNode.COMPOUND_ASSIGN -> {
+                String target = render(node.child(0), bindings, ctx);
+                String value = render(node.child(1), bindings, ctx);
+                return target == null || value == null ? null : target + " " + node.value() + " " + value;
+            }
+            case MSLNode.IF -> {
+                String condition = render(node.child(0), bindings, ctx);
+                String then = renderStatement(node.child(1), bindings, ctx);
+                if (condition == null || then == null) return null;
+                if (node.children().size() < 3) return "if (" + condition + ") " + then;
+                String otherwise = renderStatement(node.child(2), bindings, ctx);
+                return otherwise == null ? null : "if (" + condition + ") " + then + " else " + otherwise;
+            }
+            case MSLNode.WHILE -> {
+                String condition = render(node.child(0), bindings, ctx);
+                String body = renderStatement(node.child(1), bindings, ctx);
+                return condition == null || body == null ? null : "while (" + condition + ") " + body;
+            }
+            case MSLNode.FOR -> {
+                List<String> parts = new ArrayList<>();
+                for (int i = 0; i < 3; i++) {
+                    if (node.child(i) instanceof MSLNode part && part.kind().equals(MSLNode.EMPTY)) {
+                        parts.add("");
+                        continue;
+                    }
+                    String text = render(node.child(i), bindings, ctx);
+                    if (text == null) return null;
+                    parts.add(text);
+                }
+                String body = renderStatement(node.child(3), bindings, ctx);
+                return body == null ? null : "for (" + String.join("; ", parts) + ") " + body;
+            }
+            case MSLNode.BLOCK -> {
+                List<String> statements = new ArrayList<>();
+                for (MSLTree child : node.children()) {
+                    String text = renderStatement(child, bindings, ctx);
+                    if (text == null) return null;
+                    statements.add(text);
+                }
+                return statements.isEmpty() ? "{}" : "{ " + String.join(" ", statements) + " }";
+            }
+            // ";" in a With: means the statement is removed.
+            case MSLNode.EMPTY -> {
+                return getEmptyStatement(ctx);
+            }
+            case MSLNode.RETURN -> {
+                if (node.children().isEmpty()) return "return";
+                String value = render(node.child(0), bindings, ctx);
+                return value == null ? null : "return " + value;
+            }
+            case MSLNode.BREAK, MSLNode.CONTINUE -> {
+                if (node.children().isEmpty()) return node.kind();
+                String label = render(node.child(0), bindings, ctx);
+                return label == null ? null : node.kind() + " " + label;
+            }
+            case MSLNode.THROW -> {
+                String value = render(node.child(0), bindings, ctx);
+                return value == null ? null : renderThrow(value, ctx);
+            }
+            case MSLNode.DECLARE -> {
+                String name = render(node.child(0), bindings, ctx);
+                String value = render(node.child(1), bindings, ctx);
+                return name == null || value == null ? null : renderDeclaration(name, value, ctx);
+            }
+            case MSLNode.FOR_EACH -> {
+                String name = render(node.child(0), bindings, ctx);
+                String collection = render(node.child(1), bindings, ctx);
+                String body = renderStatement(node.child(2), bindings, ctx);
+                return name == null || collection == null || body == null ? null
+                        : renderForEach(name, collection, body, ctx);
+            }
+            case MSLNode.DO_WHILE -> {
+                String body = renderStatement(node.child(0), bindings, ctx);
+                String condition = render(node.child(1), bindings, ctx);
+                return body == null || condition == null ? null : "do " + body + " while (" + condition + ");";
+            }
+            case MSLNode.CASE -> {
+                String value = render(node.child(0), bindings, ctx);
+                String body = renderStatement(node.child(1), bindings, ctx);
+                return value == null || body == null ? null : "case " + value + ": " + body;
+            }
+            case MSLNode.DEFAULT_CASE -> {
+                String body = renderStatement(node.child(0), bindings, ctx);
+                return body == null ? null : "default: " + body;
+            }
+            case MSLNode.ASSERT, MSLNode.DELETE, MSLNode.ANNOTATION -> {
+                String value = render(node.child(0), bindings, ctx);
+                return value == null ? null : renderKeywordStatement(node.kind(), value, ctx);
+            }
+            case MSLNode.YIELD -> {
+                String value = node.children().isEmpty() ? null : render(node.child(0), bindings, ctx);
+                return node.children().isEmpty() || value != null ? renderYield(value, ctx) : null;
+            }
+            case MSLNode.LABELED -> {
+                String label = render(node.child(0), bindings, ctx);
+                String statement = renderStatement(node.child(1), bindings, ctx);
+                return label == null || statement == null ? null : label + ": " + statement;
+            }
+            default -> {
+                // try and with can't be written in general: a catch needs its
+                // exception type, a resource its declaration.
+                return null;
+            }
+        }
+    }
+
+    /** assert, delete or an annotation; null where the language has none. */
+    default String renderKeywordStatement(String kind, String value, ParseTree ctx) {
+        return null;
+    }
+
+    /** {@code yield v}, or a bare {@code yield} when {@code value} is null. */
+    default String renderYield(String value, ParseTree ctx) {
+        return value == null ? "yield" : "yield " + value;
+    }
+
+    /** {@code throw x}. */
+    default String renderThrow(String value, ParseTree ctx) {
+        return "throw " + value;
+    }
+
+    /** {@code var x = v}, or the language's declaration keyword. */
+    default String renderDeclaration(String name, String value, ParseTree ctx) {
+        return "var " + name + " = " + value;
+    }
+
+    /** A for-each loop over a collection. */
+    default String renderForEach(String name, String collection, String body, ParseTree ctx) {
+        return null;
+    }
+
+    /** Indents later lines of written text to ctx's column (Python); unchanged by default. */
+    default String placeLines(String text, ParseTree ctx) {
+        return text;
     }
 
     /**
@@ -468,7 +967,7 @@ public interface MSLScannerAdapter {
 
     /** True for placeholder types whose value the adapter computes rather than reads from a match. */
     default boolean isOutputPlaceholder(String type) {
-        return type.equals("empty_value") || type.equals("default_value");
+        return MSLPlaceholder.OUTPUT_TYPES.contains(type);
     }
 
     /**
@@ -479,17 +978,17 @@ public interface MSLScannerAdapter {
         return null;
     }
 
-    /** Writes a tree as a complete statement, for Insert:. Null when it can't be written. */
+    /** Writes a tree as a complete statement, adding ';' to simple statements by default. */
     default String renderStatement(MSLTree tree, MSLBindings.Cursor bindings, ParseTree ctx) {
-        if (tree instanceof MSLNode node && node.kind().equals(MSLNode.ASSIGN)) {
-            String target = render(node.child(0), bindings, ctx);
-            String value = render(node.child(1), bindings, ctx);
-            return target == null || value == null ? null : target + " = " + value + ";";
+        String text = render(tree, bindings, ctx);
+        if (text == null) return null;
+        if (tree instanceof MSLNode node && STATEMENT_KINDS.contains(node.kind())
+                && !SIMPLE_STATEMENT_KINDS.contains(node.kind())) {
+            return text;
         }
-        String expression = render(tree, bindings, ctx);
-        return expression == null ? null : expression + ";";
+        String trimmed = text.stripTrailing();
+        return trimmed.endsWith(";") || trimmed.endsWith("}") ? text : text + ";";
     }
-
     /** "(left op right)", used when an idiom such as Math.pow(a, b) becomes a plain operator. */
     static String infix(String left, String operator, String right) {
         return "(" + left + " " + operator + " " + right + ")";

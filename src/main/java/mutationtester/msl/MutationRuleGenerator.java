@@ -188,11 +188,29 @@ public class MutationRuleGenerator {
     }
 
     private static MSLTree parse(String pattern, int lineNumber) throws IOException {
+        MSLTree tree;
         try {
-            return MSLPatternParser.parse(pattern);
+            tree = MSLPatternParser.parse(pattern);
         } catch (IllegalArgumentException e) {
             throw new IOException(e.getMessage() + " (line " + lineNumber + ")", e);
         }
+        checkKnownTypes(tree, lineNumber);
+        return tree;
+    }
+
+    /** A misspelled placeholder would match nothing, silently: reject it. */
+    private static void checkKnownTypes(MSLTree tree, int lineNumber) throws IOException {
+        if (tree instanceof MSLPlaceholder p) {
+            if (!MSLPlaceholder.isKnownType(p.type())) {
+                java.util.Set<String> known = new java.util.TreeSet<>(MSLPlaceholder.INPUT_TYPES);
+                known.addAll(MSLPlaceholder.OUTPUT_TYPES);
+                throw new IOException("Unknown placeholder {" + p.type() + "} at line " + lineNumber
+                        + "; placeholders are " + String.join(", ", known));
+            }
+            if (p.constraint() != null) checkKnownTypes(p.constraint(), lineNumber);
+            return;
+        }
+        for (MSLTree child : ((MSLNode) tree).children()) checkKnownTypes(child, lineNumber);
     }
 
     private static int skipBlank(List<String> lines, int i) {
@@ -217,7 +235,40 @@ public class MutationRuleGenerator {
         countPlaceholders(source, available);
         java.util.Map<String, Integer> used = new java.util.HashMap<>();
         countPlaceholders(uses, used);
+        java.util.Map<String, String> sourceNames = new java.util.HashMap<>();
+        collectNames(source, sourceNames);
+        java.util.Map<String, String> usedNames = new java.util.HashMap<>();
+        collectNames(uses, usedNames);
+        for (var entry : usedNames.entrySet()) {
+            String type = sourceNames.get(entry.getKey());
+            if (type == null) {
+                throw new IOException("Line " + lineNumber + " uses {" + entry.getValue() + " " + entry.getKey()
+                        + "} but the pattern it refers to has no placeholder named " + entry.getKey());
+            }
+            if (!type.equals(entry.getValue()) && (MSLPlaceholder.familyOf(type) == null
+                    || MSLPlaceholder.familyOf(type) != MSLPlaceholder.familyOf(entry.getValue()))) {
+                throw new IOException("Line " + lineNumber + " uses {" + entry.getValue() + " " + entry.getKey()
+                        + "} but " + entry.getKey() + " is a {" + type + "}");
+            }
+        }
+        // Number and text placeholders pair by position within their family,
+        // counting named ones in the pattern too.
+        java.util.Map<String, Integer> all = new java.util.HashMap<>();
+        countAllPlaceholders(source, all);
+        for (java.util.Set<String> family : MSLPlaceholder.FAMILIES) {
+            int have = 0;
+            int want = 0;
+            for (String type : family) {
+                have += all.getOrDefault(type, 0);
+                want += used.getOrDefault(type, 0);
+            }
+            if (want > have) {
+                throw new IOException("Line " + lineNumber + " writes " + want + " number or text placeholder(s) but"
+                        + " the pattern it refers to matches " + have + ", so there is nothing to convert");
+            }
+        }
         for (var entry : used.entrySet()) {
+            if (MSLPlaceholder.familyOf(entry.getKey()) != null) continue;
             Integer have = available.get(entry.getKey());
             if (have != null && entry.getValue() > have) {
                 throw new IOException("Line " + lineNumber + " uses {" + entry.getKey() + "} " + entry.getValue()
@@ -226,9 +277,27 @@ public class MutationRuleGenerator {
         }
     }
 
-    private static void countPlaceholders(MSLTree tree, java.util.Map<String, Integer> counts) {
+    private static void countAllPlaceholders(MSLTree tree, java.util.Map<String, Integer> counts) {
         if (tree instanceof MSLPlaceholder p) {
             if (!p.isMatch()) counts.merge(p.type(), 1, Integer::sum);
+        } else {
+            for (MSLTree child : ((MSLNode) tree).children()) countAllPlaceholders(child, counts);
+        }
+    }
+
+    /** Named placeholders and their types. */
+    private static void collectNames(MSLTree tree, java.util.Map<String, String> names) {
+        if (tree instanceof MSLPlaceholder p) {
+            if (p.isNamed()) names.putIfAbsent(p.name(), p.type());
+        } else {
+            for (MSLTree child : ((MSLNode) tree).children()) collectNames(child, names);
+        }
+    }
+
+    private static void countPlaceholders(MSLTree tree, java.util.Map<String, Integer> counts) {
+        if (tree instanceof MSLPlaceholder p) {
+            // Named placeholders refer back by name, not by position.
+            if (!p.isMatch() && !p.isNamed()) counts.merge(p.type(), 1, Integer::sum);
         } else {
             for (MSLTree child : ((MSLNode) tree).children()) countPlaceholders(child, counts);
         }
@@ -236,7 +305,9 @@ public class MutationRuleGenerator {
 
     private static int countMatchPlaceholders(MSLTree tree) {
         if (tree instanceof MSLPlaceholder p) {
-            return p.isMatch() ? 1 + (p.constraint() == null ? 0 : countMatchPlaceholders(p.constraint())) : 0;
+            // {match} itself, and any inside a constraint ({contains: {match}}).
+            int inside = p.constraint() == null ? 0 : countMatchPlaceholders(p.constraint());
+            return (p.isMatch() ? 1 : 0) + inside;
         }
         int n = 0;
         for (MSLTree child : ((MSLNode) tree).children()) n += countMatchPlaceholders(child);
