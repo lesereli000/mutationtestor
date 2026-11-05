@@ -4,10 +4,18 @@
 #  Demonstrates mutation testing across all 5 supported languages
 #  using a single compiled JAR.
 #
-#  Usage: bash scripts/demo-all-languages.sh
+#  Usage: bash scripts/demo-all-languages.sh [spec_file]
+#    spec_file defaults to specs/OperatorMutations.spec
 #
 #  Reports are saved to: demo-output/{java,javascript,csharp,python,scheme}/
 # ============================================================================
+
+# Full path of the spec argument, taken before changing directory
+# (pwd -W gives a Windows path under Git Bash, for java).
+if [ -n "$1" ]; then
+    SPEC_DIR="$(cd "$(dirname "$1")" 2>/dev/null && (pwd -W 2>/dev/null || pwd))" || SPEC_DIR=""
+    SPEC="$SPEC_DIR/$(basename "$1")"
+fi
 
 # Run from the repository root, wherever the script is called from.
 cd "$(dirname "$0")/.." || exit 1
@@ -16,11 +24,23 @@ JAR="target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar"
 DEMO_DIR="demo-output"
 PASS=0
 FAIL=0
+SPEC="${SPEC:-specs/OperatorMutations.spec}"
+if [ ! -f "$SPEC" ]; then
+    echo "[ERROR] Spec file not found: ${1:-$SPEC}"
+    exit 1
+fi
+
+# Copies a sample config into the demo folder, pointed at $SPEC; sets CFG.
+make_config() {
+    CFG="$DEMO_DIR/configs/$1"
+    { cat "configs/samples/$1"; echo; echo "custom_mutation_spec=$SPEC"; } > "$CFG"
+}
 
 echo
 echo "============================================================================"
 echo "  MUTATION TESTER - Multi-Language Demo"
 echo "  Running all 5 language projects with the same JAR"
+echo "  Spec: $SPEC"
 echo "============================================================================"
 echo
 
@@ -36,7 +56,7 @@ fi
 
 # Clean previous demo output
 rm -rf "$DEMO_DIR"
-mkdir -p "$DEMO_DIR"
+mkdir -p "$DEMO_DIR/configs"
 
 # --------------------------------------------------------------------------
 echo
@@ -44,7 +64,8 @@ echo "==========================================================================
 echo "  [1/5] JAVA (Maven Project) - MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/MavenProject configs/samples/java-operators.config
+make_config java-operators.config
+java -jar "$JAR" samples/MavenProject "$CFG"
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/java/"
@@ -56,7 +77,8 @@ echo "==========================================================================
 echo "  [2/5] JAVASCRIPT (Jest Project) - MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/JSProject configs/samples/javascript-operators.config
+make_config javascript-operators.config
+java -jar "$JAR" samples/JSProject "$CFG"
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/javascript/"
@@ -68,7 +90,8 @@ echo "==========================================================================
 echo "  [3/5] C# (.NET Project) -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/CSProject configs/samples/csharp-operators.config
+make_config csharp-operators.config
+java -jar "$JAR" samples/CSProject "$CFG"
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/csharp/"
@@ -80,7 +103,8 @@ echo "==========================================================================
 echo "  [4/5] PYTHON (Pytest Project) -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/PytestProject configs/samples/python-operators.config
+make_config python-operators.config
+java -jar "$JAR" samples/PytestProject "$CFG"
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/python/"
@@ -92,7 +116,8 @@ echo "==========================================================================
 echo "  [5/5] RACKET -  MSL Operators"
 echo "============================================================================"
 echo
-java -jar "$JAR" samples/RacketProject configs/samples/racket-operators.config
+make_config racket-operators.config
+java -jar "$JAR" samples/RacketProject "$CFG"
 if [ $? -ne 0 ]; then FAIL=$((FAIL+1)); else PASS=$((PASS+1)); fi
 if [ -d "output/report" ]; then
     cp -r output/report/. "$DEMO_DIR/racket/"

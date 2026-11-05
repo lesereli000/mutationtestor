@@ -158,6 +158,20 @@ class MslFoundationsTests {
         assertEquals(set("5: (* b 2) -> b"), run(LITERAL, "a.rkt", RACKET));
     }
 
+    private static final String TO_FLOAT = spec("Replace: {integer}\nWith: {float}");
+
+    @Test
+    void aPlaceholderPatternMutatesEachSpotOnce() throws IOException {
+        // A literal's node and its token both match; only one mutant is made.
+        assertEquals(List.of("6: 2 -> 2.0"), SpecFixture.mutantList(dir, TO_FLOAT, "a.js", JS));
+        assertEquals(List.of("7: 2 -> 2.0"), SpecFixture.mutantList(dir, TO_FLOAT, "a.py", PYTHON));
+        assertEquals(List.of("5: 2 -> 2.0"), SpecFixture.mutantList(dir, TO_FLOAT, "a.rkt", RACKET));
+        // Java's int type names convert too: the return type and four parameters on line 2.
+        assertEquals(List.of("2: int -> double", "2: int -> double", "2: int -> double", "2: int -> double",
+                "2: int -> double", "3: int -> double", "4: int -> double", "7: int -> double", "8: int -> double"),
+                SpecFixture.mutantList(dir, TO_FLOAT, "A.java", JAVA));
+    }
+
     // ── Writing statements (F1) ──────────────────────────────────────────
 
     private static final String ASSIGN = spec("Replace: {quantity} = {quantity}\nWith: {quantity} = null");

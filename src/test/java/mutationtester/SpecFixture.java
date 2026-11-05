@@ -5,6 +5,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -18,12 +20,17 @@ final class SpecFixture {
 
     /** The mutants {@code spec} makes in a file called {@code fileName} holding {@code source}. */
     static Set<String> mutants(Path dir, String spec, String fileName, String source) throws IOException {
+        return new TreeSet<>(mutantList(dir, spec, fileName, source));
+    }
+
+    /** As {@link #mutants}, but keeping duplicates. */
+    static List<String> mutantList(Path dir, String spec, String fileName, String source) throws IOException {
         Path work = Files.createTempDirectory(dir, "fixture");
         Path src = Files.createDirectories(work.resolve("src"));
         Files.writeString(src.resolve(fileName), source);
         Path specFile = Files.writeString(work.resolve("rules.spec"), spec);
         PrintStream out = System.out;
-        Set<String> mutants = new TreeSet<>();
+        List<String> mutants = new ArrayList<>();
         try {
             System.setOut(new PrintStream(OutputStream.nullOutputStream()));
             for (MutationPoint p : Main.scanForMutations(src, specFile.toString())) {

@@ -62,7 +62,7 @@ abstract class TreeRule implements MutationRule {
     public boolean matches(MSLScannerAdapter scanner, ParseTree ctx) {
         if (MSLMatcher.match(target, ctx, scanner) == null) return false;
         // Wrappers often match too; mutate only the innermost, keeping their ';'.
-        for (ParseTree inner = onlyNodeChild(ctx); inner != null; inner = onlyNodeChild(inner)) {
+        for (ParseTree inner = innerChild(ctx); inner != null; inner = innerChild(inner)) {
             if (MSLMatcher.match(target, inner, scanner) != null) return false;
         }
         for (MSLTree except : excepts) {
@@ -118,6 +118,12 @@ abstract class TreeRule implements MutationRule {
             else if (s.charAt(i) == ')' && --depth == 0) return s;
         }
         return s.substring(1, s.length() - 1);
+    }
+
+    /** The node a wrapper wraps: its only non-token child, or its single token (the walk visits tokens too). */
+    private static ParseTree innerChild(ParseTree ctx) {
+        if (ctx.getChildCount() == 1 && ctx.getChild(0) instanceof TerminalNode token) return token;
+        return onlyNodeChild(ctx);
     }
 
     /** The only non-token child (a terminator rule such as JavaScript's eos counts as a token), or null. */
