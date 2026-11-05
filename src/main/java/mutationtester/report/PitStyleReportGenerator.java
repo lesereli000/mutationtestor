@@ -318,6 +318,7 @@ public class PitStyleReportGenerator {
             case COMPILE_ERROR -> "compile-error";
             case TIMEOUT -> "timeout";
             case SURVIVED -> "survived";
+            case SAFETY_SKIPPED, SAFETY_ABORTED -> "no-coverage";
         };
     }
 
@@ -328,6 +329,8 @@ public class PitStyleReportGenerator {
             case COMPILE_ERROR -> "COMPILE ERROR";
             case TIMEOUT -> "TIMEOUT";
             case SURVIVED -> "SURVIVED";
+            case SAFETY_SKIPPED -> "SAFETY SKIPPED";
+            case SAFETY_ABORTED -> "SAFETY ABORTED";
         };
     }
 

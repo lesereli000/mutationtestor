@@ -3,8 +3,11 @@ package mutationtester.scanner;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -233,12 +236,8 @@ public class RacketMutationScanner {
         @Override
         public Void visitDefinition(ISLParser.DefinitionContext ctx) {
             // A function body's non-last exprs run only for their side effects
-            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS
-                    && ctx.getChildCount() >= 6
-                    && ctx.getChild(2) instanceof TerminalNode paren
-                    && paren.getText().equals("(")) {
-                List<ISLParser.ExprContext> bodyExprs = ctx.expr();
-                statementExprs.addAll(bodyExprs.subList(0, Math.max(0, bodyExprs.size() - 1)));
+            if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
+                markDiscarded(discardedBodyForms(ctx));
             }
 
             boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
@@ -327,10 +326,10 @@ public class RacketMutationScanner {
             String replacement = typedEmptyValue(returnExpr);
             if (replacement == null) return;
 
-            // Main.applyMutation rewrites a single line; skip values that span lines.
-            if (returnExpr.getStart() == null || returnExpr.getStop() == null
-                    || returnExpr.getStart().getLine() != returnExpr.getStop().getLine()) return;
+            if (returnExpr.getStart() == null || returnExpr.getStop() == null) return;
 
+            // A value spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text
             int[] pos = getExprPosition(returnExpr);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(returnExpr), replacement, mutationType));
@@ -463,9 +462,8 @@ public class RacketMutationScanner {
             String name = head.getText();
             if (NON_CALL_HEADS.contains(name) || VOID_CALLS.contains(name) || name.endsWith("!")) return;
 
-            // Main.applyMutation rewrites a single line; skip calls that span lines.
-            if (call.getStart().getLine() != call.getStop().getLine()) return;
-
+            // A call spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text
             int[] pos = getExprPosition(call);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(call), defaultValueForCall(name), mutationType,
@@ -487,25 +485,69 @@ public class RacketMutationScanner {
 
         /** Marks the sub-exprs of begin/begin0/when/unless whose values are discarded. */
         private void markStatementExprs(String head, ISLParser.ExprContext ctx) {
+            markDiscarded(discardedForms(head, ctx));
+            // ( struct name (field ...) ) — the field list is not a call
+            if (head.equals("struct") || head.equals("define-struct")) statementExprs.addAll(ctx.expr());
+        }
+
+        /** Marks forms as discarded, and the value form of each discarded when/begin/let too. */
+        private void markDiscarded(List<ISLParser.ExprContext> forms) {
+            for (ISLParser.ExprContext form : forms) {
+                statementExprs.add(form);
+                if (form.getChildCount() < 3 || !form.getChild(0).getText().equals("(")) continue;
+                Token head = extractToken(form.getChild(1));
+                ISLParser.ExprContext value = head == null ? null : valueForm(head.getText(), form);
+                if (value != null) markDiscarded(List.of(value));
+            }
+        }
+
+        /**
+         * The sub-forms of a form whose values are discarded, i.e. statements. Shared
+         * by NON_VOID_METHOD_CALLS (which skips them) and VML_VOID_METHOD_CALL /
+         * STATEMENT_MUTATION (which remove them):
+         *   ( begin stmt... value )               ( begin0 value stmt... )
+         *   ( when cond stmt... value )           ( unless cond stmt... value )
+         *   ( let ( [x v] ... ) stmt... value )   ( lambda ( x ... ) stmt... value )
+         */
+        private List<ISLParser.ExprContext> discardedForms(String head, ISLParser.ExprContext ctx) {
             List<ISLParser.ExprContext> exprs = ctx.expr();
-            switch (head) {
-                // ( begin stmt... value )
-                case "begin" -> statementExprs.addAll(exprs.subList(0, Math.max(0, exprs.size() - 1)));
-                // ( begin0 value stmt... )
-                case "begin0" -> statementExprs.addAll(exprs.subList(Math.min(1, exprs.size()), exprs.size()));
-                // ( when cond stmt... value ) — parsed as an application, so exprs(0) is the head
-                case "when", "unless" -> {
-                    if (exprs.size() > 3) statementExprs.addAll(exprs.subList(2, exprs.size() - 1));
-                }
-                // ( struct name (field ...) ) — the field list is not a call
-                case "struct", "define-struct" -> statementExprs.addAll(exprs);
-                // ( let ( [x v] ... ) stmt... value ) and ( lambda ( x ... ) stmt... value )
+            return switch (head) {
+                case "begin" -> exprs.subList(0, Math.max(0, exprs.size() - 1));
+                case "begin0" -> exprs.subList(Math.min(1, exprs.size()), exprs.size());
+                // parsed as an application, so exprs(0) is the head and exprs(1) the condition
+                case "when", "unless" -> exprs.size() > 3 ? exprs.subList(2, exprs.size() - 1) : List.of();
                 case "let", "let*", "letrec", "lambda", "λ" -> {
                     List<ISLParser.ExprContext> body = bodyAfterBindings(ctx);
-                    statementExprs.addAll(body.subList(0, Math.max(0, body.size() - 1)));
+                    yield body.subList(0, Math.max(0, body.size() - 1));
                 }
-                default -> { }
+                default -> List.of();
+            };
+        }
+
+        /**
+         * The form that gives a begin, begin0, when, unless or let its value (the
+         * one discardedForms leaves out), or null for any other form.
+         */
+        private ISLParser.ExprContext valueForm(String head, ISLParser.ExprContext ctx) {
+            List<ISLParser.ExprContext> exprs = ctx.expr();
+            List<ISLParser.ExprContext> body = switch (head) {
+                case "begin", "begin0" -> exprs;
+                case "when", "unless" -> exprs.size() > 2 ? exprs.subList(2, exprs.size()) : List.of();
+                case "let", "let*", "letrec" -> bodyAfterBindings(ctx);
+                default -> List.of();
+            };
+            if (body.isEmpty()) return null;
+            return head.equals("begin0") ? body.get(0) : body.get(body.size() - 1);
+        }
+
+        /** The discarded forms of a function body: ( define ( f x ... ) stmt... value ). */
+        private List<ISLParser.ExprContext> discardedBodyForms(ISLParser.DefinitionContext ctx) {
+            if (ctx.getChildCount() < 6 || !(ctx.getChild(2) instanceof TerminalNode paren)
+                    || !paren.getText().equals("(")) {
+                return List.of();
             }
+            List<ISLParser.ExprContext> body = ctx.expr();
+            return body.subList(0, Math.max(0, body.size() - 1));
         }
 
         /**
@@ -534,7 +576,7 @@ public class RacketMutationScanner {
         // null. Racket's equivalent of `new` is a struct constructor call.
         // -------------------------------------------------------------------------
 
-        // Constructor names of the structs declared in this file
+        // Constructor names of the structs declared in this file or a file it requires
         private final java.util.Set<String> structConstructors = new java.util.HashSet<>();
 
         /**
@@ -565,17 +607,14 @@ public class RacketMutationScanner {
         private void checkConstructorCall(Token head, ISLParser.ExprContext call) {
             if (head.getType() != ISLLexer.NAME) return;
 
-            // make-NAME is Racket's naming convention for constructors, which also
-            // covers structs declared in other modules and built-ins like make-hash
+            // A struct declared here or in a required file, or a built-in like make-hash. Other
+            // make-... names are ordinary functions (make-report, make-counter).
             String name = head.getText();
-            boolean isConstructor = structConstructors.contains(name)
-                    || (name.startsWith("make-") && name.length() > "make-".length());
+            boolean isConstructor = structConstructors.contains(name) || isBuiltInConstructor(name);
             if (!isConstructor) return;
 
-            // Main.applyMutation rewrites a single line; skip calls that span lines.
-            if (call.getStart().getLine() != call.getStop().getLine()) return;
-
-            // '() is Racket's null (as in RVM_OBJECT_TO_NULL)
+            // A call spanning several lines is fine: Main.applyMutation replaces the
+            // whole multi-line text. '() is Racket's null (as in RVM_OBJECT_TO_NULL)
             int[] pos = getExprPosition(call);
             mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
                     extractSourceText(call), "'()", mutationType,
@@ -633,6 +672,193 @@ public class RacketMutationScanner {
     }
 
     /**
+     * Built-in functions that create a new object, Racket's nearest thing to `new`.
+     * make-posn is built into the HtDP teaching languages.
+     */
+    private static final java.util.Set<String> BUILT_IN_CONSTRUCTORS = java.util.Set.of(
+            "make-hash", "make-hasheq", "make-hasheqv",
+            "make-weak-hash", "make-weak-hasheq", "make-weak-hasheqv",
+            "make-immutable-hash", "make-immutable-hasheq", "make-immutable-hasheqv",
+            "make-vector", "make-string", "make-bytes", "make-list",
+            "make-posn", "make-parameter", "make-channel", "make-semaphore", "make-custodian");
+
+    /** True for a built-in constructor such as make-hash (CONSTRUCTOR_CALLS). */
+    public static boolean isBuiltInConstructor(String name) {
+        return BUILT_IN_CONSTRUCTORS.contains(name);
+    }
+
+    // -------------------------------------------------------------------------
+    // Structs declared in required files (CONSTRUCTOR_CALLS)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Constructors of the structs declared in the local files this one requires,
+     * so (posn 1 2) counts as a constructor call when (struct posn ...) lives in
+     * another file. Handles (require "shapes.rkt") and (file "..."), wrapped in
+     * only-in, except-in, prefix-in, rename-in or combine-in, and follows those
+     * files' own requires, since a module can re-export what it requires.
+     * Collection paths like racket/list aren't local files and are skipped.
+     */
+    public static Set<String> requiredStructConstructors(File file) {
+        Path path = file.toPath().toAbsolutePath().normalize();
+        Set<Path> open = new HashSet<>(List.of(path));
+        Set<String> names = new HashSet<>();
+        for (Object spec : requireSpecs(readForms(path))) {
+            names.addAll(constructorsFromSpec(spec, path.getParent(), open));
+        }
+        return names;
+    }
+
+    // A string literal in readForms' output; atoms are plain Strings
+    private record Str(String value) {}
+
+    /** The names one require spec brings in that are struct constructors. */
+    private static Set<String> constructorsFromSpec(Object spec, Path dir, Set<Path> open) {
+        if (spec instanceof Str s) return constructorsInFile(dir.resolve(s.value()), open);
+        if (!(spec instanceof List<?> form) || form.size() < 2 || !(form.get(0) instanceof String head)) {
+            return Set.of();
+        }
+        Set<String> names = new HashSet<>();
+        switch (head) {
+            case "file" -> names.addAll(constructorsFromSpec(form.get(1), dir, open));
+            case "combine-in" -> {
+                for (Object sub : form.subList(1, form.size())) names.addAll(constructorsFromSpec(sub, dir, open));
+            }
+            case "prefix-in" -> {
+                if (form.size() >= 3 && form.get(1) instanceof String prefix) {
+                    for (String name : constructorsFromSpec(form.get(2), dir, open)) names.add(prefix + name);
+                }
+            }
+            case "only-in" -> {
+                // (only-in spec id [old-id new-id] ...) keeps just the listed names
+                Set<String> base = constructorsFromSpec(form.get(1), dir, open);
+                for (Object item : form.subList(2, form.size())) {
+                    if (item instanceof String id && base.contains(id)) names.add(id);
+                    String[] pair = renamePair(item);
+                    if (pair != null && base.contains(pair[0])) names.add(pair[1]);
+                }
+            }
+            case "except-in" -> {
+                names.addAll(constructorsFromSpec(form.get(1), dir, open));
+                names.removeAll(form.subList(2, form.size()));
+            }
+            case "rename-in" -> {
+                names.addAll(constructorsFromSpec(form.get(1), dir, open));
+                for (Object item : form.subList(2, form.size())) {
+                    String[] pair = renamePair(item);
+                    if (pair != null && names.remove(pair[0])) names.add(pair[1]);
+                }
+            }
+            default -> { }   // for-syntax, planet and other specs
+        }
+        return names;
+    }
+
+    /** [old-id new-id] in only-in or rename-in, or null. */
+    private static String[] renamePair(Object item) {
+        if (item instanceof List<?> pair && pair.size() == 2
+                && pair.get(0) instanceof String from && pair.get(1) instanceof String to) {
+            return new String[] { from, to };
+        }
+        return null;
+    }
+
+    /** Struct constructors a required file declares or re-exports from its own requires. */
+    private static Set<String> constructorsInFile(Path path, Set<Path> open) {
+        path = path.normalize();
+        // open is the chain of files being read, so a require cycle stops here
+        if (!Files.isRegularFile(path) || !open.add(path)) return Set.of();
+        try {
+            List<Object> forms = readForms(path);
+            Set<String> names = new HashSet<>();
+            collectDeclaredStructs(forms, names);
+            for (Object spec : requireSpecs(forms)) {
+                names.addAll(constructorsFromSpec(spec, path.getParent(), open));
+            }
+            return names;
+        } finally {
+            open.remove(path);
+        }
+    }
+
+    /** (struct posn ...) binds posn, (define-struct posn ...) binds make-posn. */
+    private static void collectDeclaredStructs(Object node, Set<String> names) {
+        if (!(node instanceof List<?> form)) return;
+        if (form.size() >= 3 && form.get(0) instanceof String head && form.get(1) instanceof String name) {
+            if (head.equals("struct")) names.add(name);
+            if (head.equals("define-struct")) names.add("make-" + name);
+        }
+        for (Object child : form) collectDeclaredStructs(child, names);
+    }
+
+    /** The specs of every (require ...) form, including those in submodules. */
+    private static List<Object> requireSpecs(Object node) {
+        List<Object> specs = new ArrayList<>();
+        if (node instanceof List<?> form) {
+            if (!form.isEmpty() && "require".equals(form.get(0))) {
+                specs.addAll(form.subList(1, form.size()));
+            } else {
+                for (Object child : form) specs.addAll(requireSpecs(child));
+            }
+        }
+        return specs;
+    }
+
+    /**
+     * Reads a file as s-expressions: a List per form, a String per atom and a Str
+     * per string literal, without comments. Enough to find requires and struct
+     * declarations; an unreadable file reads as no forms.
+     */
+    private static List<Object> readForms(Path path) {
+        String src;
+        try {
+            src = Files.readString(path);
+        } catch (IOException e) {
+            return List.of();
+        }
+        List<Object> top = new ArrayList<>();
+        java.util.Deque<List<Object>> stack = new java.util.ArrayDeque<>();
+        stack.push(top);
+        int i = 0;
+        int n = src.length();
+        while (i < n) {
+            char c = src.charAt(i);
+            if (Character.isWhitespace(c)) {
+                i++;
+            } else if (c == ';') {
+                while (i < n && src.charAt(i) != '\n') i++;
+            } else if (src.startsWith("#|", i)) {
+                int end = src.indexOf("|#", i + 2);
+                i = end < 0 ? n : end + 2;
+            } else if (c == '(' || c == '[' || c == '{') {
+                List<Object> list = new ArrayList<>();
+                stack.peek().add(list);
+                stack.push(list);
+                i++;
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (stack.size() > 1) stack.pop();
+                i++;
+            } else if (c == '"') {
+                StringBuilder value = new StringBuilder();
+                i++;
+                while (i < n && src.charAt(i) != '"') {
+                    if (src.charAt(i) == '\\' && i + 1 < n) i++;
+                    value.append(src.charAt(i++));
+                }
+                i++;
+                stack.peek().add(new Str(value.toString()));
+            } else {
+                int start = i;
+                // A character literal like #\( isn't a paren
+                if (src.startsWith("#\\", i)) i = Math.min(i + 3, n);
+                while (i < n && !Character.isWhitespace(src.charAt(i)) && "()[]{}\";".indexOf(src.charAt(i)) < 0) i++;
+                stack.peek().add(src.substring(start, i));
+            }
+        }
+        return top;
+    }
+
+    /**
      * What the scanner's own visitor finds for one of EMPTY_RETURNS,
      * NON_VOID_METHOD_CALLS, CONSTRUCTOR_CALLS, REMOVE_CONDITIONALS_EQUAL_IF or
      * REMOVE_CONDITIONALS_ORDER_IF, the kinds the adapter's placeholders use.
@@ -649,7 +875,9 @@ public class RacketMutationScanner {
     static List<MutationPoint> visitorPoints(File file, String sourceCode, ParseTree tree, Mutator.MutatorType type) {
         ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
         if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            // Structs may be declared after their first use, or in a required file.
             visitor.collectStructConstructors(tree);
+            visitor.structConstructors.addAll(requiredStructConstructors(file));
         }
         visitor.visit(tree);
         return visitor.getMutationPoints();
@@ -661,6 +889,17 @@ public class RacketMutationScanner {
                 && ctx.getChildCount() >= 3
                 && ctx.getChild(0).getText().equals("(")
                 && isMacroDefinitionForm(ctx.getChild(1).getText());
+    }
+
+    /** Forms that hold other forms; a discarded one discards its own value form instead. */
+    private static final java.util.Set<String> VALUE_FORMS = java.util.Set.of(
+            "begin", "begin0", "let", "let*", "letrec", "lambda", "λ", "if", "cond");
+
+    /** Exprs whose value is discarded, as the visitor finds them for NON_VOID_METHOD_CALLS. */
+    static java.util.Set<ParseTree> discardedExprs(File file, String sourceCode, ParseTree tree) {
+        ISLMutationVisitor visitor = new ISLMutationVisitor(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS, sourceCode);
+        visitor.visit(tree);
+        return visitor.statementExprs;
     }
 
     /** Forms that define or declare something; removing them isn't a call removal. */
@@ -1547,24 +1786,31 @@ public class RacketMutationScanner {
 
             private java.util.Set<String> structNames;
 
-            /** (make-thing ...), (new thing% ...), or a call to a struct declared in the file. */
+            /**
+             * (new thing% ...), a built-in like (make-hash), or a constructor of a struct declared
+             * here or in a required file. Other make-... names are ordinary functions.
+             */
             private boolean isConstructorForm(ParseTree ctx) {
                 if (!isApplication(ctx, 0) || !oneLine(ctx) || !ctx.getChild(0).getText().equals("(")) return false;
                 if (structNames == null) {
-                    structNames = new java.util.HashSet<>();
+                    structNames = new java.util.HashSet<>(requiredStructConstructors(file));
                     collectStructNames(tree);
                 }
                 String name = head(ctx);
-                return name.startsWith("make-") || name.equals("new") || structNames.contains(name);
+                return name.equals("new") || isBuiltInConstructor(name) || structNames.contains(name);
             }
 
+            /** (struct posn ...) binds posn, (define-struct posn ...) binds make-posn. */
             private void collectStructNames(ParseTree node) {
                 if (node instanceof ISLParser.DefinitionContext def && def.getChild(1).getText().equals("define-struct")
                         && !def.name().isEmpty()) {
-                    structNames.add(def.name(0).getText());
+                    structNames.add("make-" + def.name(0).getText());
                 }
-                if (isApplication(node, 1) && (head(node).equals("struct") || head(node).equals("define-struct"))) {
+                if (isApplication(node, 1) && head(node).equals("struct")) {
                     structNames.add(node.getChild(2).getText());
+                }
+                if (isApplication(node, 1) && head(node).equals("define-struct")) {
+                    structNames.add("make-" + node.getChild(2).getText());
                 }
                 for (int i = 0; i < node.getChildCount(); i++) collectStructNames(node.getChild(i));
             }
@@ -1609,19 +1855,26 @@ public class RacketMutationScanner {
                 return "(not (equal? " + subject + " \"\"))";
             }
 
+            private java.util.Set<ParseTree> discarded;
+
+            /**
+             * A call whose value is thrown away: in a function, let, lambda, begin, begin0
+             * (after its first form), when or unless body, or the value form of such a form
+             * that is itself discarded. The forms themselves aren't calls, so they stay.
+             */
             @Override
             public boolean isInvocationStatement(ParseTree ctx) {
-                if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))) {
+                if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))
+                        || ISLMutationVisitor.NON_CALL_HEADS.contains(head(ctx)) || VALUE_FORMS.contains(head(ctx))) {
                     return false;
                 }
                 ParseTree parent = ctx.getParent();
-                if (parent == null || !isApplicationOrDefinition(parent)) {
-                    return false;
+                if (parent == null || !isApplicationOrDefinition(parent)
+                        || head(parent).equals("struct") || head(parent).equals("define-struct")) {
+                    return false;   // a struct's field list isn't a call
                 }
-                int index = indexInParent(ctx);
-                int bodyStart = bodyStartIndex(parent);
-                int lastForm = parent.getChildCount() - 2;
-                return bodyStart > 0 && index >= bodyStart && index < lastForm;
+                if (discarded == null) discarded = discardedExprs(file, sourceCode, tree);
+                return discarded.contains(ctx);
             }
 
             @Override
@@ -1632,57 +1885,6 @@ public class RacketMutationScanner {
             private boolean isApplicationOrDefinition(ParseTree ctx) {
                 return (ctx instanceof ISLParser.ExprContext || ctx instanceof ISLParser.DefinitionContext)
                         && ctx.getChildCount() >= 3 && ctx.getChild(0).getText().equals("(");
-            }
-
-            private int indexInParent(ParseTree ctx) {
-                ParseTree parent = ctx.getParent();
-                for (int i = 0; i < parent.getChildCount(); i++) {
-                    if (parent.getChild(i) == ctx) return i;
-                }
-                return -1;
-            }
-
-            /** Index of the first body form, or -1 if the form has no body. */
-            private int bodyStartIndex(ParseTree form) {
-                String head = form.getChild(1).getText();
-                switch (head) {
-                    case "begin":
-                        return 2;
-                    case "when", "unless":
-                        return 3;
-                    case "lambda", "λ", "let", "let*", "letrec":
-                        // The grammar lists the parameters or bindings flat, so
-                        // [x (f a)] puts (f a) right after let: the body starts
-                        // after the ')' that closes them. (lambda () ...) has a single '()' token.
-                        if (form.getChild(2) instanceof TerminalNode empty && empty.getText().equals("()")) {
-                            return 3;
-                        }
-                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
-                            for (int i = 3; i < form.getChildCount(); i++) {
-                                if (form.getChild(i) instanceof TerminalNode t && t.getText().equals(")")) {
-                                    return i + 1;
-                                }
-                            }
-                            return -1;
-                        }
-                        // Not parsed as that form (e.g. a named let): the
-                        // bindings are one sub-form, after the name if any.
-                        boolean named = head.equals("let") && !form.getChild(2).getText().startsWith("(")
-                                && !form.getChild(2).getText().startsWith("[");
-                        return named ? 4 : 3;
-                    case "define":
-                        // (define (f x) body...) - a grammar definition lists the
-                        // header tokens flat, so the body starts after its ')'.
-                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
-                            for (int i = 3; i < form.getChildCount(); i++) {
-                                if (form.getChild(i).getText().equals(")")) return i + 1;
-                            }
-                            return -1;
-                        }
-                        return form.getChild(2).getText().startsWith("(") ? 3 : -1;
-                    default:
-                        return -1;
-                }
             }
 
             @Override

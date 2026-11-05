@@ -51,7 +51,7 @@ public class HtmlReportGenerator {
                     .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
                     .count();
 
-            double score = total > 0 ? ((double) killed / total) * 100.0 : 0.0;
+            double score = new MutationReport(fileResults).getMutationScore();
 
             String outputFile = "./output/report/allFiles/" + stripExtension(fileName) + ".html";
 
@@ -122,7 +122,7 @@ public class HtmlReportGenerator {
         int killedCount = visibleReport.getKilled();
         int survivedCount = visibleReport.getSurvived();
         int noCoverageCount = visibleReport.getNoCoverage();
-        double initialScore = totalMutants > 0 ? (killedCount * 100.0 / totalMutants) : 0.0;
+        double initialScore = visibleReport.getMutationScore();
 
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Mutation Score</div><div id=\"top-mutation-score\" class=\"value mutation-score\">%.1f%%</div></div>\n", initialScore));
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">Total Mutants</div><div id=\"top-total-count\" class=\"value\">%d</div></div>\n", totalMutants));
@@ -131,6 +131,19 @@ public class HtmlReportGenerator {
         html.append(String.format("            <div class=\"stat-card\"><div class=\"label\">No Coverage</div><div id=\"top-no-coverage-count\" class=\"value no-coverage\">%d</div></div>\n", noCoverageCount));
         html.append("            <div class=\"stat-card\"><div class=\"label\">Equivalent</div><div id=\"top-equivalent-count\" class=\"value equivalent\">0</div></div>\n");
         html.append("        </div>\n");
+
+        html.append("        <div class=\"survivors-section\"><h2>Safety assessments</h2><p>Skipped or aborted: ")
+                .append(visibleReport.getSafetySkipped()).append(" (excluded from the mutation score)</p><ul>");
+        for (MutantResult result : results) {
+            if (result.getSafetyAssessment() != null) {
+                html.append("<li>").append(escapeHtml(result.getMutationPoint().toString())).append(": ")
+                    .append(escapeHtml(result.getSafetyAssessment().level().toString())).append(" / ")
+                    .append(escapeHtml(result.getSafetyAssessment().category())).append(" / ")
+                    .append(escapeHtml(result.getStatus().toString())).append(" — ")
+                    .append(escapeHtml(result.getSafetyAssessment().reason())).append("</li>");
+            }
+        }
+        html.append("</ul></div>\n");
 
         html.append("        <div class=\"survivors-section\">\n");
         html.append("            <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\">\n");
@@ -167,17 +180,19 @@ public class HtmlReportGenerator {
             int noCoverage = (int) fileResults.stream()
                     .filter(r -> r.getStatus() == MutantResult.MutantStatus.NO_COVERAGE)
                     .count();
-            double score = total > 0 ? ((double) killed / total) * 100.0 : 0.0;
+            int safetySkipped = new MutationReport(fileResults).getSafetySkipped();
+            double score = new MutationReport(fileResults).getMutationScore();
 
             String link = "allFiles/" + stripExtension(file) + ".html";
 
             html.append(String.format(
-                    "                    <tr class=\"summary-row\" data-file=\"%s\" data-total=\"%d\" data-killed=\"%d\" data-survived=\"%d\" data-no-coverage=\"%d\" data-killed-ids=\"%s\" data-survived-ids=\"%s\" data-no-coverage-ids=\"%s\">\n",
+                    "                    <tr class=\"summary-row\" data-file=\"%s\" data-total=\"%d\" data-killed=\"%d\" data-survived=\"%d\" data-no-coverage=\"%d\" data-safety-skipped=\"%d\" data-killed-ids=\"%s\" data-survived-ids=\"%s\" data-no-coverage-ids=\"%s\">\n",
                     escapeHtml(file),
                     total,
                     killed,
                     survived,
                     noCoverage,
+                    safetySkipped,
                     escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.KILLED))),
                     escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.SURVIVED))),
                     escapeHtml(toJsonArray(mutantIdsForStatus(fileResults, MutantResult.MutantStatus.NO_COVERAGE)))
@@ -217,12 +232,15 @@ public class HtmlReportGenerator {
         html.append("        let visibleKilledTotal = 0;\n");
         html.append("        let visibleNoCoverageTotal = 0;\n");
         html.append("        let equivalentTotal = 0;\n");
+        html.append("        let safetySkippedTotal = 0;\n");
         html.append("\n");
         html.append("        document.querySelectorAll('.summary-row').forEach(row => {\n");
         html.append("            const totalCount = parseInt(row.dataset.total || '0', 10);\n");
         html.append("            const killedCount = parseInt(row.dataset.killed || '0', 10);\n");
         html.append("            const survivedCount = parseInt(row.dataset.survived || '0', 10);\n");
         html.append("            const noCoverageCount = parseInt(row.dataset.noCoverage || '0', 10);\n");
+        html.append("            const safetySkipped = parseInt(row.dataset.safetySkipped || '0', 10);\n");
+        html.append("            safetySkippedTotal += safetySkipped;\n");
         html.append("\n");
         html.append("            const hiddenKilled = hiddenCount(parseIds(row, 'killedIds'), hiddenIds);\n");
         html.append("            const hiddenSurvived = hiddenCount(parseIds(row, 'survivedIds'), hiddenIds);\n");
@@ -244,7 +262,7 @@ public class HtmlReportGenerator {
         html.append("            if (killedCell) killedCell.textContent = visibleKilledForThisFile;\n");
         html.append("            if (survivedCell) survivedCell.textContent = visibleSurvivedForThisFile;\n");
         html.append("            if (noCoverageCell) noCoverageCell.textContent = visibleNoCoverageForThisFile;\n");
-        html.append("            if (scoreCell) scoreCell.textContent = (visibleTotalForThisFile > 0 ? (visibleKilledForThisFile * 100.0 / visibleTotalForThisFile) : 0).toFixed(1) + '%';\n");
+        html.append("            if (scoreCell) scoreCell.textContent = (visibleTotalForThisFile > safetySkipped ? (visibleKilledForThisFile * 100.0 / (visibleTotalForThisFile - safetySkipped)) : 0).toFixed(1) + '%';\n");
         html.append("\n");
         html.append("            if (totalCount > 0 && visibleTotalForThisFile === 0) {\n");
         html.append("                row.style.display = 'none';\n");
@@ -265,7 +283,7 @@ public class HtmlReportGenerator {
         html.append("        const equivalentEl = document.getElementById('top-equivalent-count');\n");
         html.append("        const scoreEl = document.getElementById('top-mutation-score');\n");
         html.append("\n");
-        html.append("        const score = visibleTotal > 0 ? (visibleKilledTotal * 100.0 / visibleTotal) : 0;\n");
+        html.append("        const score = visibleTotal > safetySkippedTotal ? (visibleKilledTotal * 100.0 / (visibleTotal - safetySkippedTotal)) : 0;\n");
         html.append("\n");
         html.append("        if (totalEl) totalEl.textContent = visibleTotal;\n");
         html.append("        if (killedEl) killedEl.textContent = visibleKilledTotal;\n");

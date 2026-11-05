@@ -105,7 +105,7 @@ class MslFoundationsTests {
     @Test
     void unknownPlaceholderIsAnError() {
         IOException e = specError("G", "", "\tReplace: {quantty} + 1", "\tWith: 0", "", "End");
-        assertTrue(e.getMessage().contains("Unknown placeholder {quantty} at line 3"), e.getMessage());
+        assertTrue(e.getMessage().contains("line 3: Unknown placeholder {quantty}"), e.getMessage());
     }
 
     @Test
@@ -170,6 +170,19 @@ class MslFoundationsTests {
         assertEquals(List.of("2: int -> double", "2: int -> double", "2: int -> double", "2: int -> double",
                 "2: int -> double", "3: int -> double", "4: int -> double", "7: int -> double", "8: int -> double"),
                 SpecFixture.mutantList(dir, TO_FLOAT, "A.java", JAVA));
+    }
+
+    @Test
+    void unicodeBeforeAMutationKeepsItsPosition() throws IOException {
+        // ANTLR counts code points, Java strings UTF-16 units: an emoji is one and two.
+        String source = "// emoji: 😀\nconst label = '😀'; const output = show ? 'yes' : 'no';\n";
+        Path src = java.nio.file.Files.createDirectories(dir.resolve("unicode"));
+        java.nio.file.Files.writeString(src.resolve("a.js"), source);
+        Path rule = java.nio.file.Files.writeString(dir.resolve("unicode.spec"),
+                spec("Replace: {quantity c} ? {quantity a} : {quantity b}\nWith: false ? {quantity a} : {quantity b}"));
+        List<mutationtester.model.MutationPoint> points = Main.scanForMutations(src, rule.toString());
+        assertEquals(1, points.size());
+        assertTrue(Main.applyMutation(source, points.get(0)).contains("const output = (false ? 'yes' : 'no');"));
     }
 
     // ── Writing statements (F1) ──────────────────────────────────────────

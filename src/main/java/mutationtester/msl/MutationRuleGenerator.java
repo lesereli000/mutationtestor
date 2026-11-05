@@ -52,11 +52,23 @@ public class MutationRuleGenerator {
     private static final List<String> RULE_KEYWORDS = List.of(REPLACE, DELETE, INSERT);
     private static final List<String> CLAUSE_KEYWORDS = List.of(WITH, BEFORE, AFTER, EXCEPT, INVERSE);
 
+    /**
+     * Reads a spec file. A mistake in it is an IOException whose message is one
+     * line naming the file, line and fix, e.g.
+     * {@code my.spec, line 3: Unsupported MSL operator "LE". Use the canonical operator "<=".}
+     */
     public static List<MutationRule> generateRules(File specFile) throws IOException {
-        return generateRules(Files.readAllLines(specFile.toPath()));
+        if (!specFile.isFile()) {
+            throw new IOException("Spec file not found: " + specFile.getPath());
+        }
+        try {
+            return generateRules(Files.readAllLines(specFile.toPath()));
+        } catch (SpecError e) {
+            throw new IOException(specFile.getName() + ", " + e.getMessage(), e);
+        }
     }
 
-    /** Parses spec text that is already in memory. */
+    /** Parses spec text that is already in memory; errors read "line N: problem. fix". */
     public static List<MutationRule> generateRules(List<String> rawLines) throws IOException {
         List<String> lines = rawLines.stream()
                 .map(String::strip)
@@ -93,8 +105,8 @@ public class MutationRuleGenerator {
             if (keyword == null && keywordOf(line, CLAUSE_KEYWORDS) == null && looksLikeKeyword(line)) {
                 // A misspelled keyword would otherwise be skipped as a note,
                 // silently dropping the rule.
-                throw new IOException("Unknown keyword '" + line.substring(0, line.indexOf(':') + 1) + "' at line "
-                        + (i + 1) + "; rules start with Replace:, Delete: or Insert:");
+                throw error(i + 1, "Unknown keyword '" + line.substring(0, line.indexOf(':') + 1)
+                        + "'. Rules start with \"Replace:\", \"Delete:\" or \"Insert:\".");
             }
             if (groupEnded && keyword == null) {
                 groupLabel = toGroupLabel(line);
@@ -107,8 +119,12 @@ public class MutationRuleGenerator {
             if (keyword == null) {
                 String misplaced = keywordOf(line, CLAUSE_KEYWORDS);
                 if (misplaced != null) {
-                    throw new IOException("'" + misplaced + "' at line " + (i + 1)
-                            + " must follow a Replace:, Delete: or Insert: line");
+                    throw error(i + 1, "\"" + misplaced + "\" must follow a Replace:, Delete: or Insert: line.");
+                }
+                // A rule missing its colon ("Replace {quantity} ...") would be skipped as a note.
+                if (line.contains("{quantity}")) {
+                    throw error(i + 1, "\"" + line + "\" isn't part of a rule."
+                            + " A rule starts with \"Replace:\", \"Delete:\" or \"Insert:\".");
                 }
                 // Anything else (notes, comments) is skipped.
                 i++;
@@ -122,7 +138,8 @@ public class MutationRuleGenerator {
             switch (keyword) {
                 case REPLACE -> {
                     if (i >= lines.size() || !lines.get(i).startsWith(WITH)) {
-                        throw new IOException("Expected 'With:' after 'Replace:' at line " + (i + 1));
+                        throw error(ruleLine, "\"Replace:\" has no \"With:\" line after it."
+                                + " Add one, e.g. \"With: {quantity} - {quantity}\".");
                     }
                     MSLTree to = parse(lines.get(i).substring(WITH.length()), i + 1);
                     checkPlaceholdersBound(to, target, i + 1);
@@ -150,13 +167,13 @@ public class MutationRuleGenerator {
                     boolean before = i < lines.size() && lines.get(i).startsWith(BEFORE);
                     boolean after = i < lines.size() && lines.get(i).startsWith(AFTER);
                     if (!before && !after) {
-                        throw new IOException("Expected 'Before:' or 'After:' after 'Insert:' at line " + (i + 1));
+                        throw error(ruleLine, "\"Insert:\" has no \"Before:\" or \"After:\" line after it.");
                     }
                     MSLTree anchor = parse(lines.get(i).substring((before ? BEFORE : AFTER).length()), i + 1);
                     checkPlaceholdersBound(target, anchor, ruleLine);
                     i = skipBlank(lines, i + 1);
                     if (i < lines.size() && (lines.get(i).startsWith(BEFORE) || lines.get(i).startsWith(AFTER))) {
-                        throw new IOException("An Insert: takes either 'Before:' or 'After:', not both (line " + (i + 1) + ")");
+                        throw error(i + 1, "An Insert: takes either \"Before:\" or \"After:\", not both.");
                     }
                     List<MSLTree> excepts = new ArrayList<>();
                     i = readExcepts(lines, i, excepts);
@@ -166,7 +183,7 @@ public class MutationRuleGenerator {
                 default -> throw new IllegalStateException(keyword);
             }
             if (i < lines.size() && lines.get(i).startsWith(INVERSE)) {
-                throw new IOException("'And: Inverse' at line " + (i + 1) + " is only allowed on a Replace: rule");
+                throw error(i + 1, "\"And: Inverse\" is only allowed on a Replace: rule.");
             }
         }
 
@@ -178,8 +195,7 @@ public class MutationRuleGenerator {
             MSLTree except = parse(lines.get(i).substring(EXCEPT.length()), i + 1);
             int matches = countMatchPlaceholders(except);
             if (matches != 1) {
-                throw new IOException("An Except: pattern must contain exactly one {match} (line " + (i + 1)
-                        + " has " + matches + ")");
+                throw error(i + 1, "An Except: pattern must contain exactly one {match}; this one has " + matches + ".");
             }
             excepts.add(except);
             i = skipBlank(lines, i + 1);
@@ -192,7 +208,7 @@ public class MutationRuleGenerator {
         try {
             tree = MSLPatternParser.parse(pattern);
         } catch (IllegalArgumentException e) {
-            throw new IOException(e.getMessage() + " (line " + lineNumber + ")", e);
+            throw error(lineNumber, e.getMessage());
         }
         checkKnownTypes(tree, lineNumber);
         return tree;
@@ -204,13 +220,24 @@ public class MutationRuleGenerator {
             if (!MSLPlaceholder.isKnownType(p.type())) {
                 java.util.Set<String> known = new java.util.TreeSet<>(MSLPlaceholder.INPUT_TYPES);
                 known.addAll(MSLPlaceholder.OUTPUT_TYPES);
-                throw new IOException("Unknown placeholder {" + p.type() + "} at line " + lineNumber
-                        + "; placeholders are " + String.join(", ", known));
+                throw error(lineNumber, "Unknown placeholder {" + p.type() + "}. Placeholders are "
+                        + String.join(", ", known) + ".");
             }
             if (p.constraint() != null) checkKnownTypes(p.constraint(), lineNumber);
             return;
         }
         for (MSLTree child : ((MSLNode) tree).children()) checkKnownTypes(child, lineNumber);
+    }
+
+    /** A spec mistake, "line N: problem. fix"; the file-based entry point adds the file name. */
+    private static final class SpecError extends IOException {
+        SpecError(int line, String message) {
+            super("line " + line + ": " + message);
+        }
+    }
+
+    private static SpecError error(int line, String message) {
+        return new SpecError(line, message);
     }
 
     private static int skipBlank(List<String> lines, int i) {
@@ -242,13 +269,13 @@ public class MutationRuleGenerator {
         for (var entry : usedNames.entrySet()) {
             String type = sourceNames.get(entry.getKey());
             if (type == null) {
-                throw new IOException("Line " + lineNumber + " uses {" + entry.getValue() + " " + entry.getKey()
-                        + "} but the pattern it refers to has no placeholder named " + entry.getKey());
+                throw error(lineNumber, "{" + entry.getValue() + " " + entry.getKey()
+                        + "} refers back to the pattern, which has no placeholder named " + entry.getKey() + ".");
             }
             if (!type.equals(entry.getValue()) && (MSLPlaceholder.familyOf(type) == null
                     || MSLPlaceholder.familyOf(type) != MSLPlaceholder.familyOf(entry.getValue()))) {
-                throw new IOException("Line " + lineNumber + " uses {" + entry.getValue() + " " + entry.getKey()
-                        + "} but " + entry.getKey() + " is a {" + type + "}");
+                throw error(lineNumber, "{" + entry.getValue() + " " + entry.getKey() + "} uses " + entry.getKey()
+                        + " as a {" + entry.getValue() + "}, but the pattern has it as a {" + type + "}.");
             }
         }
         // Number and text placeholders pair by position within their family,
@@ -263,16 +290,16 @@ public class MutationRuleGenerator {
                 want += used.getOrDefault(type, 0);
             }
             if (want > have) {
-                throw new IOException("Line " + lineNumber + " writes " + want + " number or text placeholder(s) but"
-                        + " the pattern it refers to matches " + have + ", so there is nothing to convert");
+                throw error(lineNumber, "Writes " + want + " number or text placeholder(s) but the pattern"
+                        + " matches " + have + ", so there is nothing to convert.");
             }
         }
         for (var entry : used.entrySet()) {
             if (MSLPlaceholder.familyOf(entry.getKey()) != null) continue;
             Integer have = available.get(entry.getKey());
             if (have != null && entry.getValue() > have) {
-                throw new IOException("Line " + lineNumber + " uses {" + entry.getKey() + "} " + entry.getValue()
-                        + " times but the pattern it refers to matches only " + have);
+                throw error(lineNumber, "Uses {" + entry.getKey() + "} " + entry.getValue()
+                        + " times but the pattern matches only " + have + ".");
             }
         }
     }

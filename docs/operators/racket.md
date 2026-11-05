@@ -70,17 +70,32 @@ order conditions use `<`, `>`, `<=`, `>=`, `positive?`, `negative?`, or the
 
 | Operator | What it changes | Example |
 |----------|-----------------|---------|
-| `VML_VOID_METHOD_CALL` | Removes a call whose result is discarded in a `begin` | `(begin (displayln x) x)` → `(begin x)` |
-| `STATEMENT_MUTATION` | Replaces that call with `(void)` | `(begin (displayln x) x)` → `(begin (void) x)` |
+| `VML_VOID_METHOD_CALL` | Removes a call whose result is discarded | `(define (f x) (displayln x) x)` → `(define (f x) x)` |
+| `STATEMENT_MUTATION` | Replaces that call with `(void)` | `(define (f x) (displayln x) x)` → `(define (f x) (void) x)` |
 | `NON_VOID_METHOD_CALLS` | A call whose result is used → a default value | `(add1 x)` → `0` |
 | `CONSTRUCTOR_CALLS` | A struct constructor call → `'()` | `(posn 0 0)` → `'()` |
+
+A call's result is discarded when the call is any form but the last in a
+function, `let`, `lambda`, `when`, `unless` or `begin` body (in `begin0`, every
+form but the first). `VML_VOID_METHOD_CALL`, `STATEMENT_MUTATION` and
+`NON_VOID_METHOD_CALLS` all use this, so a call is either a statement or a
+used value, never both.
 
 `NON_VOID_METHOD_CALLS` picks the default from the function's name: `#f` for
 predicates (names ending in `?`), `0` for numeric functions such as `add1` or
 `sqr`, `""` for string functions such as `string-append`, and `'()` otherwise.
 
-`CONSTRUCTOR_CALLS` covers constructors of structs declared in the file with
-`struct` or `define-struct`, and any call to a name starting with `make-`.
+`CONSTRUCTOR_CALLS` covers constructors of structs declared in the file
+(`(struct posn …)` declares `posn`, `(define-struct posn …)` declares
+`make-posn`) and built-in constructors such as `make-hash`, `make-vector`,
+`make-string` and `make-posn`. Other functions whose names start with `make-`,
+like your own `make-report`, are ordinary calls.
+
+Structs declared in another of your files count too, when this file requires
+it by path: `(require "shapes.rkt")` or `(file "…")`, including inside
+`only-in`, `except-in`, `prefix-in`, `rename-in` and `combine-in`, so
+`(prefix-in s: "shapes.rkt")` makes `s:posn` a constructor. Files that file
+requires are followed as well, for structs it re-exports.
 
 ### Return values
 
@@ -145,9 +160,8 @@ null-or-empty check, `(or (not s) (string=? s ""))` and its variants, and write
 
 ## Known limitations
 
-- **Calls and values that span several lines** are skipped by
-  `NON_VOID_METHOD_CALLS`, `CONSTRUCTOR_CALLS` and `EMPTY_RETURNS`.
-- **Any function named `make-…`** is treated as a constructor, including your
-  own helper functions.
+- **Structs from collections and packages** (`(require racket/list)`,
+  `(require my-pkg/shapes)`) aren't recognized as constructors; only files
+  required by path are read.
 - **`JS_STRICT_EQ_TO_LOOSE_EQ`** keeps its JavaScript name because the same
   operator name is shared across languages.

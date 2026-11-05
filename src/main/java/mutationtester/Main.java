@@ -40,11 +40,20 @@ import mutationtester.scanner.JavaMutationScanner;
 import mutationtester.scanner.JavaScriptMutationScanner;
 import mutationtester.scanner.PythonMutationScanner;
 import mutationtester.scanner.RacketMutationScanner;
+import mutationtester.safety.SafetyAction;
+import mutationtester.safety.SafetyController;
+import mutationtester.safety.SafetyAssessment;
 
 public class Main {
     private static final long MAX_CMD_TIME = 180000;
+    static final long DEFAULT_TEST_TIMEOUT_SECONDS = MAX_CMD_TIME / 1000;
+    // How long one run of the test command may take (config: test_timeout_seconds).
+    // A mutant that makes the tests loop forever is stopped at this limit.
+    static long testTimeoutMillis = MAX_CMD_TIME;
     private static final String OUTPUT_ROOT = "output";
     private static final String WORKING_DIR_PREFIX = "workdir-";
+    private static final SafetyController SAFETY = SafetyController.fromEnvironment(
+            System.console() == null ? null : new BufferedReader(new InputStreamReader(System.in)), System.out);
 
     static class Config {
         String sourceCodeDirectory;
@@ -54,9 +63,19 @@ public class Main {
         String customMutationSpec; // path to the .spec file whose rules make the mutants
         String coverageCommand;   // optional command that writes a coverage report
         String coverageReport;    // optional lcov/cobertura/jacoco report path, relative to project dir
+        long testTimeoutSeconds = DEFAULT_TEST_TIMEOUT_SECONDS; // limit for one run of test_command
     }
 
     static String runCommand(String command, String directory) {
+        return runCommand(command, directory, MAX_CMD_TIME);
+    }
+
+    /** Runs the project's test command with the configured test_timeout_seconds limit. */
+    static String runTests(String testCommand, String directory) {
+        return runCommand(testCommand, directory, testTimeoutMillis);
+    }
+
+    static String runCommand(String command, String directory, long timeoutMillis) {
         Process process;
         List<String> commandList = new ArrayList<>(Arrays.asList(command.split(" ")));
         try {
@@ -96,10 +115,11 @@ public class Main {
         });
 
         try {
-            boolean completed = process.waitFor(MAX_CMD_TIME, TimeUnit.MILLISECONDS);
+            boolean completed = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS);
             if (!completed) {
                 destroyProcessTree(process);
-                System.out.println("Process " + commandList.get(0) + " timed out.");
+                System.out.println("Process " + commandList.get(0) + " timed out after "
+                        + (timeoutMillis / 1000) + " s.");
                 output.append("PROCESS_TIMEOUT").append(System.lineSeparator());
                 outputFuture.cancel(true);
                 return output.toString();
@@ -131,6 +151,14 @@ public class Main {
             return "";
         } finally {
             outputExecutor.shutdownNow();
+        }
+    }
+
+    /** Explains a baseline failure that was really the test_timeout_seconds limit. */
+    private static void printTimeoutHint(String baselineOutput) {
+        if (baselineOutput.contains("PROCESS_TIMEOUT")) {
+            System.err.println("The tests took longer than test_timeout_seconds ("
+                    + (testTimeoutMillis / 1000) + " s) on the original code. Raise test_timeout_seconds in the config.");
         }
     }
 
@@ -181,6 +209,16 @@ public class Main {
             config = readConfig(configFile);
         } catch (IOException e) {
             System.out.println("Error reading config file " + configFile + ": " + e.getMessage());
+            return;
+        }
+        testTimeoutMillis = config.testTimeoutSeconds * 1000;
+
+        // Check the spec file before running any tests, so a mistake in it is
+        // reported straight away as one line, not after the baseline run
+        try {
+            MutationRuleGenerator.generateRules(new File(config.customMutationSpec));
+        } catch (IOException e) {
+            System.err.println("ERROR: " + e.getMessage());
             return;
         }
 
@@ -242,6 +280,19 @@ public class Main {
         config.coverageCommand = values.getOrDefault("coverage_command", "");
         config.coverageReport = values.getOrDefault("coverage_report", "");
 
+        String timeout = values.get("test_timeout_seconds");
+        if (timeout != null && !timeout.isEmpty()) {
+            try {
+                config.testTimeoutSeconds = Long.parseLong(timeout);
+            } catch (NumberFormatException e) {
+                config.testTimeoutSeconds = 0;
+            }
+            if (config.testTimeoutSeconds <= 0) {
+                throw new IOException("test_timeout_seconds must be a whole number of seconds above 0, not \""
+                        + timeout + "\"");
+            }
+        }
+
         if (config.sourceCodeDirectory == null || config.sourceCodeDirectory.isEmpty()) {
             throw new IOException("Missing source_code_directory in config file");
         }
@@ -288,9 +339,10 @@ public class Main {
         if (!command1.isEmpty()) {
             runCommand(command1, mutantPath.toString());
         }
-        String baselineOutput = runCommand(command2, mutantPath.toString());
+        String baselineOutput = runTests(command2, mutantPath.toString());
         if (hasTestFailures(baselineOutput)) {
             System.err.println("ERROR: Tests fail on original code! Fix tests before running mutation testing.");
+            printTimeoutHint(baselineOutput);
             System.err.println("Baseline output:\n" + baselineOutput);
             return;
         }
@@ -322,6 +374,11 @@ public class Main {
             MutantResult result = testSingleMutant(point, mutantPath, command1, command2, coverageData);
             results.add(result);
 
+            if (result.getStatus() == MutantResult.MutantStatus.SAFETY_ABORTED) {
+                System.out.println("Safety review aborted the mutation run.");
+                break;
+            }
+
             if (result.getStatus() == MutantResult.MutantStatus.KILLED) {
                 System.out.println("KILLED");
             } else if (result.getStatus() == MutantResult.MutantStatus.SURVIVED) {
@@ -330,6 +387,8 @@ public class Main {
                 System.out.println("NO COVERAGE");
             } else if (result.getStatus() == MutantResult.MutantStatus.COMPILE_ERROR) {
                 System.out.println("COMPILE ERROR");
+            } else if (result.getStatus() == MutantResult.MutantStatus.SAFETY_SKIPPED) {
+                System.out.println("SAFETY SKIPPED");
             } else {
                 System.out.println("TIMEOUT OR ERROR");
             }
@@ -452,8 +511,16 @@ public class Main {
             String compileCommand,
             String testCommand,
             CoverageData coverageData) {
+        return testSingleMutant(point, workingDir, compileCommand, testCommand, coverageData, SAFETY);
+    }
+
+    static MutantResult testSingleMutant(
+            MutationPoint point, Path workingDir, String compileCommand, String testCommand,
+            CoverageData coverageData, SafetyController safety) {
         File originalFile = point.getSourceFile();
         String originalContent = null;
+        boolean mutationWritten = false;
+        SafetyAssessment safetyAssessment = null;
 
         try {
             if (isNoCoverageMutant(point, coverageData)) {
@@ -467,6 +534,20 @@ public class Main {
             originalContent = Files.readString(originalFile.toPath());
 
             String mutatedContent = applyMutation(originalContent, point);
+            if (mutatedContent.equals(originalContent)) {
+                return new MutantResult(point, MutantResult.MutantStatus.COMPILE_ERROR,
+                        "Mutation was not applied; the source location or expected text did not match.", false);
+            }
+            SafetyController.Outcome outcome = safety.decideWithAssessment(point, originalContent, mutatedContent,
+                    compileCommand, testCommand);
+            safetyAssessment = outcome.assessment();
+            SafetyAction action = outcome.action();
+            if (action != SafetyAction.CONTINUE) {
+                return new MutantResult(point,
+                        action == SafetyAction.ABORT ? MutantResult.MutantStatus.SAFETY_ABORTED : MutantResult.MutantStatus.SAFETY_SKIPPED,
+                        outcome.assessment().reason(), false, safetyAssessment);
+            }
+            mutationWritten = true;
             Files.writeString(originalFile.toPath(), mutatedContent);
 
             String compileOutput = "";
@@ -477,11 +558,13 @@ public class Main {
                             point,
                             MutantResult.MutantStatus.COMPILE_ERROR,
                             compileOutput,
-                            false);
+                            false, safetyAssessment);
                 }
             }
 
-            String testOutput = runCommand(testCommand, workingDir.toString());
+            // A mutant that makes the tests hang is stopped at test_timeout_seconds
+            // and counted as killed, as PIT does
+            String testOutput = runTests(testCommand, workingDir.toString());
 
             boolean testsPass = !hasTestFailures(testOutput);
 
@@ -492,16 +575,16 @@ public class Main {
                 status = MutantResult.MutantStatus.KILLED;
             }
 
-            return new MutantResult(point, status, testOutput, testsPass);
+            return new MutantResult(point, status, testOutput, testsPass, safetyAssessment);
 
         } catch (IOException e) {
             return new MutantResult(
                     point,
                     MutantResult.MutantStatus.COMPILE_ERROR,
                     e.getMessage(),
-                    false);
+                    false, safetyAssessment);
         } finally {
-            if (originalContent != null) {
+            if (mutationWritten) {
                 try {
                     Path originalPath = originalFile.toPath();
                     Path parent = originalPath.getParent();
@@ -543,6 +626,11 @@ public class Main {
 
         if (point.getColumnNumber() < 0 || point.getColumnNumber() > line.length()) {
             System.err.println("Warning: Column number " + point.getColumnNumber() + " out of bounds");
+            return content;
+        }
+
+        if (!line.startsWith(point.getOperator(), point.getColumnNumber())) {
+            System.err.println("Warning: Mutation text does not match the original source at " + point);
             return content;
         }
 
