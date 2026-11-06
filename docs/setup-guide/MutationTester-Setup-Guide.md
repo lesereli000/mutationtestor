@@ -19,13 +19,13 @@
 **Option A - Git clone:**
 
 ```bash
-git clone https://github.com/EllieJin04/mutationtestor.git
+git clone https://github.com/lesereli000/mutationtestor.git
 cd mutationtestor
 ```
 
 **Option B - Manual download (no Git required):**
 
-1. Open <https://github.com/EllieJin04/mutationtestor> in your browser
+1. Open <https://github.com/lesereli000/mutationtestor> in your browser
 2. Click the green **Code** button -> **Download ZIP**
 3. Extract the ZIP to a folder of your choice (e.g. `C:\Multi-Language_mutationtestor`)
 4. Open Windows Terminal and navigate to that folder
@@ -293,11 +293,15 @@ test_command=mvn test
 **Field reference:**
 
 - `source_code_directory` - path to source files, relative to the project root
-- `custom_mutation_spec` - path to the `.txt` or `.spec` MSL spec file whose rules make the mutants (required; `mutator_type` is no longer used)
+- `custom_mutation_spec` - path to the `.spec` MSL spec file whose rules make the mutants (required; `mutator_type` is no longer used). If no file exists at that path, the spec of the same path under `specs/` bundled in the jar is used (e.g. `specs/OperatorMutations.spec`, `specs/catalog/pit.spec`)
 - `compile_command` - command to build the project before testing; leave blank if no compile step is needed
 - `test_command` - command to run the test suite (must pass on the original code before mutation begins)
 - `coverage_command` / `coverage_report` - optional; used to attach a coverage report to the output
 - `test_timeout_seconds` - optional; the longest one run of `test_command` may take, in seconds (default `180`). A mutant that makes the tests loop forever is stopped at this limit and counted as killed. Set it a little above how long your tests normally take, e.g. `test_timeout_seconds=10` for a suite that runs in 3 seconds
+- `min_mutation_score` - optional, 0-100. The tool exits with code 2 when the score is below it (code 1 means it could not run, 0 means it passed), so CI can fail on it. See [Running MutationTester in GitHub Actions](../ci/README.md)
+- `exclude_source` - optional, comma-separated folders or files (relative to the project root, like `source_code_directory`) that are never mutated, e.g. `exclude_source=src/main/java/main/ui`. Excluded code produces no mutants and doesn't count in the score
+- `time_limit_minutes` - optional, above 0. After this long (from when the tool starts) no new mutants are tested; the report covers the tested ones and is marked partial, and the tool exits with code 3
+- `unattended_safety` - optional, `skip` (default) or `run_unknown`. With no terminal for safety prompts (CI, scripts), mutants the safety review rates UNKNOWN are skipped; `run_unknown` tests them instead. REVIEW and BLOCK mutants are skipped either way. See [SAFETY.md](../../SAFETY.md)
 
 **Language-specific examples:**
 
@@ -418,7 +422,7 @@ The report includes:
 - **Survivor list** - click a surviving mutant to jump to the corresponding line
 - **Equivalent mutant marking** - surviving mutants can be flagged via the UI
 
-> Equivalent mutant marking requires the API server running on `localhost:8081`.
+> Marking works without a server. With the API server running on `localhost:8081`, marks are saved immediately; without it, the page offers a download of the updated list. Reports from GitHub Actions save marks to the project's `mutation-data` branch instead (see [Running MutationTester in GitHub Actions](../ci/README.md)).
 
 ![HTML mutation report showing 83.3% score](mutation_report.png)
 

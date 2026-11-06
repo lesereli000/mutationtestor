@@ -1,0 +1,173 @@
+# Mutation testing for a project, using a released MutationTester jar.
+# Copy this file to .github/workflows/mutation.yml in the project; it is the
+# only file the tool needs in the project's main branch. See docs/ci/README.md.
+#
+# One-time setup in the project:
+#   - Add a secret MUTATION_TOOL_TOKEN that can read lesereli000/mutationtestor
+#     (needed while that repository is private).
+#   - If a branch ruleset covers all branches, let github-actions[bot] push to
+#     the mutation-data branch.
+#
+# Edit the "Write config" step and the toolchain setup step for the project.
+
+name: Mutation testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      min_score:
+        description: Minimum mutation score (0-100)
+        default: '70'
+
+env:
+  TOOL_VERSION: v0.1.0-rc.1
+  TOOL_REPO: lesereli000/mutationtestor
+
+jobs:
+  # Creates the mutation-data branch if needed and folds equivalent-mutant
+  # marks saved from reports into equivalents.json. Kept apart from the
+  # mutation job so the project's tests never run with a token that can push.
+  sync-equivalents:
+    if: github.event.pull_request.head.repo.fork != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: mutation-data
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download mutation tester
+        env:
+          GH_TOKEN: ${{ secrets.MUTATION_TOOL_TOKEN }}
+        run: |
+          gh release download "$TOOL_VERSION" --repo "$TOOL_REPO" \
+            --pattern "mutationtester-$TOOL_VERSION.jar" --output "$RUNNER_TEMP/mutationtester.jar"
+
+      - name: Sync equivalent mutants
+        run: java -cp "$RUNNER_TEMP/mutationtester.jar" mutationtester.ci.EquivalentsSync
+
+  mutation:
+    needs: sync-equivalents
+    if: ${{ !cancelled() && needs.sync-equivalents.result != 'failure' }}
+    runs-on: ubuntu-latest
+    # Three nested limits, so a long run still produces a report:
+    #   time_limit_minutes (config, 45) - the tool starts no new mutants
+    #   step timeout-minutes (55)       - room for running mutants and the report
+    #   job timeout-minutes (60)        - overall cap; the upload step still runs
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      MIN_SCORE: ${{ inputs.min_score || '70' }}
+      # Mutants tested at once (1-4, default 1). Each worker runs the test
+      # suite in its own copy of the project, so only raise this if the tests
+      # don't share ports, databases or files outside the project.
+      # MUTATION_WORKERS: 4
+    steps:
+      - uses: actions/checkout@v4
+
+      # Replace with whatever the project's own tests need.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Download mutation tester
+        env:
+          GH_TOKEN: ${{ secrets.MUTATION_TOOL_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/mt"
+          gh release download "$TOOL_VERSION" --repo "$TOOL_REPO" \
+            --pattern "mutationtester-$TOOL_VERSION.jar" --output "$RUNNER_TEMP/mt/mutationtester.jar"
+
+      # test_command runs once per mutant, so keep it lean: no "clean" (that
+      # recompiles everything each time). xvfb-run gives GUI tests a virtual
+      # display; drop it if the project has none.
+      #
+      # coverage_command/coverage_report let the tool skip mutants on lines no
+      # test runs (reported as NO COVERAGE) instead of running the suite for
+      # them. The coverage command must pass the same way the tests do, so it
+      # uses xvfb-run too; if it fails, skipping is turned off for the run and
+      # its output is printed.
+      #
+      # If the project's pom.xml already configures the jacoco-maven-plugin,
+      # don't add a second agent (two JaCoCo agents crash the test JVM with
+      # "duplicate class definition for java.lang.$JaCoCo"). Use the project's
+      # own setup instead:
+      #   coverage_command=xvfb-run -a mvn -q test jacoco:report
+      #
+      # To leave code out of mutation entirely (no mutants, not in the score),
+      # add e.g.: exclude_source=src/main/java/main/ui,src/main/java/legacy
+      - name: Write config
+        run: |
+          cat > "$RUNNER_TEMP/mt/mutation.config" <<EOF
+          source_code_directory=src/main/java
+          custom_mutation_spec=specs/OperatorMutations.spec
+          test_command=xvfb-run -a mvn -q test
+          coverage_command=xvfb-run -a mvn -q org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report
+          coverage_report=target/site/jacoco/jacoco.xml
+          min_mutation_score=$MIN_SCORE
+          time_limit_minutes=45
+          # CI has no terminal for safety prompts: test UNKNOWN mutants, still skip REVIEW and BLOCK.
+          unattended_safety=run_unknown
+          EOF
+
+      # Runs from a temp folder so output/ stays out of the checkout.
+      # Exit code 1 = could not run, 2 = score below min_mutation_score,
+      # 3 = stopped early (time limit or cancel; the report is partial).
+      - name: Run mutation testing
+        working-directory: ${{ runner.temp }}/mt
+        timeout-minutes: 55
+        run: java -jar mutationtester.jar "$GITHUB_WORKSPACE" mutation.config
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/mt/output/report/
+
+  # Optional: publish main's latest report on GitHub Pages, at
+  # https://<owner>.github.io/<repo>/. Before enabling:
+  #   - Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+  #   - On a free account Pages needs a public repository, and the site is
+  #     public: the report shows the project's source lines.
+  #   - Pages publishes a whole site, so this replaces any existing Pages site.
+  # Runs for any run on main, pushed or started with Run workflow (PR runs
+  # keep using the artifact), including when the score is below the minimum
+  # or the run stopped early.
+  # publish-report:
+  #   needs: mutation
+  #   if: ${{ !cancelled() && needs.mutation.result != 'skipped' && github.ref == 'refs/heads/main' }}
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #   concurrency:
+  #     group: pages
+  #     cancel-in-progress: false
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: mutation-report
+  #         path: site
+  #
+  #     - name: Add index page
+  #       run: cp site/mutation-report-demo.html site/index.html
+  #
+  #     - uses: actions/upload-pages-artifact@v3
+  #       with:
+  #         path: site
+  #
+  #     - id: deployment
+  #       uses: actions/deploy-pages@v4
+  #
+  #     - name: Link from the run summary
+  #       run: echo "📄 [Mutation report](${{ steps.deployment.outputs.page_url }})" >> "$GITHUB_STEP_SUMMARY"

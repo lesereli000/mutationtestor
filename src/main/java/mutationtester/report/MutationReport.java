@@ -1,9 +1,12 @@
 package mutationtester.report;
 
+import mutationtester.equivalent.EquivalentMutantStore;
 import mutationtester.model.MutantResult;
 import mutationtester.model.MutationPoint;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MutationReport {
@@ -13,10 +16,29 @@ public class MutationReport {
     private int survived;
     private int noCoverage;
     private int safetySkipped;
+    private int equivalent;
     private double mutationScore;
+    private int notTested;
+    private String partialReason;
 
     public MutationReport(List<MutantResult> results) {
-        this.results = results;
+        this(results, Set.of());
+    }
+
+    /**
+     * Mutants matching an equivalent ID are left out of every count and the
+     * score, the same way the HTML report hides them.
+     */
+    public MutationReport(List<MutantResult> results, Set<String> equivalentIds) {
+        List<MutantResult> scored = new ArrayList<>();
+        for (MutantResult result : results) {
+            if (!equivalentIds.isEmpty() && EquivalentMutantStore.matchesHiddenMutant(equivalentIds, result)) {
+                equivalent++;
+            } else {
+                scored.add(result);
+            }
+        }
+        this.results = scored;
         calculateStatistics();
     }
 
@@ -40,10 +62,24 @@ public class MutationReport {
         }
     }
 
+    /**
+     * Marks the report as covering only part of the run (time limit or cancel).
+     * The counts and score already cover just the tested mutants.
+     */
+    public void markPartial(int notTested, String reason) {
+        this.notTested = notTested;
+        this.partialReason = reason;
+    }
+
     public void printReport() {
         System.out.println("\n" + "=".repeat(80));
         System.out.println("MUTATION TESTING REPORT");
         System.out.println("=".repeat(80));
+        if (isPartial()) {
+            System.out.println("PARTIAL: " + partialReason + ".");
+            System.out.printf("Not tested:       %d (not in any count or the score)\n", notTested);
+            System.out.println("-".repeat(80));
+        }
         System.out.printf("Total Mutants:    %d\n", totalMutants);
         System.out.printf("Killed:           %d (%.1f%%)\n",
                 killed, totalMutants > 0 ? (killed / (double) totalMutants) * 100 : 0.0);
@@ -54,6 +90,9 @@ public class MutationReport {
         System.out.printf("Safety skipped/aborted: %d\n", safetySkipped);
         if (totalMutants == safetySkipped && safetySkipped > 0) {
             System.out.println("No mutants were available for scoring after safety review.");
+        }
+        if (equivalent > 0) {
+            System.out.printf("Equivalent:       %d (excluded from all counts and the score)\n", equivalent);
         }
         System.out.println("-".repeat(80));
         System.out.printf("MUTATION SCORE:   %.1f%%\n", mutationScore);
@@ -166,4 +205,27 @@ public class MutationReport {
     }
 
     public int getSafetySkipped() { return safetySkipped; }
+    public int getEquivalent() {
+        return equivalent;
+    }
+
+    public boolean isPartial() {
+        return partialReason != null;
+    }
+
+    public int getNotTested() {
+        return notTested;
+    }
+
+    /** e.g. "stopped after 140 of 212 mutants (time limit of 45 min reached)"; null for a complete run. */
+    public String getPartialReason() {
+        return partialReason;
+    }
+
+    /** Scored survivors, in run order (equivalent mutants are not included). */
+    public List<MutantResult> getSurvivedResults() {
+        return results.stream()
+                .filter(r -> r.getStatus() == MutantResult.MutantStatus.SURVIVED)
+                .toList();
+    }
 }
