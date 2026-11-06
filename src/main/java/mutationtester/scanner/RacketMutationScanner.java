@@ -1858,20 +1858,26 @@ public class RacketMutationScanner {
             private java.util.Set<ParseTree> discarded;
 
             /**
-             * A call whose value is thrown away: in a function, let, lambda, begin, begin0
-             * (after its first form), when or unless body, or the value form of such a form
-             * that is itself discarded. The forms themselves aren't calls, so they stay.
+             * A form whose value is thrown away: one before the last in a body (begin, when,
+             * unless, lambda, let or define), or a call the visitor finds discarded, such as
+             * one after begin0's first form or the value form of a discarded when.
              */
             @Override
             public boolean isInvocationStatement(ParseTree ctx) {
-                if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))
-                        || ISLMutationVisitor.NON_CALL_HEADS.contains(head(ctx)) || VALUE_FORMS.contains(head(ctx))) {
+                if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))) {
                     return false;
                 }
                 ParseTree parent = ctx.getParent();
-                if (parent == null || !isApplicationOrDefinition(parent)
+                if (parent == null || !isApplicationOrDefinition(parent)) {
+                    return false;
+                }
+                int index = indexInParent(ctx);
+                int bodyStart = bodyStartIndex(parent);
+                int lastForm = parent.getChildCount() - 2;
+                if (bodyStart > 0 && index >= bodyStart && index < lastForm) return true;
+                if (ISLMutationVisitor.NON_CALL_HEADS.contains(head(ctx)) || VALUE_FORMS.contains(head(ctx))
                         || head(parent).equals("struct") || head(parent).equals("define-struct")) {
-                    return false;   // a struct's field list isn't a call
+                    return false;   // not a call (a struct's field list isn't either)
                 }
                 if (discarded == null) discarded = discardedExprs(file, sourceCode, tree);
                 return discarded.contains(ctx);
@@ -1885,6 +1891,57 @@ public class RacketMutationScanner {
             private boolean isApplicationOrDefinition(ParseTree ctx) {
                 return (ctx instanceof ISLParser.ExprContext || ctx instanceof ISLParser.DefinitionContext)
                         && ctx.getChildCount() >= 3 && ctx.getChild(0).getText().equals("(");
+            }
+
+            private int indexInParent(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    if (parent.getChild(i) == ctx) return i;
+                }
+                return -1;
+            }
+
+            /** Index of the first body form, or -1 if the form has no body. */
+            private int bodyStartIndex(ParseTree form) {
+                String head = form.getChild(1).getText();
+                switch (head) {
+                    case "begin":
+                        return 2;
+                    case "when", "unless":
+                        return 3;
+                    case "lambda", "λ", "let", "let*", "letrec":
+                        // The grammar lists the parameters or bindings flat, so
+                        // [x (f a)] puts (f a) right after let: the body starts
+                        // after the ')' that closes them. (lambda () ...) has a single '()' token.
+                        if (form.getChild(2) instanceof TerminalNode empty && empty.getText().equals("()")) {
+                            return 3;
+                        }
+                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
+                            for (int i = 3; i < form.getChildCount(); i++) {
+                                if (form.getChild(i) instanceof TerminalNode t && t.getText().equals(")")) {
+                                    return i + 1;
+                                }
+                            }
+                            return -1;
+                        }
+                        // Not parsed as that form (e.g. a named let): the
+                        // bindings are one sub-form, after the name if any.
+                        boolean named = head.equals("let") && !form.getChild(2).getText().startsWith("(")
+                                && !form.getChild(2).getText().startsWith("[");
+                        return named ? 4 : 3;
+                    case "define":
+                        // (define (f x) body...) - a grammar definition lists the
+                        // header tokens flat, so the body starts after its ')'.
+                        if (form.getChild(2) instanceof TerminalNode open && open.getText().equals("(")) {
+                            for (int i = 3; i < form.getChildCount(); i++) {
+                                if (form.getChild(i).getText().equals(")")) return i + 1;
+                            }
+                            return -1;
+                        }
+                        return form.getChild(2).getText().startsWith("(") ? 3 : -1;
+                    default:
+                        return -1;
+                }
             }
 
             @Override

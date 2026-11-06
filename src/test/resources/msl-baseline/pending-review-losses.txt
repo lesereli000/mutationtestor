@@ -8,6 +8,7 @@
 #   50  Except: now covers this loop condition; the old regex missed 'for ( ' / 'while ( ' written with a space
 #   18  malformed: the old original included a trailing comment
 #   12  C#: generic return type TBuilder; old 'null' doesn't compile, now 'default'
+#    8  NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent
 #    6  Except: while ({match}) now applies to Python while loops, as it did to C-style ones
 #    5  old parse read the generic ValueTask<Result<...>> as a '<' comparison
 #    4  Except: clamp guard now matches Python's 'if n <= 0: n = 0' (the file marks it an equivalent mutant)
@@ -751,3 +752,11 @@ context-sensitive-mutations__external_CSharpProject.txt	old parse read the gener
 context-sensitive-mutations__external_CSharpProject.txt	old parse read the generic ValueTask<Result<...>> as a '<' comparison	src/Clean.Architecture.UseCases/Contributors/Update/UpdateContributorHandler.cs	8	24	<	>=
 context-sensitive-mutations__external_CSharpProject.txt	unparseable: the file uses syntax the grammar still cannot parse	src/Clean.Architecture.Web/Contributors/List.cs	70	24	<	<=
 context-sensitive-mutations__external_CSharpProject.txt	unparseable: the file uses syntax the grammar still cannot parse	src/Clean.Architecture.Web/Contributors/List.cs	70	24	<	>=
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	104	23	(blank)	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	111	23	(blank)	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	118	23	(blank)	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	125	23	(blank)	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	365	12	(blank)	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	92	23	(put '() "Tests did not clean up resources.\\n")	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	95	23	(put '() "Tests produced output.\\n")	'()
+StatementMutation__external_RacketProject.txt	NON_VOID: the value of a when whose own value is discarded isn't used (main's d68f340), so '() is equivalent	rackunit-gui/rackunit/private/gui/model2rml.rkt	97	23	(blank)	'()

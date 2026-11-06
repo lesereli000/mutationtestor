@@ -244,13 +244,14 @@ public class RacketScannerTests {
                 "  x)",
                 ""));
 
-        // The discarded calls in a function, let, lambda, when and begin0 body, and
-        // (alert x), the value of a when whose own value is discarded. Used values
-        // stay: (add1 x), (* y 2), (compute x) (begin0's value); when and set! aren't calls.
+        // The discarded calls in a function, let, lambda, when and begin0 body, the
+        // discarded (when ...) itself, and (alert x), the value of that when. Used values
+        // stay: (add1 x), (* y 2), (compute x) (begin0's value); set! isn't a call.
         List<String> statements = Main.scanForMutations(dir, "specs/StatementMutation.spec").stream()
                 .filter(p -> p.getCustomLabel().endsWith("delete invocation statement"))
                 .map(MutationPoint::getOperator).toList();
-        assertEquals(List.of("(displayln x)", "(log-it y)", "(note x)", "(warn x)", "(record x)", "(alert x)"),
+        assertEquals(List.of("(displayln x)", "(log-it y)", "(note x)", "(warn x)", "(record x)",
+                "(when (> x 0) (alert x))", "(alert x)"),
                 statements);
 
         // {non_void_method_call} uses the same positions: none of those is a used value
