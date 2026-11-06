@@ -1,0 +1,157 @@
+calculator/main.rkt	12	13	(format "5 + 3 = ~a" (add 5 3))	""
+calculator/main.rkt	12	34	(add 5 3)	'()
+calculator/main.rkt	13	13	(format "10 - 4 = ~a" (subtract 10 4))	""
+calculator/main.rkt	13	35	(subtract 10 4)	'()
+calculator/main.rkt	14	13	(format "6 * 7 = ~a" (multiply 6 7))	""
+calculator/main.rkt	14	34	(multiply 6 7)	'()
+calculator/main.rkt	15	13	(format "20 / 4 = ~a" (divide 20 4))	""
+calculator/main.rkt	15	35	(divide 20 4)	'()
+calculator/main.rkt	16	13	(format "9^2 = ~a" (square 9))	""
+calculator/main.rkt	16	32	(square 9)	'()
+calculator/main.rkt	20	13	(format "Is 4 even? ~a" (is-even? 4))	""
+calculator/main.rkt	20	37	(is-even? 4)	#f
+calculator/main.rkt	21	13	(format "Is 7 even? ~a" (is-even? 7))	""
+calculator/main.rkt	21	37	(is-even? 7)	#f
+calculator/main.rkt	22	13	(format "Is 10 positive? ~a" (is-positive? 10))	""
+calculator/main.rkt	22	42	(is-positive? 10)	#f
+calculator/main.rkt	23	13	(format "Is -5 positive? ~a" (is-positive? -5))	""
+calculator/main.rkt	23	42	(is-positive? -5)	#f
+calculator/main.rkt	28	13	(format "Numbers: ~a" numbers)	""
+calculator/main.rkt	29	13	(format "Sum: ~a" (sum numbers))	""
+calculator/main.rkt	29	31	(sum numbers)	'()
+calculator/main.rkt	30	13	(format "Average: ~a" (average numbers))	""
+calculator/main.rkt	30	35	(average numbers)	'()
+calculator/main.rkt	31	13	(format "Maximum: ~a" (maximum numbers))	""
+calculator/main.rkt	31	35	(maximum numbers)	'()
+calculator/main.rkt	32	13	(format "Minimum: ~a" (minimum numbers))	""
+calculator/main.rkt	32	35	(minimum numbers)	'()
+calculator/src/arithmetic.rkt	10	2	(- x y)	0
+calculator/src/arithmetic.rkt	13	2	(* x y)	0
+calculator/src/arithmetic.rkt	16	6	(= y 0)	#f
+calculator/src/arithmetic.rkt	16	6	(= y 0)	#t
+calculator/src/arithmetic.rkt	17	6	(error "Division by zero")	'()
+calculator/src/arithmetic.rkt	18	6	(/ x y)	0
+calculator/src/arithmetic.rkt	21	2	(* x x)	0
+calculator/src/arithmetic.rkt	25	2	(= (modulo x 2) 0)	#f
+calculator/src/arithmetic.rkt	25	5	(modulo x 2)	0
+calculator/src/arithmetic.rkt	28	2	(> x 0)	#f
+calculator/src/arithmetic.rkt	7	2	(+ x y)	0
+calculator/src/statistics.rkt	12	6	(null? lst)	#f
+calculator/src/statistics.rkt	12	6	(null? lst)	#t
+calculator/src/statistics.rkt	14	19	(length lst)	0
+calculator/src/statistics.rkt	14	6	(/ (sum lst) (length lst))	0
+calculator/src/statistics.rkt	14	9	(sum lst)	'()
+calculator/src/statistics.rkt	17	6	(null? lst)	#f
+calculator/src/statistics.rkt	17	6	(null? lst)	#t
+calculator/src/statistics.rkt	18	6	(error "Cannot find maximum of empty list")	'()
+calculator/src/statistics.rkt	19	6	(apply max lst)	'()
+calculator/src/statistics.rkt	22	6	(null? lst)	#f
+calculator/src/statistics.rkt	22	6	(null? lst)	#t
+calculator/src/statistics.rkt	23	6	(error "Cannot find minimum of empty list")	'()
+calculator/src/statistics.rkt	24	6	(apply min lst)	'()
+calculator/src/statistics.rkt	7	6	(null? lst)	#f
+calculator/src/statistics.rkt	7	6	(null? lst)	#t
+calculator/src/statistics.rkt	9	6	(apply + lst)	'()
+calculator/tests/all-tests.rkt	19	8	(run-tests all-tests)	'()
+calculator/tests/arithmetic-test.rkt	13	20	(add 2 3)	'()
+calculator/tests/arithmetic-test.rkt	13	6	(check-equal? (add 2 3) 5)	#f
+calculator/tests/arithmetic-test.rkt	14	20	(add -1 1)	'()
+calculator/tests/arithmetic-test.rkt	14	6	(check-equal? (add -1 1) 0)	#f
+calculator/tests/arithmetic-test.rkt	15	20	(add 0 0)	'()
+calculator/tests/arithmetic-test.rkt	15	6	(check-equal? (add 0 0) 0)	#f
+calculator/tests/arithmetic-test.rkt	16	20	(add 100 200)	'()
+calculator/tests/arithmetic-test.rkt	16	6	(check-equal? (add 100 200) 300)	#f
+calculator/tests/arithmetic-test.rkt	19	20	(subtract 5 3)	'()
+calculator/tests/arithmetic-test.rkt	19	6	(check-equal? (subtract 5 3) 2)	#f
+calculator/tests/arithmetic-test.rkt	20	20	(subtract 1 1)	'()
+calculator/tests/arithmetic-test.rkt	20	6	(check-equal? (subtract 1 1) 0)	#f
+calculator/tests/arithmetic-test.rkt	21	20	(subtract 0 5)	'()
+calculator/tests/arithmetic-test.rkt	21	6	(check-equal? (subtract 0 5) -5)	#f
+calculator/tests/arithmetic-test.rkt	22	20	(subtract -3 -5)	'()
+calculator/tests/arithmetic-test.rkt	22	6	(check-equal? (subtract -3 -5) 2)	#f
+calculator/tests/arithmetic-test.rkt	25	20	(multiply 3 4)	'()
+calculator/tests/arithmetic-test.rkt	25	6	(check-equal? (multiply 3 4) 12)	#f
+calculator/tests/arithmetic-test.rkt	26	20	(multiply 0 10)	'()
+calculator/tests/arithmetic-test.rkt	26	6	(check-equal? (multiply 0 10) 0)	#f
+calculator/tests/arithmetic-test.rkt	27	20	(multiply -2 3)	'()
+calculator/tests/arithmetic-test.rkt	27	6	(check-equal? (multiply -2 3) -6)	#f
+calculator/tests/arithmetic-test.rkt	28	20	(multiply -4 -5)	'()
+calculator/tests/arithmetic-test.rkt	28	6	(check-equal? (multiply -4 -5) 20)	#f
+calculator/tests/arithmetic-test.rkt	31	20	(divide 10 2)	'()
+calculator/tests/arithmetic-test.rkt	31	6	(check-equal? (divide 10 2) 5)	#f
+calculator/tests/arithmetic-test.rkt	32	20	(divide 7 2)	'()
+calculator/tests/arithmetic-test.rkt	32	6	(check-equal? (divide 7 2) 7/2)	#f
+calculator/tests/arithmetic-test.rkt	33	20	(divide -10 5)	'()
+calculator/tests/arithmetic-test.rkt	33	6	(check-equal? (divide -10 5) -2)	#f
+calculator/tests/arithmetic-test.rkt	34	38	(divide 5 0)	'()
+calculator/tests/arithmetic-test.rkt	34	6	(check-exn exn:fail? (lambda () (divide 5 0)))	'()
+calculator/tests/arithmetic-test.rkt	37	20	(square 5)	'()
+calculator/tests/arithmetic-test.rkt	37	6	(check-equal? (square 5) 25)	#f
+calculator/tests/arithmetic-test.rkt	38	20	(square 0)	'()
+calculator/tests/arithmetic-test.rkt	38	6	(check-equal? (square 0) 0)	#f
+calculator/tests/arithmetic-test.rkt	39	20	(square -3)	'()
+calculator/tests/arithmetic-test.rkt	39	6	(check-equal? (square -3) 9)	#f
+calculator/tests/arithmetic-test.rkt	40	20	(square 10)	'()
+calculator/tests/arithmetic-test.rkt	40	6	(check-equal? (square 10) 100)	#f
+calculator/tests/arithmetic-test.rkt	43	18	(is-even? 4)	#f
+calculator/tests/arithmetic-test.rkt	43	6	(check-true (is-even? 4))	'()
+calculator/tests/arithmetic-test.rkt	44	18	(is-even? 0)	#f
+calculator/tests/arithmetic-test.rkt	44	6	(check-true (is-even? 0))	'()
+calculator/tests/arithmetic-test.rkt	45	18	(is-even? -2)	#f
+calculator/tests/arithmetic-test.rkt	45	6	(check-true (is-even? -2))	'()
+calculator/tests/arithmetic-test.rkt	46	19	(is-even? 3)	#f
+calculator/tests/arithmetic-test.rkt	46	6	(check-false (is-even? 3))	'()
+calculator/tests/arithmetic-test.rkt	47	19	(is-even? -1)	#f
+calculator/tests/arithmetic-test.rkt	47	6	(check-false (is-even? -1))	'()
+calculator/tests/arithmetic-test.rkt	50	18	(is-positive? 1)	#f
+calculator/tests/arithmetic-test.rkt	50	6	(check-true (is-positive? 1))	'()
+calculator/tests/arithmetic-test.rkt	51	18	(is-positive? 100)	#f
+calculator/tests/arithmetic-test.rkt	51	6	(check-true (is-positive? 100))	'()
+calculator/tests/arithmetic-test.rkt	52	19	(is-positive? 0)	#f
+calculator/tests/arithmetic-test.rkt	52	6	(check-false (is-positive? 0))	'()
+calculator/tests/arithmetic-test.rkt	53	19	(is-positive? -1)	#f
+calculator/tests/arithmetic-test.rkt	53	6	(check-false (is-positive? -1))	'()
+calculator/tests/arithmetic-test.rkt	54	19	(is-positive? -100)	#f
+calculator/tests/arithmetic-test.rkt	54	6	(check-false (is-positive? -100))	'()
+calculator/tests/arithmetic-test.rkt	58	8	(run-tests arithmetic-test-suite)	'()
+calculator/tests/statistics-test.rkt	13	20	(sum '(1 2 3 4 5))	'()
+calculator/tests/statistics-test.rkt	13	6	(check-equal? (sum '(1 2 3 4 5)) 15)	#f
+calculator/tests/statistics-test.rkt	14	20	(sum '(10 20 30))	'()
+calculator/tests/statistics-test.rkt	14	6	(check-equal? (sum '(10 20 30)) 60)	#f
+calculator/tests/statistics-test.rkt	15	20	(sum '(0))	'()
+calculator/tests/statistics-test.rkt	15	6	(check-equal? (sum '(0)) 0)	#f
+calculator/tests/statistics-test.rkt	16	20	(sum '())	'()
+calculator/tests/statistics-test.rkt	16	6	(check-equal? (sum '()) 0)	#f
+calculator/tests/statistics-test.rkt	17	20	(sum '(-1 -2 -3))	'()
+calculator/tests/statistics-test.rkt	17	6	(check-equal? (sum '(-1 -2 -3)) -6)	#f
+calculator/tests/statistics-test.rkt	20	20	(average '(10 20 30))	'()
+calculator/tests/statistics-test.rkt	20	6	(check-equal? (average '(10 20 30)) 20)	#f
+calculator/tests/statistics-test.rkt	21	20	(average '(1 2 3 4 5))	'()
+calculator/tests/statistics-test.rkt	21	6	(check-equal? (average '(1 2 3 4 5)) 3)	#f
+calculator/tests/statistics-test.rkt	22	20	(average '(100))	'()
+calculator/tests/statistics-test.rkt	22	6	(check-equal? (average '(100)) 100)	#f
+calculator/tests/statistics-test.rkt	23	20	(average '())	'()
+calculator/tests/statistics-test.rkt	23	6	(check-equal? (average '()) 0)	#f
+calculator/tests/statistics-test.rkt	24	20	(average '(5 5 5 5))	'()
+calculator/tests/statistics-test.rkt	24	6	(check-equal? (average '(5 5 5 5)) 5)	#f
+calculator/tests/statistics-test.rkt	27	20	(maximum '(1 2 3 4 5))	'()
+calculator/tests/statistics-test.rkt	27	6	(check-equal? (maximum '(1 2 3 4 5)) 5)	#f
+calculator/tests/statistics-test.rkt	28	20	(maximum '(10))	'()
+calculator/tests/statistics-test.rkt	28	6	(check-equal? (maximum '(10)) 10)	#f
+calculator/tests/statistics-test.rkt	29	20	(maximum '(-5 -2 -10))	'()
+calculator/tests/statistics-test.rkt	29	6	(check-equal? (maximum '(-5 -2 -10)) -2)	#f
+calculator/tests/statistics-test.rkt	30	20	(maximum '(100 50 75 200 25))	'()
+calculator/tests/statistics-test.rkt	30	6	(check-equal? (maximum '(100 50 75 200 25)) 200)	#f
+calculator/tests/statistics-test.rkt	31	38	(maximum '())	'()
+calculator/tests/statistics-test.rkt	31	6	(check-exn exn:fail? (lambda () (maximum '())))	'()
+calculator/tests/statistics-test.rkt	34	20	(minimum '(1 2 3 4 5))	'()
+calculator/tests/statistics-test.rkt	34	6	(check-equal? (minimum '(1 2 3 4 5)) 1)	#f
+calculator/tests/statistics-test.rkt	35	20	(minimum '(10))	'()
+calculator/tests/statistics-test.rkt	35	6	(check-equal? (minimum '(10)) 10)	#f
+calculator/tests/statistics-test.rkt	36	20	(minimum '(-5 -2 -10))	'()
+calculator/tests/statistics-test.rkt	36	6	(check-equal? (minimum '(-5 -2 -10)) -10)	#f
+calculator/tests/statistics-test.rkt	37	20	(minimum '(100 50 75 200 25))	'()
+calculator/tests/statistics-test.rkt	37	6	(check-equal? (minimum '(100 50 75 200 25)) 25)	#f
+calculator/tests/statistics-test.rkt	38	38	(minimum '())	'()
+calculator/tests/statistics-test.rkt	38	6	(check-exn exn:fail? (lambda () (minimum '())))	'()
+calculator/tests/statistics-test.rkt	42	8	(run-tests statistics-test-suite)	'()

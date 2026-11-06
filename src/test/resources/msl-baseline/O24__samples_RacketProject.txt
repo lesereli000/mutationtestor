@@ -1,0 +1,7 @@
+project/src/demo-equal-to-not-equal.rkt	33	9	and	or
+project/src/demo-equal-to-not-equal.rkt	55	12	and	or
+project/src/demo-equal-to-not-equal.rkt	7	3	and	or
+project/src/demo-logical-and-to-or.rkt	5	3	and	or
+project/src/demo-not-equal-to-equal.rkt	10	3	and	or
+project/src/demo-not-equal-to-equal.rkt	36	9	and	or
+project/src/demo-not-equal-to-equal.rkt	57	12	and	or

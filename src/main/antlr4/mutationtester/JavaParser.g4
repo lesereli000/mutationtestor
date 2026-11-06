@@ -44,7 +44,7 @@ options {
 }
 
 compilationUnit
-    : packageDeclaration? (importDeclaration | ';')* (typeDeclaration | ';')* EOF
+    : packageDeclaration? (importDeclaration | ';')* (typeDeclaration | classBodyDeclaration | ';')* EOF // members at top level: compact source files (JEP 512)
     | modularCompulationUnit EOF
     ;
 

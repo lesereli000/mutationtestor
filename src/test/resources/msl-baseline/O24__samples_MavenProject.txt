@@ -1,0 +1,7 @@
+src/main/java/DemoEqualToNotEqual.java	46	21	&&	||
+src/main/java/DemoEqualToNotEqual.java	68	36	&&	||
+src/main/java/DemoEqualToNotEqual.java	8	24	&&	||
+src/main/java/DemoLogicalAndToOr.java	4	21	&&	||
+src/main/java/DemoNotEqualToEqual.java	46	21	&&	||
+src/main/java/DemoNotEqualToEqual.java	68	37	&&	||
+src/main/java/DemoNotEqualToEqual.java	8	24	&&	||

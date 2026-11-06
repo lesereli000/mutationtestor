@@ -1,0 +1,3517 @@
+examples/auth/index.js	10	14	require('express-session')	null
+examples/auth/index.js	101	2	res.render('login');	;
+examples/auth/index.js	105	24	res.sendStatus(400)	null
+examples/auth/index.js	107	20	next(err)	null
+examples/auth/index.js	119	8	res.redirect(req.get('Referrer') || '/');	;
+examples/auth/index.js	12	27	express()	null
+examples/auth/index.js	125	6	res.redirect('/login');	;
+examples/auth/index.js	132	2	app.listen(3000);	;
+examples/auth/index.js	133	2	console.log('Express started on port 3000');	;
+examples/auth/index.js	16	0	app.set('view engine', 'ejs');	;
+examples/auth/index.js	17	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/auth/index.js	38	2	next();	;
+examples/auth/index.js	61	2	if (!module.parent) console.log('authenticating %s:%s', name, pass);	;
+examples/auth/index.js	64	20	fn(null, null)	null
+examples/auth/index.js	69	20	fn(err)	null
+examples/auth/index.js	69	4	if (err) return fn(err);	;
+examples/auth/index.js	7	14	require('../..')	null
+examples/auth/index.js	70	35	fn(null, user)	null
+examples/auth/index.js	70	8	hash === user.hash	false
+examples/auth/index.js	70	8	hash === user.hash	true
+examples/auth/index.js	77	4	next();	;
+examples/auth/index.js	8	11	require('pbkdf2-password')	null
+examples/auth/index.js	80	4	res.redirect('/login');	;
+examples/auth/index.js	85	2	res.redirect('/login');	;
+examples/auth/index.js	89	2	res.send('Wahoo! restricted area, click to <a href="/logout">logout</a>');	;
+examples/auth/index.js	9	11	require('node:path')	null
+examples/auth/index.js	96	4	res.redirect('/');	;
+examples/content-negotiation/db.js	5	0	users.push({ name: 'Tobi' });	;
+examples/content-negotiation/db.js	6	0	users.push({ name: 'Loki' });	;
+examples/content-negotiation/db.js	7	0	users.push({ name: 'Jane' });	;
+examples/content-negotiation/index.js	13	15	'<li>' + user.name + '</li>'	""
+examples/content-negotiation/index.js	19	15	' - ' + user.name + '\\n'	""
+examples/content-negotiation/index.js	24	6	res.json(users);	;
+examples/content-negotiation/index.js	3	14	require('../../')	null
+examples/content-negotiation/index.js	34	12	require(path)	null
+examples/content-negotiation/index.js	36	4	res.format(obj);	;
+examples/content-negotiation/index.js	4	27	express()	null
+examples/content-negotiation/index.js	40	0	app.get('/users', format('./users'));	;
+examples/content-negotiation/index.js	44	2	app.listen(3000);	;
+examples/content-negotiation/index.js	45	2	console.log('Express started on port 3000');	;
+examples/content-negotiation/index.js	5	12	require('./db')	null
+examples/content-negotiation/users.js	13	11	' - ' + user.name + '\\n'	""
+examples/content-negotiation/users.js	18	2	res.json(users);	;
+examples/content-negotiation/users.js	3	12	require('./db')	null
+examples/content-negotiation/users.js	7	11	'<li>' + user.name + '</li>'	""
+examples/cookie-sessions/index.js	10	27	express()	null
+examples/cookie-sessions/index.js	13	0	app.use(cookieSession({ secret: 'manny is cool' }));	;
+examples/cookie-sessions/index.js	23	2	app.listen(3000);	;
+examples/cookie-sessions/index.js	24	2	console.log('Express started on port 3000');	;
+examples/cookie-sessions/index.js	7	20	require('cookie-session')	null
+examples/cookie-sessions/index.js	8	14	require('../../')	null
+examples/cookies/index.js	10	19	require('cookie-parser')	null
+examples/cookies/index.js	13	4	process.env.NODE_ENV !== 'test'	false
+examples/cookies/index.js	13	4	process.env.NODE_ENV !== 'test'	true
+examples/cookies/index.js	19	0	app.use(cookieParser('my secret here'));	;
+examples/cookies/index.js	26	4	res.send('Remembered :). Click to <a href="/forget">forget</a>!.');	;
+examples/cookies/index.js	35	2	res.clearCookie('remember');	;
+examples/cookies/index.js	36	2	res.redirect(req.get('Referrer') || '/');	;
+examples/cookies/index.js	46	2	res.redirect(req.get('Referrer') || '/');	;
+examples/cookies/index.js	51	2	app.listen(3000);	;
+examples/cookies/index.js	52	2	console.log('Express started on port 3000');	;
+examples/cookies/index.js	7	14	require('../../')	null
+examples/cookies/index.js	8	27	express()	null
+examples/cookies/index.js	9	13	require('morgan')	null
+examples/downloads/index.js	10	27	express()	null
+examples/downloads/index.js	13	16	path.join(__dirname, 'files')	null
+examples/downloads/index.js	29	35	next(err)	null
+examples/downloads/index.js	29	4	if (err.status !== 404) return next(err);	;
+examples/downloads/index.js	29	8	err.status !== 404	false
+examples/downloads/index.js	29	8	err.status !== 404	true
+examples/downloads/index.js	32	4	res.send('Cant find that file, sorry!');	;
+examples/downloads/index.js	38	2	app.listen(3000);	;
+examples/downloads/index.js	39	2	console.log('Express started on port 3000');	;
+examples/downloads/index.js	7	14	require('../../')	null
+examples/downloads/index.js	8	11	require('node:path')	null
+examples/ejs/index.js	10	27	express()	null
+examples/ejs/index.js	23	0	app.engine('.html', require('ejs').__express);	;
+examples/ejs/index.js	27	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/ejs/index.js	31	0	app.use(express.static(path.join(__dirname, 'public')));	;
+examples/ejs/index.js	36	0	app.set('view engine', 'html');	;
+examples/ejs/index.js	55	2	app.listen(3000);	;
+examples/ejs/index.js	56	2	console.log('Express started on port 3000');	;
+examples/ejs/index.js	7	14	require('../../')	null
+examples/ejs/index.js	8	11	require('node:path')	null
+examples/error-pages/index.js	10	13	require('morgan')	null
+examples/error-pages/index.js	101	2	app.listen(3000);	;
+examples/error-pages/index.js	102	2	console.log('Express started on port 3000');	;
+examples/error-pages/index.js	14	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/error-pages/index.js	15	0	app.set('view engine', 'ejs');	;
+examples/error-pages/index.js	20	0	app.enable('verbose errors');	;
+examples/error-pages/index.js	24	4	app.settings.env === 'production'	false
+examples/error-pages/index.js	24	4	app.settings.env === 'production'	true
+examples/error-pages/index.js	31	2	res.render('index.ejs');	;
+examples/error-pages/index.js	38	2	next();	;
+examples/error-pages/index.js	43	12	new Error('not allowed!')	null
+examples/error-pages/index.js	45	2	next(err);	;
+examples/error-pages/index.js	50	2	next(new Error('keyboard cat!'));	;
+examples/error-pages/index.js	50	7	new Error('keyboard cat!')	null
+examples/error-pages/index.js	64	2	res.status(404);	;
+examples/error-pages/index.js	7	14	require('../../')	null
+examples/error-pages/index.js	8	11	require('node:path')	null
+examples/error-pages/index.js	9	27	express()	null
+examples/error-pages/index.js	95	2	res.status(err.status || 500);	;
+examples/error-pages/index.js	96	2	res.render('500', { error: err });	;
+examples/error/index.js	10	11	app.get('env')	null
+examples/error/index.js	12	0	if (!test) app.use(logger('dev'));	;
+examples/error/index.js	22	2	if (!test) console.error(err.stack);	;
+examples/error/index.js	25	2	res.status(500);	;
+examples/error/index.js	26	2	res.send('Internal Server Error');	;
+examples/error/index.js	31	8	new Error('something broke!')	null
+examples/error/index.js	40	4	next(new Error('oh no!'));	;
+examples/error/index.js	40	9	new Error('oh no!')	null
+examples/error/index.js	47	0	app.use(error);	;
+examples/error/index.js	51	2	app.listen(3000);	;
+examples/error/index.js	52	2	console.log('Express started on port 3000');	;
+examples/error/index.js	7	14	require('../../')	null
+examples/error/index.js	8	13	require('morgan')	null
+examples/error/index.js	9	27	express()	null
+examples/hello-world/index.js	13	2	app.listen(3000);	;
+examples/hello-world/index.js	14	2	console.log('Express started on port 3000');	;
+examples/hello-world/index.js	3	14	require('../../')	null
+examples/hello-world/index.js	5	27	express()	null
+examples/hello-world/index.js	8	2	res.send('Hello World');	;
+examples/markdown/index.js	10	13	require('marked')	null
+examples/markdown/index.js	11	11	require('node:path')	null
+examples/markdown/index.js	13	27	express()	null
+examples/markdown/index.js	19	20	fn(err)	null
+examples/markdown/index.js	19	4	if (err) return fn(err);	;
+examples/markdown/index.js	20	15	marked.parse(str)	null
+examples/markdown/index.js	21	13	escapeHtml(options[name] || '')	null
+examples/markdown/index.js	23	4	fn(null, html);	;
+examples/markdown/index.js	27	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/markdown/index.js	30	0	app.set('view engine', 'md');	;
+examples/markdown/index.js	33	2	res.render('index', { title: 'Markdown Example' });	;
+examples/markdown/index.js	37	2	res.render('missing', { title: 'Markdown Example' });	;
+examples/markdown/index.js	42	2	app.listen(3000);	;
+examples/markdown/index.js	43	2	console.log('Express started on port 3000');	;
+examples/markdown/index.js	7	17	require('escape-html')	null
+examples/markdown/index.js	8	14	require('../..')	null
+examples/markdown/index.js	9	9	require('node:fs')	null
+examples/multi-router/controllers/api_v1.js	12	2	res.send('List of APIv1 users.');	;
+examples/multi-router/controllers/api_v1.js	3	14	require('../../..')	null
+examples/multi-router/controllers/api_v1.js	5	12	express.Router()	null
+examples/multi-router/controllers/api_v1.js	8	2	res.send('Hello from APIv1 root route.');	;
+examples/multi-router/controllers/api_v2.js	12	2	res.send('List of APIv2 users.');	;
+examples/multi-router/controllers/api_v2.js	3	14	require('../../..')	null
+examples/multi-router/controllers/api_v2.js	5	12	express.Router()	null
+examples/multi-router/controllers/api_v2.js	8	2	res.send('Hello from APIv2 root route.');	;
+examples/multi-router/index.js	16	2	app.listen(3000);	;
+examples/multi-router/index.js	17	2	console.log('Express started on port 3000');	;
+examples/multi-router/index.js	3	14	require('../..')	null
+examples/multi-router/index.js	5	27	express()	null
+examples/multi-router/index.js	7	0	app.use('/api/v1', require('./controllers/api_v1'));	;
+examples/multi-router/index.js	8	0	app.use('/api/v2', require('./controllers/api_v2'));	;
+examples/mvc/controllers/main/index.js	4	2	res.redirect('/users');	;
+examples/mvc/controllers/pet/index.js	13	19	next('route')	null
+examples/mvc/controllers/pet/index.js	13	2	if (!pet) return next('route');	;
+examples/mvc/controllers/pet/index.js	15	2	next();	;
+examples/mvc/controllers/pet/index.js	19	2	res.render('show', { pet: req.pet });	;
+examples/mvc/controllers/pet/index.js	23	2	res.render('edit', { pet: req.pet });	;
+examples/mvc/controllers/pet/index.js	29	2	res.message('Information updated!');	;
+examples/mvc/controllers/pet/index.js	30	2	res.redirect('/pet/' + req.pet.id);	;
+examples/mvc/controllers/pet/index.js	7	9	require('../../db')	null
+examples/mvc/controllers/user-pet/index.js	16	2	if (!user) return next('route');	;
+examples/mvc/controllers/user-pet/index.js	16	20	next('route')	null
+examples/mvc/controllers/user-pet/index.js	18	11	db.pets.push(pet)	null
+examples/mvc/controllers/user-pet/index.js	19	2	user.pets.push(pet);	;
+examples/mvc/controllers/user-pet/index.js	20	2	res.message('Added pet ' + body.pet.name);	;
+examples/mvc/controllers/user-pet/index.js	21	2	res.redirect('/user/' + id);	;
+examples/mvc/controllers/user-pet/index.js	7	9	require('../../db')	null
+examples/mvc/controllers/user/index.js	13	18	next()	null
+examples/mvc/controllers/user/index.js	13	2	if (!id) return next();	;
+examples/mvc/controllers/user/index.js	18	26	next('route')	null
+examples/mvc/controllers/user/index.js	18	4	if (!req.user) return next('route');	;
+examples/mvc/controllers/user/index.js	20	4	next();	;
+examples/mvc/controllers/user/index.js	25	2	res.render('list', { users: db.users });	;
+examples/mvc/controllers/user/index.js	29	2	res.render('edit', { user: req.user });	;
+examples/mvc/controllers/user/index.js	33	2	res.render('show', { user: req.user });	;
+examples/mvc/controllers/user/index.js	39	2	res.message('Information updated!');	;
+examples/mvc/controllers/user/index.js	40	2	res.redirect('/user/' + req.user.id);	;
+examples/mvc/controllers/user/index.js	7	9	require('../../db')	null
+examples/mvc/db.js	10	0	pets.push({ name: 'Raul', id: 3 });	;
+examples/mvc/db.js	14	0	users.push({ name: 'TJ', pets: [pets[0], pets[1], pets[2]], id: 0  });	;
+examples/mvc/db.js	15	0	users.push({ name: 'Guillermo', pets: [pets[3]], id: 1 });	;
+examples/mvc/db.js	16	0	users.push({ name: 'Nathan', pets: [], id: 2 });	;
+examples/mvc/db.js	7	0	pets.push({ name: 'Tobi', id: 0 });	;
+examples/mvc/db.js	8	0	pets.push({ name: 'Loki', id: 1 });	;
+examples/mvc/db.js	9	0	pets.push({ name: 'Jane', id: 2 });	;
+examples/mvc/index.js	10	14	require('express-session')	null
+examples/mvc/index.js	11	21	require('method-override')	null
+examples/mvc/index.js	13	27	express()	null
+examples/mvc/index.js	17	0	app.set('view engine', 'ejs');	;
+examples/mvc/index.js	20	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/mvc/index.js	29	2	sess.messages.push(msg);	;
+examples/mvc/index.js	30	9	this	null
+examples/mvc/index.js	34	0	if (!module.parent) app.use(logger('dev'));	;
+examples/mvc/index.js	37	0	app.use(express.static(path.join(__dirname, 'public')));	;
+examples/mvc/index.js	50	0	app.use(methodOverride('_method'));	;
+examples/mvc/index.js	69	2	next();	;
+examples/mvc/index.js	7	14	require('../..')	null
+examples/mvc/index.js	76	0	require('./lib/boot')(app, { verbose: !module.parent });	;
+examples/mvc/index.js	8	13	require('morgan')	null
+examples/mvc/index.js	80	2	if (!module.parent) console.error(err.stack);	;
+examples/mvc/index.js	83	2	res.status(500).render('5xx');	;
+examples/mvc/index.js	88	2	res.status(404).render('404', { url: req.originalUrl });	;
+examples/mvc/index.js	9	11	require('node:path')	null
+examples/mvc/index.js	93	2	app.listen(3000);	;
+examples/mvc/index.js	94	2	console.log('Express started on port 3000');	;
+examples/mvc/lib/boot.js	12	12	path.join(__dirname, '..', 'controllers')	null
+examples/mvc/lib/boot.js	15	15	path.join(dir, name)	null
+examples/mvc/lib/boot.js	18	14	require(file)	null
+examples/mvc/lib/boot.js	21	14	express()	null
+examples/mvc/lib/boot.js	27	4	if (obj.engine) app.set('view engine', obj.engine);	;
+examples/mvc/lib/boot.js	28	4	app.set('views', path.join(__dirname, '..', 'controllers', name, 'views'));	;
+examples/mvc/lib/boot.js	63	16	new Error('unrecognized route: ' + name + '.' + key)	null
+examples/mvc/lib/boot.js	7	14	require('../../..')	null
+examples/mvc/lib/boot.js	72	8	app[method](url, obj.before, handler);	;
+examples/mvc/lib/boot.js	75	8	app[method](url, handler);	;
+examples/mvc/lib/boot.js	8	9	require('node:fs')	null
+examples/mvc/lib/boot.js	81	4	parent.use(app);	;
+examples/mvc/lib/boot.js	9	11	require('node:path')	null
+examples/online/index.js	14	14	require('../..')	null
+examples/online/index.js	15	13	require('online')	null
+examples/online/index.js	16	12	require('redis')	null
+examples/online/index.js	17	9	redis.createClient()	null
+examples/online/index.js	21	9	online(db)	null
+examples/online/index.js	25	10	express()	null
+examples/online/index.js	32	2	online.add(req.headers['user-agent']);	;
+examples/online/index.js	33	2	next();	;
+examples/online/index.js	41	9	'<ul>' + ids.map(function(id){\r\n    return '<li>' + id + '</li>';\r\n  }).join('') + '</ul>'	""
+examples/online/index.js	42	11	'<li>' + id + '</li>'	""
+examples/online/index.js	52	20	next(err)	null
+examples/online/index.js	52	4	if (err) return next(err);	;
+examples/online/index.js	53	4	res.send('<p>Users online: ' + ids.length + '</p>' + list(ids));	;
+examples/online/index.js	59	2	app.listen(3000);	;
+examples/online/index.js	60	2	console.log('Express started on port 3000');	;
+examples/params/index.js	24	21	parseInt(num, 10)	null
+examples/params/index.js	26	4	next(createError(400, 'failed to parseInt '+num));	;
+examples/params/index.js	28	4	next();	;
+examples/params/index.js	37	4	next();	;
+examples/params/index.js	39	4	next(createError(404, 'failed to find user'));	;
+examples/params/index.js	48	2	res.send('Visit /user/0 or /users/0-2');	;
+examples/params/index.js	56	2	res.send('user ' + req.user.name);	;
+examples/params/index.js	66	14	users.map(function(user){ return user.name; })	null
+examples/params/index.js	66	47	user.name	null
+examples/params/index.js	67	2	res.send('users ' + names.slice(from, to + 1).join(', '));	;
+examples/params/index.js	7	18	require('http-errors')	null
+examples/params/index.js	72	2	app.listen(3000);	;
+examples/params/index.js	73	2	console.log('Express started on port 3000');	;
+examples/params/index.js	8	14	require('../../')	null
+examples/params/index.js	9	27	express()	null
+examples/resource/index.js	14	2	this.get(path, obj.index);	;
+examples/resource/index.js	16	12	parseInt(req.params.a, 10)	null
+examples/resource/index.js	17	12	parseInt(req.params.b, 10)	null
+examples/resource/index.js	19	4	obj.range(req, res, a, b, format);	;
+examples/resource/index.js	21	2	this.get(path + '/:id', obj.show);	;
+examples/resource/index.js	23	13	parseInt(req.params.id, 10)	null
+examples/resource/index.js	24	4	obj.destroy(req, res, id);	;
+examples/resource/index.js	43	4	res.send(users);	;
+examples/resource/index.js	46	4	res.send(users[req.params.id] || { error: 'Cannot find user' });	;
+examples/resource/index.js	51	4	res.send(destroyed ? 'destroyed' : 'Cannot find user');	;
+examples/resource/index.js	54	16	users.slice(a, b + 1)	null
+examples/resource/index.js	57	8	res.send(range);	;
+examples/resource/index.js	62	17	'<li>' + user.name + '</li>'	""
+examples/resource/index.js	64	8	res.send(html);	;
+examples/resource/index.js	7	14	require('../../')	null
+examples/resource/index.js	76	0	app.resource('/users', User);	;
+examples/resource/index.js	9	27	express()	null
+examples/resource/index.js	93	2	app.listen(3000);	;
+examples/resource/index.js	94	2	console.log('Express started on port 3000');	;
+examples/route-map/index.js	12	27	express()	null
+examples/route-map/index.js	20	8	app.map(a[key], route + key);	;
+examples/route-map/index.js	24	8	if (verbose) console.log('%s %s', key, route);	;
+examples/route-map/index.js	25	8	app[key](route, a[key]);	;
+examples/route-map/index.js	33	4	res.send('user list');	;
+examples/route-map/index.js	41	4	res.send('delete users');	;
+examples/route-map/index.js	7	17	require('escape-html')	null
+examples/route-map/index.js	73	2	app.listen(3000);	;
+examples/route-map/index.js	74	2	console.log('Express started on port 3000');	;
+examples/route-map/index.js	8	14	require('../../lib/express')	null
+examples/route-middleware/index.js	30	4	next();	;
+examples/route-middleware/index.js	32	4	next(new Error('Failed to load user ' + req.params.id));	;
+examples/route-middleware/index.js	32	9	new Error('Failed to load user ' + req.params.id)	null
+examples/route-middleware/index.js	39	6	req.authenticatedUser.id === req.user.id	false
+examples/route-middleware/index.js	39	6	req.authenticatedUser.id === req.user.id	true
+examples/route-middleware/index.js	40	4	next();	;
+examples/route-middleware/index.js	46	4	next(new Error('Unauthorized'));	;
+examples/route-middleware/index.js	46	9	new Error('Unauthorized')	null
+examples/route-middleware/index.js	52	8	req.authenticatedUser.role === role	false
+examples/route-middleware/index.js	52	8	req.authenticatedUser.role === role	true
+examples/route-middleware/index.js	53	6	next();	;
+examples/route-middleware/index.js	55	11	new Error('Unauthorized')	null
+examples/route-middleware/index.js	55	6	next(new Error('Unauthorized'));	;
+examples/route-middleware/index.js	67	2	next();	;
+examples/route-middleware/index.js	7	14	require('../../lib/express')	null
+examples/route-middleware/index.js	71	2	res.redirect('/user/0');	;
+examples/route-middleware/index.js	75	2	res.send('Viewing user ' + req.user.name);	;
+examples/route-middleware/index.js	79	2	res.send('Editing user ' + req.user.name);	;
+examples/route-middleware/index.js	83	2	res.send('Deleted user ' + req.user.name);	;
+examples/route-middleware/index.js	88	2	app.listen(3000);	;
+examples/route-middleware/index.js	89	2	console.log('Express started on port 3000');	;
+examples/route-middleware/index.js	9	10	express()	null
+examples/route-separation/index.js	10	13	require('morgan')	null
+examples/route-separation/index.js	11	19	require('cookie-parser')	null
+examples/route-separation/index.js	12	21	require('method-override')	null
+examples/route-separation/index.js	13	11	require('./site')	null
+examples/route-separation/index.js	14	11	require('./post')	null
+examples/route-separation/index.js	15	11	require('./user')	null
+examples/route-separation/index.js	21	0	app.set('view engine', 'ejs');	;
+examples/route-separation/index.js	22	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/route-separation/index.js	26	2	app.use(logger('dev'));	;
+examples/route-separation/index.js	29	0	app.use(methodOverride('_method'));	;
+examples/route-separation/index.js	30	0	app.use(cookieParser());	;
+examples/route-separation/index.js	32	0	app.use(express.static(path.join(__dirname, 'public')));	;
+examples/route-separation/index.js	36	0	app.get('/', site.index);	;
+examples/route-separation/index.js	40	0	app.get('/users', user.list);	;
+examples/route-separation/index.js	41	0	app.all('/user/:id{/:op}', user.load);	;
+examples/route-separation/index.js	42	0	app.get('/user/:id', user.view);	;
+examples/route-separation/index.js	43	0	app.get('/user/:id/view', user.view);	;
+examples/route-separation/index.js	44	0	app.get('/user/:id/edit', user.edit);	;
+examples/route-separation/index.js	45	0	app.put('/user/:id/edit', user.update);	;
+examples/route-separation/index.js	49	0	app.get('/posts', post.list);	;
+examples/route-separation/index.js	53	2	app.listen(3000);	;
+examples/route-separation/index.js	54	2	console.log('Express started on port 3000');	;
+examples/route-separation/index.js	7	14	require('../..')	null
+examples/route-separation/index.js	8	11	require('node:path')	null
+examples/route-separation/index.js	9	10	express()	null
+examples/route-separation/post.js	12	2	res.render('posts', { title: 'Posts', posts: posts });	;
+examples/route-separation/site.js	4	2	res.render('index', { title: 'Route Separation Example' });	;
+examples/route-separation/user.js	11	2	res.render('users', { title: 'Users', users: users });	;
+examples/route-separation/user.js	18	4	next();	;
+examples/route-separation/user.js	20	14	new Error('cannot find user ' + id)	null
+examples/route-separation/user.js	22	4	next(err);	;
+examples/route-separation/user.js	46	2	res.redirect(req.get('Referrer') || '/');	;
+examples/search/index.js	14	14	require('../..')	null
+examples/search/index.js	15	11	require('node:path')	null
+examples/search/index.js	16	12	require('redis')	null
+examples/search/index.js	18	9	redis.createClient()	null
+examples/search/index.js	19	10	express()	null
+examples/search/index.js	21	0	app.use(express.static(path.join(__dirname, 'public')));	;
+examples/search/index.js	33	4	await db.connect();	;
+examples/search/index.js	37	4	await db.sAdd('ferret', 'tobi');	;
+examples/search/index.js	38	4	await db.sAdd('ferret', 'loki');	;
+examples/search/index.js	39	4	await db.sAdd('ferret', 'jane');	;
+examples/search/index.js	40	4	await db.sAdd('cat', 'manny');	;
+examples/search/index.js	41	4	await db.sAdd('cat', 'luna');	;
+examples/search/index.js	43	4	console.error('Error initializing Redis:', err);	;
+examples/search/index.js	44	4	process.exit(1);	;
+examples/search/index.js	57	6	console.error(`Redis error for query "${query}":`, err);	;
+examples/search/index.js	58	6	next(err);	;
+examples/search/index.js	70	2	res.sendFile(path.join(__dirname, 'client.js'));	;
+examples/search/index.js	78	2	await initializeRedis();	;
+examples/search/index.js	80	4	app.listen(3000);	;
+examples/search/index.js	81	4	console.log('Express started on port 3000');	;
+examples/search/public/client.js	10	8	xhr.readyState === 4	false
+examples/search/public/client.js	10	8	xhr.readyState === 4	true
+examples/search/public/client.js	14	2	xhr.send();	;
+examples/search/public/client.js	3	13	document.querySelector('[type=search]')	null
+examples/search/public/client.js	4	11	document.querySelector('pre')	null
+examples/search/public/client.js	7	12	new XMLHttpRequest	null
+examples/search/public/client.js	8	2	xhr.open('GET', '/search/' + search.value, true);	;
+examples/session/index.js	10	14	require('../..')	null
+examples/session/index.js	11	14	require('express-session')	null
+examples/session/index.js	13	10	express()	null
+examples/session/index.js	30	2	res.send(body + '<p>viewed <strong>' + req.session.views + '</strong> times.</p>');	;
+examples/session/index.js	35	2	app.listen(3000);	;
+examples/session/index.js	36	2	console.log('Express started on port 3000');	;
+examples/session/redis.js	13	17	require('connect-redis')	null
+examples/session/redis.js	15	10	express()	null
+examples/session/redis.js	17	0	app.use(logger('dev'));	;
+examples/session/redis.js	24	9	new RedisStore	null
+examples/session/redis.js	35	2	res.send(body + '<p>viewed <strong>' + req.session.views + '</strong> times.</p>');	;
+examples/session/redis.js	38	0	app.listen(3000);	;
+examples/session/redis.js	39	0	console.log('Express app started on port 3000');	;
+examples/session/redis.js	7	14	require('../..')	null
+examples/session/redis.js	8	13	require('morgan')	null
+examples/session/redis.js	9	14	require('express-session')	null
+examples/static-files/index.js	10	10	express()	null
+examples/static-files/index.js	13	0	app.use(logger('dev'));	;
+examples/static-files/index.js	22	0	app.use(express.static(path.join(__dirname, 'public')));	;
+examples/static-files/index.js	30	0	app.use('/static', express.static(path.join(__dirname, 'public')));	;
+examples/static-files/index.js	36	0	app.use(express.static(path.join(__dirname, 'public', 'css')));	;
+examples/static-files/index.js	38	0	app.listen(3000);	;
+examples/static-files/index.js	39	0	console.log('listening on port 3000');	;
+examples/static-files/index.js	40	0	console.log('try:');	;
+examples/static-files/index.js	41	0	console.log('  GET /hello.txt');	;
+examples/static-files/index.js	42	0	console.log('  GET /js/app.js');	;
+examples/static-files/index.js	43	0	console.log('  GET /css/style.css');	;
+examples/static-files/index.js	7	14	require('../..')	null
+examples/static-files/index.js	8	13	require('morgan')	null
+examples/static-files/index.js	9	11	require('node:path')	null
+examples/vhost/index.js	21	11	express()	null
+examples/vhost/index.js	23	0	if (!module.parent) main.use(logger('dev'));	;
+examples/vhost/index.js	26	2	res.send('Hello from main app!');	;
+examples/vhost/index.js	30	2	res.send('requested ' + req.params.sub);	;
+examples/vhost/index.js	35	15	express()	null
+examples/vhost/index.js	38	2	if (!module.parent) console.log(req.vhost);	;
+examples/vhost/index.js	39	2	res.redirect('http://example.com:3000/' + req.vhost[0]);	;
+examples/vhost/index.js	44	27	express()	null
+examples/vhost/index.js	46	0	app.use(vhost('*.example.com', redirect));	;
+examples/vhost/index.js	47	0	app.use(vhost('example.com', main));	;
+examples/vhost/index.js	51	2	app.listen(3000);	;
+examples/vhost/index.js	52	2	console.log('Express started on port 3000');	;
+examples/vhost/index.js	7	14	require('../..')	null
+examples/vhost/index.js	8	13	require('morgan')	null
+examples/vhost/index.js	9	12	require('vhost')	null
+examples/view-constructor/github-view.js	47	4	res.setEncoding('utf8');	;
+examples/view-constructor/github-view.js	48	4	res.on('data', function(str){ buf += str });	;
+examples/view-constructor/github-view.js	50	6	self.engine(buf, options, fn);	;
+examples/view-constructor/github-view.js	7	12	require('node:https')	null
+examples/view-constructor/github-view.js	8	11	require('node:path')	null
+examples/view-constructor/index.js	11	27	express()	null
+examples/view-constructor/index.js	16	15	md(str)	null
+examples/view-constructor/index.js	18	13	options[name] || ''	null
+examples/view-constructor/index.js	20	4	fn(null, html);	;
+examples/view-constructor/index.js	22	4	fn(err);	;
+examples/view-constructor/index.js	27	0	app.set('views', 'expressjs/express');	;
+examples/view-constructor/index.js	30	0	app.set('view', GithubView);	;
+examples/view-constructor/index.js	36	2	res.render('examples/markdown/views/index.md', { title: 'Example' });	;
+examples/view-constructor/index.js	41	2	res.render('Readme.md');	;
+examples/view-constructor/index.js	46	2	app.listen(3000);	;
+examples/view-constructor/index.js	47	2	console.log('Express started on port 3000');	;
+examples/view-constructor/index.js	7	14	require('../../')	null
+examples/view-constructor/index.js	8	17	require('./github-view')	null
+examples/view-constructor/index.js	9	9	require('marked')	null
+examples/view-locals/index.js	10	10	express()	null
+examples/view-locals/index.js	107	2	res.render('index', { title: 'Users' });	;
+examples/view-locals/index.js	12	0	app.set('views', path.join(__dirname, 'views'));	;
+examples/view-locals/index.js	13	0	app.set('view engine', 'ejs');	;
+examples/view-locals/index.js	153	2	app.listen(3000);	;
+examples/view-locals/index.js	154	2	console.log('Express started on port 3000');	;
+examples/view-locals/index.js	28	20	next(err)	null
+examples/view-locals/index.js	28	4	if (err) return next(err);	;
+examples/view-locals/index.js	30	22	next(err)	null
+examples/view-locals/index.js	30	6	if (err) return next(err);	;
+examples/view-locals/index.js	50	20	next(err)	null
+examples/view-locals/index.js	50	4	if (err) return next(err);	;
+examples/view-locals/index.js	52	4	next();	;
+examples/view-locals/index.js	58	20	next(err)	null
+examples/view-locals/index.js	58	4	if (err) return next(err);	;
+examples/view-locals/index.js	60	4	next();	;
+examples/view-locals/index.js	7	14	require('../..')	null
+examples/view-locals/index.js	8	11	require('node:path')	null
+examples/view-locals/index.js	88	20	next(err)	null
+examples/view-locals/index.js	88	4	if (err) return next(err);	;
+examples/view-locals/index.js	9	11	require('./user')	null
+examples/view-locals/index.js	90	4	next();	;
+examples/view-locals/index.js	96	20	next(err)	null
+examples/view-locals/index.js	96	4	if (err) return next(err);	;
+examples/view-locals/index.js	97	23	users.filter(ferrets)	null
+examples/view-locals/index.js	98	4	next();	;
+examples/view-locals/user.js	18	4	fn(null, users);	;
+examples/view-locals/user.js	24	4	fn(null, users.length);	;
+examples/view-locals/user.js	32	0	users.push(new User('Tobi', 2, 'ferret'));	;
+examples/view-locals/user.js	32	11	new User('Tobi', 2, 'ferret')	null
+examples/view-locals/user.js	33	0	users.push(new User('Loki', 1, 'ferret'));	;
+examples/view-locals/user.js	33	11	new User('Loki', 1, 'ferret')	null
+examples/view-locals/user.js	34	0	users.push(new User('Jane', 6, 'ferret'));	;
+examples/view-locals/user.js	34	11	new User('Jane', 6, 'ferret')	null
+examples/view-locals/user.js	35	0	users.push(new User('Luna', 1, 'cat'));	;
+examples/view-locals/user.js	35	11	new User('Luna', 1, 'cat')	null
+examples/view-locals/user.js	36	0	users.push(new User('Manny', 1, 'cat'));	;
+examples/view-locals/user.js	36	11	new User('Manny', 1, 'cat')	null
+examples/web-service/index.js	101	2	res.status(err.status || 500);	;
+examples/web-service/index.js	102	2	res.send({ error: err.message });	;
+examples/web-service/index.js	109	2	res.status(404);	;
+examples/web-service/index.js	115	2	app.listen(3000);	;
+examples/web-service/index.js	116	2	console.log('Express started on port 3000');	;
+examples/web-service/index.js	16	12	new Error(msg)	null
+examples/web-service/index.js	18	9	err	null
+examples/web-service/index.js	34	19	next(error(400, 'api key required'))	null
+examples/web-service/index.js	34	2	if (!key) return next(error(400, 'api key required'));	;
+examples/web-service/index.js	37	42	next(error(401, 'invalid api key'))	null
+examples/web-service/index.js	37	6	apiKeys.indexOf(key) === -1	false
+examples/web-service/index.js	37	6	apiKeys.indexOf(key) === -1	true
+examples/web-service/index.js	41	2	next();	;
+examples/web-service/index.js	7	14	require('../../')	null
+examples/web-service/index.js	76	2	res.send(users);	;
+examples/web-service/index.js	81	2	res.send(repos);	;
+examples/web-service/index.js	89	12	res.send(user);	;
+examples/web-service/index.js	9	27	express()	null
+examples/web-service/index.js	90	7	next();	;
+index.js	11	17	require('./lib/express')	null
+lib/application.js	107	2	debug('booting in %s mode', env);	;
+lib/application.js	125	16	Object.create(null)	null
+lib/application.js	134	2	this.set('view', View);	;
+lib/application.js	135	2	this.set('views', resolve('views'));	;
+lib/application.js	136	2	this.set('jsonp callback name', 'callback');	;
+lib/application.js	138	6	env === 'production'	false
+lib/application.js	138	6	env === 'production'	true
+lib/application.js	139	4	this.enable('view cache');	;
+lib/application.js	16	19	require('finalhandler')	null
+lib/application.js	161	4	res.setHeader('X-Powered-By', 'Express');	;
+lib/application.js	17	12	require('debug')	null
+lib/application.js	174	17	Object.create(null)	null
+lib/application.js	177	2	this.router.handle(req, res, done);	;
+lib/application.js	18	11	require('./view')	null
+lib/application.js	19	11	require('node:http')	null
+lib/application.js	196	6	typeof fn !== 'function'	false
+lib/application.js	196	6	typeof fn !== 'function'	true
+lib/application.js	199	11	Array.isArray(arg) && arg.length !== 0	false
+lib/application.js	199	11	Array.isArray(arg) && arg.length !== 0	true
+lib/application.js	20	14	require('./utils')	null
+lib/application.js	204	8	typeof arg !== 'function'	false
+lib/application.js	204	8	typeof arg !== 'function'	true
+lib/application.js	21	18	require('./utils')	null
+lib/application.js	210	12	flatten.call(slice.call(arguments, offset), Infinity)	null
+lib/application.js	212	6	fns.length === 0	false
+lib/application.js	212	6	fns.length === 0	true
+lib/application.js	213	10	new TypeError('app.use() requires a middleware function')	null
+lib/application.js	22	25	require('./utils')	null
+lib/application.js	222	13	router.use(path, fn)	null
+lib/application.js	225	4	debug('.use app under %s', path);	;
+lib/application.js	23	19	require('./utils')	null
+lib/application.js	235	8	next(err);	;
+lib/application.js	24	14	require('node:path')	null
+lib/application.js	240	4	fn.emit('mount', this);	;
+lib/application.js	243	9	this	null
+lib/application.js	25	11	require('once')	null
+lib/application.js	257	9	this.router.route(path)	null
+lib/application.js	26	13	require('router')	null
+lib/application.js	295	6	typeof fn !== 'function'	false
+lib/application.js	295	6	typeof fn !== 'function'	true
+lib/application.js	296	10	new Error('callback function required')	null
+lib/application.js	307	9	this	null
+lib/application.js	325	6	this.param(name[i], fn);	;
+lib/application.js	328	11	this	null
+lib/application.js	331	2	this.router.param(name, fn);	;
+lib/application.js	333	9	this	null
+lib/application.js	352	6	arguments.length === 1	false
+lib/application.js	352	6	arguments.length === 1	true
+lib/application.js	354	11	this.settings[setting]	null
+lib/application.js	357	2	debug('set "%s" to %o', setting, val);	;
+lib/application.js	365	6	this.set('etag fn', compileETag(val));	;
+lib/application.js	368	6	this.set('query parser fn', compileQueryParser(val));	;
+lib/application.js	371	6	this.set('trust proxy fn', compileTrust(val));	;
+lib/application.js	382	9	this	null
+lib/application.js	421	9	Boolean(this.set(setting))	null
+lib/application.js	440	9	!this.set(setting)	null
+lib/application.js	452	9	this.set(setting, true)	null
+lib/application.js	464	9	this.set(setting, false)	null
+lib/application.js	473	8	method === 'get' && arguments.length === 1	false
+lib/application.js	473	8	method === 'get' && arguments.length === 1	true
+lib/application.js	475	13	this.set(path)	null
+lib/application.js	478	16	this.route(path)	null
+lib/application.js	479	4	route[method].apply(route, slice.call(arguments, 1));	;
+lib/application.js	480	11	this	null
+lib/application.js	495	14	this.route(path)	null
+lib/application.js	496	13	slice.call(arguments, 1)	null
+lib/application.js	499	4	route[methods[i]].apply(route, args);	;
+lib/application.js	502	9	this	null
+lib/application.js	530	6	typeof options === 'function'	false
+lib/application.js	530	6	typeof options === 'function'	true
+lib/application.js	539	6	renderOptions.cache == null	false
+lib/application.js	539	6	renderOptions.cache == null	true
+lib/application.js	540	26	this.enabled('view cache')	null
+lib/application.js	550	15	this.get('view')	null
+lib/application.js	559	17	Array.isArray(view.root)	null
+lib/application.js	562	16	new Error('Failed to lookup view "' + name + '" in views ' + dirs)	null
+lib/application.js	564	13	done(err)	null
+lib/application.js	574	2	tryRender(view, renderOptions, done);	;
+lib/application.js	599	15	http.createServer(this)	null
+lib/application.js	600	13	slice.call(arguments)	null
+lib/application.js	601	6	typeof args[args.length - 1] === 'function'	false
+lib/application.js	601	6	typeof args[args.length - 1] === 'function'	true
+lib/application.js	602	39	once(args[args.length - 1])	null
+lib/application.js	605	9	server.listen.apply(server, args)	null
+lib/application.js	617	2	if (this.get('env') !== 'test') console.error(err.stack || err.toString());	;
+lib/application.js	617	6	this.get('env') !== 'test'	false
+lib/application.js	617	6	this.get('env') !== 'test'	true
+lib/application.js	62	15	Object.create(null)	null
+lib/application.js	627	4	view.render(options, callback);	;
+lib/application.js	629	4	callback(err);	;
+lib/application.js	63	17	Object.create(null)	null
+lib/application.js	64	18	Object.create(null)	null
+lib/application.js	66	2	this.defaultConfiguration();	;
+lib/application.js	73	10	router === null	false
+lib/application.js	73	10	router === null	true
+lib/application.js	80	13	router	null
+lib/application.js	94	2	this.enable('x-powered-by');	;
+lib/application.js	95	2	this.set('etag', 'weak');	;
+lib/application.js	96	2	this.set('env', env);	;
+lib/application.js	98	2	this.set('subdomain offset', 2);	;
+lib/application.js	99	2	this.set('trust proxy', false);	;
+lib/express.js	15	17	require('body-parser')	null
+lib/express.js	16	19	require('node:events')	null
+lib/express.js	17	12	require('merge-descriptors')	null
+lib/express.js	18	12	require('./application')	null
+lib/express.js	19	13	require('router')	null
+lib/express.js	20	10	require('./request')	null
+lib/express.js	21	10	require('./response')	null
+lib/express.js	38	4	app.handle(req, res, next);	;
+lib/express.js	41	2	mixin(app, EventEmitter.prototype, false);	;
+lib/express.js	42	2	mixin(app, proto, false);	;
+lib/express.js	54	2	app.init();	;
+lib/express.js	55	9	app	null
+lib/express.js	79	17	require('serve-static')	null
+lib/request.js	128	15	accepts(this)	null
+lib/request.js	129	9	accept.types.apply(accept, arguments)	null
+lib/request.js	141	15	accepts(this)	null
+lib/request.js	142	9	accept.encodings.apply(accept, arguments)	null
+lib/request.js	16	14	require('accepts')	null
+lib/request.js	17	11	require('node:net')	null
+lib/request.js	172	17	accepts(this)	null
+lib/request.js	173	9	accept.charsets(...charsets)	null
+lib/request.js	18	13	require('type-is')	null
+lib/request.js	186	9	accepts(this).languages(...languages)	null
+lib/request.js	19	11	require('node:http')	null
+lib/request.js	20	12	require('fresh')	null
+lib/request.js	21	17	require('range-parser')	null
+lib/request.js	215	14	this.get('Range')	null
+lib/request.js	217	9	parseRange(size, range, options)	null
+lib/request.js	22	12	require('parseurl')	null
+lib/request.js	23	16	require('proxy-addr')	null
+lib/request.js	231	19	this.app.get('query parser fn')	null
+lib/request.js	235	11	Object.create(null)	null
+lib/request.js	238	20	parse(this)	null
+lib/request.js	240	9	queryparse(querystring)	null
+lib/request.js	274	10	new Array(arguments.length)	null
+lib/request.js	280	9	typeis(this, arr)	null
+lib/request.js	30	10	Object.create(http.IncomingMessage.prototype)	null
+lib/request.js	301	14	this.app.get('trust proxy fn')	null
+lib/request.js	304	11	proto	null
+lib/request.js	309	15	this.get('X-Forwarded-Proto')	null
+lib/request.js	310	14	header.indexOf(',')	null
+lib/request.js	327	9	this.protocol === 'https'	null
+lib/request.js	341	14	this.app.get('trust proxy fn')	null
+lib/request.js	342	9	proxyaddr(this, trust)	null
+lib/request.js	358	14	this.app.get('trust proxy fn')	null
+lib/request.js	359	14	proxyaddr.all(this, trust)	null
+lib/request.js	386	24	[]	null
+lib/request.js	388	15	this.app.get('subdomain offset')	null
+lib/request.js	393	9	subdomains.slice(offset)	null
+lib/request.js	404	9	parse(this).pathname	null
+lib/request.js	419	14	this.app.get('trust proxy fn')	null
+lib/request.js	420	12	this.get('X-Forwarded-Host')	null
+lib/request.js	423	10	this.get('Host')	null
+lib/request.js	424	13	val.indexOf(',') !== -1	false
+lib/request.js	424	13	val.indexOf(',') !== -1	true
+lib/request.js	427	10	val.substring(0, val.indexOf(','))	null
+lib/request.js	430	9	val || undefined	null
+lib/request.js	453	14	host.indexOf(':', offset)	null
+lib/request.js	475	6	'GET' !== method && 'HEAD' !== method	false
+lib/request.js	475	6	'GET' !== method && 'HEAD' !== method	true
+lib/request.js	478	6	(status >= 200 && status < 300) || 304 === status	false
+lib/request.js	478	6	(status >= 200 && status < 300) || 304 === status	true
+lib/request.js	498	9	!this.fresh	null
+lib/request.js	509	12	this.get('X-Requested-With')	null
+lib/request.js	510	9	val.toLowerCase() === 'xmlhttprequest'	null
+lib/request.js	66	10	new TypeError('name argument is required to req.get')	null
+lib/request.js	69	6	typeof name !== 'string'	false
+lib/request.js	69	6	typeof name !== 'string'	true
+lib/request.js	70	10	new TypeError('name must be a string to req.get')	null
+lib/request.js	73	11	name.toLowerCase()	null
+lib/request.js	81	13	this.headers[lc]	null
+lib/response.js	1002	8	res.setHeader(k, obj[k]);	;
+lib/response.js	1008	2	file.pipe(res);	;
+lib/response.js	1030	6	escape && typeof json === 'string'	false
+lib/response.js	1030	6	escape && typeof json === 'string'	true
+lib/response.js	1034	17	'\\\\u003c'	""
+lib/response.js	1036	17	'\\\\u003e'	""
+lib/response.js	1038	17	'\\\\u0026'	""
+lib/response.js	104	15	`<${singleLink}>; rel="${rel}"`	""
+lib/response.js	107	13	`<${links[rel]}>; rel="${rel}"`	""
+lib/response.js	137	19	this.get('Content-Type')	null
+lib/response.js	139	10	typeof type === 'string'	false
+lib/response.js	139	10	typeof type === 'string'	true
+lib/response.js	140	8	this.set('Content-Type', setCharset(type, 'utf-8'));	;
+lib/response.js	142	8	this.type('html');	;
+lib/response.js	148	10	chunk === null	false
+lib/response.js	148	10	chunk === null	true
+lib/response.js	15	25	require('content-disposition')	null
+lib/response.js	152	10	this.type('bin');	;
+lib/response.js	155	15	this.json(chunk)	null
+lib/response.js	16	18	require('http-errors')	null
+lib/response.js	161	15	app.get('etag fn')	null
+lib/response.js	166	6	chunk !== undefined	false
+lib/response.js	166	6	chunk !== undefined	true
+lib/response.js	17	16	require('depd')	null
+lib/response.js	170	15	!generateETag && chunk.length < 1000	false
+lib/response.js	170	15	!generateETag && chunk.length < 1000	true
+lib/response.js	172	12	Buffer.byteLength(chunk, encoding)	null
+lib/response.js	175	14	Buffer.from(chunk, encoding)	null
+lib/response.js	18	16	require('encodeurl')	null
+lib/response.js	180	4	this.set('Content-Length', len);	;
+lib/response.js	185	6	generateETag && len !== undefined	false
+lib/response.js	185	6	generateETag && len !== undefined	true
+lib/response.js	186	16	etagFn(chunk, encoding)	null
+lib/response.js	187	6	this.set('ETag', etag);	;
+lib/response.js	19	17	require('escape-html')	null
+lib/response.js	192	2	if (req.fresh) this.status(304);	;
+lib/response.js	195	6	204 === this.statusCode || 304 === this.statusCode	false
+lib/response.js	195	6	204 === this.statusCode || 304 === this.statusCode	true
+lib/response.js	196	4	this.removeHeader('Content-Type');	;
+lib/response.js	197	4	this.removeHeader('Content-Length');	;
+lib/response.js	198	4	this.removeHeader('Transfer-Encoding');	;
+lib/response.js	20	11	require('node:http')	null
+lib/response.js	203	6	this.statusCode === 205	false
+lib/response.js	203	6	this.statusCode === 205	true
+lib/response.js	209	6	req.method === 'HEAD'	false
+lib/response.js	209	6	req.method === 'HEAD'	true
+lib/response.js	21	17	require('on-finished')	null
+lib/response.js	211	4	this.end();	;
+lib/response.js	214	4	this.end(chunk, encoding);	;
+lib/response.js	217	9	this	null
+lib/response.js	22	11	require('mime-types')	null
+lib/response.js	23	11	require('node:path')	null
+lib/response.js	235	15	app.get('json escape')	null
+lib/response.js	236	17	app.get('json replacer')	null
+lib/response.js	237	15	app.get('json spaces')	null
+lib/response.js	238	13	stringify(obj, replacer, spaces, escape)	null
+lib/response.js	24	21	require('node:path')	null
+lib/response.js	242	4	this.set('Content-Type', 'application/json');	;
+lib/response.js	245	9	this.send(body)	null
+lib/response.js	25	15	require('statuses')	null
+lib/response.js	26	11	require('cookie-signature')	null
+lib/response.js	263	15	app.get('json escape')	null
+lib/response.js	264	17	app.get('json replacer')	null
+lib/response.js	265	15	app.get('json spaces')	null
+lib/response.js	266	13	stringify(obj, replacer, spaces, escape)	null
+lib/response.js	27	20	require('./utils')	null
+lib/response.js	271	4	this.set('X-Content-Type-Options', 'nosniff');	;
+lib/response.js	272	4	this.set('Content-Type', 'application/json');	;
+lib/response.js	28	21	require('./utils')	null
+lib/response.js	281	6	typeof callback === 'string' && callback.length !== 0	false
+lib/response.js	281	6	typeof callback === 'string' && callback.length !== 0	true
+lib/response.js	282	4	this.set('X-Content-Type-Options', 'nosniff');	;
+lib/response.js	283	4	this.set('Content-Type', 'text/javascript');	;
+lib/response.js	286	15	callback.replace(/[^\\[\\]\\w$.]/g, '')	null
+lib/response.js	288	8	body === undefined	false
+lib/response.js	288	8	body === undefined	true
+lib/response.js	29	17	require('./utils')	null
+lib/response.js	291	15	typeof body === 'string'	false
+lib/response.js	291	15	typeof body === 'string'	true
+lib/response.js	30	13	require('cookie')	null
+lib/response.js	303	9	this.send(body)	null
+lib/response.js	31	11	require('send')	null
+lib/response.js	324	2	this.status(statusCode);	;
+lib/response.js	325	2	this.type('txt');	;
+lib/response.js	327	9	this.send(body)	null
+lib/response.js	34	11	require('vary')	null
+lib/response.js	35	19	require('node:buffer')	null
+lib/response.js	379	10	new TypeError('path argument is required to res.sendFile')	null
+lib/response.js	382	6	typeof path !== 'string'	false
+lib/response.js	382	6	typeof path !== 'string'	true
+lib/response.js	383	10	new TypeError('path must be a string to res.sendFile')	null
+lib/response.js	387	6	typeof options === 'function'	false
+lib/response.js	387	6	typeof options === 'function'	true
+lib/response.js	393	10	new TypeError('path must be absolute or specify root to res.sendFile')	null
+lib/response.js	397	17	encodeURI(path)	null
+lib/response.js	400	14	this.app.enabled('etag')	null
+lib/response.js	401	13	send(req, pathname, opts)	null
+lib/response.js	405	21	done(err)	null
+lib/response.js	405	4	if (done) return done(err);	;
+lib/response.js	406	4	if (err && err.code === 'EISDIR') return next();	;
+lib/response.js	406	45	next()	null
+lib/response.js	406	8	err && err.code === 'EISDIR'	false
+lib/response.js	406	8	err && err.code === 'EISDIR'	true
+lib/response.js	409	8	err && err.code !== 'ECONNABORTED' && err.syscall !== 'write'	false
+lib/response.js	409	8	err && err.code !== 'ECONNABORTED' && err.syscall !== 'write'	true
+lib/response.js	410	6	next(err);	;
+lib/response.js	42	10	Object.create(http.ServerResponse.prototype)	null
+lib/response.js	439	6	typeof filename === 'function'	false
+lib/response.js	439	6	typeof filename === 'function'	true
+lib/response.js	443	13	typeof options === 'function'	false
+lib/response.js	443	13	typeof options === 'function'	true
+lib/response.js	462	15	Object.keys(opts.headers)	null
+lib/response.js	465	10	key.toLowerCase() !== 'content-disposition'	false
+lib/response.js	465	10	key.toLowerCase() !== 'content-disposition'	true
+lib/response.js	472	9	Object.create(opts)	null
+lib/response.js	481	9	this.sendFile(fullPath, opts, done)	null
+lib/response.js	505	11	type.indexOf('/')	null
+lib/response.js	509	9	this.set('Content-Type', ct)	null
+lib/response.js	573	13	Object.keys(obj)	null
+lib/response.js	580	2	this.vary("Accept");	;
+lib/response.js	583	4	this.set('Content-Type', normalizeType(key).value);	;
+lib/response.js	584	4	obj[key](req, this, next);	;
+lib/response.js	593	9	this	null
+lib/response.js	606	4	this.type(extname(filename));	;
+lib/response.js	609	2	this.set('Content-Disposition', contentDisposition(filename));	;
+lib/response.js	611	9	this	null
+lib/response.js	630	13	this.get(field)	null
+lib/response.js	635	12	Array.isArray(prev)	null
+lib/response.js	640	9	this.set(field, value)	null
+lib/response.js	666	6	arguments.length === 2	false
+lib/response.js	666	6	arguments.length === 2	true
+lib/response.js	667	16	Array.isArray(val)	null
+lib/response.js	67	10	new TypeError(`Invalid status code: ${JSON.stringify(code)}. Status code must be an integer.`)	null
+lib/response.js	672	8	field.toLowerCase() === 'content-type'	false
+lib/response.js	672	8	field.toLowerCase() === 'content-type'	true
+lib/response.js	674	14	new TypeError('Content-Type cannot be set to an Array')	null
+lib/response.js	676	14	mime.contentType(value)	null
+lib/response.js	679	4	this.setHeader(field, value);	;
+lib/response.js	682	6	this.set(key, field[key]);	;
+lib/response.js	685	9	this	null
+lib/response.js	697	9	this.getHeader(field)	null
+lib/response.js	70	6	code < 100 || code > 999	false
+lib/response.js	70	6	code < 100 || code > 999	true
+lib/response.js	71	10	new RangeError(`Invalid status code: ${JSON.stringify(code)}. Status code must be greater than 99 and less than 1000.`)	null
+lib/response.js	711	49	new Date(1)	null
+lib/response.js	715	9	this.cookie(name, '', opts)	null
+lib/response.js	748	10	new Error('cookieParser("secret") required for signed cookies')	null
+lib/response.js	75	9	this	null
+lib/response.js	759	6	opts.maxAge != null	false
+lib/response.js	759	6	opts.maxAge != null	true
+lib/response.js	763	21	new Date(Date.now() + maxAge)	null
+lib/response.js	764	20	Math.floor(maxAge / 1000)	null
+lib/response.js	768	6	opts.path == null	false
+lib/response.js	768	6	opts.path == null	true
+lib/response.js	772	2	this.append('Set-Cookie', cookie.serialize(name, String(val), opts));	;
+lib/response.js	774	9	this	null
+lib/response.js	795	9	this.set('Location', encodeUrl(url))	null
+lib/response.js	818	6	arguments.length === 2	false
+lib/response.js	818	6	arguments.length === 2	true
+lib/response.js	824	4	deprecate('Provide a url argument');	;
+lib/response.js	827	6	typeof address !== 'string'	false
+lib/response.js	827	6	typeof address !== 'string'	true
+lib/response.js	828	4	deprecate('Url must be a string');	;
+lib/response.js	831	6	typeof status !== 'number'	false
+lib/response.js	831	6	typeof status !== 'number'	true
+lib/response.js	832	4	deprecate('Status must be a number');	;
+lib/response.js	836	12	this.location(address)	null
+lib/response.js	845	14	escapeHtml(address)	null
+lib/response.js	856	2	this.status(status);	;
+lib/response.js	857	2	this.set('Content-Length', Buffer.byteLength(body));	;
+lib/response.js	859	6	this.req.method === 'HEAD'	false
+lib/response.js	859	6	this.req.method === 'HEAD'	true
+lib/response.js	860	4	this.end();	;
+lib/response.js	862	4	this.end(body);	;
+lib/response.js	876	2	vary(this, field);	;
+lib/response.js	878	9	this	null
+lib/response.js	902	6	typeof options === 'function'	false
+lib/response.js	902	6	typeof options === 'function'	true
+lib/response.js	912	20	req.next(err)	null
+lib/response.js	912	4	if (err) return req.next(err);	;
+lib/response.js	913	4	self.send(str);	;
+lib/response.js	917	2	app.render(view, opts, done);	;
+lib/response.js	930	14	new Error('Request aborted')	null
+lib/response.js	932	4	callback(err);	;
+lib/response.js	940	14	new Error('EISDIR, read')	null
+lib/response.js	942	4	callback(err);	;
+lib/response.js	949	4	callback(err);	;
+lib/response.js	956	4	callback();	;
+lib/response.js	966	4	if (err && err.code === 'ECONNRESET') return onaborted();	;
+lib/response.js	966	49	onaborted()	null
+lib/response.js	966	8	err && err.code === 'ECONNRESET'	false
+lib/response.js	966	8	err && err.code === 'ECONNRESET'	true
+lib/response.js	967	20	onerror(err)	null
+lib/response.js	967	4	if (err) return onerror(err);	;
+lib/response.js	971	10	streaming !== false && !done	false
+lib/response.js	971	10	streaming !== false && !done	true
+lib/response.js	972	8	onaborted();	;
+lib/response.js	978	6	callback();	;
+lib/response.js	98	13	this.get('Link')	null
+lib/response.js	987	2	file.on('directory', ondirectory);	;
+lib/response.js	988	2	file.on('end', onend);	;
+lib/response.js	989	2	file.on('error', onerror);	;
+lib/response.js	990	2	file.on('file', onfile);	;
+lib/response.js	991	2	file.on('stream', onstream);	;
+lib/response.js	992	2	onFinished(res, onfinish);	;
+lib/response.js	998	17	Object.keys(obj)	null
+lib/utils.js	102	8	splitIndex > endIndex	false
+lib/utils.js	102	8	splitIndex > endIndex	true
+lib/utils.js	103	14	str.lastIndexOf(';', splitIndex - 1)	null
+lib/utils.js	107	14	str.slice(index, splitIndex)	null
+lib/utils.js	108	16	str.slice(splitIndex + 1, endIndex)	null
+lib/utils.js	110	8	key === 'q'	false
+lib/utils.js	110	8	key === 'q'	true
+lib/utils.js	111	20	parseFloat(value)	null
+lib/utils.js	119	9	ret	null
+lib/utils.js	133	6	typeof val === 'function'	false
+lib/utils.js	133	6	typeof val === 'function'	true
+lib/utils.js	134	11	val	null
+lib/utils.js	148	12	new TypeError('unknown value for etag function: ' + val)	null
+lib/utils.js	15	18	require('node:http')	null
+lib/utils.js	151	9	fn	null
+lib/utils.js	16	18	require('content-type')	null
+lib/utils.js	165	6	typeof val === 'function'	false
+lib/utils.js	165	6	typeof val === 'function'	true
+lib/utils.js	166	11	val	null
+lib/utils.js	17	11	require('etag')	null
+lib/utils.js	18	11	require('mime-types')	null
+lib/utils.js	180	12	new TypeError('unknown value for query parser function: ' + val)	null
+lib/utils.js	183	9	fn	null
+lib/utils.js	19	16	require('proxy-addr')	null
+lib/utils.js	195	40	val	null
+lib/utils.js	195	6	typeof val === 'function'	false
+lib/utils.js	195	6	typeof val === 'function'	true
+lib/utils.js	197	6	val === true	false
+lib/utils.js	197	6	val === true	true
+lib/utils.js	199	11	function(){ return true }	null
+lib/utils.js	20	9	require('qs')	null
+lib/utils.js	202	6	typeof val === 'number'	false
+lib/utils.js	202	6	typeof val === 'number'	true
+lib/utils.js	204	11	function(a, i){ return i < val }	null
+lib/utils.js	207	6	typeof val === 'string'	false
+lib/utils.js	207	6	typeof val === 'string'	true
+lib/utils.js	209	10	val.split(',')	null
+lib/utils.js	21	18	require('node:querystring')	null
+lib/utils.js	210	33	v.trim()	null
+lib/utils.js	213	9	proxyaddr.compile(val || [])	null
+lib/utils.js	22	19	require('node:buffer')	null
+lib/utils.js	227	11	type	null
+lib/utils.js	231	15	contentType.parse(type)	null
+lib/utils.js	237	9	contentType.format(parsed)	null
+lib/utils.js	255	11	etag(buf, options)	null
+lib/utils.js	29	18	METHODS.map((method) => method.toLowerCase())	null
+lib/utils.js	40	15	createETagGenerator({ weak: false })	null
+lib/utils.js	51	16	createETagGenerator({ weak: true })	null
+lib/utils.js	76	9	types.map(exports.normalizeType)	null
+lib/utils.js	91	19	str.indexOf(';')	null
+lib/utils.js	95	9	index < length	false
+lib/utils.js	95	9	index < length	true
+lib/utils.js	96	21	str.indexOf('=', index)	null
+lib/utils.js	97	8	splitIndex === -1	false
+lib/utils.js	97	8	splitIndex === -1	true
+lib/utils.js	99	21	str.indexOf(';', index)	null
+lib/view.js	108	2	debug('lookup "%s"', name);	;
+lib/view.js	114	14	resolve(root, name)	null
+lib/view.js	115	14	dirname(loc)	null
+lib/view.js	116	15	basename(loc)	null
+lib/view.js	119	11	this.resolve(dir, file)	null
+lib/view.js	122	9	path	null
+lib/view.js	136	2	debug('render "%s"', this.path);	;
+lib/view.js	141	13	callback.apply(this, arguments)	null
+lib/view.js	145	15	new Array(arguments.length)	null
+lib/view.js	154	13	callback.apply(cntx, args)	null
+lib/view.js	16	12	require('debug')	null
+lib/view.js	17	11	require('node:path')	null
+lib/view.js	173	13	join(dir, file)	null
+lib/view.js	174	13	tryStat(path)	null
+lib/view.js	177	11	path	null
+lib/view.js	18	9	require('node:fs')	null
+lib/view.js	181	9	join(dir, basename(file, ext), 'index' + ext)	null
+lib/view.js	182	9	tryStat(path)	null
+lib/view.js	185	11	path	null
+lib/view.js	198	2	debug('stat "%s"', path);	;
+lib/view.js	201	11	fs.statSync(path)	null
+lib/view.js	203	11	undefined	null
+lib/view.js	56	13	extname(name)	null
+lib/view.js	61	10	new Error('No default engine was specified and no extension was provided.')	null
+lib/view.js	77	14	this.ext.slice(1)	null
+lib/view.js	81	13	require(mod)	null
+lib/view.js	83	8	typeof fn !== 'function'	false
+lib/view.js	83	8	typeof fn !== 'function'	true
+lib/view.js	84	12	new Error('Module "' + mod + '" does not provide a view engine.')	null
+lib/view.js	94	14	this.lookup(fileName)	null
+test/Route.js	101	8	done();	;
+test/Route.js	109	18	new Route('')	null
+test/Route.js	113	8	next();	;
+test/Route.js	117	24	done(err)	null
+test/Route.js	117	8	if (err) return done(err);	;
+test/Route.js	119	8	done();	;
+test/Route.js	12	16	new Route('/foo')	null
+test/Route.js	125	18	new Route('')	null
+test/Route.js	128	14	new Error('not me!')	null
+test/Route.js	133	8	next();	;
+test/Route.js	137	24	done(err)	null
+test/Route.js	137	8	if (err) return done(err);	;
+test/Route.js	139	8	done();	;
+test/Route.js	145	18	new Route('')	null
+test/Route.js	149	8	next();	;
+test/Route.js	154	8	next();	;
+test/Route.js	159	8	next();	;
+test/Route.js	163	24	done(err)	null
+test/Route.js	163	8	if (err) return done(err);	;
+test/Route.js	165	8	done();	;
+test/Route.js	173	18	new Route('')	null
+test/Route.js	176	13	new Error('foobar')	null
+test/Route.js	176	8	next(new Error('foobar'));	;
+test/Route.js	181	8	next();	;
+test/Route.js	186	8	next(err);	;
+test/Route.js	193	8	done();	;
+test/Route.js	199	18	new Route('')	null
+test/Route.js	20	16	new Route('/foo')	null
+test/Route.js	202	14	new Error('foobar')	null
+test/Route.js	207	8	next();	;
+test/Route.js	212	8	next(err);	;
+test/Route.js	219	8	done();	;
+test/Route.js	225	18	new Route('')	null
+test/Route.js	228	14	new Error('boom!')	null
+test/Route.js	232	14	new Error('oops')	null
+test/Route.js	237	8	next();	;
+test/Route.js	241	24	done(err)	null
+test/Route.js	241	8	if (err) return done(err);	;
+test/Route.js	243	8	done();	;
+test/Route.js	249	18	new Route('')	null
+test/Route.js	252	14	new Error('boom!')	null
+test/Route.js	258	8	done();	;
+test/Route.js	264	18	new Route('')	null
+test/Route.js	268	14	new Error('should not be called')	null
+test/Route.js	271	6	route.dispatch(req, {}, done);	;
+test/Route.js	3	12	require('after')	null
+test/Route.js	4	13	require('node:assert')	null
+test/Route.js	40	22	done(err)	null
+test/Route.js	5	14	require('../')	null
+test/Route.js	50	18	new Route('/foo')	null
+test/Route.js	54	8	next();	;
+test/Route.js	58	24	done(err)	null
+test/Route.js	58	8	if (err) return done(err);	;
+test/Route.js	60	8	done();	;
+test/Route.js	66	18	new Route('/foo')	null
+test/Route.js	68	24	done(err)	null
+test/Route.js	68	8	if (err) return done(err);	;
+test/Route.js	7	14	require('../lib/utils')	null
+test/Route.js	70	8	done();	;
+test/Route.js	75	8	next();	;
+test/Route.js	80	8	route.dispatch(req, {}, cb);	;
+test/Route.js	86	18	new Route('/foo')	null
+test/Route.js	90	8	next();	;
+test/Route.js	95	8	next();	;
+test/Route.js	99	24	done(err)	null
+test/Route.js	99	8	if (err) return done(err);	;
+test/Router.js	102	6	res.end();	;
+test/Router.js	105	4	router.handle({ url: '/', method: 'GET' }, { end: done }, function () { });	;
+test/Router.js	11	17	new Router()	null
+test/Router.js	111	17	new Router()	null
+test/Router.js	131	6	assert(!err, err);	;
+test/Router.js	138	17	new Router()	null
+test/Router.js	158	6	assert(!err, err);	;
+test/Router.js	164	19	new Router()	null
+test/Router.js	167	8	res.send('foo');	;
+test/Router.js	173	10	done();	;
+test/Router.js	176	6	router.handle({ url: '/foo', method: 'GET' }, res, function () { });	;
+test/Router.js	183	21	new Router()	null
+test/Router.js	184	8	router.route('/foo').all(null);	;
+test/Router.js	190	21	new Router()	null
+test/Router.js	191	8	router.route('/foo').all(undefined);	;
+test/Router.js	197	21	new Router()	null
+test/Router.js	198	8	router.route('/foo').all('not a function');	;
+test/Router.js	20	17	new Router()	null
+test/Router.js	203	19	new Router()	null
+test/Router.js	204	6	router.route('/foo').all(function () { }).all(function () { });	;
+test/Router.js	21	18	new Router()	null
+test/Router.js	210	19	new Router()	null
+test/Router.js	213	13	new Error('foo')	null
+test/Router.js	213	8	next(new Error('foo'));	;
+test/Router.js	217	13	new Error('bar')	null
+test/Router.js	217	8	next(new Error('bar'));	;
+test/Router.js	221	8	assert(false);	;
+test/Router.js	225	8	assert.equal(err.message, 'foo');	;
+test/Router.js	226	8	done();	;
+test/Router.js	229	6	router.handle({ url: '/foo', method: 'GET' }, {}, done);	;
+test/Router.js	233	19	new Router()	null
+test/Router.js	236	14	new Error('foo')	null
+test/Router.js	24	6	res.end();	;
+test/Router.js	240	8	assert(false);	;
+test/Router.js	244	8	assert.equal(err.message, 'foo');	;
+test/Router.js	245	8	done();	;
+test/Router.js	248	6	router.handle({ url: '/foo/2', method: 'GET' }, {}, function () { });	;
+test/Router.js	252	19	new Router()	null
+test/Router.js	257	10	next();	;
+test/Router.js	26	4	router.use('/foo', another);	;
+test/Router.js	262	14	new Error('oh no!')	null
+test/Router.js	266	8	assert.equal(err.message, 'oh no!');	;
+test/Router.js	267	8	done();	;
+test/Router.js	270	6	router.handle({ url: '/bob', method: 'GET' }, {}, function () { });	;
+test/Router.js	274	19	new Router()	null
+test/Router.js	277	14	new Error('boom!')	null
+test/Router.js	28	4	router.handle({ url: '/foo/bar', method: 'GET' }, { end: done }, function () { });	;
+test/Router.js	281	14	new Error('oops')	null
+test/Router.js	285	8	assert.equal(err.message, 'oops');	;
+test/Router.js	286	8	done();	;
+test/Router.js	289	6	router.handle({ url: '/', method: 'GET' }, {}, done);	;
+test/Router.js	296	19	new Router()	null
+test/Router.js	299	8	assert.equal(req.hit++, 0);	;
+test/Router.js	3	12	require('after')	null
+test/Router.js	300	8	assert.equal(req.url, 'http://example.com/foo');	;
+test/Router.js	301	8	next();	;
+test/Router.js	305	24	done(err)	null
+test/Router.js	305	8	if (err) return done(err);	;
+test/Router.js	306	8	assert.equal(request.hit, 1);	;
+test/Router.js	307	8	done();	;
+test/Router.js	313	19	new Router()	null
+test/Router.js	316	8	assert.equal(req.hit++, 0);	;
+test/Router.js	317	8	assert.equal(req.url, '/?url=http://example.com/blog/post/1');	;
+test/Router.js	318	8	next();	;
+test/Router.js	32	17	new Router()	null
+test/Router.js	322	24	done(err)	null
+test/Router.js	322	8	if (err) return done(err);	;
+test/Router.js	323	8	assert.equal(request.hit, 1);	;
+test/Router.js	324	8	done();	;
+test/Router.js	33	18	new Router()	null
+test/Router.js	330	19	new Router()	null
+test/Router.js	333	8	assert.equal(req.hit++, 0);	;
+test/Router.js	334	8	assert.equal(req.url, '/http://example.com/blog/post/1');	;
+test/Router.js	335	8	next();	;
+test/Router.js	339	24	done(err)	null
+test/Router.js	339	8	if (err) return done(err);	;
+test/Router.js	340	8	assert.equal(request.hit, 1);	;
+test/Router.js	341	8	done();	;
+test/Router.js	347	19	new Router()	null
+test/Router.js	350	8	assert.equal(req.hit++, 0);	;
+test/Router.js	351	8	assert.equal(req.url, 'http://example.com/post/1');	;
+test/Router.js	352	8	next();	;
+test/Router.js	356	24	done(err)	null
+test/Router.js	356	8	if (err) return done(err);	;
+test/Router.js	357	8	assert.equal(request.hit, 1);	;
+test/Router.js	358	8	done();	;
+test/Router.js	364	19	new Router()	null
+test/Router.js	367	8	assert.equal(req.hit++, 0);	;
+test/Router.js	368	8	assert.equal(req.url, 'http://example.com/blog/post/1');	;
+test/Router.js	369	8	next();	;
+test/Router.js	37	6	res.end();	;
+test/Router.js	373	8	assert.equal(req.hit++, 1);	;
+test/Router.js	374	8	assert.equal(req.url, 'http://example.com/post/1');	;
+test/Router.js	375	8	next();	;
+test/Router.js	379	24	done(err)	null
+test/Router.js	379	8	if (err) return done(err);	;
+test/Router.js	380	8	assert.equal(request.hit, 2);	;
+test/Router.js	381	8	done();	;
+test/Router.js	387	19	new Router()	null
+test/Router.js	39	4	router.use('/:foo', another);	;
+test/Router.js	390	8	assert.equal(req.hit++, 0);	;
+test/Router.js	391	8	assert.equal(req.url, 'http://example.com/post/1');	;
+test/Router.js	392	8	next();	;
+test/Router.js	396	8	assert.equal(req.hit++, 1);	;
+test/Router.js	397	8	assert.equal(req.url, 'http://example.com/post/1');	;
+test/Router.js	398	8	next();	;
+test/Router.js	4	14	require('../')	null
+test/Router.js	402	8	assert.equal(req.hit++, 2);	;
+test/Router.js	403	8	assert.equal(req.url, 'http://example.com/blog/post/1');	;
+test/Router.js	404	8	next();	;
+test/Router.js	408	24	done(err)	null
+test/Router.js	408	8	if (err) return done(err);	;
+test/Router.js	409	8	assert.equal(request.hit, 3);	;
+test/Router.js	41	4	router.handle({ url: '/test/route', method: 'GET' }, { end: done }, function () { });	;
+test/Router.js	410	8	done();	;
+test/Router.js	417	19	new Router()	null
+test/Router.js	420	6	router.all('/foo', function () { count++; });	;
+test/Router.js	425	8	router.handle({ url: url, method: method }, {}, function () { });	;
+test/Router.js	428	6	assert.equal(count, methods.length);	;
+test/Router.js	429	6	done();	;
+test/Router.js	435	19	new Router()	null
+test/Router.js	440	19	new Router()	null
+test/Router.js	445	19	new Router()	null
+test/Router.js	45	17	new Router()	null
+test/Router.js	450	19	new Router()	null
+test/Router.js	455	19	new Router()	null
+test/Router.js	456	50	new Date()	null
+test/Router.js	460	15	after(4, done)	null
+test/Router.js	461	19	new Router()	null
+test/Router.js	464	14	new Error('should not be called')	null
+test/Router.js	479	19	new Router()	null
+test/Router.js	48	12	new Error('should not be called')	null
+test/Router.js	482	8	assert.equal(++count, 1);	;
+test/Router.js	483	8	next();	;
+test/Router.js	487	8	assert.equal(++count, 2);	;
+test/Router.js	488	8	next();	;
+test/Router.js	492	8	assert.equal(++count, 3);	;
+test/Router.js	493	8	done();	;
+test/Router.js	496	6	router.handle({ url: '/foo', method: 'GET' }, {}, function () { });	;
+test/Router.js	502	19	new Router()	null
+test/Router.js	503	6	assert.throws(router.param.bind(router, 'id'), /argument fn is required/);	;
+test/Router.js	507	19	new Router()	null
+test/Router.js	508	6	assert.throws(router.param.bind(router, 'id', 42), /argument fn must be a function/);	;
+test/Router.js	51	4	router.handle({ url: '', method: 'GET' }, {}, done);	;
+test/Router.js	512	19	new Router()	null
+test/Router.js	515	8	assert.equal(id, '123');	;
+test/Router.js	516	8	next();	;
+test/Router.js	520	8	assert.equal(req.params.id, '123');	;
+test/Router.js	521	8	next();	;
+test/Router.js	524	6	router.handle({ url: '/foo/123/bar', method: 'get' }, {}, done);	;
+test/Router.js	528	19	new Router()	null
+test/Router.js	531	8	assert.equal(id, '123');	;
+test/Router.js	532	8	next();	;
+test/Router.js	536	8	assert.equal(req.params.id, '123');	;
+test/Router.js	537	8	assert.equal(req.url, '/baz');	;
+test/Router.js	538	8	next();	;
+test/Router.js	541	6	router.handle({ url: '/foo/123/bar/baz', method: 'get' }, {}, done);	;
+test/Router.js	547	19	new Router()	null
+test/Router.js	548	16	new Router()	null
+test/Router.js	55	17	new Router()	null
+test/Router.js	551	8	next();	;
+test/Router.js	557	8	next();	;
+test/Router.js	560	32	new Router()	null
+test/Router.js	560	6	router.use('/foo/:user/', new Router());	;
+test/Router.js	561	6	router.use('/foo/:user/', sub);	;
+test/Router.js	564	24	done(err)	null
+test/Router.js	564	8	if (err) return done(err);	;
+test/Router.js	565	8	assert.equal(count, 1);	;
+test/Router.js	566	8	assert.equal(req.user, 'bob');	;
+test/Router.js	567	8	done();	;
+test/Router.js	574	19	new Router()	null
+test/Router.js	575	16	new Router()	null
+test/Router.js	578	8	next();	;
+test/Router.js	58	12	new Error('should not be called')	null
+test/Router.js	584	8	next();	;
+test/Router.js	587	32	new Router()	null
+test/Router.js	587	6	router.use('/foo/:user/', new Router());	;
+test/Router.js	588	6	router.use('/:user/bob/', sub);	;
+test/Router.js	591	24	done(err)	null
+test/Router.js	591	8	if (err) return done(err);	;
+test/Router.js	592	8	assert.equal(count, 2);	;
+test/Router.js	593	8	assert.equal(req.user, 'foo');	;
+test/Router.js	594	8	done();	;
+test/Router.js	6	14	require('../lib/utils')	null
+test/Router.js	603	19	new Router()	null
+test/Router.js	604	16	new Router()	null
+test/Router.js	605	15	after(2, done)	null
+test/Router.js	609	8	next();	;
+test/Router.js	613	13	parseInt(ms, 10)	null
+test/Router.js	615	8	setTimeout(next, ms);	;
+test/Router.js	618	30	new Router()	null
+test/Router.js	618	6	router.use('/foo/:ms/', new Router());	;
+test/Router.js	619	6	router.use('/foo/:ms/', sub);	;
+test/Router.js	622	8	assert.ifError(err);	;
+test/Router.js	623	8	assert.equal(req1.ms, 50);	;
+test/Router.js	624	8	assert.equal(req1.originalUrl, '/foo/50/bar');	;
+test/Router.js	629	8	assert.ifError(err);	;
+test/Router.js	630	8	assert.equal(req2.ms, 10);	;
+test/Router.js	631	8	assert.equal(req2.originalUrl, '/foo/10/bar');	;
+test/Router.js	66	17	new Router()	null
+test/Router.js	67	16	router.route('/foo')	null
+test/Router.js	7	13	require('node:assert')	null
+test/Router.js	70	48	new Error('should not run')	null
+test/Router.js	75	47	new Error('should not run')	null
+test/Router.js	77	56	new Error('should not run')	null
+test/Router.js	84	22	done(err)	null
+test/Router.js	94	48	new Error('wrong handler')	null
+test/Router.js	95	17	new Router()	null
+test/acceptance/auth.js	1	10	require('../../examples/auth')	null
+test/acceptance/auth.js	2	14	require('supertest')	null
+test/acceptance/auth.js	32	24	done(err)	null
+test/acceptance/auth.js	47	26	done(err)	null
+test/acceptance/auth.js	5	9	res.headers['set-cookie'][0].split('	null
+test/acceptance/auth.js	80	24	done(err)	null
+test/acceptance/content-negotiation.js	2	14	require('supertest')	null
+test/acceptance/content-negotiation.js	3	10	require('../../examples/content-negotiation')	null
+test/acceptance/cookie-sessions.js	2	10	require('../../examples/cookie-sessions')	null
+test/acceptance/cookie-sessions.js	24	24	done(err)	null
+test/acceptance/cookie-sessions.js	3	14	require('supertest')	null
+test/acceptance/cookie-sessions.js	36	11	val.split('	null
+test/acceptance/cookies.js	2	10	require('../../examples/cookies')	null
+test/acceptance/cookies.js	27	24	done(err)	null
+test/acceptance/cookies.js	3	14	require('supertest')	null
+test/acceptance/cookies.js	4	12	require('../support/utils')	null
+test/acceptance/cookies.js	43	24	done(err)	null
+test/acceptance/downloads.js	2	10	require('../../examples/downloads')	null
+test/acceptance/downloads.js	3	14	require('supertest')	null
+test/acceptance/ejs.js	2	14	require('supertest')	null
+test/acceptance/ejs.js	3	10	require('../../examples/ejs')	null
+test/acceptance/error-pages.js	2	10	require('../../examples/error-pages')	null
+test/acceptance/error-pages.js	3	14	require('supertest')	null
+test/acceptance/error.js	2	10	require('../../examples/error')	null
+test/acceptance/error.js	3	14	require('supertest')	null
+test/acceptance/hello-world.js	2	10	require('../../examples/hello-world')	null
+test/acceptance/hello-world.js	3	14	require('supertest')	null
+test/acceptance/markdown.js	2	10	require('../../examples/markdown')	null
+test/acceptance/markdown.js	3	14	require('supertest')	null
+test/acceptance/multi-router.js	1	10	require('../../examples/multi-router')	null
+test/acceptance/multi-router.js	2	14	require('supertest')	null
+test/acceptance/mvc.js	109	24	done(err)	null
+test/acceptance/mvc.js	109	8	if (err) return done(err);	;
+test/acceptance/mvc.js	125	24	done(err)	null
+test/acceptance/mvc.js	2	14	require('supertest')	null
+test/acceptance/mvc.js	3	10	require('../../examples/mvc')	null
+test/acceptance/mvc.js	39	24	done(err)	null
+test/acceptance/mvc.js	39	8	if (err) return done(err);	;
+test/acceptance/params.js	1	10	require('../../examples/params')	null
+test/acceptance/params.js	2	14	require('supertest')	null
+test/acceptance/resource.js	1	10	require('../../examples/resource')	null
+test/acceptance/resource.js	2	14	require('supertest')	null
+test/acceptance/route-map.js	2	14	require('supertest')	null
+test/acceptance/route-map.js	3	10	require('../../examples/route-map')	null
+test/acceptance/route-separation.js	2	10	require('../../examples/route-separation')	null
+test/acceptance/route-separation.js	3	14	require('supertest')	null
+test/acceptance/route-separation.js	67	24	done(err)	null
+test/acceptance/route-separation.js	82	24	done(err)	null
+test/acceptance/vhost.js	1	10	require('../../examples/vhost')	null
+test/acceptance/vhost.js	2	14	require('supertest')	null
+test/acceptance/web-service.js	2	14	require('supertest')	null
+test/acceptance/web-service.js	3	10	require('../../examples/web-service')	null
+test/app.all.js	10	13	after(2, done)	null
+test/app.all.js	13	6	res.end(req.method);	;
+test/app.all.js	26	14	express()	null
+test/app.all.js	3	12	require('after')	null
+test/app.all.js	30	22	done(new Error('DELETE called several times'))	null
+test/app.all.js	30	27	new Error('DELETE called several times')	null
+test/app.all.js	30	6	if (n++) return done(new Error('DELETE called several times'));	;
+test/app.all.js	31	6	next();	;
+test/app.all.js	4	14	require('../')	null
+test/app.all.js	5	14	require('supertest')	null
+test/app.all.js	9	14	express()	null
+test/app.engine.js	10	20	fn(err)	null
+test/app.engine.js	10	4	if (err) return fn(err);	;
+test/app.engine.js	11	10	str.replace('{{user.name}}', options.user.name)	null
+test/app.engine.js	12	4	fn(null, str);	;
+test/app.engine.js	19	16	express()	null
+test/app.engine.js	22	6	app.engine('.html', render);	;
+test/app.engine.js	26	24	done(err)	null
+test/app.engine.js	26	8	if (err) return done(err);	;
+test/app.engine.js	28	8	done();	;
+test/app.engine.js	3	13	require('node:assert')	null
+test/app.engine.js	33	16	express()	null
+test/app.engine.js	35	8	app.engine('.html', null);	;
+test/app.engine.js	4	14	require('../')	null
+test/app.engine.js	40	16	express()	null
+test/app.engine.js	43	6	app.engine('html', render);	;
+test/app.engine.js	47	24	done(err)	null
+test/app.engine.js	47	8	if (err) return done(err);	;
+test/app.engine.js	49	8	done();	;
+test/app.engine.js	5	9	require('node:fs')	null
+test/app.engine.js	54	16	express()	null
+test/app.engine.js	57	6	app.engine('html', render);	;
+test/app.engine.js	58	6	app.set('view engine', 'html');	;
+test/app.engine.js	6	11	require('node:path')	null
+test/app.engine.js	62	24	done(err)	null
+test/app.engine.js	62	8	if (err) return done(err);	;
+test/app.engine.js	64	8	done();	;
+test/app.engine.js	69	16	express()	null
+test/app.engine.js	72	6	app.engine('.html', render);	;
+test/app.engine.js	73	6	app.set('view engine', '.html');	;
+test/app.engine.js	77	24	done(err)	null
+test/app.engine.js	77	8	if (err) return done(err);	;
+test/app.engine.js	79	8	done();	;
+test/app.head.js	13	6	res.send('tobi');	;
+test/app.head.js	22	14	express()	null
+test/app.head.js	26	6	res.send('tobi');	;
+test/app.head.js	3	14	require('../')	null
+test/app.head.js	32	22	done(err)	null
+test/app.head.js	32	6	if (err) return done(err);	;
+test/app.head.js	37	24	done(err)	null
+test/app.head.js	37	8	if (err) return done(err);	;
+test/app.head.js	4	14	require('supertest')	null
+test/app.head.js	40	8	assert.deepEqual(res.headers, headers);	;
+test/app.head.js	41	8	done();	;
+test/app.head.js	49	14	express()	null
+test/app.head.js	5	13	require('node:assert')	null
+test/app.head.js	58	6	res.send('tobi');	;
+test/app.head.js	9	14	express()	null
+test/app.js	10	4	app.on('foo', done);	;
+test/app.js	101	14	express()	null
+test/app.js	11	4	app.emit('foo');	;
+test/app.js	117	14	express()	null
+test/app.js	15	14	express()	null
+test/app.js	16	4	assert.equal(typeof app, 'function');	;
+test/app.js	28	14	express()	null
+test/app.js	29	15	express()	null
+test/app.js	3	13	require('node:assert')	null
+test/app.js	30	20	express()	null
+test/app.js	32	4	app.use('/blog', blog);	;
+test/app.js	33	4	blog.use('/admin', blogAdmin);	;
+test/app.js	35	4	assert(!app.parent, 'app.parent');	;
+test/app.js	4	14	require('..')	null
+test/app.js	43	16	express()	null
+test/app.js	44	14	express()	null
+test/app.js	45	15	express()	null
+test/app.js	46	19	express()	null
+test/app.js	48	4	app.use('/blog', blog);	;
+test/app.js	49	4	app.use(fallback);	;
+test/app.js	5	14	require('supertest')	null
+test/app.js	50	4	blog.use('/admin', admin);	;
+test/app.js	61	14	express()	null
+test/app.js	62	15	express()	null
+test/app.js	63	20	express()	null
+test/app.js	65	4	app.use('/blog', blog);	;
+test/app.js	66	4	blog.use('/admin', blogAdmin);	;
+test/app.js	85	14	express()	null
+test/app.js	9	14	express()	null
+test/app.listen.js	15	15	express()	null
+test/app.listen.js	16	15	express()	null
+test/app.listen.js	28	16	express()	null
+test/app.listen.js	3	14	require('../')	null
+test/app.listen.js	30	32	server.address()	null
+test/app.listen.js	31	6	assert.strictEqual(address, '127.0.0.1');	;
+test/app.listen.js	32	6	assert(Number.isInteger(port) && port > 0);	;
+test/app.listen.js	35	6	server.close(done);	;
+test/app.listen.js	39	16	express()	null
+test/app.listen.js	4	13	require('node:assert')	null
+test/app.listen.js	41	19	app.listen()	null
+test/app.listen.js	42	4	server.close(done);	;
+test/app.listen.js	45	16	express()	null
+test/app.listen.js	47	19	server.address()	null
+test/app.listen.js	48	6	assert(addr && typeof addr === 'object');	;
+test/app.listen.js	49	6	assert.strictEqual(typeof addr.address, 'string');	;
+test/app.listen.js	50	6	assert(Number.isInteger(addr.port) && addr.port > 0);	;
+test/app.listen.js	51	6	assert(typeof addr.family === 'string');	;
+test/app.listen.js	52	6	server.close(done);	;
+test/app.listen.js	8	14	express()	null
+test/app.locals.js	17	18	express()	null
+test/app.locals.js	3	13	require('node:assert')	null
+test/app.locals.js	4	14	require('../')	null
+test/app.locals.js	9	16	express()	null
+test/app.options.js	10	4	app.post('/', function(){});	;
+test/app.options.js	101	14	express()	null
+test/app.options.js	104	6	res.set('Allow', 'GET');	;
+test/app.options.js	105	6	res.send('GET');	;
+test/app.options.js	108	4	app.get('/users', function(req, res){});	;
+test/app.options.js	109	4	app.put('/users', function(req, res){});	;
+test/app.options.js	11	4	app.get('/users', function(req, res){});	;
+test/app.options.js	12	4	app.put('/users', function(req, res){});	;
+test/app.options.js	21	14	express()	null
+test/app.options.js	23	4	app.delete('/', function(){});	;
+test/app.options.js	24	4	app.get('/users', function(req, res){});	;
+test/app.options.js	25	4	app.put('/users', function(req, res){});	;
+test/app.options.js	26	4	app.get('/users', function(req, res){});	;
+test/app.options.js	3	14	require('../')	null
+test/app.options.js	35	14	express()	null
+test/app.options.js	37	4	app.get('/', function(){});	;
+test/app.options.js	38	4	app.get('/users', function(req, res){});	;
+test/app.options.js	39	4	app.put('/users', function(req, res){});	;
+test/app.options.js	4	14	require('supertest')	null
+test/app.options.js	41	6	res.setHeader('x-hit', '1');	;
+test/app.options.js	42	6	next();	;
+test/app.options.js	53	14	express()	null
+test/app.options.js	55	4	app.get('/users', function(req, res){});	;
+test/app.options.js	63	14	express()	null
+test/app.options.js	64	17	new express.Router()	null
+test/app.options.js	66	4	router.get('/users', function(req, res){});	;
+test/app.options.js	67	4	app.use(router);	;
+test/app.options.js	68	4	app.get('/other', function(req, res){});	;
+test/app.options.js	78	16	express()	null
+test/app.options.js	79	19	express.Router()	null
+test/app.options.js	8	14	express()	null
+test/app.options.js	81	6	router.get('/users', function(req, res){});	;
+test/app.options.js	84	8	res.writeHead(200);	;
+test/app.options.js	85	8	next();	;
+test/app.options.js	87	6	app.use(router);	;
+test/app.options.js	89	8	res.end('true');	;
+test/app.param.js	101	8	next();	;
+test/app.param.js	105	8	next();	;
+test/app.param.js	108	8	res.end([count, called, req.users.join(',')].join(' '));	;
+test/app.param.js	117	16	express()	null
+test/app.param.js	12	13	Number(id)	null
+test/app.param.js	121	8	next();	;
+test/app.param.js	125	8	next('route');	;
+test/app.param.js	128	8	res.send(req.params.user);	;
+test/app.param.js	13	30	next('route')	null
+test/app.param.js	13	8	if (isNaN(id)) return next('route');	;
+test/app.param.js	137	16	express()	null
+test/app.param.js	141	8	next();	;
+test/app.param.js	145	13	new Error('invalid invocation')	null
+test/app.param.js	149	8	res.send(req.params.user);	;
+test/app.param.js	15	8	next();	;
+test/app.param.js	153	8	res.send(req.thing);	;
+test/app.param.js	162	16	express()	null
+test/app.param.js	166	8	next();	;
+test/app.param.js	171	8	res.send('' + name);	;
+test/app.param.js	180	16	express()	null
+test/app.param.js	183	14	new Error('err!')	null
+test/app.param.js	188	8	res.send('' + id);	;
+test/app.param.js	197	16	express()	null
+test/app.param.js	200	8	process.nextTick(next);	;
+test/app.param.js	204	14	new Error('err!')	null
+test/app.param.js	209	8	res.send('' + id);	;
+test/app.param.js	218	16	express()	null
+test/app.param.js	221	8	next('route');	;
+test/app.param.js	226	8	res.send('' + id);	;
+test/app.param.js	230	8	res.send('name');	;
+test/app.param.js	239	16	express()	null
+test/app.param.js	242	12	val === 'new'	false
+test/app.param.js	242	12	val === 'new'	true
+test/app.param.js	242	34	next('route')	null
+test/app.param.js	242	8	if (val === 'new') return next('route');	;
+test/app.param.js	243	15	next()	null
+test/app.param.js	247	8	res.send('all.id');	;
+test/app.param.js	251	8	res.send('get.id');	;
+test/app.param.js	255	8	res.send('get.new');	;
+test/app.param.js	264	16	express()	null
+test/app.param.js	270	12	user === 'foo'	false
+test/app.param.js	270	12	user === 'foo'	true
+test/app.param.js	270	34	new Error('err!')	null
+test/app.param.js	270	8	if (user === 'foo') throw new Error('err!');	;
+test/app.param.js	272	8	next();	;
+test/app.param.js	277	8	next();	;
+test/app.param.js	281	8	next();	;
+test/app.param.js	285	8	res.status(500);	;
+test/app.param.js	286	8	res.send([count, called, err.message].join(' '));	;
+test/app.param.js	295	16	express()	null
+test/app.param.js	3	14	require('../')	null
+test/app.param.js	301	12	user === 'foo'	false
+test/app.param.js	301	12	user === 'foo'	true
+test/app.param.js	301	35	next('route')	null
+test/app.param.js	301	8	if (user === 'foo') return next('route');	;
+test/app.param.js	303	8	next();	;
+test/app.param.js	308	8	next();	;
+test/app.param.js	31	26	done(err)	null
+test/app.param.js	312	8	next();	;
+test/app.param.js	315	8	res.end([count, called, req.user].join(' '));	;
+test/app.param.js	4	14	require('supertest')	null
+test/app.param.js	41	16	express()	null
+test/app.param.js	44	13	Number(id)	null
+test/app.param.js	45	30	next('route')	null
+test/app.param.js	45	8	if (isNaN(id)) return next('route');	;
+test/app.param.js	47	8	next();	;
+test/app.param.js	61	16	express()	null
+test/app.param.js	68	8	next();	;
+test/app.param.js	73	8	next();	;
+test/app.param.js	77	8	next();	;
+test/app.param.js	80	8	res.end([count, called, req.user].join(' '));	;
+test/app.param.js	89	16	express()	null
+test/app.param.js	9	16	express()	null
+test/app.param.js	96	8	next();	;
+test/app.render.js	11	16	createApp()	null
+test/app.render.js	111	18	createApp()	null
+test/app.render.js	116	10	if (err) return done(err);	;
+test/app.render.js	116	26	done(err)	null
+test/app.render.js	118	10	done();	;
+test/app.render.js	125	18	createApp()	null
+test/app.render.js	127	8	app.set('view engine', 'tmpl');	;
+test/app.render.js	131	10	if (err) return done(err);	;
+test/app.render.js	131	26	done(err)	null
+test/app.render.js	133	10	done();	;
+test/app.render.js	140	18	createApp()	null
+test/app.render.js	146	10	if (err) return done(err);	;
+test/app.render.js	146	26	done(err)	null
+test/app.render.js	148	10	done();	;
+test/app.render.js	154	20	createApp()	null
+test/app.render.js	16	24	done(err)	null
+test/app.render.js	16	8	if (err) return done(err);	;
+test/app.render.js	160	10	app.set('views', views);	;
+test/app.render.js	164	12	if (err) return done(err);	;
+test/app.render.js	164	28	done(err)	null
+test/app.render.js	166	12	done();	;
+test/app.render.js	171	20	createApp()	null
+test/app.render.js	177	10	app.set('views', views);	;
+test/app.render.js	18	8	done();	;
+test/app.render.js	181	12	if (err) return done(err);	;
+test/app.render.js	181	28	done(err)	null
+test/app.render.js	183	12	done();	;
+test/app.render.js	188	20	createApp()	null
+test/app.render.js	194	10	app.set('views', views);	;
+test/app.render.js	200	12	done();	;
+test/app.render.js	208	18	express()	null
+test/app.render.js	216	10	fn(null, 'abstract engine');	;
+test/app.render.js	219	8	app.set('view', View);	;
+test/app.render.js	222	10	if (err) return done(err);	;
+test/app.render.js	222	26	done(err)	null
+test/app.render.js	224	10	done();	;
+test/app.render.js	23	16	createApp()	null
+test/app.render.js	231	18	express()	null
+test/app.render.js	241	10	fn(null, 'abstract engine');	;
+test/app.render.js	244	8	app.set('view cache', false);	;
+test/app.render.js	245	8	app.set('view', View);	;
+test/app.render.js	248	10	if (err) return done(err);	;
+test/app.render.js	248	26	done(err)	null
+test/app.render.js	25	6	app.set('view engine', 'tmpl');	;
+test/app.render.js	252	12	if (err) return done(err);	;
+test/app.render.js	252	28	done(err)	null
+test/app.render.js	255	12	done();	;
+test/app.render.js	261	18	express()	null
+test/app.render.js	271	10	fn(null, 'abstract engine');	;
+test/app.render.js	274	8	app.set('view cache', true);	;
+test/app.render.js	275	8	app.set('view', View);	;
+test/app.render.js	278	10	if (err) return done(err);	;
+test/app.render.js	278	26	done(err)	null
+test/app.render.js	282	12	if (err) return done(err);	;
+test/app.render.js	282	28	done(err)	null
+test/app.render.js	285	12	done();	;
+test/app.render.js	29	24	done(err)	null
+test/app.render.js	29	8	if (err) return done(err);	;
+test/app.render.js	294	16	createApp()	null
+test/app.render.js	3	13	require('node:assert')	null
+test/app.render.js	301	24	done(err)	null
+test/app.render.js	301	8	if (err) return done(err);	;
+test/app.render.js	303	8	done();	;
+test/app.render.js	308	16	createApp()	null
+test/app.render.js	31	8	done();	;
+test/app.render.js	314	24	done(err)	null
+test/app.render.js	314	8	if (err) return done(err);	;
+test/app.render.js	316	8	done();	;
+test/app.render.js	321	16	createApp()	null
+test/app.render.js	328	24	done(err)	null
+test/app.render.js	328	8	if (err) return done(err);	;
+test/app.render.js	330	8	done();	;
+test/app.render.js	335	16	createApp()	null
+test/app.render.js	341	24	done(err)	null
+test/app.render.js	341	8	if (err) return done(err);	;
+test/app.render.js	345	10	if (err2) return done(err2);	;
+test/app.render.js	345	27	done(err2)	null
+test/app.render.js	354	18	express()	null
+test/app.render.js	36	16	createApp()	null
+test/app.render.js	364	10	fn(null, 'abstract engine');	;
+test/app.render.js	367	8	app.set('view cache', false);	;
+test/app.render.js	368	8	app.set('view', View);	;
+test/app.render.js	371	10	if (err) return done(err);	;
+test/app.render.js	371	26	done(err)	null
+test/app.render.js	375	12	if (err) return done(err);	;
+test/app.render.js	375	28	done(err)	null
+test/app.render.js	378	12	done();	;
+test/app.render.js	387	12	express()	null
+test/app.render.js	389	2	app.engine('.tmpl', tmpl);	;
+test/app.render.js	391	9	app	null
+test/app.render.js	4	14	require('..')	null
+test/app.render.js	42	24	done(err)	null
+test/app.render.js	42	8	if (err) return done(err);	;
+test/app.render.js	44	8	done();	;
+test/app.render.js	49	16	createApp()	null
+test/app.render.js	5	11	require('node:path')	null
+test/app.render.js	52	6	app.set('view engine', 'tmpl');	;
+test/app.render.js	55	24	done(err)	null
+test/app.render.js	55	8	if (err) return done(err);	;
+test/app.render.js	57	8	done();	;
+test/app.render.js	6	11	require('./support/tmpl')	null
+test/app.render.js	62	16	express()	null
+test/app.render.js	70	14	new Error('err!')	null
+test/app.render.js	73	6	app.set('view', View);	;
+test/app.render.js	78	8	done();	;
+test/app.render.js	84	18	createApp()	null
+test/app.render.js	90	10	done();	;
+test/app.render.js	97	18	createApp()	null
+test/app.request.js	10	16	express()	null
+test/app.request.js	112	17	express()	null
+test/app.request.js	113	17	express()	null
+test/app.request.js	114	15	after(2, done)	null
+test/app.request.js	117	15	'tobi'	""
+test/app.request.js	121	15	'loki'	""
+test/app.request.js	13	15	require('node:url').parse(this.url).query	null
+test/app.request.js	17	8	res.end(req.querystring());	;
+test/app.request.js	26	17	express()	null
+test/app.request.js	27	17	express()	null
+test/app.request.js	28	15	after(2, done)	null
+test/app.request.js	3	12	require('after')	null
+test/app.request.js	31	15	'tobi'	""
+test/app.request.js	4	14	require('../')	null
+test/app.request.js	5	14	require('supertest')	null
+test/app.request.js	52	17	express()	null
+test/app.request.js	53	17	express()	null
+test/app.request.js	54	15	after(2, done)	null
+test/app.request.js	57	15	'tobi'	""
+test/app.request.js	80	17	express()	null
+test/app.request.js	81	17	express()	null
+test/app.request.js	82	15	after(2, done)	null
+test/app.request.js	85	15	'tobi'	""
+test/app.request.js	89	15	'loki'	""
+test/app.response.js	10	16	express()	null
+test/app.response.js	112	17	express()	null
+test/app.response.js	113	17	express()	null
+test/app.response.js	114	15	after(2, done)	null
+test/app.response.js	13	8	this.send(str.toUpperCase());	;
+test/app.response.js	17	8	res.shout('hey');	;
+test/app.response.js	26	17	express()	null
+test/app.response.js	27	17	express()	null
+test/app.response.js	28	15	after(2, done)	null
+test/app.response.js	3	12	require('after')	null
+test/app.response.js	4	14	require('../')	null
+test/app.response.js	5	14	require('supertest')	null
+test/app.response.js	52	17	express()	null
+test/app.response.js	53	17	express()	null
+test/app.response.js	54	15	after(2, done)	null
+test/app.response.js	80	17	express()	null
+test/app.response.js	81	17	express()	null
+test/app.response.js	82	15	after(2, done)	null
+test/app.route.js	111	16	express()	null
+test/app.route.js	112	18	app.route('/foo')	null
+test/app.route.js	116	15	Promise.resolve('foo')	null
+test/app.route.js	12	6	res.send('get');	;
+test/app.route.js	120	13	new Error('Unexpected route invoke')	null
+test/app.route.js	130	18	express()	null
+test/app.route.js	131	20	app.route('/foo')	null
+test/app.route.js	134	17	Promise.reject(new Error('boom!'))	null
+test/app.route.js	134	32	new Error('boom!')	null
+test/app.route.js	138	17	Promise.reject(new Error('caught: ' + err.message))	null
+test/app.route.js	138	32	new Error('caught: ' + err.message)	null
+test/app.route.js	15	6	res.send('post');	;
+test/app.route.js	152	18	express()	null
+test/app.route.js	153	20	app.route('/foo')	null
+test/app.route.js	156	17	Promise.reject(new Error('boom!'))	null
+test/app.route.js	156	32	new Error('boom!')	null
+test/app.route.js	160	17	Promise.reject()	null
+test/app.route.js	174	18	express()	null
+test/app.route.js	175	20	app.route('/foo')	null
+test/app.route.js	178	17	Promise.reject(new Error('boom!'))	null
+test/app.route.js	178	32	new Error('boom!')	null
+test/app.route.js	184	17	Promise.resolve('foo')	null
+test/app.route.js	188	15	new Error('Unexpected route invoke')	null
+test/app.route.js	24	14	express()	null
+test/app.route.js	28	6	next();	;
+test/app.route.js	3	14	require('../')	null
+test/app.route.js	31	6	res.send('get');	;
+test/app.route.js	34	6	res.send('post');	;
+test/app.route.js	4	14	require('supertest')	null
+test/app.route.js	43	14	express()	null
+test/app.route.js	47	6	res.send(req.params.foo);	;
+test/app.route.js	56	14	express()	null
+test/app.route.js	58	4	app.route('/:foo');	;
+test/app.route.js	67	16	express()	null
+test/app.route.js	68	18	app.route('/foo')	null
+test/app.route.js	71	15	Promise.reject(new Error('boom!'))	null
+test/app.route.js	71	30	new Error('boom!')	null
+test/app.route.js	8	14	express()	null
+test/app.route.js	89	16	express()	null
+test/app.route.js	90	18	app.route('/foo')	null
+test/app.route.js	93	15	Promise.reject()	null
+test/app.router.js	1005	16	express()	null
+test/app.router.js	1006	19	new express.Router()	null
+test/app.router.js	1010	15	Promise.resolve('foo')	null
+test/app.router.js	1014	13	new Error('Unexpected middleware invoke')	null
+test/app.router.js	1026	18	express()	null
+test/app.router.js	1027	21	new express.Router()	null
+test/app.router.js	1030	17	Promise.reject(new Error('boom!'))	null
+test/app.router.js	1030	32	new Error('boom!')	null
+test/app.router.js	1034	17	Promise.reject(new Error('caught: ' + err.message))	null
+test/app.router.js	1034	32	new Error('caught: ' + err.message)	null
+test/app.router.js	1049	18	express()	null
+test/app.router.js	1050	21	new express.Router()	null
+test/app.router.js	1053	17	Promise.reject()	null
+test/app.router.js	1057	17	Promise.reject(new Error('caught: ' + err.message))	null
+test/app.router.js	1057	32	new Error('caught: ' + err.message)	null
+test/app.router.js	1072	18	express()	null
+test/app.router.js	1073	21	new express.Router()	null
+test/app.router.js	1076	17	Promise.reject(new Error('boom!'))	null
+test/app.router.js	1076	32	new Error('boom!')	null
+test/app.router.js	108	16	express()	null
+test/app.router.js	1081	17	Promise.resolve('foo')	null
+test/app.router.js	1085	15	new Error('Unexpected middleware invoke')	null
+test/app.router.js	1098	14	express()	null
+test/app.router.js	1103	6	next();	;
+test/app.router.js	1107	6	res.send('editing user ' + req.params.id);	;
+test/app.router.js	111	8	res.send(req.params.name);	;
+test/app.router.js	1116	14	express()	null
+test/app.router.js	1120	6	path.push(0);	;
+test/app.router.js	1121	6	next();	;
+test/app.router.js	1125	6	path.push(1);	;
+test/app.router.js	1126	6	next();	;
+test/app.router.js	1130	6	path.push(2);	;
+test/app.router.js	1131	6	next();	;
+test/app.router.js	1135	6	path.push(3);	;
+test/app.router.js	1136	6	next();	;
+test/app.router.js	1140	6	path.push(4);	;
+test/app.router.js	1141	6	next();	;
+test/app.router.js	1145	6	path.push(5);	;
+test/app.router.js	1155	14	express()	null
+test/app.router.js	1162	14	express()	null
+test/app.router.js	1163	17	new express.Router()	null
+test/app.router.js	1166	6	res.setHeader('old', 'foo');	;
+test/app.router.js	1167	6	next();	;
+test/app.router.js	1171	13	router.handle(req, res, next)	null
+test/app.router.js	1175	6	res.send('yee');	;
+test/app.router.js	1176	6	next();	;
+test/app.router.js	1183	12	typeof res.headers['new'] !== 'undefined'	false
+test/app.router.js	1183	12	typeof res.headers['new'] !== 'undefined'	true
+test/app.router.js	1184	16	new Error('`new` header should not be present')	null
+test/app.router.js	1188	24	done(err)	null
+test/app.router.js	1188	8	if (err) return done(err);	;
+test/app.router.js	1190	17	new express.Router()	null
+test/app.router.js	1193	10	res.setHeader('new', 'bar');	;
+test/app.router.js	1194	10	next();	;
+test/app.router.js	120	16	express()	null
+test/app.router.js	1201	16	typeof res.headers['old'] !== 'undefined'	false
+test/app.router.js	1201	16	typeof res.headers['old'] !== 'undefined'	true
+test/app.router.js	1202	20	new Error('`old` header should not be present')	null
+test/app.router.js	1212	4	new RegExp(source)	null
+test/app.router.js	123	8	res.send(req.params.name);	;
+test/app.router.js	13	14	express()	null
+test/app.router.js	132	16	express()	null
+test/app.router.js	135	8	res.send(req.params.name);	;
+test/app.router.js	14	17	new express.Router()	null
+test/app.router.js	145	14	express()	null
+test/app.router.js	150	6	calls.push('before');	;
+test/app.router.js	151	6	next();	;
+test/app.router.js	156	6	next();	;
+test/app.router.js	160	6	calls.push('after');	;
+test/app.router.js	17	6	res.setHeader('x-user-id', String(req.params.id));	;
+test/app.router.js	171	16	express()	null
+test/app.router.js	174	8	res.end('user');	;
+test/app.router.js	183	16	express()	null
+test/app.router.js	188	8	res.end(op + 'ing user ' + id);	;
+test/app.router.js	196	8	supportsRegexp('(?<foo>.*)')	false
+test/app.router.js	196	8	supportsRegexp('(?<foo>.*)')	true
+test/app.router.js	198	18	express()	null
+test/app.router.js	199	17	new RegExp('^/user/(?<userId>[0-9]+)/(view|edit)?$')	null
+test/app.router.js	204	10	res.end(op + 'ing user ' + id);	;
+test/app.router.js	214	16	express()	null
+test/app.router.js	22	6	res.send(req.params.id);	;
+test/app.router.js	236	26	done(err)	null
+test/app.router.js	245	16	express()	null
+test/app.router.js	248	8	res.end('tj');	;
+test/app.router.js	258	18	express()	null
+test/app.router.js	26	6	res.setHeader('x-router', String(req.params.id));	;
+test/app.router.js	260	8	app.enable('case sensitive routing');	;
+test/app.router.js	263	10	res.end('tj');	;
+test/app.router.js	27	6	next();	;
+test/app.router.js	272	18	express()	null
+test/app.router.js	274	8	app.enable('case sensitive routing');	;
+test/app.router.js	277	10	res.end('tj');	;
+test/app.router.js	289	16	express()	null
+test/app.router.js	290	19	new express.Router()	null
+test/app.router.js	293	8	res.send(req.params);	;
+test/app.router.js	296	6	app.use('/user/:user', router);	;
+test/app.router.js	3	12	require('after')	null
+test/app.router.js	30	4	app.get('/user/:id', handler1, router, handler2);	;
+test/app.router.js	304	16	express()	null
+test/app.router.js	305	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	308	19	Object.keys(req.params)	null
+test/app.router.js	309	48	[k, req.params[k]]	[]
+test/app.router.js	309	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	312	6	app.use('/user/:user', router);	;
+test/app.router.js	320	16	express()	null
+test/app.router.js	321	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	324	19	Object.keys(req.params)	null
+test/app.router.js	325	48	[k, req.params[k]]	[]
+test/app.router.js	325	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	328	6	app.use('/user/:thing', router);	;
+test/app.router.js	336	16	express()	null
+test/app.router.js	337	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	340	19	Object.keys(req.params)	null
+test/app.router.js	341	48	[k, req.params[k]]	[]
+test/app.router.js	341	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	344	6	app.use(/^\\/user\\/id:(\\d+)/, router);	;
+test/app.router.js	352	16	express()	null
+test/app.router.js	353	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	356	19	Object.keys(req.params)	null
+test/app.router.js	357	48	[k, req.params[k]]	[]
+test/app.router.js	357	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	360	6	app.use(/^\\/user\\/id:(\\d+)\\/name:(\\w+)/, router);	;
+test/app.router.js	368	16	express()	null
+test/app.router.js	369	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	372	19	Object.keys(req.params)	null
+test/app.router.js	373	48	[k, req.params[k]]	[]
+test/app.router.js	373	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	376	6	app.use(/\\/user\\/id:(\\d+)/, router);	;
+test/app.router.js	384	16	express()	null
+test/app.router.js	385	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	388	19	Object.keys(req.params)	null
+test/app.router.js	389	48	[k, req.params[k]]	[]
+test/app.router.js	389	8	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	394	8	router(req, res, next);	;
+test/app.router.js	4	14	require('../')	null
+test/app.router.js	403	16	express()	null
+test/app.router.js	404	19	new express.Router({ mergeParams: true })	null
+test/app.router.js	407	8	next();	;
+test/app.router.js	41	10	method === 'connect'	false
+test/app.router.js	41	10	method === 'connect'	true
+test/app.router.js	412	21	Object.keys(req.params)	null
+test/app.router.js	413	10	res.send(keys.map(function (k) { return [k, req.params[k]] }));	;
+test/app.router.js	413	50	[k, req.params[k]]	[]
+test/app.router.js	425	16	express()	null
+test/app.router.js	428	8	res.end('tj');	;
+test/app.router.js	438	18	express()	null
+test/app.router.js	44	12	method === 'query' && shouldSkipQuery(process.versions.node)	false
+test/app.router.js	44	12	method === 'query' && shouldSkipQuery(process.versions.node)	true
+test/app.router.js	440	8	app.enable('strict routing');	;
+test/app.router.js	443	10	res.end('tj');	;
+test/app.router.js	452	18	express()	null
+test/app.router.js	454	8	app.enable('strict routing');	;
+test/app.router.js	457	10	res.setHeader('x-middleware', 'true');	;
+test/app.router.js	458	10	next();	;
+test/app.router.js	462	10	res.end('tj');	;
+test/app.router.js	47	18	express()	null
+test/app.router.js	472	18	express()	null
+test/app.router.js	474	8	app.enable('strict routing');	;
+test/app.router.js	477	10	res.setHeader('x-middleware', 'true');	;
+test/app.router.js	478	10	next();	;
+test/app.router.js	482	10	res.end('tj');	;
+test/app.router.js	492	18	express()	null
+test/app.router.js	494	8	app.enable('strict routing');	;
+test/app.router.js	497	10	res.end('tj');	;
+test/app.router.js	5	14	require('supertest')	null
+test/app.router.js	506	18	express()	null
+test/app.router.js	508	8	app.enable('strict routing');	;
+test/app.router.js	511	10	res.end('tj');	;
+test/app.router.js	520	18	express()	null
+test/app.router.js	522	8	app.enable('strict routing');	;
+test/app.router.js	525	10	res.end('tj');	;
+test/app.router.js	534	18	express()	null
+test/app.router.js	536	8	app.enable('strict routing');	;
+test/app.router.js	539	10	res.end('tj');	;
+test/app.router.js	548	18	express()	null
+test/app.router.js	550	8	app.enable('strict routing');	;
+test/app.router.js	553	10	res.end('tj');	;
+test/app.router.js	562	18	express()	null
+test/app.router.js	564	8	app.enable('strict routing');	;
+test/app.router.js	567	10	res.end('tj');	;
+test/app.router.js	578	14	express()	null
+test/app.router.js	584	6	res.end('users from ' + from + ' to ' + to);	;
+test/app.router.js	59	18	express()	null
+test/app.router.js	594	16	express()	null
+test/app.router.js	597	8	res.end(req.params.user);	;
+test/app.router.js	6	13	require('node:assert')	null
+test/app.router.js	60	8	assert.throws(app[method].bind(app, '/', 3), /argument handler must be a function/);	;
+test/app.router.js	606	16	express()	null
+test/app.router.js	609	8	res.end(req.params.user);	;
+test/app.router.js	618	16	express()	null
+test/app.router.js	621	8	res.end(req.params.op + 'ing ' + req.params.user);	;
+test/app.router.js	630	16	express()	null
+test/app.router.js	631	15	after(2, done)	null
+test/app.router.js	634	8	res.end(req.params.op + 'ing ' + req.params.user + (req.url.startsWith('/users') ? ' (old)' : ''));	;
+test/app.router.js	647	16	express()	null
+test/app.router.js	65	16	express()	null
+test/app.router.js	650	8	res.end(req.params.op + 'ing ' + req.params.user);	;
+test/app.router.js	659	16	express()	null
+test/app.router.js	66	15	after(3, done)	null
+test/app.router.js	660	15	after(2, done)	null
+test/app.router.js	663	8	res.end('poking ' + req.params.user);	;
+test/app.router.js	678	16	express()	null
+test/app.router.js	682	8	res.end(op + 'ing ' + req.params.user);	;
+test/app.router.js	69	12	req.method !== 'POST'	false
+test/app.router.js	69	12	req.method !== 'POST'	true
+test/app.router.js	69	42	next()	null
+test/app.router.js	69	8	if (req.method !== 'POST') return next();	;
+test/app.router.js	691	16	express()	null
+test/app.router.js	695	8	res.end(op + 'ing ' + req.params.user);	;
+test/app.router.js	7	14	require('../lib/utils')	null
+test/app.router.js	706	16	express()	null
+test/app.router.js	71	8	res.setHeader('X-Method-Altered', '1');	;
+test/app.router.js	718	16	express()	null
+test/app.router.js	72	8	next();	;
+test/app.router.js	730	16	express()	null
+test/app.router.js	744	16	express()	null
+test/app.router.js	756	16	express()	null
+test/app.router.js	76	8	res.end('deleted everything');	;
+test/app.router.js	768	16	express()	null
+test/app.router.js	782	16	express()	null
+test/app.router.js	783	15	after(2, done)	null
+test/app.router.js	786	8	res.end(req.params.name + ' as ' + req.params.format);	;
+test/app.router.js	801	16	express()	null
+test/app.router.js	802	15	after(2, done)	null
+test/app.router.js	805	8	res.end(req.params.name + ' as ' + (req.params.format || 'html'));	;
+test/app.router.js	820	16	express()	null
+test/app.router.js	824	8	calls.push('/foo/:bar?');	;
+test/app.router.js	825	8	next();	;
+test/app.router.js	829	8	assert(0);	;
+test/app.router.js	833	8	calls.push('/foo');	;
+test/app.router.js	834	8	next();	;
+test/app.router.js	838	8	calls.push('/foo 2');	;
+test/app.router.js	850	16	express()	null
+test/app.router.js	874	16	express()	null
+test/app.router.js	875	19	express.Router()	null
+test/app.router.js	9	22	require('./support/utils')	null
+test/app.router.js	905	16	express()	null
+test/app.router.js	909	8	calls.push('/foo/:bar?');	;
+test/app.router.js	910	8	next();	;
+test/app.router.js	914	8	assert(0);	;
+test/app.router.js	918	8	calls.push('/foo');	;
+test/app.router.js	919	13	new Error('fail')	null
+test/app.router.js	919	8	next(new Error('fail'));	;
+test/app.router.js	923	8	assert(0);	;
+test/app.router.js	939	16	express()	null
+test/app.router.js	942	13	new Error('boom!')	null
+test/app.router.js	942	8	next(new Error('boom!'));	;
+test/app.router.js	946	8	res.send('foo here');	;
+test/app.router.js	950	8	res.send('route go ' + err.message);	;
+test/app.router.js	953	6	app.get('/foo', fn1, fn2, fn3);	;
+test/app.router.js	956	8	res.end('error!');	;
+test/app.router.js	96	16	express()	null
+test/app.router.js	967	16	express()	null
+test/app.router.js	968	19	new express.Router()	null
+test/app.router.js	971	15	Promise.reject(new Error('boom!'))	null
+test/app.router.js	971	30	new Error('boom!')	null
+test/app.router.js	986	16	express()	null
+test/app.router.js	987	19	new express.Router()	null
+test/app.router.js	99	8	res.send(req.params.name);	;
+test/app.router.js	990	15	Promise.reject()	null
+test/app.routes.error.js	10	16	express()	null
+test/app.routes.error.js	13	13	new Error('boom!')	null
+test/app.routes.error.js	17	8	res.send('hello, world!');	;
+test/app.routes.error.js	26	16	express()	null
+test/app.routes.error.js	3	13	require('node:assert')	null
+test/app.routes.error.js	34	13	new Error('fabricated error')	null
+test/app.routes.error.js	34	8	next(new Error('fabricated error'));	;
+test/app.routes.error.js	37	8	next();	;
+test/app.routes.error.js	4	14	require('../')	null
+test/app.routes.error.js	41	8	next(err);	;
+test/app.routes.error.js	45	8	next();	;
+test/app.routes.error.js	48	8	next();	;
+test/app.routes.error.js	5	14	require('supertest')	null
+test/app.routes.error.js	54	8	res.sendStatus(204);	;
+test/app.use.js	10	15	express()	null
+test/app.use.js	103	8	res.end('success');	;
+test/app.use.js	108	8	cb();	;
+test/app.use.js	11	14	express()	null
+test/app.use.js	112	8	cb();	;
+test/app.use.js	115	6	app.use('/post/:article', fn1, other, fn2, blog);	;
+test/app.use.js	127	16	express()	null
+test/app.use.js	130	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	131	8	next();	;
+test/app.use.js	135	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	136	8	next();	;
+test/app.use.js	140	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	141	8	res.end();	;
+test/app.use.js	15	6	done();	;
+test/app.use.js	153	16	express()	null
+test/app.use.js	154	15	after(3, done)	null
+test/app.use.js	157	8	res.send('saw ' + req.method + ' ' + req.url);	;
+test/app.use.js	174	16	express()	null
+test/app.use.js	177	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	178	8	next();	;
+test/app.use.js	18	4	app.use(blog);	;
+test/app.use.js	182	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	183	8	next();	;
+test/app.use.js	187	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	188	8	res.end();	;
+test/app.use.js	191	6	app.use([fn1, fn2, fn3]);	;
+test/app.use.js	202	16	express()	null
+test/app.use.js	205	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	206	8	next();	;
+test/app.use.js	210	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	211	8	next();	;
+test/app.use.js	215	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	216	8	res.end();	;
+test/app.use.js	219	6	app.use([fn1, fn2], [fn3]);	;
+test/app.use.js	23	17	express()	null
+test/app.use.js	230	16	express()	null
+test/app.use.js	233	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	234	8	next();	;
+test/app.use.js	238	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	239	8	next();	;
+test/app.use.js	24	16	express()	null
+test/app.use.js	243	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	244	8	res.end();	;
+test/app.use.js	247	6	app.use([[fn1], fn2], [fn3]);	;
+test/app.use.js	260	16	express()	null
+test/app.use.js	265	16	express()	null
+test/app.use.js	27	8	res.end('blog');	;
+test/app.use.js	270	16	express()	null
+test/app.use.js	275	16	express()	null
+test/app.use.js	280	16	express()	null
+test/app.use.js	281	47	new Date()	null
+test/app.use.js	285	16	express()	null
+test/app.use.js	288	8	res.send('saw ' + req.method + ' ' + req.url);	;
+test/app.use.js	297	16	express()	null
+test/app.use.js	3	12	require('after')	null
+test/app.use.js	30	6	app.use(blog);	;
+test/app.use.js	300	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	301	8	next();	;
+test/app.use.js	305	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	306	8	next();	;
+test/app.use.js	310	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	311	8	res.end();	;
+test/app.use.js	323	16	express()	null
+test/app.use.js	324	15	after(3, done)	null
+test/app.use.js	327	8	res.send('saw ' + req.method + ' ' + req.url);	;
+test/app.use.js	344	16	express()	null
+test/app.use.js	345	15	after(3, done)	null
+test/app.use.js	348	8	res.send('saw ' + req.method + ' ' + req.url);	;
+test/app.use.js	365	16	express()	null
+test/app.use.js	368	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	369	8	next();	;
+test/app.use.js	373	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	374	8	next();	;
+test/app.use.js	378	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	379	8	res.end();	;
+test/app.use.js	38	17	express()	null
+test/app.use.js	382	6	app.use('/foo', [fn1, fn2, fn3]);	;
+test/app.use.js	39	18	express()	null
+test/app.use.js	393	16	express()	null
+test/app.use.js	396	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	397	8	next();	;
+test/app.use.js	4	13	require('node:assert')	null
+test/app.use.js	40	16	express()	null
+test/app.use.js	401	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	402	8	next();	;
+test/app.use.js	406	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	407	8	res.end();	;
+test/app.use.js	41	15	after(2, done)	null
+test/app.use.js	410	6	app.use('/foo', [fn1, fn2], [fn3]);	;
+test/app.use.js	421	16	express()	null
+test/app.use.js	424	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	425	8	next();	;
+test/app.use.js	429	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	430	8	next();	;
+test/app.use.js	434	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	435	8	res.end();	;
+test/app.use.js	438	6	app.use('/foo', [fn1, [fn2]], [fn3]);	;
+test/app.use.js	44	8	res.end('blog');	;
+test/app.use.js	449	16	express()	null
+test/app.use.js	450	15	after(3, done)	null
+test/app.use.js	453	8	res.send('saw ' + req.method + ' ' + req.url + ' through ' + req.originalUrl);	;
+test/app.use.js	470	16	express()	null
+test/app.use.js	471	15	after(2, done)	null
+test/app.use.js	474	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	475	8	next();	;
+test/app.use.js	479	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	48	8	res.end('forum');	;
+test/app.use.js	480	8	next();	;
+test/app.use.js	484	8	res.setHeader('x-fn-3', 'hit');	;
+test/app.use.js	485	8	res.send('saw ' + req.method + ' ' + req.url + ' through ' + req.originalUrl);	;
+test/app.use.js	488	6	app.use(['/foo/', '/bar'], [[fn1], fn2], [fn3]);	;
+test/app.use.js	5	14	require('..')	null
+test/app.use.js	506	16	express()	null
+test/app.use.js	507	15	after(4, done)	null
+test/app.use.js	51	6	app.use('/blog', blog);	;
+test/app.use.js	510	8	res.send('saw ' + req.method + ' ' + req.url + ' through ' + req.originalUrl);	;
+test/app.use.js	52	6	app.use('/forum', forum);	;
+test/app.use.js	531	16	express()	null
+test/app.use.js	534	8	res.send('saw ' + req.method + ' ' + req.url + ' through ' + req.originalUrl);	;
+test/app.use.js	6	14	require('supertest')	null
+test/app.use.js	64	17	express()	null
+test/app.use.js	65	16	express()	null
+test/app.use.js	67	6	app.use('/blog', blog);	;
+test/app.use.js	72	17	express()	null
+test/app.use.js	73	16	express()	null
+test/app.use.js	76	8	res.end('success');	;
+test/app.use.js	79	6	app.use('/post/:article', blog);	;
+test/app.use.js	87	15	after(3, done)	null
+test/app.use.js	88	17	express()	null
+test/app.use.js	89	18	express()	null
+test/app.use.js	90	16	express()	null
+test/app.use.js	93	8	res.setHeader('x-fn-1', 'hit');	;
+test/app.use.js	94	8	next();	;
+test/app.use.js	98	8	res.setHeader('x-fn-2', 'hit');	;
+test/app.use.js	99	8	next();	;
+test/config.js	10	6	app.set('foo', 'bar');	;
+test/config.js	100	8	assert.equal(blog.get('title'), 'Some Blog');	;
+test/config.js	104	18	express()	null
+test/config.js	105	19	express()	null
+test/config.js	109	8	app.set('trust proxy', fn);	;
+test/config.js	11	6	assert.equal(app.get('foo'), 'bar');	;
+test/config.js	110	8	assert.equal(app.get('trust proxy'), fn);	;
+test/config.js	111	8	assert.equal(app.get('trust proxy fn'), fn);	;
+test/config.js	113	8	app.use(blog);	;
+test/config.js	115	8	assert.equal(blog.get('trust proxy'), fn);	;
+test/config.js	116	8	assert.equal(blog.get('trust proxy fn'), fn);	;
+test/config.js	120	18	express()	null
+test/config.js	121	19	express()	null
+test/config.js	126	8	app.set('trust proxy', fn1);	;
+test/config.js	127	8	assert.equal(app.get('trust proxy'), fn1);	;
+test/config.js	128	8	assert.equal(app.get('trust proxy fn'), fn1);	;
+test/config.js	130	8	blog.set('trust proxy', fn2);	;
+test/config.js	131	8	assert.equal(blog.get('trust proxy'), fn2);	;
+test/config.js	132	8	assert.equal(blog.get('trust proxy fn'), fn2);	;
+test/config.js	134	8	app.use(blog);	;
+test/config.js	136	8	assert.equal(app.get('trust proxy'), fn1);	;
+test/config.js	137	8	assert.equal(app.get('trust proxy fn'), fn1);	;
+test/config.js	138	8	assert.equal(blog.get('trust proxy'), fn2);	;
+test/config.js	139	8	assert.equal(blog.get('trust proxy fn'), fn2);	;
+test/config.js	146	16	express()	null
+test/config.js	147	6	assert.equal(app.enable('tobi'), app);	;
+test/config.js	148	6	assert.strictEqual(app.get('tobi'), true);	;
+test/config.js	15	16	express()	null
+test/config.js	152	16	express()	null
+test/config.js	160	16	express()	null
+test/config.js	161	6	assert.equal(app.disable('tobi'), app);	;
+test/config.js	162	6	assert.strictEqual(app.get('tobi'), false);	;
+test/config.js	166	16	express()	null
+test/config.js	174	16	express()	null
+test/config.js	175	6	assert.strictEqual(app.enabled('foo'), false);	;
+test/config.js	179	16	express()	null
+test/config.js	180	6	app.set('foo', 'bar');	;
+test/config.js	181	6	assert.strictEqual(app.enabled('foo'), true);	;
+test/config.js	185	16	express()	null
+test/config.js	192	16	express()	null
+test/config.js	193	6	assert.strictEqual(app.disabled('foo'), true);	;
+test/config.js	197	16	express()	null
+test/config.js	198	6	app.set('foo', 'bar');	;
+test/config.js	199	6	assert.strictEqual(app.disabled('foo'), false);	;
+test/config.js	203	16	express()	null
+test/config.js	21	16	express()	null
+test/config.js	22	6	assert.equal(app.set('foo', 'bar'), app);	;
+test/config.js	26	16	express()	null
+test/config.js	27	6	assert.equal(app.set('foo', undefined), app);	;
+test/config.js	3	13	require('node:assert')	null
+test/config.js	31	16	express()	null
+test/config.js	37	16	express()	null
+test/config.js	4	14	require('..')	null
+test/config.js	43	18	express()	null
+test/config.js	44	8	assert.throws(app.set.bind(app, 'etag', 42), /unknown value/);	;
+test/config.js	48	18	express()	null
+test/config.js	57	18	express()	null
+test/config.js	67	16	express()	null
+test/config.js	68	6	assert.strictEqual(app.get('foo'), undefined);	;
+test/config.js	72	16	express()	null
+test/config.js	77	16	express()	null
+test/config.js	78	6	app.set('foo', 'bar');	;
+test/config.js	79	6	assert.equal(app.get('foo'), 'bar');	;
+test/config.js	84	18	express()	null
+test/config.js	85	19	express()	null
+test/config.js	87	8	app.set('title', 'Express');	;
+test/config.js	88	8	app.use(blog);	;
+test/config.js	89	8	assert.equal(blog.get('title'), 'Express');	;
+test/config.js	9	16	express()	null
+test/config.js	93	18	express()	null
+test/config.js	94	19	express()	null
+test/config.js	96	8	app.use(blog);	;
+test/config.js	97	8	app.set('title', 'Express');	;
+test/config.js	98	8	blog.set('title', 'Some Blog');	;
+test/exports.js	3	13	require('node:assert')	null
+test/exports.js	4	14	require('../')	null
+test/exports.js	5	14	require('supertest')	null
+test/exports.js	53	49	'bar'	""
+test/exports.js	58	45	'bar'	""
+test/exports.js	59	14	express()	null
+test/exports.js	62	6	res.end(req.foo());	;
+test/exports.js	71	39	this.send('bar');	;
+test/exports.js	72	14	express()	null
+test/exports.js	75	6	res.foo();	;
+test/express.json.js	123	16	Buffer.alloc(1024, '.')	null
+test/express.json.js	133	16	createApp({ limit: '1kb' })	null
+test/express.json.js	134	16	Buffer.alloc(1024, '.')	null
+test/express.json.js	135	17	request(app)	null
+test/express.json.js	144	16	createApp({ limit: '1kb' })	null
+test/express.json.js	145	17	request(app)	null
+test/express.json.js	153	16	Buffer.alloc(1024, '.')	null
+test/express.json.js	162	16	Buffer.alloc(1024, '.')	null
+test/express.json.js	164	16	createApp(options)	null
+test/express.json.js	176	16	Buffer.alloc(10240, '.')	null
+test/express.json.js	177	16	createApp({ limit: '8kb' })	null
+test/express.json.js	178	17	request(app)	null
+test/express.json.js	187	16	createApp({ limit: '1kb' })	null
+test/express.json.js	188	17	request(app)	null
+test/express.json.js	199	19	createApp({ inflate: false })	null
+test/express.json.js	203	19	request(this.app)	null
+test/express.json.js	213	19	createApp({ inflate: true })	null
+test/express.json.js	217	19	request(this.app)	null
+test/express.json.js	229	19	createApp()	null
+test/express.json.js	243	19	createApp({ strict: false })	null
+test/express.json.js	257	19	createApp({ strict: true })	null
+test/express.json.js	3	13	require('node:assert')	null
+test/express.json.js	300	19	createApp({ type: 'application/vnd.api+json' })	null
+test/express.json.js	354	18	createApp({ type: accept })	null
+test/express.json.js	368	18	createApp({ type: accept })	null
+test/express.json.js	374	19	request(app)	null
+test/express.json.js	380	18	createApp({ type: accept })	null
+test/express.json.js	383	16	new Error('oops!')	null
+test/express.json.js	4	24	require('node:async_hooks')	null
+test/express.json.js	402	14	buf[0] === 0x5b	false
+test/express.json.js	402	14	buf[0] === 0x5b	true
+test/express.json.js	402	37	new Error('no arrays')	null
+test/express.json.js	416	14	buf[0] !== 0x5b	false
+test/express.json.js	416	14	buf[0] !== 0x5b	true
+test/express.json.js	417	20	new Error('no arrays')	null
+test/express.json.js	433	14	buf[0] !== 0x5b	false
+test/express.json.js	433	14	buf[0] !== 0x5b	true
+test/express.json.js	434	20	new Error('no arrays')	null
+test/express.json.js	450	14	buf[0] === 0x5b	false
+test/express.json.js	450	14	buf[0] === 0x5b	true
+test/express.json.js	450	37	new Error('no arrays')	null
+test/express.json.js	465	14	buf[0] === 0x5b	false
+test/express.json.js	465	14	buf[0] === 0x5b	true
+test/express.json.js	465	37	new Error('no arrays')	null
+test/express.json.js	479	14	buf[0] === 0x5b	false
+test/express.json.js	479	14	buf[0] === 0x5b	true
+test/express.json.js	479	37	new Error('no arrays')	null
+test/express.json.js	483	17	request(app)	null
+test/express.json.js	492	16	new Error('unexpected verify call')	null
+test/express.json.js	496	17	request(app)	null
+test/express.json.js	5	19	require('node:buffer')	null
+test/express.json.js	505	16	express()	null
+test/express.json.js	509	32	new AsyncLocalStorage()	null
+test/express.json.js	516	20	req.asyncLocalStorage.getStore()	null
+test/express.json.js	526	20	req.asyncLocalStorage.getStore()	null
+test/express.json.js	53	14	express()	null
+test/express.json.js	566	17	request(this.app)	null
+test/express.json.js	577	17	request(this.app)	null
+test/express.json.js	609	17	createApp()	null
+test/express.json.js	613	17	request(this.app)	null
+test/express.json.js	620	17	request(this.app)	null
+test/express.json.js	627	17	request(this.app)	null
+test/express.json.js	635	17	request(this.app)	null
+test/express.json.js	642	17	request(this.app)	null
+test/express.json.js	651	17	createApp({ limit: '1kb' })	null
+test/express.json.js	655	17	request(this.app)	null
+test/express.json.js	662	17	request(this.app)	null
+test/express.json.js	670	17	request(this.app)	null
+test/express.json.js	678	17	request(this.app)	null
+test/express.json.js	686	17	request(this.app)	null
+test/express.json.js	694	17	request(this.app)	null
+test/express.json.js	7	14	require('..')	null
+test/express.json.js	702	17	request(this.app)	null
+test/express.json.js	711	17	request(this.app)	null
+test/express.json.js	723	12	express()	null
+test/express.json.js	74	14	express()	null
+test/express.json.js	744	27	new SyntaxError('strict violation')	null
+test/express.json.js	744	4	JSON.parse(str);	;
+test/express.json.js	8	14	require('supertest')	null
+test/express.json.js	92	17	createApp()	null
+test/express.raw.js	100	17	request(app)	null
+test/express.raw.js	108	16	createApp({ limit: '1kb' })	null
+test/express.raw.js	109	17	request(app)	null
+test/express.raw.js	117	16	Buffer.alloc(1028, '.')	null
+test/express.raw.js	118	16	createApp({ limit: 1024 })	null
+test/express.raw.js	119	17	request(app)	null
+test/express.raw.js	12	15	createApp()	null
+test/express.raw.js	126	16	Buffer.alloc(1028, '.')	null
+test/express.raw.js	128	16	createApp(options)	null
+test/express.raw.js	132	17	request(app)	null
+test/express.raw.js	139	16	Buffer.alloc(10240, '.')	null
+test/express.raw.js	140	16	createApp({ limit: '8kb' })	null
+test/express.raw.js	141	17	request(app)	null
+test/express.raw.js	150	16	createApp({ limit: '1kb' })	null
+test/express.raw.js	151	17	request(app)	null
+test/express.raw.js	162	19	createApp({ inflate: false })	null
+test/express.raw.js	166	19	request(this.app)	null
+test/express.raw.js	176	19	createApp({ inflate: true })	null
+test/express.raw.js	180	19	request(this.app)	null
+test/express.raw.js	192	19	createApp({ type: 'application/vnd+octets' })	null
+test/express.raw.js	196	19	request(this.app)	null
+test/express.raw.js	203	19	request(this.app)	null
+test/express.raw.js	218	19	request(this.app)	null
+test/express.raw.js	225	19	request(this.app)	null
+test/express.raw.js	232	19	request(this.app)	null
+test/express.raw.js	24	14	express()	null
+test/express.raw.js	241	18	createApp({ type: accept })	null
+test/express.raw.js	247	19	request(app)	null
+test/express.raw.js	254	18	createApp({ type: accept })	null
+test/express.raw.js	260	19	request(app)	null
+test/express.raw.js	266	18	createApp({ type: accept })	null
+test/express.raw.js	269	16	new Error('oops!')	null
+test/express.raw.js	288	14	buf[0] === 0x00	false
+test/express.raw.js	288	14	buf[0] === 0x00	true
+test/express.raw.js	288	37	new Error('no leading null')	null
+test/express.raw.js	292	17	request(app)	null
+test/express.raw.js	3	13	require('node:assert')	null
+test/express.raw.js	301	14	buf[0] !== 0x00	false
+test/express.raw.js	301	14	buf[0] !== 0x00	true
+test/express.raw.js	302	20	new Error('no leading null')	null
+test/express.raw.js	308	17	request(app)	null
+test/express.raw.js	317	14	buf[0] === 0x00	false
+test/express.raw.js	317	14	buf[0] === 0x00	true
+test/express.raw.js	317	37	new Error('no leading null')	null
+test/express.raw.js	321	17	request(app)	null
+test/express.raw.js	330	16	express()	null
+test/express.raw.js	334	32	new AsyncLocalStorage()	null
+test/express.raw.js	341	20	req.asyncLocalStorage.getStore()	null
+test/express.raw.js	351	20	req.asyncLocalStorage.getStore()	null
+test/express.raw.js	394	17	request(this.app)	null
+test/express.raw.js	4	24	require('node:async_hooks')	null
+test/express.raw.js	405	17	request(this.app)	null
+test/express.raw.js	427	17	createApp()	null
+test/express.raw.js	431	17	request(this.app)	null
+test/express.raw.js	440	17	createApp({ limit: '10kb' })	null
+test/express.raw.js	444	17	request(this.app)	null
+test/express.raw.js	451	17	request(this.app)	null
+test/express.raw.js	459	17	request(this.app)	null
+test/express.raw.js	467	17	request(this.app)	null
+test/express.raw.js	475	17	request(this.app)	null
+test/express.raw.js	483	17	request(this.app)	null
+test/express.raw.js	493	12	express()	null
+test/express.raw.js	6	14	require('..')	null
+test/express.raw.js	66	14	express()	null
+test/express.raw.js	7	14	require('supertest')	null
+test/express.raw.js	8	19	require('node:buffer')	null
+test/express.raw.js	88	16	Buffer.alloc(1028, '.')	null
+test/express.raw.js	89	16	createApp({ limit: '1kb' })	null
+test/express.raw.js	90	17	request(app)	null
+test/express.raw.js	98	16	Buffer.alloc(1028, '.')	null
+test/express.raw.js	99	16	createApp({ limit: '1kb' })	null
+test/express.static.js	11	15	path.join(__dirname, '/fixtures')	null
+test/express.static.js	12	15	path.relative(process.cwd(), fixtures)	null
+test/express.static.js	139	17	createApp('.')	null
+test/express.static.js	143	17	relative.split(path.sep)	null
+test/express.static.js	19	17	createApp()	null
+test/express.static.js	256	19	createApp(fixtures, { 'fallthrough': true })	null
+test/express.static.js	278	18	express()	null
+test/express.static.js	293	21	createApp(fixtures, { 'fallthrough': true, 'redirect': true })	null
+test/express.static.js	3	13	require('node:assert')	null
+test/express.static.js	311	21	createApp(fixtures, { 'fallthrough': true, 'redirect': false })	null
+test/express.static.js	330	19	createApp(fixtures, { 'fallthrough': false })	null
+test/express.static.js	353	18	express()	null
+test/express.static.js	368	21	createApp(fixtures, { 'fallthrough': false, 'redirect': true })	null
+test/express.static.js	386	21	createApp(fixtures, { 'fallthrough': false, 'redirect': false })	null
+test/express.static.js	4	14	require('..')	null
+test/express.static.js	406	17	createApp(fixtures, { 'dotfiles': 'allow' })	null
+test/express.static.js	470	17	express()	null
+test/express.static.js	5	11	require('node:path')	null
+test/express.static.js	530	19	createApp(fixtures, { 'redirect': false })	null
+test/express.static.js	543	17	express()	null
+test/express.static.js	577	17	createApp(fixtures, { 'fallthrough': false })	null
+test/express.static.js	595	17	createApp()	null
+test/express.static.js	6	19	require('node:buffer')	null
+test/express.static.js	694	17	express()	null
+test/express.static.js	708	17	express()	null
+test/express.static.js	734	17	express()	null
+test/express.static.js	753	16	express()	null
+test/express.static.js	769	17	express()	null
+test/express.static.js	8	14	require('supertest')	null
+test/express.static.js	805	12	express()	null
+test/express.static.js	9	12	require('./support/utils')	null
+test/express.text.js	107	16	createApp({ limit: '1kb' })	null
+test/express.text.js	108	16	Buffer.alloc(1028, '.')	null
+test/express.text.js	109	17	request(app)	null
+test/express.text.js	11	15	createApp()	null
+test/express.text.js	117	16	createApp({ limit: '1kb' })	null
+test/express.text.js	118	17	request(app)	null
+test/express.text.js	126	16	Buffer.alloc(1028, '.')	null
+test/express.text.js	135	16	Buffer.alloc(1028, '.')	null
+test/express.text.js	137	16	createApp(options)	null
+test/express.text.js	149	16	createApp({ limit: '8kb' })	null
+test/express.text.js	150	16	Buffer.alloc(10240, '.')	null
+test/express.text.js	151	17	request(app)	null
+test/express.text.js	160	16	createApp({ limit: '1kb' })	null
+test/express.text.js	161	17	request(app)	null
+test/express.text.js	174	19	createApp({ inflate: false })	null
+test/express.text.js	178	19	request(this.app)	null
+test/express.text.js	188	19	createApp({ inflate: true })	null
+test/express.text.js	192	19	request(this.app)	null
+test/express.text.js	204	19	createApp({ type: 'text/html' })	null
+test/express.text.js	226	19	createApp({ type: ['text/html', 'text/plain'] })	null
+test/express.text.js	23	14	express()	null
+test/express.text.js	256	18	createApp({ type: accept })	null
+test/express.text.js	270	18	createApp({ type: accept })	null
+test/express.text.js	276	19	request(app)	null
+test/express.text.js	282	18	createApp({ type: accept })	null
+test/express.text.js	285	16	new Error('oops!')	null
+test/express.text.js	3	13	require('node:assert')	null
+test/express.text.js	304	14	buf[0] === 0x20	false
+test/express.text.js	304	14	buf[0] === 0x20	true
+test/express.text.js	304	37	new Error('no leading space')	null
+test/express.text.js	318	14	buf[0] !== 0x20	false
+test/express.text.js	318	14	buf[0] !== 0x20	true
+test/express.text.js	319	20	new Error('no leading space')	null
+test/express.text.js	335	14	buf[0] === 0x20	false
+test/express.text.js	335	14	buf[0] === 0x20	true
+test/express.text.js	335	37	new Error('no leading space')	null
+test/express.text.js	349	16	new Error('unexpected verify call')	null
+test/express.text.js	353	17	request(app)	null
+test/express.text.js	362	16	express()	null
+test/express.text.js	366	32	new AsyncLocalStorage()	null
+test/express.text.js	373	20	req.asyncLocalStorage.getStore()	null
+test/express.text.js	383	20	req.asyncLocalStorage.getStore()	null
+test/express.text.js	4	24	require('node:async_hooks')	null
+test/express.text.js	422	17	request(this.app)	null
+test/express.text.js	433	17	request(this.app)	null
+test/express.text.js	455	17	createApp()	null
+test/express.text.js	459	17	request(this.app)	null
+test/express.text.js	466	17	request(this.app)	null
+test/express.text.js	473	17	request(this.app)	null
+test/express.text.js	481	17	request(this.app)	null
+test/express.text.js	488	17	request(this.app)	null
+test/express.text.js	497	17	createApp({ limit: '10kb' })	null
+test/express.text.js	5	19	require('node:buffer')	null
+test/express.text.js	501	17	request(this.app)	null
+test/express.text.js	508	17	request(this.app)	null
+test/express.text.js	516	17	request(this.app)	null
+test/express.text.js	524	17	request(this.app)	null
+test/express.text.js	532	17	request(this.app)	null
+test/express.text.js	540	17	request(this.app)	null
+test/express.text.js	550	12	express()	null
+test/express.text.js	6	14	require('..')	null
+test/express.text.js	61	14	express()	null
+test/express.text.js	7	14	require('supertest')	null
+test/express.text.js	79	19	createApp({ defaultCharset: 'koi8-r' })	null
+test/express.text.js	80	17	request(server)	null
+test/express.text.js	87	19	createApp({ defaultCharset: 'koi8-r' })	null
+test/express.text.js	88	17	request(server)	null
+test/express.text.js	97	16	Buffer.alloc(1028, '.')	null
+test/express.urlencoded.js	112	19	createApp({ extended: true })	null
+test/express.urlencoded.js	12	15	createApp()	null
+test/express.urlencoded.js	167	22	JSON.parse(res.text)	null
+test/express.urlencoded.js	197	22	JSON.parse(res.text)	null
+test/express.urlencoded.js	214	19	createApp({ inflate: false })	null
+test/express.urlencoded.js	218	19	request(this.app)	null
+test/express.urlencoded.js	228	19	createApp({ inflate: true })	null
+test/express.urlencoded.js	232	19	request(this.app)	null
+test/express.urlencoded.js	24	14	express()	null
+test/express.urlencoded.js	243	16	Buffer.alloc(1024, '.')	null
+test/express.urlencoded.js	253	16	createApp({ limit: '1kb' })	null
+test/express.urlencoded.js	254	16	Buffer.alloc(1024, '.')	null
+test/express.urlencoded.js	255	17	request(app)	null
+test/express.urlencoded.js	264	16	createApp({ limit: '1kb' })	null
+test/express.urlencoded.js	265	17	request(app)	null
+test/express.urlencoded.js	273	16	Buffer.alloc(1024, '.')	null
+test/express.urlencoded.js	282	16	Buffer.alloc(1024, '.')	null
+test/express.urlencoded.js	284	16	createApp(options)	null
+test/express.urlencoded.js	296	16	createApp({ limit: '8kb' })	null
+test/express.urlencoded.js	297	16	Buffer.alloc(10240, '.')	null
+test/express.urlencoded.js	298	17	request(app)	null
+test/express.urlencoded.js	3	13	require('node:assert')	null
+test/express.urlencoded.js	307	16	createApp({ limit: '1kb' })	null
+test/express.urlencoded.js	308	17	request(app)	null
+test/express.urlencoded.js	4	24	require('node:async_hooks')	null
+test/express.urlencoded.js	431	19	createApp({ type: 'application/vnd.x-www-form-urlencoded' })	null
+test/express.urlencoded.js	485	18	createApp({ type: accept })	null
+test/express.urlencoded.js	499	18	createApp({ type: accept })	null
+test/express.urlencoded.js	5	19	require('node:buffer')	null
+test/express.urlencoded.js	505	19	request(app)	null
+test/express.urlencoded.js	511	18	createApp({ type: accept })	null
+test/express.urlencoded.js	514	16	new Error('oops!')	null
+test/express.urlencoded.js	533	14	buf[0] === 0x20	false
+test/express.urlencoded.js	533	14	buf[0] === 0x20	true
+test/express.urlencoded.js	533	37	new Error('no leading space')	null
+test/express.urlencoded.js	547	14	buf[0] !== 0x20	false
+test/express.urlencoded.js	547	14	buf[0] !== 0x20	true
+test/express.urlencoded.js	548	20	new Error('no leading space')	null
+test/express.urlencoded.js	564	14	buf[0] !== 0x20	false
+test/express.urlencoded.js	564	14	buf[0] !== 0x20	true
+test/express.urlencoded.js	565	20	new Error('no leading space')	null
+test/express.urlencoded.js	581	14	buf[0] === 0x5b	false
+test/express.urlencoded.js	581	14	buf[0] === 0x5b	true
+test/express.urlencoded.js	581	37	new Error('no arrays')	null
+test/express.urlencoded.js	595	16	new Error('unexpected verify call')	null
+test/express.urlencoded.js	599	17	request(app)	null
+test/express.urlencoded.js	608	16	express()	null
+test/express.urlencoded.js	612	32	new AsyncLocalStorage()	null
+test/express.urlencoded.js	619	20	req.asyncLocalStorage.getStore()	null
+test/express.urlencoded.js	629	20	req.asyncLocalStorage.getStore()	null
+test/express.urlencoded.js	63	14	express()	null
+test/express.urlencoded.js	668	17	request(this.app)	null
+test/express.urlencoded.js	679	17	request(this.app)	null
+test/express.urlencoded.js	7	14	require('..')	null
+test/express.urlencoded.js	701	17	createApp()	null
+test/express.urlencoded.js	705	17	request(this.app)	null
+test/express.urlencoded.js	712	17	request(this.app)	null
+test/express.urlencoded.js	720	17	request(this.app)	null
+test/express.urlencoded.js	727	17	request(this.app)	null
+test/express.urlencoded.js	736	17	createApp({ limit: '10kb' })	null
+test/express.urlencoded.js	740	17	request(this.app)	null
+test/express.urlencoded.js	747	17	request(this.app)	null
+test/express.urlencoded.js	755	17	request(this.app)	null
+test/express.urlencoded.js	763	17	request(this.app)	null
+test/express.urlencoded.js	771	17	request(this.app)	null
+test/express.urlencoded.js	779	17	request(this.app)	null
+test/express.urlencoded.js	791	6	count === 0	false
+test/express.urlencoded.js	791	6	count === 0	true
+test/express.urlencoded.js	798	12	i.toString(36)	null
+test/express.urlencoded.js	8	14	require('supertest')	null
+test/express.urlencoded.js	806	12	express()	null
+test/express.urlencoded.js	90	19	createApp({ extended: false })	null
+test/middleware.basic.js	10	16	express()	null
+test/middleware.basic.js	14	8	calls.push('one');	;
+test/middleware.basic.js	15	8	next();	;
+test/middleware.basic.js	19	8	calls.push('two');	;
+test/middleware.basic.js	20	8	next();	;
+test/middleware.basic.js	25	8	res.setHeader('Content-Type', 'application/json');	;
+test/middleware.basic.js	26	8	req.setEncoding('utf8');	;
+test/middleware.basic.js	27	8	req.on('data', function(chunk){ buf += chunk });	;
+test/middleware.basic.js	29	10	res.end(buf);	;
+test/middleware.basic.js	3	13	require('node:assert')	null
+test/middleware.basic.js	4	14	require('../')	null
+test/middleware.basic.js	5	14	require('supertest')	null
+test/regression.js	11	6	res.end('yay');	;
+test/regression.js	12	12	new Error('boom')	null
+test/regression.js	3	14	require('../')	null
+test/regression.js	4	14	require('supertest')	null
+test/regression.js	8	14	express()	null
+test/req.accepts.js	100	16	express()	null
+test/req.accepts.js	103	8	res.end(req.accepts(['text/html', 'application/json']));	;
+test/req.accepts.js	113	16	express()	null
+test/req.accepts.js	116	8	res.end(req.accepts(['application/json', 'text/html']));	;
+test/req.accepts.js	12	8	res.end(req.accepts('json') ? 'yes' : 'no');	;
+test/req.accepts.js	21	16	express()	null
+test/req.accepts.js	24	8	res.end(req.accepts('json') ? 'yes' : 'no');	;
+test/req.accepts.js	3	14	require('../')	null
+test/req.accepts.js	34	16	express()	null
+test/req.accepts.js	37	8	res.end(req.accepts('json') ? 'yes' : 'no');	;
+test/req.accepts.js	4	14	require('supertest')	null
+test/req.accepts.js	48	14	express()	null
+test/req.accepts.js	51	6	res.end(req.accepts('json', 'html'));	;
+test/req.accepts.js	62	16	express()	null
+test/req.accepts.js	65	8	res.end(req.accepts(['json', 'html']));	;
+test/req.accepts.js	74	16	express()	null
+test/req.accepts.js	77	8	res.end(req.accepts(['json', 'html']));	;
+test/req.accepts.js	87	16	express()	null
+test/req.accepts.js	9	16	express()	null
+test/req.accepts.js	90	8	res.end(req.accepts(['text/html', 'application/json']) ? 'yup' : 'nope');	;
+test/req.acceptsCharsets.js	10	18	express()	null
+test/req.acceptsCharsets.js	13	10	res.end(req.acceptsCharsets('utf-8') ? 'yes' : 'no');	;
+test/req.acceptsCharsets.js	24	18	express()	null
+test/req.acceptsCharsets.js	27	10	res.end(req.acceptsCharsets('utf-8') ? 'yes' : 'no');	;
+test/req.acceptsCharsets.js	3	14	require('../')	null
+test/req.acceptsCharsets.js	37	18	express()	null
+test/req.acceptsCharsets.js	4	14	require('supertest')	null
+test/req.acceptsCharsets.js	40	10	res.end(req.acceptsCharsets('utf-8') ? 'yes' : 'no');	;
+test/req.acceptsCharsets.js	50	18	express()	null
+test/req.acceptsCharsets.js	53	10	res.end(req.acceptsCharsets('utf-8', 'iso-8859-1'));	;
+test/req.acceptsEncodings.js	25	16	express()	null
+test/req.acceptsEncodings.js	3	14	require('../')	null
+test/req.acceptsEncodings.js	4	14	require('supertest')	null
+test/req.acceptsEncodings.js	9	16	express()	null
+test/req.acceptsLanguages.js	25	16	express()	null
+test/req.acceptsLanguages.js	3	14	require('../')	null
+test/req.acceptsLanguages.js	4	14	require('supertest')	null
+test/req.acceptsLanguages.js	41	18	express()	null
+test/req.acceptsLanguages.js	9	16	express()	null
+test/req.baseUrl.js	21	16	express()	null
+test/req.baseUrl.js	22	16	express.Router()	null
+test/req.baseUrl.js	3	14	require('..')	null
+test/req.baseUrl.js	35	16	express()	null
+test/req.baseUrl.js	36	17	express.Router()	null
+test/req.baseUrl.js	37	17	express.Router()	null
+test/req.baseUrl.js	38	17	express.Router()	null
+test/req.baseUrl.js	4	14	require('supertest')	null
+test/req.baseUrl.js	54	16	express()	null
+test/req.baseUrl.js	55	17	express.Router()	null
+test/req.baseUrl.js	56	17	express.Router()	null
+test/req.baseUrl.js	57	17	express.Router()	null
+test/req.baseUrl.js	9	16	express()	null
+test/req.fresh.js	13	8	res.set('ETag', etag);	;
+test/req.fresh.js	14	8	res.send(req.fresh);	;
+test/req.fresh.js	24	16	express()	null
+test/req.fresh.js	27	8	res.set('ETag', '"123"');	;
+test/req.fresh.js	28	8	res.send(req.fresh);	;
+test/req.fresh.js	3	14	require('../')	null
+test/req.fresh.js	38	16	express()	null
+test/req.fresh.js	4	14	require('supertest')	null
+test/req.fresh.js	42	8	res.send(req.fresh);	;
+test/req.fresh.js	51	16	express()	null
+test/req.fresh.js	53	18	Date.now()	null
+test/req.fresh.js	58	33	new Date(now)	null
+test/req.fresh.js	59	8	res.send(req.fresh);	;
+test/req.fresh.js	64	34	new Date(now - 1000)	null
+test/req.fresh.js	9	16	express()	null
+test/req.get.js	10	16	express()	null
+test/req.get.js	13	8	assert(req.get('Something-Else') === undefined);	;
+test/req.get.js	14	8	res.end(req.get('Content-Type'));	;
+test/req.get.js	24	16	express()	null
+test/req.get.js	27	8	res.end(req.get('Referer'));	;
+test/req.get.js	3	14	require('../')	null
+test/req.get.js	37	16	express()	null
+test/req.get.js	4	14	require('supertest')	null
+test/req.get.js	49	16	express()	null
+test/req.get.js	5	13	require('node:assert')	null
+test/req.host.js	107	18	express()	null
+test/req.host.js	109	8	app.enable('trust proxy');	;
+test/req.host.js	112	10	res.end(req.host);	;
+test/req.host.js	12	8	res.end(req.host);	;
+test/req.host.js	123	20	express()	null
+test/req.host.js	125	10	app.set('trust proxy', 1);	;
+test/req.host.js	128	12	res.end(req.host);	;
+test/req.host.js	142	18	express()	null
+test/req.host.js	145	10	res.end(req.host);	;
+test/req.host.js	22	16	express()	null
+test/req.host.js	25	8	res.end(req.host);	;
+test/req.host.js	3	14	require('../')	null
+test/req.host.js	35	16	express()	null
+test/req.host.js	39	8	res.end(String(req.host));	;
+test/req.host.js	4	14	require('supertest')	null
+test/req.host.js	48	16	express()	null
+test/req.host.js	51	8	res.end(req.host);	;
+test/req.host.js	61	16	express()	null
+test/req.host.js	64	8	res.end(req.host);	;
+test/req.host.js	75	18	express()	null
+test/req.host.js	77	8	app.enable('trust proxy');	;
+test/req.host.js	80	10	res.end(req.host);	;
+test/req.host.js	9	16	express()	null
+test/req.host.js	91	18	express()	null
+test/req.host.js	93	8	app.set('trust proxy', '10.0.0.1');	;
+test/req.host.js	96	10	res.end(req.host);	;
+test/req.hostname.js	107	18	express()	null
+test/req.hostname.js	109	8	app.enable('trust proxy');	;
+test/req.hostname.js	112	10	res.end(req.hostname);	;
+test/req.hostname.js	12	8	res.end(req.hostname);	;
+test/req.hostname.js	123	20	express()	null
+test/req.hostname.js	139	20	express()	null
+test/req.hostname.js	155	20	express()	null
+test/req.hostname.js	174	18	express()	null
+test/req.hostname.js	177	10	res.end(req.hostname);	;
+test/req.hostname.js	22	16	express()	null
+test/req.hostname.js	25	8	res.end(req.hostname);	;
+test/req.hostname.js	3	14	require('../')	null
+test/req.hostname.js	35	16	express()	null
+test/req.hostname.js	39	8	res.end(String(req.hostname));	;
+test/req.hostname.js	4	14	require('supertest')	null
+test/req.hostname.js	48	16	express()	null
+test/req.hostname.js	51	8	res.end(req.hostname);	;
+test/req.hostname.js	61	16	express()	null
+test/req.hostname.js	64	8	res.end(req.hostname);	;
+test/req.hostname.js	75	18	express()	null
+test/req.hostname.js	77	8	app.enable('trust proxy');	;
+test/req.hostname.js	80	10	res.end(req.hostname);	;
+test/req.hostname.js	9	16	express()	null
+test/req.hostname.js	91	18	express()	null
+test/req.hostname.js	93	8	app.set('trust proxy', '10.0.0.1');	;
+test/req.hostname.js	96	10	res.end(req.hostname);	;
+test/req.ip.js	11	20	express()	null
+test/req.ip.js	13	10	app.enable('trust proxy');	;
+test/req.ip.js	16	12	res.send(req.ip);	;
+test/req.ip.js	26	20	express()	null
+test/req.ip.js	28	10	app.set('trust proxy', 2);	;
+test/req.ip.js	3	14	require('../')	null
+test/req.ip.js	31	12	res.send(req.ip);	;
+test/req.ip.js	4	14	require('supertest')	null
+test/req.ip.js	41	20	express()	null
+test/req.ip.js	56	20	express()	null
+test/req.ip.js	57	20	express()	null
+test/req.ip.js	59	10	app.set('trust proxy', 2);	;
+test/req.ip.js	60	10	app.use(sub);	;
+test/req.ip.js	63	12	res.send(req.ip);	;
+test/req.ip.js	75	20	express()	null
+test/req.ip.js	78	12	res.send(req.ip);	;
+test/req.ip.js	81	21	request(app)	null
+test/req.ip.js	83	10	test.expect(200, getExpectedClientAddress(test._server), done);	;
+test/req.ip.js	90	18	express()	null
+test/req.ip.js	92	8	app.enable('trust proxy');	;
+test/req.ip.js	95	10	res.send(req.ip);	;
+test/req.ip.js	98	19	request(app)	null
+test/req.ips.js	11	20	express()	null
+test/req.ips.js	13	10	app.enable('trust proxy');	;
+test/req.ips.js	16	12	res.send(req.ips);	;
+test/req.ips.js	26	20	express()	null
+test/req.ips.js	28	10	app.set('trust proxy', 2);	;
+test/req.ips.js	3	14	require('../')	null
+test/req.ips.js	31	12	res.send(req.ips);	;
+test/req.ips.js	4	14	require('supertest')	null
+test/req.ips.js	43	20	express()	null
+test/req.ips.js	46	12	res.send(req.ips);	;
+test/req.ips.js	59	18	express()	null
+test/req.ips.js	62	10	res.send(req.ips);	;
+test/req.is.js	112	16	express()	null
+test/req.is.js	128	16	express()	null
+test/req.is.js	142	16	express()	null
+test/req.is.js	156	16	express()	null
+test/req.is.js	23	16	express()	null
+test/req.is.js	3	14	require('..')	null
+test/req.is.js	37	16	express()	null
+test/req.is.js	4	14	require('supertest')	null
+test/req.is.js	53	16	express()	null
+test/req.is.js	68	16	express()	null
+test/req.is.js	84	16	express()	null
+test/req.is.js	9	16	express()	null
+test/req.is.js	98	16	express()	null
+test/req.path.js	12	8	res.end(req.path);	;
+test/req.path.js	3	14	require('../')	null
+test/req.path.js	4	14	require('supertest')	null
+test/req.path.js	9	16	express()	null
+test/req.protocol.js	100	18	express()	null
+test/req.protocol.js	103	10	res.end(req.protocol);	;
+test/req.protocol.js	12	8	res.end(req.protocol);	;
+test/req.protocol.js	22	18	express()	null
+test/req.protocol.js	24	8	app.enable('trust proxy');	;
+test/req.protocol.js	27	10	res.end(req.protocol);	;
+test/req.protocol.js	3	14	require('../')	null
+test/req.protocol.js	37	18	express()	null
+test/req.protocol.js	39	8	app.enable('trust proxy');	;
+test/req.protocol.js	4	14	require('supertest')	null
+test/req.protocol.js	43	10	res.end(req.protocol);	;
+test/req.protocol.js	52	18	express()	null
+test/req.protocol.js	54	8	app.set('trust proxy', '10.0.0.1');	;
+test/req.protocol.js	57	10	res.end(req.protocol);	;
+test/req.protocol.js	67	18	express()	null
+test/req.protocol.js	69	8	app.enable('trust proxy');	;
+test/req.protocol.js	72	10	res.end(req.protocol);	;
+test/req.protocol.js	82	20	express()	null
+test/req.protocol.js	84	10	app.set('trust proxy', 1);	;
+test/req.protocol.js	87	12	res.end(req.protocol);	;
+test/req.protocol.js	9	16	express()	null
+test/req.query.js	10	16	createApp()	null
+test/req.query.js	102	4	res.send(req.query);	;
+test/req.query.js	105	9	app	null
+test/req.query.js	18	16	createApp()	null
+test/req.query.js	27	18	createApp('extended')	null
+test/req.query.js	3	13	require('node:assert')	null
+test/req.query.js	35	18	createApp('extended')	null
+test/req.query.js	4	14	require('../')	null
+test/req.query.js	45	18	createApp('simple')	null
+test/req.query.js	5	14	require('supertest')	null
+test/req.query.js	56	17	{'length': (str || '').length}	{}
+test/req.query.js	67	18	createApp(false)	null
+test/req.query.js	77	18	createApp(true)	null
+test/req.query.js	95	12	express()	null
+test/req.query.js	97	6	setting !== undefined	false
+test/req.query.js	97	6	setting !== undefined	true
+test/req.query.js	98	4	app.set('query parser', setting);	;
+test/req.range.js	22	16	express()	null
+test/req.range.js	3	14	require('..')	null
+test/req.range.js	35	16	express()	null
+test/req.range.js	4	14	require('supertest')	null
+test/req.range.js	48	16	express()	null
+test/req.range.js	61	16	express()	null
+test/req.range.js	74	16	express()	null
+test/req.range.js	89	18	express()	null
+test/req.range.js	9	16	express()	null
+test/req.route.js	13	8	next();	;
+test/req.route.js	18	8	res.end();	;
+test/req.route.js	3	14	require('../')	null
+test/req.route.js	4	14	require('supertest')	null
+test/req.route.js	9	16	express()	null
+test/req.secure.js	10	18	express()	null
+test/req.secure.js	13	10	res.send(req.secure ? 'yes' : 'no');	;
+test/req.secure.js	26	18	express()	null
+test/req.secure.js	29	10	res.send(req.secure ? 'yes' : 'no');	;
+test/req.secure.js	3	14	require('../')	null
+test/req.secure.js	39	18	express()	null
+test/req.secure.js	4	14	require('supertest')	null
+test/req.secure.js	41	8	app.enable('trust proxy');	;
+test/req.secure.js	44	10	res.send(req.secure ? 'yes' : 'no');	;
+test/req.secure.js	54	18	express()	null
+test/req.secure.js	56	8	app.enable('trust proxy');	;
+test/req.secure.js	59	10	res.send(req.secure ? 'yes' : 'no');	;
+test/req.secure.js	69	18	express()	null
+test/req.secure.js	71	8	app.enable('trust proxy');	;
+test/req.secure.js	74	10	res.send(req.secure ? 'yes' : 'no');	;
+test/req.secure.js	85	20	express()	null
+test/req.secure.js	87	10	app.set('trust proxy', 1);	;
+test/req.secure.js	90	12	res.send(req.secure ? 'yes' : 'no');	;
+test/req.signedCookies.js	10	16	express()	null
+test/req.signedCookies.js	12	6	app.use(cookieParser('secret'));	;
+test/req.signedCookies.js	15	12	req.path === '/set'	false
+test/req.signedCookies.js	15	12	req.path === '/set'	true
+test/req.signedCookies.js	16	10	res.cookie('obj', { foo: 'bar' }, { signed: true });	;
+test/req.signedCookies.js	17	10	res.end();	;
+test/req.signedCookies.js	19	10	res.send(req.signedCookies);	;
+test/req.signedCookies.js	26	24	done(err)	null
+test/req.signedCookies.js	26	8	if (err) return done(err);	;
+test/req.signedCookies.js	3	14	require('../')	null
+test/req.signedCookies.js	4	14	require('supertest')	null
+test/req.signedCookies.js	5	19	require('cookie-parser')	null
+test/req.stale.js	13	8	res.set('ETag', etag);	;
+test/req.stale.js	14	8	res.send(req.stale);	;
+test/req.stale.js	24	16	express()	null
+test/req.stale.js	27	8	res.set('ETag', '"123"');	;
+test/req.stale.js	28	8	res.send(req.stale);	;
+test/req.stale.js	3	14	require('../')	null
+test/req.stale.js	38	16	express()	null
+test/req.stale.js	4	14	require('supertest')	null
+test/req.stale.js	42	8	res.send(req.stale);	;
+test/req.stale.js	9	16	express()	null
+test/req.subdomains.js	10	18	express()	null
+test/req.subdomains.js	102	12	res.send(req.subdomains);	;
+test/req.subdomains.js	112	20	express()	null
+test/req.subdomains.js	113	10	app.set('subdomain offset', 0);	;
+test/req.subdomains.js	116	12	res.send(req.subdomains);	;
+test/req.subdomains.js	126	20	express()	null
+test/req.subdomains.js	127	10	app.set('subdomain offset', 0);	;
+test/req.subdomains.js	13	10	res.send(req.subdomains);	;
+test/req.subdomains.js	130	12	res.send(req.subdomains);	;
+test/req.subdomains.js	142	20	express()	null
+test/req.subdomains.js	143	10	app.set('subdomain offset', 3);	;
+test/req.subdomains.js	146	12	res.send(req.subdomains);	;
+test/req.subdomains.js	158	20	express()	null
+test/req.subdomains.js	159	10	app.set('subdomain offset', 3);	;
+test/req.subdomains.js	162	12	res.send(req.subdomains);	;
+test/req.subdomains.js	23	18	express()	null
+test/req.subdomains.js	26	10	res.send(req.subdomains);	;
+test/req.subdomains.js	3	14	require('../')	null
+test/req.subdomains.js	36	18	express()	null
+test/req.subdomains.js	39	10	res.send(req.subdomains);	;
+test/req.subdomains.js	4	14	require('supertest')	null
+test/req.subdomains.js	51	18	express()	null
+test/req.subdomains.js	54	10	res.send(req.subdomains);	;
+test/req.subdomains.js	66	18	express()	null
+test/req.subdomains.js	70	10	res.send(req.subdomains);	;
+test/req.subdomains.js	81	18	express()	null
+test/req.subdomains.js	83	8	app.set('trust proxy', true);	;
+test/req.subdomains.js	85	10	res.send(req.subdomains);	;
+test/req.subdomains.js	98	20	express()	null
+test/req.subdomains.js	99	10	app.set('subdomain offset', 0);	;
+test/req.xhr.js	3	14	require('../')	null
+test/req.xhr.js	4	14	require('supertest')	null
+test/req.xhr.js	9	17	express()	null
+test/res.append.js	10	16	express()	null
+test/res.append.js	3	13	require('node:assert')	null
+test/res.append.js	30	16	express()	null
+test/res.append.js	4	14	require('..')	null
+test/res.append.js	45	16	express()	null
+test/res.append.js	5	14	require('supertest')	null
+test/res.append.js	66	16	express()	null
+test/res.append.js	86	16	express()	null
+test/res.attachment.js	11	16	express()	null
+test/res.attachment.js	14	8	res.attachment().send('foo');	;
+test/res.attachment.js	25	16	express()	null
+test/res.attachment.js	28	8	res.attachment('/path/to/image.png');	;
+test/res.attachment.js	29	8	res.send('foo');	;
+test/res.attachment.js	3	19	require('node:buffer')	null
+test/res.attachment.js	38	16	express()	null
+test/res.attachment.js	41	8	res.attachment('/path/to/image.png');	;
+test/res.attachment.js	5	14	require('../')	null
+test/res.attachment.js	53	16	express()	null
+test/res.attachment.js	56	8	res.attachment('/locales/日本語.txt');	;
+test/res.attachment.js	57	8	res.send('japanese');	;
+test/res.attachment.js	6	14	require('supertest')	null
+test/res.attachment.js	67	16	express()	null
+test/res.attachment.js	70	8	res.attachment('/locales/日本語.txt');	;
+test/res.attachment.js	71	8	res.send('japanese');	;
+test/res.clearCookie.js	12	8	res.clearCookie('sid').end();	;
+test/res.clearCookie.js	24	16	express()	null
+test/res.clearCookie.js	27	8	res.clearCookie('sid', { path: '/admin' }).end();	;
+test/res.clearCookie.js	3	14	require('../')	null
+test/res.clearCookie.js	37	16	express()	null
+test/res.clearCookie.js	4	14	require('supertest')	null
+test/res.clearCookie.js	40	8	res.clearCookie('sid', { path: '/admin', maxAge: 1000 }).end();	;
+test/res.clearCookie.js	50	16	express()	null
+test/res.clearCookie.js	53	58	new Date()	null
+test/res.clearCookie.js	53	8	res.clearCookie('sid', { path: '/admin', expires: new Date() }).end();	;
+test/res.clearCookie.js	9	16	express()	null
+test/res.cookie.js	10	16	express()	null
+test/res.cookie.js	102	18	express()	null
+test/res.cookie.js	105	10	res.cookie('name', 'tobi', { maxAge: 1000 });	;
+test/res.cookie.js	106	10	res.end();	;
+test/res.cookie.js	116	18	express()	null
+test/res.cookie.js	119	10	res.cookie('name', 'tobi', { maxAge: 1000 });	;
+test/res.cookie.js	120	10	res.end();	;
+test/res.cookie.js	129	18	express()	null
+test/res.cookie.js	13	8	res.cookie('user', { name: 'tobi' }).end();	;
+test/res.cookie.js	145	18	express()	null
+test/res.cookie.js	160	18	express()	null
+test/res.cookie.js	175	18	express()	null
+test/res.cookie.js	190	18	express()	null
+test/res.cookie.js	204	18	express()	null
+test/res.cookie.js	218	18	express()	null
+test/res.cookie.js	232	18	express()	null
+test/res.cookie.js	247	18	express()	null
+test/res.cookie.js	249	8	app.use(cookieParser('foo bar baz'));	;
+test/res.cookie.js	25	16	express()	null
+test/res.cookie.js	252	10	res.cookie('user', { name: 'tobi' }, { signed: true }).end();	;
+test/res.cookie.js	264	18	express()	null
+test/res.cookie.js	266	8	app.use(cookieParser());	;
+test/res.cookie.js	269	10	res.cookie('name', 'tobi', { signed: true }).end();	;
+test/res.cookie.js	28	8	res.cookie('name', 'tobi').end();	;
+test/res.cookie.js	280	18	express()	null
+test/res.cookie.js	282	8	app.use(cookieParser('foo bar baz'));	;
+test/res.cookie.js	285	10	res.cookie('name', 'tobi', { signed: true }).end();	;
+test/res.cookie.js	3	14	require('../')	null
+test/res.cookie.js	38	16	express()	null
+test/res.cookie.js	4	14	require('supertest')	null
+test/res.cookie.js	41	8	res.cookie('name', 'tobi');	;
+test/res.cookie.js	42	8	res.cookie('age', 1);	;
+test/res.cookie.js	43	8	res.cookie('gender', '?');	;
+test/res.cookie.js	44	8	res.end();	;
+test/res.cookie.js	5	19	require('cookie-parser')	null
+test/res.cookie.js	56	16	express()	null
+test/res.cookie.js	59	8	res.cookie('name', 'tobi', { httpOnly: true, secure: true });	;
+test/res.cookie.js	60	8	res.end();	;
+test/res.cookie.js	71	18	express()	null
+test/res.cookie.js	74	48	new Date(NaN)	null
+test/res.cookie.js	86	18	express()	null
+test/res.cookie.js	89	10	res.cookie('name', 'tobi', { partitioned: true });	;
+test/res.cookie.js	90	10	res.end();	;
+test/res.download.js	10	14	require('supertest')	null
+test/res.download.js	104	28	cb(err)	null
+test/res.download.js	106	24	req.asyncLocalStorage.getStore()	null
+test/res.download.js	11	12	require('./support/utils')	null
+test/res.download.js	121	18	express()	null
+test/res.download.js	125	34	new AsyncLocalStorage()	null
+test/res.download.js	13	20	path.join(__dirname, 'fixtures')	null
+test/res.download.js	131	24	req.asyncLocalStorage.getStore()	null
+test/res.download.js	153	16	express()	null
+test/res.download.js	173	18	express()	null
+test/res.download.js	18	16	express()	null
+test/res.download.js	193	18	express()	null
+test/res.download.js	21	8	res.download('test/fixtures/user.html');	;
+test/res.download.js	212	18	express()	null
+test/res.download.js	230	18	express()	null
+test/res.download.js	249	20	express()	null
+test/res.download.js	267	20	express()	null
+test/res.download.js	288	18	express()	null
+test/res.download.js	3	12	require('after')	null
+test/res.download.js	305	18	express()	null
+test/res.download.js	32	16	express()	null
+test/res.download.js	322	18	express()	null
+test/res.download.js	341	18	express()	null
+test/res.download.js	360	16	express()	null
+test/res.download.js	361	15	after(2, done)	null
+test/res.download.js	377	16	express()	null
+test/res.download.js	378	15	after(2, done)	null
+test/res.download.js	394	16	express()	null
+test/res.download.js	4	13	require('node:assert')	null
+test/res.download.js	414	18	express()	null
+test/res.download.js	434	18	express()	null
+test/res.download.js	45	16	express()	null
+test/res.download.js	457	16	express()	null
+test/res.download.js	461	10	if (!err) return next(new Error('expected error'));	;
+test/res.download.js	461	27	next(new Error('expected error'))	null
+test/res.download.js	461	32	new Error('expected error')	null
+test/res.download.js	462	10	res.send('got ' + err.status + ' ' + err.code);	;
+test/res.download.js	472	16	express()	null
+test/res.download.js	476	10	if (!err) return next(new Error('expected error'));	;
+test/res.download.js	476	27	next(new Error('expected error'))	null
+test/res.download.js	476	32	new Error('expected error')	null
+test/res.download.js	477	10	res.end('failed');	;
+test/res.download.js	5	24	require('node:async_hooks')	null
+test/res.download.js	6	19	require('node:buffer')	null
+test/res.download.js	61	16	express()	null
+test/res.download.js	64	8	res.download('test/fixtures/user.html', 'document');	;
+test/res.download.js	77	16	express()	null
+test/res.download.js	78	15	after(2, done)	null
+test/res.download.js	8	14	require('..')	null
+test/res.download.js	81	8	res.download('test/fixtures/user.html', cb);	;
+test/res.download.js	9	11	require('node:path')	null
+test/res.download.js	93	18	express()	null
+test/res.download.js	94	17	after(2, done)	null
+test/res.download.js	98	34	new AsyncLocalStorage()	null
+test/res.format.js	113	6	test(app);	;
+test/res.format.js	13	6	res.send('hey');	;
+test/res.format.js	132	18	express()	null
+test/res.format.js	155	6	test(app4);	;
+test/res.format.js	159	16	express()	null
+test/res.format.js	160	19	express.Router()	null
+test/res.format.js	17	6	res.send('<p>hey</p>');	;
+test/res.format.js	206	13	after(3, done)	null
+test/res.format.js	24	6	res.send({ message: 'hey' });	;
+test/res.format.js	3	12	require('after')	null
+test/res.format.js	35	11	express()	null
+test/res.format.js	4	14	require('../')	null
+test/res.format.js	5	14	require('supertest')	null
+test/res.format.js	50	11	express()	null
+test/res.format.js	6	13	require('node:assert')	null
+test/res.format.js	64	11	express()	null
+test/res.format.js	79	11	express()	null
+test/res.format.js	8	11	express()	null
+test/res.format.js	90	6	test(app1);	;
+test/res.format.js	94	6	test(app2);	;
+test/res.format.js	98	16	express()	null
+test/res.get.js	12	8	res.setHeader('Content-Type', 'text/x-foo');	;
+test/res.get.js	13	8	res.send(res.get('Content-Type'));	;
+test/res.get.js	3	14	require('..')	null
+test/res.get.js	4	14	require('supertest')	null
+test/res.get.js	9	16	express()	null
+test/res.json.js	10	16	express()	null
+test/res.json.js	108	18	express()	null
+test/res.json.js	113	18	express()	null
+test/res.json.js	128	18	express()	null
+test/res.json.js	13	8	res.json({ foo: 'bar' });	;
+test/res.json.js	145	18	express()	null
+test/res.json.js	154	10	res.json({ name: 'tobi', _id: 12345 });	;
+test/res.json.js	166	18	express()	null
+test/res.json.js	167	8	assert(undefined === app.get('json spaces'));	;
+test/res.json.js	171	18	express()	null
+test/res.json.js	173	8	app.set('json spaces', 2);	;
+test/res.json.js	176	10	res.json({ name: 'tobi', age: 2 });	;
+test/res.json.js	22	16	express()	null
+test/res.json.js	25	8	res.type('application/vnd.example+json');	;
+test/res.json.js	26	8	res.json({ hello: 'world' });	;
+test/res.json.js	3	14	require('../')	null
+test/res.json.js	37	18	express()	null
+test/res.json.js	4	14	require('supertest')	null
+test/res.json.js	40	10	res.json(null);	;
+test/res.json.js	5	13	require('node:assert')	null
+test/res.json.js	50	18	express()	null
+test/res.json.js	53	10	res.json(300);	;
+test/res.json.js	63	18	express()	null
+test/res.json.js	66	10	res.json('str');	;
+test/res.json.js	78	18	express()	null
+test/res.json.js	81	10	res.json(['foo', 'bar', 'baz']);	;
+test/res.json.js	93	18	express()	null
+test/res.json.js	96	10	res.json({ name: 'tobi' });	;
+test/res.jsonp.js	104	16	express()	null
+test/res.jsonp.js	107	8	res.jsonp({ str: '\\u2028 \\u2029 woot' });	;
+test/res.jsonp.js	11	16	express()	null
+test/res.jsonp.js	117	16	express()	null
+test/res.jsonp.js	120	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	131	16	express()	null
+test/res.jsonp.js	134	8	res.type('application/vnd.example+json');	;
+test/res.jsonp.js	135	8	res.jsonp({ hello: 'world' });	;
+test/res.jsonp.js	14	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	146	16	express()	null
+test/res.jsonp.js	149	8	res.type('application/vnd.example+json');	;
+test/res.jsonp.js	150	8	res.jsonp({ hello: 'world' });	;
+test/res.jsonp.js	162	18	express()	null
+test/res.jsonp.js	177	18	express()	null
+test/res.jsonp.js	192	18	express()	null
+test/res.jsonp.js	207	18	express()	null
+test/res.jsonp.js	222	18	express()	null
+test/res.jsonp.js	237	18	express()	null
+test/res.jsonp.js	24	16	express()	null
+test/res.jsonp.js	252	18	express()	null
+test/res.jsonp.js	257	18	express()	null
+test/res.jsonp.js	27	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	272	18	express()	null
+test/res.jsonp.js	289	18	express()	null
+test/res.jsonp.js	298	10	res.jsonp({ name: 'tobi', _id: 12345 });	;
+test/res.jsonp.js	3	14	require('../')	null
+test/res.jsonp.js	310	18	express()	null
+test/res.jsonp.js	311	8	assert(undefined === app.get('json spaces'));	;
+test/res.jsonp.js	315	18	express()	null
+test/res.jsonp.js	317	8	app.set('json spaces', 2);	;
+test/res.jsonp.js	320	10	res.jsonp({ name: 'tobi', age: 2 });	;
+test/res.jsonp.js	37	16	express()	null
+test/res.jsonp.js	4	14	require('supertest')	null
+test/res.jsonp.js	40	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	5	13	require('node:assert')	null
+test/res.jsonp.js	50	16	express()	null
+test/res.jsonp.js	52	6	app.set('jsonp callback name', 'clb');	;
+test/res.jsonp.js	55	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	6	12	require('./support/utils')	null
+test/res.jsonp.js	65	16	express()	null
+test/res.jsonp.js	68	8	res.jsonp({ count: 1 });	;
+test/res.jsonp.js	78	16	express()	null
+test/res.jsonp.js	81	8	res.jsonp({});	;
+test/res.jsonp.js	91	16	express()	null
+test/res.jsonp.js	94	8	res.jsonp({ str: '\\u2028 \\u2029 woot' });	;
+test/res.links.js	16	8	res.end();	;
+test/res.links.js	26	16	express()	null
+test/res.links.js	3	14	require('..')	null
+test/res.links.js	38	8	res.end();	;
+test/res.links.js	4	14	require('supertest')	null
+test/res.links.js	48	16	express()	null
+test/res.links.js	56	8	res.end();	;
+test/res.links.js	9	16	express()	null
+test/res.locals.js	22	14	express()	null
+test/res.locals.js	23	15	express()	null
+test/res.locals.js	25	4	app.use(blog);	;
+test/res.locals.js	29	6	next();	;
+test/res.locals.js	3	14	require('../')	null
+test/res.locals.js	4	14	require('supertest')	null
+test/res.locals.js	9	16	express()	null
+test/res.location.js	100	8	res.location('').end();	;
+test/res.location.js	11	16	express()	null
+test/res.location.js	110	8	typeof URL !== 'undefined'	false
+test/res.location.js	110	8	typeof URL !== 'undefined'	true
+test/res.location.js	112	18	express()	null
+test/res.location.js	115	10	res.location(new URL('http://google.com/')).end();	;
+test/res.location.js	115	23	new URL('http://google.com/')	null
+test/res.location.js	128	16	express()	null
+test/res.location.js	130	19	url.parse(req.query.q, false, true)	null
+test/res.location.js	133	12	host !== domain	false
+test/res.location.js	133	12	host !== domain	true
+test/res.location.js	134	10	res.status(400).end('Bad host: ' + host + ' !== ' + domain);	;
+test/res.location.js	136	8	res.location(req.query.q).end();	;
+test/res.location.js	138	13	app	null
+test/res.location.js	14	8	res.location('http://google.com/').end();	;
+test/res.location.js	153	12	console.error('error', res.error, err);	;
+test/res.location.js	154	19	done(err, res)	null
+test/res.location.js	158	26	url.parse(inputUrl, false, true)	null
+test/res.location.js	159	29	url.parse(res.headers['location'], false, true)	null
+test/res.location.js	161	10	assert.strictEqual(locationHost, expectedHost);	;
+test/res.location.js	164	14	inputHost !== locationHost	false
+test/res.location.js	164	14	inputHost !== locationHost	true
+test/res.location.js	165	19	done(new Error('Hosts do not match: ' + inputHost + " !== " +  locationHost))	null
+test/res.location.js	165	24	new Error('Hosts do not match: ' + inputHost + " !== " +  locationHost)	null
+test/res.location.js	168	17	done(null, res)	null
+test/res.location.js	173	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	184	16	createRedirectServerForDomain(null)	null
+test/res.location.js	195	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	206	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	217	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	228	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	239	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	24	16	express()	null
+test/res.location.js	250	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	261	16	createRedirectServerForDomain(null)	null
+test/res.location.js	27	8	res.location('http://google.com').end();	;
+test/res.location.js	272	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	283	16	createRedirectServerForDomain('google.com')	null
+test/res.location.js	294	16	createRedirectServerForDomain('')	null
+test/res.location.js	3	14	require('../')	null
+test/res.location.js	37	16	express()	null
+test/res.location.js	4	14	require('supertest')	null
+test/res.location.js	5	13	require('node:assert')	null
+test/res.location.js	50	16	express()	null
+test/res.location.js	52	8	res.location('data:text/javascript,export default () => { }').end();	;
+test/res.location.js	6	10	require('node:url')	null
+test/res.location.js	62	16	express()	null
+test/res.location.js	64	8	res.location(true).end();	;
+test/res.location.js	74	16	express()	null
+test/res.location.js	76	8	res.location({}).end();	;
+test/res.location.js	86	16	express()	null
+test/res.location.js	88	8	res.location([]).end();	;
+test/res.location.js	98	16	express()	null
+test/res.redirect.js	10	16	express()	null
+test/res.redirect.js	101	8	res.redirect('<la\\'me>');	;
+test/res.redirect.js	114	16	express()	null
+test/res.redirect.js	119	8	res.redirect(xss);	;
+test/res.redirect.js	13	8	res.redirect('http://google.com');	;
+test/res.redirect.js	132	16	express()	null
+test/res.redirect.js	135	8	res.redirect(301, 'http://google.com');	;
+test/res.redirect.js	149	16	express()	null
+test/res.redirect.js	152	8	res.redirect('http://google.com');	;
+test/res.redirect.js	164	16	express()	null
+test/res.redirect.js	167	8	res.redirect('http://example.com/?param=<script>alert("hax");</script>');	;
+test/res.redirect.js	180	16	express()	null
+test/res.redirect.js	183	8	res.redirect(301, 'http://google.com');	;
+test/res.redirect.js	197	16	express()	null
+test/res.redirect.js	200	8	res.redirect('http://google.com');	;
+test/res.redirect.js	23	16	express()	null
+test/res.redirect.js	3	14	require('..')	null
+test/res.redirect.js	36	16	express()	null
+test/res.redirect.js	4	14	require('supertest')	null
+test/res.redirect.js	5	12	require('./support/utils')	null
+test/res.redirect.js	51	16	express()	null
+test/res.redirect.js	54	8	res.redirect(303, 'http://google.com');	;
+test/res.redirect.js	66	16	express()	null
+test/res.redirect.js	69	8	res.redirect('http://google.com');	;
+test/res.redirect.js	83	16	express()	null
+test/res.redirect.js	86	8	res.redirect('http://google.com');	;
+test/res.redirect.js	98	16	express()	null
+test/res.render.js	101	6	app.set('view engine', 'tmpl');	;
+test/res.render.js	104	8	res.render('blog/post');	;
+test/res.render.js	11	16	createApp()	null
+test/res.render.js	114	18	createApp()	null
+test/res.render.js	119	10	res.render('user.tmpl');	;
+test/res.render.js	134	18	createApp()	null
+test/res.render.js	136	8	app.set('view engine', 'tmpl');	;
+test/res.render.js	140	10	res.render('email');	;
+test/res.render.js	151	18	createApp()	null
+test/res.render.js	156	10	res.render('user.tmpl', { user: { name: 'tobi' } });	;
+test/res.render.js	166	20	createApp()	null
+test/res.render.js	172	10	app.set('views', views);	;
+test/res.render.js	175	12	res.render('user.tmpl', { user: { name: 'tobi' } });	;
+test/res.render.js	184	20	createApp()	null
+test/res.render.js	190	10	app.set('views', views);	;
+test/res.render.js	193	12	res.render('name.tmpl', { name: 'tobi' });	;
+test/res.render.js	206	16	createApp()	null
+test/res.render.js	213	8	res.render('user.tmpl', { user: user });	;
+test/res.render.js	222	16	createApp()	null
+test/res.render.js	228	8	res.render('user.tmpl');	;
+test/res.render.js	237	16	createApp()	null
+test/res.render.js	243	8	res.render('user.tmpl');	;
+test/res.render.js	25	16	createApp()	null
+test/res.render.js	252	16	createApp()	null
+test/res.render.js	259	8	res.render('user.tmpl', {});	;
+test/res.render.js	268	16	createApp()	null
+test/res.render.js	275	8	res.render('user.tmpl', { user: jane });	;
+test/res.render.js	28	6	app.set('view engine', 'tmpl');	;
+test/res.render.js	284	16	createApp()	null
+test/res.render.js	291	8	res.render('user.tmpl', { user: jane });	;
+test/res.render.js	3	14	require('..')	null
+test/res.render.js	302	16	createApp()	null
+test/res.render.js	309	17	html.replace('tobi', 'loki')	null
+test/res.render.js	310	10	res.end(html);	;
+test/res.render.js	322	16	createApp()	null
+test/res.render.js	329	17	html.replace('tobi', 'loki')	null
+test/res.render.js	330	10	res.end(html);	;
+test/res.render.js	341	18	createApp()	null
+test/res.render.js	362	12	express()	null
+test/res.render.js	364	2	app.engine('.tmpl', tmpl);	;
+test/res.render.js	366	9	app	null
+test/res.render.js	4	11	require('node:path')	null
+test/res.render.js	40	16	createApp()	null
+test/res.render.js	5	14	require('supertest')	null
+test/res.render.js	54	16	createApp()	null
+test/res.render.js	6	11	require('./support/tmpl')	null
+test/res.render.js	68	16	createApp()	null
+test/res.render.js	74	8	res.render('user.tmpl');	;
+test/res.render.js	83	16	createApp()	null
+test/res.render.js	89	8	res.render('name.tmpl');	;
+test/res.render.js	98	16	createApp()	null
+test/res.send.js	10	22	require('./support/utils')	null
+test/res.send.js	100	16	express()	null
+test/res.send.js	103	8	res.set('Content-Type', 'text/plain').send('hey');	;
+test/res.send.js	113	16	express()	null
+test/res.send.js	116	8	res.set('Content-Type', 'text/plain; charset=iso-8859-1').send('hey');	;
+test/res.send.js	126	16	express()	null
+test/res.send.js	141	16	express()	null
+test/res.send.js	15	16	express()	null
+test/res.send.js	156	16	express()	null
+test/res.send.js	169	16	express()	null
+test/res.send.js	18	8	res.send();	;
+test/res.send.js	182	16	express()	null
+test/res.send.js	184	27	new TextEncoder()	null
+test/res.send.js	185	8	res.set("Content-Type", "text/plain").send(encodedHey);	;
+test/res.send.js	195	16	express()	null
+test/res.send.js	210	16	express()	null
+test/res.send.js	213	8	res.send({ name: 'tobi' });	;
+test/res.send.js	225	16	express()	null
+test/res.send.js	228	8	res.send('yay');	;
+test/res.send.js	241	16	express()	null
+test/res.send.js	244	8	res.status(204).set('Transfer-Encoding', 'chunked').send('foo');	;
+test/res.send.js	258	16	express()	null
+test/res.send.js	274	16	express()	null
+test/res.send.js	277	8	res.status(304).set('Transfer-Encoding', 'chunked').send('foo');	;
+test/res.send.js	29	16	express()	null
+test/res.send.js	290	14	express()	null
+test/res.send.js	294	6	res.set('ETag', etag);	;
+test/res.send.js	295	6	res.send('hey');	;
+test/res.send.js	3	13	require('node:assert')	null
+test/res.send.js	305	14	express()	null
+test/res.send.js	309	16	Array(1000)	null
+test/res.send.js	310	6	res.set('ETag', etag);	;
+test/res.send.js	311	6	res.send(str);	;
+test/res.send.js	32	8	res.send(null);	;
+test/res.send.js	321	14	express()	null
+test/res.send.js	325	6	res.status(500);	;
+test/res.send.js	326	6	res.set('ETag', etag);	;
+test/res.send.js	327	6	res.send('hey');	;
+test/res.send.js	338	14	express()	null
+test/res.send.js	341	6	res.send({ foo: 'bar' });	;
+test/res.send.js	350	14	express()	null
+test/res.send.js	364	18	express()	null
+test/res.send.js	367	10	res.send('kajdslfkasdf');	;
+test/res.send.js	370	8	app.enable('etag');	;
+test/res.send.js	379	12	method === 'connect'	false
+test/res.send.js	379	12	method === 'connect'	true
+test/res.send.js	382	14	method === 'query' && shouldSkipQuery(process.versions.node)	false
+test/res.send.js	382	14	method === 'query' && shouldSkipQuery(process.versions.node)	true
+test/res.send.js	385	20	express()	null
+test/res.send.js	388	12	res.send('kajdslfkasdf');	;
+test/res.send.js	399	18	express()	null
+test/res.send.js	4	19	require('node:buffer')	null
+test/res.send.js	402	10	res.send('');	;
+test/res.send.js	405	8	app.enable('etag');	;
+test/res.send.js	414	18	express()	null
+test/res.send.js	417	20	Array(1000)	null
+test/res.send.js	418	10	res.send(str);	;
+test/res.send.js	421	8	app.enable('etag');	;
+test/res.send.js	430	18	express()	null
+test/res.send.js	433	10	res.set('etag', '"asdf"');	;
+test/res.send.js	434	10	res.send('hello!');	;
+test/res.send.js	437	8	app.enable('etag');	;
+test/res.send.js	44	16	express()	null
+test/res.send.js	446	18	express()	null
+test/res.send.js	449	10	res.send();	;
+test/res.send.js	452	8	app.enable('etag');	;
+test/res.send.js	463	18	express()	null
+test/res.send.js	466	20	Array(1000)	null
+test/res.send.js	467	10	res.send(str);	;
+test/res.send.js	47	8	res.send(undefined);	;
+test/res.send.js	470	8	app.disable('etag');	;
+test/res.send.js	479	18	express()	null
+test/res.send.js	481	8	app.disable('etag');	;
+test/res.send.js	484	10	res.set('etag', '"asdf"');	;
+test/res.send.js	485	10	res.send('hello!');	;
+test/res.send.js	497	18	express()	null
+test/res.send.js	499	8	app.set('etag', 'strong');	;
+test/res.send.js	5	14	require('..')	null
+test/res.send.js	502	10	res.send('hello, world!');	;
+test/res.send.js	514	18	express()	null
+test/res.send.js	516	8	app.set('etag', 'weak');	;
+test/res.send.js	519	10	res.send('hello, world!');	;
+test/res.send.js	531	18	express()	null
+test/res.send.js	538	17	'"custom"'	""
+test/res.send.js	542	10	res.send('hello, world!');	;
+test/res.send.js	552	18	express()	null
+test/res.send.js	555	17	undefined	null
+test/res.send.js	559	10	res.send('hello, world!');	;
+test/res.send.js	58	16	express()	null
+test/res.send.js	6	14	require('../lib/utils')	null
+test/res.send.js	61	8	res.send(1000);	;
+test/res.send.js	7	14	require('supertest')	null
+test/res.send.js	73	16	express()	null
+test/res.send.js	76	8	res.send('<p>hey</p>');	;
+test/res.send.js	8	12	require('./support/utils')	null
+test/res.send.js	86	16	express()	null
+test/res.send.js	89	18	Array(1000)	null
+test/res.send.js	90	8	res.send(str);	;
+test/res.sendFile.js	10	17	require('on-finished')	null
+test/res.sendFile.js	104	16	createApp(path.resolve(fixtures, 'does-no-exist'))	null
+test/res.sendFile.js	108	8	res.send('no!');	;
+test/res.sendFile.js	11	11	require('node:path')	null
+test/res.sendFile.js	117	16	createApp(path.resolve(__dirname, 'fixtures/name.txt'))	null
+test/res.sendFile.js	12	15	path.join(__dirname, 'fixtures')	null
+test/res.sendFile.js	126	16	createApp(path.resolve(__dirname, 'fixtures/.name'))	null
+test/res.sendFile.js	13	12	require('./support/utils')	null
+test/res.sendFile.js	134	16	express()	null
+test/res.sendFile.js	137	8	res.contentType('application/x-bogus');	;
+test/res.sendFile.js	138	8	res.sendFile(path.resolve(fixtures, 'name.txt'));	;
+test/res.sendFile.js	148	16	express()	null
+test/res.sendFile.js	149	15	after(2, done)	null
+test/res.sendFile.js	154	10	res.sendFile(path.resolve(fixtures, 'name.txt'));	;
+test/res.sendFile.js	167	19	app.listen()	null
+test/res.sendFile.js	168	17	request(server)	null
+test/res.sendFile.js	178	15	after(2, done)	null
+test/res.sendFile.js	179	16	createApp(path.resolve(fixtures, 'name.txt'), cb)	null
+test/res.sendFile.js	18	16	createApp()	null
+test/res.sendFile.js	187	15	after(2, done)	null
+test/res.sendFile.js	188	16	express()	null
+test/res.sendFile.js	201	19	app.listen()	null
+test/res.sendFile.js	202	17	request(server)	null
+test/res.sendFile.js	210	15	after(2, done)	null
+test/res.sendFile.js	211	16	express()	null
+test/res.sendFile.js	224	19	app.listen()	null
+test/res.sendFile.js	225	17	request(server)	null
+test/res.sendFile.js	233	16	express()	null
+test/res.sendFile.js	234	15	after(2, done)	null
+test/res.sendFile.js	237	8	res.sendFile(path.resolve(fixtures, 'name.txt'), cb);	;
+test/res.sendFile.js	246	16	express()	null
+test/res.sendFile.js	247	15	after(3, done)	null
+test/res.sendFile.js	250	8	res.sendFile(path.resolve(fixtures, 'name.txt'), cb);	;
+test/res.sendFile.js	257	24	cb(err)	null
+test/res.sendFile.js	257	8	if (err) return cb(err);	;
+test/res.sendFile.js	26	16	createApp(42)	null
+test/res.sendFile.js	267	16	express()	null
+test/res.sendFile.js	282	18	express()	null
+test/res.sendFile.js	283	17	after(2, done)	null
+test/res.sendFile.js	287	34	new AsyncLocalStorage()	null
+test/res.sendFile.js	293	28	cb(err)	null
+test/res.sendFile.js	295	24	req.asyncLocalStorage.getStore()	null
+test/res.sendFile.js	3	12	require('after')	null
+test/res.sendFile.js	309	18	express()	null
+test/res.sendFile.js	313	34	new AsyncLocalStorage()	null
+test/res.sendFile.js	319	24	req.asyncLocalStorage.getStore()	null
+test/res.sendFile.js	34	16	createApp('name.txt')	null
+test/res.sendFile.js	349	20	express()	null
+test/res.sendFile.js	366	20	express()	null
+test/res.sendFile.js	383	20	express()	null
+test/res.sendFile.js	399	20	express()	null
+test/res.sendFile.js	4	13	require('node:assert')	null
+test/res.sendFile.js	418	20	express()	null
+test/res.sendFile.js	42	16	createApp(path.resolve(fixtures, 'name.txt'))	null
+test/res.sendFile.js	436	20	express()	null
+test/res.sendFile.js	456	20	express()	null
+test/res.sendFile.js	474	20	express()	null
+test/res.sendFile.js	492	20	express()	null
+test/res.sendFile.js	5	24	require('node:async_hooks')	null
+test/res.sendFile.js	50	16	createApp(path.resolve(fixtures, '% of dogs.txt'))	null
+test/res.sendFile.js	511	18	express()	null
+test/res.sendFile.js	531	18	express()	null
+test/res.sendFile.js	550	18	express()	null
+test/res.sendFile.js	568	18	express()	null
+test/res.sendFile.js	58	16	createApp(path.resolve(fixtures, 'name.txt'))	null
+test/res.sendFile.js	589	20	express()	null
+test/res.sendFile.js	6	19	require('node:buffer')	null
+test/res.sendFile.js	607	20	express()	null
+test/res.sendFile.js	627	20	express()	null
+test/res.sendFile.js	643	20	express()	null
+test/res.sendFile.js	653	39	new Date(Date.now() + 99999)	null
+test/res.sendFile.js	660	20	express()	null
+test/res.sendFile.js	67	16	createApp(path.resolve(fixtures, 'name.txt'))	null
+test/res.sendFile.js	676	20	express()	null
+test/res.sendFile.js	686	39	new Date(Date.now() + 99999)	null
+test/res.sendFile.js	696	18	express()	null
+test/res.sendFile.js	712	18	express()	null
+test/res.sendFile.js	728	18	express()	null
+test/res.sendFile.js	73	24	done(err)	null
+test/res.sendFile.js	73	8	if (err) return done(err);	;
+test/res.sendFile.js	744	18	express()	null
+test/res.sendFile.js	761	20	express()	null
+test/res.sendFile.js	780	20	express()	null
+test/res.sendFile.js	796	20	express()	null
+test/res.sendFile.js	8	14	require('../')	null
+test/res.sendFile.js	812	20	express()	null
+test/res.sendFile.js	828	20	express()	null
+test/res.sendFile.js	83	16	createApp(path.resolve(fixtures, 'name.txt'))	null
+test/res.sendFile.js	847	18	express()	null
+test/res.sendFile.js	861	18	express()	null
+test/res.sendFile.js	875	18	express()	null
+test/res.sendFile.js	889	18	express()	null
+test/res.sendFile.js	9	14	require('supertest')	null
+test/res.sendFile.js	906	12	express()	null
+test/res.sendFile.js	909	4	res.sendFile(path, options, fn);	;
+test/res.sendFile.js	91	8	assert(res.headers.etag === undefined);	;
+test/res.sendFile.js	912	9	app	null
+test/res.sendFile.js	96	16	createApp(path.resolve(fixtures, 'blog'))	null
+test/res.sendStatus.js	12	8	res.sendStatus(201);	;
+test/res.sendStatus.js	21	16	express()	null
+test/res.sendStatus.js	24	8	res.sendStatus(599);	;
+test/res.sendStatus.js	3	14	require('..')	null
+test/res.sendStatus.js	33	16	express()	null
+test/res.sendStatus.js	4	14	require('supertest')	null
+test/res.sendStatus.js	9	16	express()	null
+test/res.set.js	111	16	express()	null
+test/res.set.js	114	8	res.set({ 'X-Number': 123 });	;
+test/res.set.js	115	8	res.end(typeof res.get('X-Number'));	;
+test/res.set.js	12	8	res.set('Content-Type', 'text/x-foo; charset=utf-8').end();	;
+test/res.set.js	22	16	express()	null
+test/res.set.js	25	8	res.set('X-Number', 123);	;
+test/res.set.js	26	8	res.end(typeof res.get('X-Number'));	;
+test/res.set.js	3	14	require('..')	null
+test/res.set.js	38	16	express()	null
+test/res.set.js	4	14	require('supertest')	null
+test/res.set.js	41	8	res.set('Set-Cookie', ["type=ninja", "language=javascript"]);	;
+test/res.set.js	42	8	res.send(res.get('Set-Cookie'));	;
+test/res.set.js	51	16	express()	null
+test/res.set.js	54	8	res.set('X-Numbers', [123, 456]);	;
+test/res.set.js	55	8	res.end(JSON.stringify(res.get('X-Numbers')));	;
+test/res.set.js	65	16	express()	null
+test/res.set.js	68	8	res.set('Content-Type', 'text/html; charset=lol');	;
+test/res.set.js	69	8	res.end();	;
+test/res.set.js	79	16	express()	null
+test/res.set.js	9	16	express()	null
+test/res.set.js	94	16	express()	null
+test/res.status.js	107	18	express()	null
+test/res.status.js	12	8	res.status(200).end();	;
+test/res.status.js	121	18	express()	null
+test/res.status.js	124	10	res.status(99).end();	;
+test/res.status.js	133	18	express()	null
+test/res.status.js	136	10	res.status(1000).end();	;
+test/res.status.js	145	18	express()	null
+test/res.status.js	148	10	res.status(200.1).end();	;
+test/res.status.js	157	18	express()	null
+test/res.status.js	160	10	res.status(undefined).end();	;
+test/res.status.js	169	18	express()	null
+test/res.status.js	172	10	res.status(null).end();	;
+test/res.status.js	181	18	express()	null
+test/res.status.js	184	10	res.status("200").end();	;
+test/res.status.js	193	18	express()	null
+test/res.status.js	196	10	res.status(NaN).end();	;
+test/res.status.js	2	16	require('../.')	null
+test/res.status.js	23	18	express()	null
+test/res.status.js	3	16	require('supertest')	null
+test/res.status.js	35	18	express()	null
+test/res.status.js	47	18	express()	null
+test/res.status.js	59	18	express()	null
+test/res.status.js	71	18	express()	null
+test/res.status.js	83	18	express()	null
+test/res.status.js	9	16	express()	null
+test/res.status.js	95	18	express()	null
+test/res.type.js	100	18	express()	null
+test/res.type.js	103	10	res.type('file@test.json').end('{"test": true}');	;
+test/res.type.js	12	8	res.type('foo.js').end('var name = "tj";');	;
+test/res.type.js	22	16	express()	null
+test/res.type.js	25	8	res.type('rawr').end('var name = "tj";');	;
+test/res.type.js	3	14	require('../')	null
+test/res.type.js	34	16	express()	null
+test/res.type.js	4	14	require('supertest')	null
+test/res.type.js	48	18	express()	null
+test/res.type.js	51	10	res.type('').end('test');	;
+test/res.type.js	61	18	express()	null
+test/res.type.js	64	10	res.type('.json').end('{"test": true}');	;
+test/res.type.js	74	18	express()	null
+test/res.type.js	77	10	res.type('file.tar.gz').end('compressed');	;
+test/res.type.js	87	18	express()	null
+test/res.type.js	9	16	express()	null
+test/res.type.js	90	10	res.type('FILE.JSON').end('{"test": true}');	;
+test/res.vary.js	10	16	express()	null
+test/res.vary.js	13	8	res.vary();	;
+test/res.vary.js	14	8	res.end();	;
+test/res.vary.js	25	16	express()	null
+test/res.vary.js	28	8	res.vary([]);	;
+test/res.vary.js	29	8	res.end();	;
+test/res.vary.js	3	14	require('..')	null
+test/res.vary.js	4	14	require('supertest')	null
+test/res.vary.js	41	16	express()	null
+test/res.vary.js	44	8	res.vary(['Accept', 'Accept-Language', 'Accept-Encoding']);	;
+test/res.vary.js	45	8	res.end();	;
+test/res.vary.js	5	12	require('./support/utils')	null
+test/res.vary.js	57	16	express()	null
+test/res.vary.js	60	8	res.vary('Accept');	;
+test/res.vary.js	61	8	res.end();	;
+test/res.vary.js	73	16	express()	null
+test/res.vary.js	76	8	res.vary('Accept');	;
+test/res.vary.js	77	8	res.vary('Accept-Encoding');	;
+test/res.vary.js	78	8	res.vary('Accept-Encoding');	;
+test/res.vary.js	79	8	res.vary('Accept-Encoding');	;
+test/res.vary.js	80	8	res.vary('Accept');	;
+test/res.vary.js	81	8	res.end();	;
+test/support/tmpl.js	1	9	require('node:fs')	null
+test/support/tmpl.js	13	12	str.replace(variableRegExp, generateVariableLookup(options))	null
+test/support/tmpl.js	19	4	callback(err, str);	;
+test/support/tmpl.js	22	2	fs.readFile(fileName, 'utf8', onReadFile);	;
+test/support/tmpl.js	27	16	path.split('.')	null
+test/support/tmpl.js	34	11	value	null
+test/support/tmpl.js	8	6	callback(err);	;
+test/support/utils.js	7	13	require('node:assert')	null
+test/support/utils.js	71	4	assert.ok(!(header.toLowerCase() in res.headers), 'should not have header ' + header);	;
+test/support/utils.js	76	9	versionString.split('.')[0]	null
+test/support/utils.js	8	19	require('node:buffer')	null
+test/utils.js	103	4	assert.strictEqual(utils.compileETag('strong')("express"), utils.etag("express"));	;
+test/utils.js	104	4	assert.strictEqual(utils.compileETag('weak')("express"), utils.wetag("express"));	;
+test/utils.js	108	4	assert.throws(() => utils.compileETag('foo'), TypeError);	;
+test/utils.js	112	4	assert.throws(() => utils.compileETag([]), TypeError);	;
+test/utils.js	113	4	assert.throws(() => utils.compileETag({}), TypeError);	;
+test/utils.js	3	13	require('node:assert')	null
+test/utils.js	31	19	utils.normalizeType('text/plain;invalid')	null
+test/utils.js	4	19	require('node:buffer')	null
+test/utils.js	40	19	utils.normalizeType('unknown-extension-xyz')	null
+test/utils.js	5	12	require('../lib/utils')	null
+test/utils.js	50	4	assert.strictEqual(utils.setCharset(), undefined);	;
+test/utils.js	54	4	assert.strictEqual(utils.setCharset('text/html'), 'text/html');	;
+test/utils.js	58	4	assert.strictEqual(utils.setCharset('text/html; charset=utf-8'), 'text/html; charset=utf-8');	;
+test/utils.js	62	4	assert.strictEqual(utils.setCharset('text/html', 'utf-8'), 'text/html; charset=utf-8');	;
+test/utils.js	66	4	assert.strictEqual(utils.setCharset('text/html; charset=iso-8859-1', 'utf-8'), 'text/html; charset=utf-8');	;
+test/utils.js	94	15	utils.compileETag(true)	null
+test/utils.js	95	4	assert.strictEqual(fn('express!'), utils.wetag('express!'));	;
+test/utils.js	99	4	assert.strictEqual(utils.compileETag(false), undefined);	;

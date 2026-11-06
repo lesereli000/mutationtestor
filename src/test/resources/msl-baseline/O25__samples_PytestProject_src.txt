@@ -1,0 +1,1 @@
+DemoLogicalOrToAnd.py	3	17	or	and

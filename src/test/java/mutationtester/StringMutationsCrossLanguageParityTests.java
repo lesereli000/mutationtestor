@@ -15,7 +15,7 @@ import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 
 /**
- * StringMutation.txt (T01-T02) is written against C#'s string.IsNullOrEmpty.
+ * specs/StringMutation.spec (T01-T02) is written against C#'s string.IsNullOrEmpty.
  * Every language has the same check: as a library call (C#, Java's Guava and
  * Commons) or written out (s == null || s.isEmpty(), s is None or s == "",
  * (or (not s) (string=? s ""))). Each replacement uses the language's own
@@ -46,7 +46,7 @@ class StringMutationsCrossLanguageParityTests {
                 "#lang racket/base\n(define (blank s)\n  (or (not s) (string=? s \"\")))\n");
 
         List<MutationPoint> points = Main.scanForMutations(
-                tempDir, Mutator.MutatorType.CUSTOM, "StringMutation.txt");
+                tempDir, "specs/StringMutation.spec");
 
         assertEquals(s("return (s != null);", "return (!\"\".equals(s));",
                        "return (t != null);", "return (!\"\".equals(t));"),

@@ -1,0 +1,13 @@
+src/CSProject/DemoNotEqualToEqual.cs	10	18	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	10	30	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	14	22	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	18	17	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	25	14	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	36	14	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	48	15	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	48	27	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	6	17	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	68	28	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	69	28	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	70	29	!=	==
+src/CSProject/DemoNotEqualToEqual.cs	70	43	!=	==

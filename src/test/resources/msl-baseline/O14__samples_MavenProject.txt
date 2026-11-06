@@ -1,0 +1,5 @@
+src/main/java/DemoLogicalAndToOr.java	4	17	>	>=
+src/main/java/DemoLogicalAndToOr.java	4	26	>	>=
+src/main/java/DemoLogicalOrToAnd.java	4	17	>	>=
+src/main/java/DemoLogicalOrToAnd.java	4	26	>	>=
+src/main/java/DemoPlusToMinus.java	35	13	>	>=

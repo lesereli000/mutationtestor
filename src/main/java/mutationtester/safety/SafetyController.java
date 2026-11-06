@@ -14,6 +14,8 @@ public final class SafetyController {
     private final BufferedReader input;
     private final PrintStream output;
     private final OpenAiSafetyReviewer reviewer;
+    // unattended_safety=run_unknown: with no terminal, UNKNOWN mutants are tested (REVIEW and BLOCK still skipped).
+    private volatile boolean runUnknownUnattended;
 
     public SafetyController(BufferedReader input, PrintStream output) {
         this(input, output, null);
@@ -37,6 +39,10 @@ public final class SafetyController {
         return new SafetyController(input, output, OpenAiSafetyReviewer.create(key, model));
     }
 
+    public void setRunUnknownUnattended(boolean runUnknown) {
+        this.runUnknownUnattended = runUnknown;
+    }
+
     public record Outcome(SafetyAction action, SafetyAssessment assessment) {}
 
     public SafetyAction decide(MutationPoint point, String original, String mutated) {
@@ -57,6 +63,10 @@ public final class SafetyController {
         output.println("Original line: " + lineAt(original, point.getLineNumber()));
         output.println("Mutated line:  " + lineAt(mutated, point.getLineNumber()));
         if (input == null) {
+            if (runUnknownUnattended && assessment.level() == SafetyLevel.UNKNOWN) {
+                output.println("No interactive terminal; unattended_safety=run_unknown, so testing this mutant.");
+                return new Outcome(SafetyAction.CONTINUE, assessment);
+            }
             output.println("No interactive terminal; skipping this mutant.");
             return new Outcome(SafetyAction.SKIP, assessment);
         }

@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 echo ========================================
 echo JavaScript Mutation Testing
 echo Browser-Based Manual Testing
@@ -39,16 +40,10 @@ echo Tests PASSED - Starting Mutation Testing
 echo ========================================
 echo.
 
-REM Update config and run first mutation type
-echo source_code_directory=src > config.txt
-echo mutator_type=NLT_INTEGER_TO_FLOAT >> config.txt
-echo compile_command=echo "No compilation" >> config.txt
-echo test_command=start browser-tests\test-runner.html ^&^& timeout /t 3 ^&^& exit 0 >> config.txt
-
-cd ..\..
-java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject samples/JSProject/config.txt
-
-cd samples\JSProject
+REM Run the operator spec from the repository root
+pushd ..\..
+java -jar target\MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JSProject configs/samples/javascript-manual.config
+popd
 echo.
 echo ========================================
 echo Mutation testing complete!

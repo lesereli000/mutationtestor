@@ -1,0 +1,5 @@
+src/Demo.js	8	9	>	>=
+src/DemoLogicalAndToOr.js	3	11	>	>=
+src/DemoLogicalAndToOr.js	3	20	>	>=
+src/DemoLogicalOrToAnd.js	3	11	>	>=
+src/DemoLogicalOrToAnd.js	3	20	>	>=

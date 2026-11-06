@@ -17,7 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
-import mutationtester.msl.MSLExpressionFactory;
+import mutationtester.msl.MSLPatternParser;
 
 /**
  * Presentation-friendly regression demo for the universal MSL operator syntax.
@@ -73,7 +73,7 @@ class MSLOperatorUniversalityDemoTests {
                 + "End\n");
 
         List<MutationPoint> points = Main.scanForMutations(
-                tempDir, Mutator.MutatorType.CUSTOM, spec.toString());
+                tempDir, spec.toString());
 
         System.out.println();
         System.out.println("=== SECTION 2: NEW SOLUTION ===");
@@ -94,9 +94,9 @@ class MSLOperatorUniversalityDemoTests {
     @DisplayName("NEW SOLUTION: noncanonical aliases are rejected with guidance")
     void showAliasesAreRejected() {
         IllegalArgumentException upperAlias = assertThrows(IllegalArgumentException.class,
-                () -> MSLExpressionFactory.parse("{quantity} LE {quantity}"));
+                () -> MSLPatternParser.parse("{quantity} LE {quantity}"));
         IllegalArgumentException lowerAlias = assertThrows(IllegalArgumentException.class,
-                () -> MSLExpressionFactory.parse("{quantity} leq {quantity}"));
+                () -> MSLPatternParser.parse("{quantity} leq {quantity}"));
 
         System.out.println();
         System.out.println("=== SECTION 3: INVALID ALIASES ===");

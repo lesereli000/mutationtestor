@@ -1,0 +1,7 @@
+src/CSProject/DemoEqualToNotEqual.cs	10	24	&&	||
+src/CSProject/DemoEqualToNotEqual.cs	48	21	&&	||
+src/CSProject/DemoEqualToNotEqual.cs	71	35	&&	||
+src/CSProject/DemoLogicalAndToOr.cs	7	21	&&	||
+src/CSProject/DemoNotEqualToEqual.cs	10	24	&&	||
+src/CSProject/DemoNotEqualToEqual.cs	48	21	&&	||
+src/CSProject/DemoNotEqualToEqual.cs	70	36	&&	||

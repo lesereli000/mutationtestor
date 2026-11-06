@@ -1,0 +1,50 @@
+# Publishes the tool as a single jar on a GitHub Release, so projects can run
+# it in CI without building it. Push a tag to release:
+#
+#   git tag v0.1.0-rc.1 && git push origin v0.1.0-rc.1
+#
+# Tags with a "-" (v0.1.0-rc.1) become prereleases. A tag push runs this file
+# as it is in the tagged commit, so a branch can be released for testing
+# before it is merged.
+
+name: Release jar
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # MutantExecutionTests runs the sample projects with every language's
+      # toolchain (Python, Racket, Node, .NET), which this runner doesn't have.
+      - name: Test
+        run: mvn -B --no-transfer-progress test -Dtest='!MutantExecutionTests'
+
+      - name: Build jar
+        run: mvn -B --no-transfer-progress package -DskipTests
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          jar="mutationtester-$TAG.jar"
+          cp target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar "$jar"
+          flags=(--title "$TAG" --generate-notes)
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" "$jar" "${flags[@]}"

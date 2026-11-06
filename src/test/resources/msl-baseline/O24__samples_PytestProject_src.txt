@@ -1,0 +1,7 @@
+DemoEqualToNotEqual.py	41	16	and	or
+DemoEqualToNotEqual.py	6	20	and	or
+DemoEqualToNotEqual.py	63	19	and	or
+DemoLogicalAndToOr.py	3	17	and	or
+DemoNotEqualToEqual.py	40	16	and	or
+DemoNotEqualToEqual.py	6	20	and	or
+DemoNotEqualToEqual.py	61	20	and	or

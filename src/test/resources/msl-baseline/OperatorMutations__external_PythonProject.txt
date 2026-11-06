@@ -1,0 +1,1986 @@
+examples/aliases/aliases.py	45	14	is not	is
+examples/aliases/aliases.py	66	26	==	!=
+examples/aliases/aliases.py	83	13	is	is not
+examples/completion/completion.py	44	31	or	and
+examples/complex/complex/cli.py	35	40	and	or
+examples/complex/complex/cli.py	59	12	is not	is
+examples/complex/complex/commands/cmd_init.py	11	12	is	is not
+examples/imagepipe/imagepipe.py	114	37	+	-
+examples/imagepipe/imagepipe.py	140	22	or	and
+examples/imagepipe/imagepipe.py	140	47	or	and
+examples/imagepipe/imagepipe.py	156	18	is not	is
+examples/imagepipe/imagepipe.py	158	38	-	+
+examples/imagepipe/imagepipe.py	166	13	is	is not
+examples/imagepipe/imagepipe.py	179	13	is	is not
+examples/imagepipe/imagepipe.py	198	18	is not	is
+examples/imagepipe/imagepipe.py	202	16	is not	is
+examples/imagepipe/imagepipe.py	234	38	!=	==
+examples/imagepipe/imagepipe.py	275	16	is	is not
+examples/imagepipe/imagepipe.py	276	17	is not	is
+examples/imagepipe/imagepipe.py	282	21	==	!=
+examples/imagepipe/imagepipe.py	282	31	or	and
+examples/imagepipe/imagepipe.py	91	21	==	!=
+examples/repo/repo.py	141	19	is	is not
+examples/repo/repo.py	79	12	is	is not
+examples/repo/repo.py	80	40	or	and
+examples/termui/termui.py	122	15	is not	is
+examples/termui/termui.py	149	16	==	!=
+examples/termui/termui.py	154	20	==	!=
+examples/termui/termui.py	156	22	==	!=
+examples/termui/termui.py	160	18	==	!=
+examples/termui/termui.py	164	20	==	!=
+examples/termui/termui.py	168	18	==	!=
+examples/termui/termui.py	43	25	*	/
+examples/termui/termui.py	47	31	>	<=
+examples/termui/termui.py	47	31	>	>=
+examples/termui/termui.py	57	16	is not	is
+examples/termui/termui.py	90	24	*	/
+examples/termui/termui.py	90	30	/	*
+examples/termui/termui.py	90	36	-	+
+examples/validation/validation.py	41	11	is not	is
+examples/validation/validation.py	41	23	and	or
+examples/validation/validation.py	41	31	!=	==
+examples/validation/validation.py	7	13	<	<=
+examples/validation/validation.py	7	13	<	>=
+examples/validation/validation.py	7	17	or	and
+examples/validation/validation.py	7	26	%	*
+examples/validation/validation.py	7	30	!=	==
+src/click/__init__.py	102	12	==	!=
+src/click/__init__.py	113	12	==	!=
+src/click/__init__.py	80	12	==	!=
+src/click/__init__.py	91	12	==	!=
+src/click/_compat.py	108	13	is not	is
+src/click/_compat.py	117	13	is not	is
+src/click/_compat.py	129	13	is not	is
+src/click/_compat.py	142	13	is not	is
+src/click/_compat.py	15	53	|	&
+src/click/_compat.py	173	59	|	&
+src/click/_compat.py	185	11	is not	is
+src/click/_compat.py	185	23	and	or
+src/click/_compat.py	191	59	|	&
+src/click/_compat.py	203	11	is not	is
+src/click/_compat.py	203	23	and	or
+src/click/_compat.py	21	18	|	&
+src/click/_compat.py	215	63	or	and
+src/click/_compat.py	218	67	|	&
+src/click/_compat.py	22	16	|	&
+src/click/_compat.py	224	24	==	!=
+src/click/_compat.py	224	33	or	and
+src/click/_compat.py	224	43	is	is not
+src/click/_compat.py	224	51	and	or
+src/click/_compat.py	224	68	is not	is
+src/click/_compat.py	228	36	|	&
+src/click/_compat.py	228	56	|	&
+src/click/_compat.py	235	6	and	or
+src/click/_compat.py	240	18	|	&
+src/click/_compat.py	241	16	|	&
+src/click/_compat.py	243	54	|	&
+src/click/_compat.py	253	69	and	or
+src/click/_compat.py	254	21	is	is not
+src/click/_compat.py	254	29	and	or
+src/click/_compat.py	26	16	is	is not
+src/click/_compat.py	263	34	is	is not
+src/click/_compat.py	270	14	is	is not
+src/click/_compat.py	28	14	is	is not
+src/click/_compat.py	286	18	|	&
+src/click/_compat.py	287	16	|	&
+src/click/_compat.py	302	18	|	&
+src/click/_compat.py	303	16	|	&
+src/click/_compat.py	318	14	is	is not
+src/click/_compat.py	325	14	is	is not
+src/click/_compat.py	332	14	is	is not
+src/click/_compat.py	337	33	|	&
+src/click/_compat.py	337	60	|	&
+src/click/_compat.py	339	10	is not	is
+src/click/_compat.py	344	34	|	&
+src/click/_compat.py	344	61	|	&
+src/click/_compat.py	346	10	is not	is
+src/click/_compat.py	351	34	|	&
+src/click/_compat.py	351	61	|	&
+src/click/_compat.py	353	10	is not	is
+src/click/_compat.py	359	14	|	&
+src/click/_compat.py	359	33	|	&
+src/click/_compat.py	361	18	|	&
+src/click/_compat.py	362	16	|	&
+src/click/_compat.py	372	18	|	&
+src/click/_compat.py	374	18	|	&
+src/click/_compat.py	375	16	|	&
+src/click/_compat.py	383	29	==	!=
+src/click/_compat.py	417	18	|	&
+src/click/_compat.py	421	22	|	&
+src/click/_compat.py	421	35	|	&
+src/click/_compat.py	429	49	<<	>>
+src/click/_compat.py	43	44	==	!=
+src/click/_compat.py	432	60	is	is not
+src/click/_compat.py	435	23	==	!=
+src/click/_compat.py	435	39	or	and
+src/click/_compat.py	436	24	==	!=
+src/click/_compat.py	437	16	and	or
+src/click/_compat.py	437	28	==	!=
+src/click/_compat.py	438	16	and	or
+src/click/_compat.py	439	16	and	or
+src/click/_compat.py	444	12	is not	is
+src/click/_compat.py	478	38	|	&
+src/click/_compat.py	479	33	|	&
+src/click/_compat.py	480	26	|	&
+src/click/_compat.py	482	35	is not	is
+src/click/_compat.py	50	43	or	and
+src/click/_compat.py	500	24	|	&
+src/click/_compat.py	500	51	|	&
+src/click/_compat.py	502	13	is	is not
+src/click/_compat.py	503	18	is	is not
+src/click/_compat.py	509	34	and	or
+src/click/_compat.py	516	34	and	or
+src/click/_compat.py	526	57	|	&
+src/click/_compat.py	535	18	is not	is
+src/click/_compat.py	564	52	or	and
+src/click/_compat.py	567	35	|	&
+src/click/_compat.py	567	55	|	&
+src/click/_compat.py	568	18	|	&
+src/click/_compat.py	584	38	|	&
+src/click/_compat.py	586	29	|	&
+src/click/_compat.py	589	27	|	&
+src/click/_compat.py	592	18	is	is not
+src/click/_compat.py	599	14	is not	is
+src/click/_compat.py	60	22	|	&
+src/click/_compat.py	61	20	|	&
+src/click/_compat.py	622	48	|	&
+src/click/_compat.py	622	60	|	&
+src/click/_termui_impl.py	100	37	==	!=
+src/click/_termui_impl.py	102	18	is	is not
+src/click/_termui_impl.py	107	22	==	!=
+src/click/_termui_impl.py	109	20	is	is not
+src/click/_termui_impl.py	110	22	is	is not
+src/click/_termui_impl.py	122	28	|	&
+src/click/_termui_impl.py	124	29	|	&
+src/click/_termui_impl.py	126	29	|	&
+src/click/_termui_impl.py	135	38	|	&
+src/click/_termui_impl.py	136	33	|	&
+src/click/_termui_impl.py	137	26	|	&
+src/click/_termui_impl.py	156	23	or	and
+src/click/_termui_impl.py	165	28	/	*
+src/click/_termui_impl.py	165	49	or	and
+src/click/_termui_impl.py	165	55	or	and
+src/click/_termui_impl.py	171	29	/	*
+src/click/_termui_impl.py	175	23	is not	is
+src/click/_termui_impl.py	175	35	and	or
+src/click/_termui_impl.py	176	43	*	/
+src/click/_termui_impl.py	176	58	-	+
+src/click/_termui_impl.py	182	24	%	*
+src/click/_termui_impl.py	184	24	%	*
+src/click/_termui_impl.py	186	22	%	*
+src/click/_termui_impl.py	188	17	>	<=
+src/click/_termui_impl.py	188	17	>	>=
+src/click/_termui_impl.py	202	23	is not	is
+src/click/_termui_impl.py	207	31	*	/
+src/click/_termui_impl.py	210	23	is not	is
+src/click/_termui_impl.py	211	38	*	/
+src/click/_termui_impl.py	212	33	*	/
+src/click/_termui_impl.py	213	35	*	/
+src/click/_termui_impl.py	213	49	-	+
+src/click/_termui_impl.py	215	33	*	/
+src/click/_termui_impl.py	217	41	*	/
+src/click/_termui_impl.py	217	55	or	and
+src/click/_termui_impl.py	218	39	!=	==
+src/click/_termui_impl.py	221	43	*	/
+src/click/_termui_impl.py	221	70	/	*
+src/click/_termui_impl.py	221	76	+	-
+src/click/_termui_impl.py	222	24	*	/
+src/click/_termui_impl.py	232	23	is not	is
+src/click/_termui_impl.py	232	35	and	or
+src/click/_termui_impl.py	232	52	is	is not
+src/click/_termui_impl.py	239	25	and	or
+src/click/_termui_impl.py	239	44	and	or
+src/click/_termui_impl.py	241	31	is not	is
+src/click/_termui_impl.py	243	25	is not	is
+src/click/_termui_impl.py	248	12	%	*
+src/click/_termui_impl.py	261	31	!=	==
+src/click/_termui_impl.py	274	66	-	+
+src/click/_termui_impl.py	275	25	<	<=
+src/click/_termui_impl.py	275	25	<	>=
+src/click/_termui_impl.py	275	37	and	or
+src/click/_termui_impl.py	275	56	is not	is
+src/click/_termui_impl.py	282	26	is not	is
+src/click/_termui_impl.py	288	26	is	is not
+src/click/_termui_impl.py	288	34	or	and
+src/click/_termui_impl.py	288	52	<	<=
+src/click/_termui_impl.py	288	52	<	>=
+src/click/_termui_impl.py	292	38	-	+
+src/click/_termui_impl.py	296	16	!=	==
+src/click/_termui_impl.py	303	23	is not	is
+src/click/_termui_impl.py	303	35	and	or
+src/click/_termui_impl.py	303	48	>=	<
+src/click/_termui_impl.py	303	48	>=	>
+src/click/_termui_impl.py	306	24	-	+
+src/click/_termui_impl.py	306	41	<	<=
+src/click/_termui_impl.py	306	41	<	>=
+src/click/_termui_impl.py	315	32	-	+
+src/click/_termui_impl.py	315	46	/	*
+src/click/_termui_impl.py	317	31	-	+
+src/click/_termui_impl.py	319	33	+	-
+src/click/_termui_impl.py	321	37	is not	is
+src/click/_termui_impl.py	323	51	|	&
+src/click/_termui_impl.py	339	24	is not	is
+src/click/_termui_impl.py	344	37	>=	<
+src/click/_termui_impl.py	344	37	>=	>
+src/click/_termui_impl.py	378	45	==	!=
+src/click/_termui_impl.py	400	16	|	&
+src/click/_termui_impl.py	401	39	|	&
+src/click/_termui_impl.py	407	14	is	is not
+src/click/_termui_impl.py	41	23	|	&
+src/click/_termui_impl.py	410	29	or	and
+src/click/_termui_impl.py	425	11	or	and
+src/click/_termui_impl.py	431	31	|	&
+src/click/_termui_impl.py	45	43	is not	is
+src/click/_termui_impl.py	456	38	|	&
+src/click/_termui_impl.py	457	33	|	&
+src/click/_termui_impl.py	471	40	or	and
+src/click/_termui_impl.py	48	11	==	!=
+src/click/_termui_impl.py	482	40	or	and
+src/click/_termui_impl.py	499	13	is	is not
+src/click/_termui_impl.py	499	21	and	or
+src/click/_termui_impl.py	499	34	==	!=
+src/click/_termui_impl.py	504	31	or	and
+src/click/_termui_impl.py	507	13	is	is not
+src/click/_termui_impl.py	511	24	+	-
+src/click/_termui_impl.py	560	38	|	&
+src/click/_termui_impl.py	561	33	|	&
+src/click/_termui_impl.py	571	40	or	and
+src/click/_termui_impl.py	582	40	or	and
+src/click/_termui_impl.py	59	35	|	&
+src/click/_termui_impl.py	594	13	is	is not
+src/click/_termui_impl.py	60	20	|	&
+src/click/_termui_impl.py	611	34	|	&
+src/click/_termui_impl.py	615	13	is	is not
+src/click/_termui_impl.py	623	20	|	&
+src/click/_termui_impl.py	624	36	|	&
+src/click/_termui_impl.py	634	23	is not	is
+src/click/_termui_impl.py	646	29	is not	is
+src/click/_termui_impl.py	656	32	|	&
+src/click/_termui_impl.py	667	41	+	-
+src/click/_termui_impl.py	67	27	|	&
+src/click/_termui_impl.py	671	25	!=	==
+src/click/_termui_impl.py	681	31	|	&
+src/click/_termui_impl.py	681	53	|	&
+src/click/_termui_impl.py	686	29	|	&
+src/click/_termui_impl.py	686	44	|	&
+src/click/_termui_impl.py	688	29	|	&
+src/click/_termui_impl.py	688	37	|	&
+src/click/_termui_impl.py	688	49	|	&
+src/click/_termui_impl.py	688	64	|	&
+src/click/_termui_impl.py	688	72	|	&
+src/click/_termui_impl.py	69	38	|	&
+src/click/_termui_impl.py	69	51	|	&
+src/click/_termui_impl.py	69	59	|	&
+src/click/_termui_impl.py	691	16	is	is not
+src/click/_termui_impl.py	692	24	|	&
+src/click/_termui_impl.py	696	20	and	or
+src/click/_termui_impl.py	70	19	|	&
+src/click/_termui_impl.py	71	23	|	&
+src/click/_termui_impl.py	715	75	-	+
+src/click/_termui_impl.py	72	20	|	&
+src/click/_termui_impl.py	722	33	and	or
+src/click/_termui_impl.py	722	60	==	!=
+src/click/_termui_impl.py	747	20	==	!=
+src/click/_termui_impl.py	790	54	or	and
+src/click/_termui_impl.py	798	51	and	or
+src/click/_termui_impl.py	798	66	and	or
+src/click/_termui_impl.py	807	10	==	!=
+src/click/_termui_impl.py	810	10	==	!=
+src/click/_termui_impl.py	810	20	and	or
+src/click/_termui_impl.py	813	10	==	!=
+src/click/_termui_impl.py	813	20	and	or
+src/click/_termui_impl.py	817	16	==	!=
+src/click/_termui_impl.py	85	32	or	and
+src/click/_termui_impl.py	87	16	is	is not
+src/click/_termui_impl.py	876	20	|	&
+src/click/_termui_impl.py	896	21	is not	is
+src/click/_termui_impl.py	905	20	and	or
+src/click/_termui_impl.py	92	20	is	is not
+src/click/_textwrap.py	103	31	-	+
+src/click/_textwrap.py	105	36	and	or
+src/click/_textwrap.py	105	59	==	!=
+src/click/_textwrap.py	105	65	and	or
+src/click/_textwrap.py	111	27	+	-
+src/click/_textwrap.py	111	31	<=	<
+src/click/_textwrap.py	111	31	<=	>
+src/click/_textwrap.py	118	22	and	or
+src/click/_textwrap.py	118	47	>	<=
+src/click/_textwrap.py	118	47	>	>=
+src/click/_textwrap.py	122	36	and	or
+src/click/_textwrap.py	122	49	and	or
+src/click/_textwrap.py	122	74	==	!=
+src/click/_textwrap.py	128	35	is	is not
+src/click/_textwrap.py	129	20	or	and
+src/click/_textwrap.py	129	34	+	-
+src/click/_textwrap.py	129	38	<	<=
+src/click/_textwrap.py	129	38	<	>=
+src/click/_textwrap.py	130	20	or	and
+src/click/_textwrap.py	132	24	or	and
+src/click/_textwrap.py	133	24	and	or
+src/click/_textwrap.py	133	40	==	!=
+src/click/_textwrap.py	134	24	and	or
+src/click/_textwrap.py	136	20	and	or
+src/click/_textwrap.py	136	32	<=	<
+src/click/_textwrap.py	136	32	<=	>
+src/click/_textwrap.py	138	40	+	-
+src/click/_textwrap.py	143	28	and	or
+src/click/_textwrap.py	143	40	+	-
+src/click/_textwrap.py	143	69	<=	<
+src/click/_textwrap.py	143	69	<=	>
+src/click/_textwrap.py	146	48	+	-
+src/click/_textwrap.py	154	52	+	-
+src/click/_textwrap.py	155	32	<=	<
+src/click/_textwrap.py	155	32	<=	>
+src/click/_textwrap.py	157	54	+	-
+src/click/_textwrap.py	159	44	+	-
+src/click/_textwrap.py	18	9	<=	<
+src/click/_textwrap.py	18	9	<=	>
+src/click/_textwrap.py	183	19	>	<=
+src/click/_textwrap.py	183	19	>	>=
+src/click/_textwrap.py	25	12	<	<=
+src/click/_textwrap.py	25	12	<	>=
+src/click/_textwrap.py	27	13	is not	is
+src/click/_textwrap.py	33	19	>=	<
+src/click/_textwrap.py	33	19	>=	>
+src/click/_textwrap.py	55	31	-	+
+src/click/_textwrap.py	82	22	<=	<
+src/click/_textwrap.py	82	22	<=	>
+src/click/_textwrap.py	84	26	is not	is
+src/click/_textwrap.py	85	30	>	<=
+src/click/_textwrap.py	85	30	>	>=
+src/click/_textwrap.py	89	32	+	-
+src/click/_textwrap.py	89	70	>	<=
+src/click/_textwrap.py	89	70	>	>=
+src/click/_winconsole.py	112	33	*	/
+src/click/_winconsole.py	120	35	|	&
+src/click/_winconsole.py	136	30	%	*
+src/click/_winconsole.py	142	49	//	/
+src/click/_winconsole.py	152	26	==	!=
+src/click/_winconsole.py	158	21	==	!=
+src/click/_winconsole.py	160	17	*	/
+src/click/_winconsole.py	169	17	==	!=
+src/click/_winconsole.py	171	19	==	!=
+src/click/_winconsole.py	178	79	//	/
+src/click/_winconsole.py	188	26	*	/
+src/click/_winconsole.py	190	25	==	!=
+src/click/_winconsole.py	190	30	and	or
+src/click/_winconsole.py	190	54	>	<=
+src/click/_winconsole.py	190	54	>	>=
+src/click/_winconsole.py	278	31	|	&
+src/click/_winconsole.py	278	51	|	&
+src/click/_winconsole.py	279	14	|	&
+src/click/_winconsole.py	281	19	is	is not
+src/click/_winconsole.py	282	8	or	and
+src/click/_winconsole.py	283	8	or	and
+src/click/_winconsole.py	284	8	or	and
+src/click/_winconsole.py	289	12	is	is not
+src/click/_winconsole.py	294	9	is	is not
+src/click/_winconsole.py	35	20	==	!=
+src/click/core.py	104	47	|	&
+src/click/core.py	119	35	|	&
+src/click/core.py	125	17	is	is not
+src/click/core.py	127	17	is not	is
+src/click/core.py	127	29	and	or
+src/click/core.py	127	41	is	is not
+src/click/core.py	131	17	is	is not
+src/click/core.py	309	24	|	&
+src/click/core.py	310	23	|	&
+src/click/core.py	311	19	|	&
+src/click/core.py	312	32	|	&
+src/click/core.py	313	53	|	&
+src/click/core.py	314	28	|	&
+src/click/core.py	315	31	|	&
+src/click/core.py	317	31	|	&
+src/click/core.py	318	38	|	&
+src/click/core.py	319	37	|	&
+src/click/core.py	320	37	|	&
+src/click/core.py	321	53	|	&
+src/click/core.py	322	20	|	&
+src/click/core.py	323	27	|	&
+src/click/core.py	344	15	is	is not
+src/click/core.py	344	23	and	or
+src/click/core.py	344	34	is not	is
+src/click/core.py	353	24	is	is not
+src/click/core.py	354	12	and	or
+src/click/core.py	354	26	is not	is
+src/click/core.py	355	12	and	or
+src/click/core.py	355	23	is not	is
+src/click/core.py	356	12	and	or
+src/click/core.py	356	35	is not	is
+src/click/core.py	360	58	|	&
+src/click/core.py	372	37	|	&
+src/click/core.py	374	26	is	is not
+src/click/core.py	374	34	and	or
+src/click/core.py	374	45	is not	is
+src/click/core.py	378	33	|	&
+src/click/core.py	380	29	is	is not
+src/click/core.py	380	37	and	or
+src/click/core.py	380	48	is not	is
+src/click/core.py	385	36	|	&
+src/click/core.py	387	28	is	is not
+src/click/core.py	396	35	is	is not
+src/click/core.py	405	34	is	is not
+src/click/core.py	418	29	is	is not
+src/click/core.py	419	22	is not	is
+src/click/core.py	427	32	is	is not
+src/click/core.py	427	40	and	or
+src/click/core.py	427	51	is not	is
+src/click/core.py	432	58	|	&
+src/click/core.py	442	30	is	is not
+src/click/core.py	444	23	is not	is
+src/click/core.py	445	16	and	or
+src/click/core.py	445	46	is not	is
+src/click/core.py	446	16	and	or
+src/click/core.py	446	35	is not	is
+src/click/core.py	454	30	is not	is
+src/click/core.py	457	37	|	&
+src/click/core.py	459	17	is	is not
+src/click/core.py	459	25	and	or
+src/click/core.py	459	36	is not	is
+src/click/core.py	463	25	|	&
+src/click/core.py	465	24	is	is not
+src/click/core.py	465	32	and	or
+src/click/core.py	465	43	is not	is
+src/click/core.py	469	32	|	&
+src/click/core.py	522	38	|	&
+src/click/core.py	523	33	|	&
+src/click/core.py	524	26	|	&
+src/click/core.py	525	14	|	&
+src/click/core.py	527	26	|	&
+src/click/core.py	528	23	==	!=
+src/click/core.py	664	38	|	&
+src/click/core.py	665	33	|	&
+src/click/core.py	666	26	|	&
+src/click/core.py	667	14	|	&
+src/click/core.py	687	26	is not	is
+src/click/core.py	689	23	is not	is
+src/click/core.py	702	26	is not	is
+src/click/core.py	706	53	|	&
+src/click/core.py	708	22	|	&
+src/click/core.py	710	19	is not	is
+src/click/core.py	72	23	is not	is
+src/click/core.py	72	35	and	or
+src/click/core.py	723	14	is	is not
+src/click/core.py	727	41	|	&
+src/click/core.py	735	17	is not	is
+src/click/core.py	736	12	and	or
+src/click/core.py	736	33	is not	is
+src/click/core.py	737	12	and	or
+src/click/core.py	738	12	and	or
+src/click/core.py	738	39	is not	is
+src/click/core.py	744	15	|	&
+src/click/core.py	749	15	|	&
+src/click/core.py	749	39	|	&
+src/click/core.py	751	68	|	&
+src/click/core.py	765	32	is not	is
+src/click/core.py	768	16	and	or
+src/click/core.py	79	30	or	and
+src/click/core.py	824	32	|	&
+src/click/core.py	825	15	|	&
+src/click/core.py	846	34	is	is not
+src/click/core.py	856	44	and	or
+src/click/core.py	865	37	is	is not
+src/click/core.py	96	46	|	&
+src/click/decorators.py	101	38	|	&
+src/click/decorators.py	123	23	is	is not
+src/click/decorators.py	145	14	|	&
+src/click/decorators.py	164	14	|	&
+src/click/decorators.py	169	14	|	&
+src/click/decorators.py	169	29	|	&
+src/click/decorators.py	170	23	|	&
+src/click/decorators.py	172	13	|	&
+src/click/decorators.py	172	50	|	&
+src/click/decorators.py	206	44	|	&
+src/click/decorators.py	211	19	is	is not
+src/click/decorators.py	214	11	is	is not
+src/click/decorators.py	222	44	is not	is
+src/click/decorators.py	232	29	is	is not
+src/click/decorators.py	236	23	is not	is
+src/click/decorators.py	239	16	is not	is
+src/click/decorators.py	245	19	and	or
+src/click/decorators.py	252	12	is not	is
+src/click/decorators.py	270	14	|	&
+src/click/decorators.py	289	14	|	&
+src/click/decorators.py	294	14	|	&
+src/click/decorators.py	294	29	|	&
+src/click/decorators.py	295	23	|	&
+src/click/decorators.py	297	11	|	&
+src/click/decorators.py	297	46	|	&
+src/click/decorators.py	305	11	is	is not
+src/click/decorators.py	325	43	|	&
+src/click/decorators.py	342	11	is	is not
+src/click/decorators.py	353	41	|	&
+src/click/decorators.py	370	11	is	is not
+src/click/decorators.py	422	17	|	&
+src/click/decorators.py	424	22	|	&
+src/click/decorators.py	425	19	|	&
+src/click/decorators.py	426	17	|	&
+src/click/decorators.py	464	15	is	is not
+src/click/decorators.py	467	15	is	is not
+src/click/decorators.py	467	23	and	or
+src/click/decorators.py	467	40	is	is not
+src/click/decorators.py	469	39	is not	is
+src/click/decorators.py	470	47	is not	is
+src/click/decorators.py	475	21	is not	is
+src/click/decorators.py	478	28	==	!=
+src/click/decorators.py	485	21	or	and
+src/click/decorators.py	491	21	is	is not
+src/click/decorators.py	494	19	is	is not
+src/click/decorators.py	494	27	and	or
+src/click/decorators.py	494	44	is not	is
+src/click/decorators.py	505	19	is	is not
+src/click/decorators.py	511	20	%	*
+src/click/decorators.py	538	17	and	or
+src/click/decorators.py	80	19	|	&
+src/click/decorators.py	86	19	is	is not
+src/click/exceptions.py	129	21	|	&
+src/click/exceptions.py	130	25	|	&
+src/click/exceptions.py	131	39	|	&
+src/click/exceptions.py	131	45	|	&
+src/click/exceptions.py	138	27	is not	is
+src/click/exceptions.py	140	24	is not	is
+src/click/exceptions.py	164	21	|	&
+src/click/exceptions.py	165	21	|	&
+src/click/exceptions.py	166	25	|	&
+src/click/exceptions.py	167	39	|	&
+src/click/exceptions.py	167	45	|	&
+src/click/exceptions.py	168	24	|	&
+src/click/exceptions.py	170	33	or	and
+src/click/exceptions.py	174	27	is not	is
+src/click/exceptions.py	175	43	|	&
+src/click/exceptions.py	175	49	|	&
+src/click/exceptions.py	176	24	is not	is
+src/click/exceptions.py	185	22	is	is not
+src/click/exceptions.py	185	30	and	or
+src/click/exceptions.py	185	45	is not	is
+src/click/exceptions.py	189	22	is not	is
+src/click/exceptions.py	19	53	|	&
+src/click/exceptions.py	19	59	|	&
+src/click/exceptions.py	19	74	|	&
+src/click/exceptions.py	20	18	is not	is
+src/click/exceptions.py	20	30	and	or
+src/click/exceptions.py	202	22	==	!=
+src/click/exceptions.py	204	24	==	!=
+src/click/exceptions.py	206	24	==	!=
+src/click/exceptions.py	230	21	|	&
+src/click/exceptions.py	231	42	|	&
+src/click/exceptions.py	232	21	|	&
+src/click/exceptions.py	234	19	is	is not
+src/click/exceptions.py	239	38	|	&
+src/click/exceptions.py	257	21	|	&
+src/click/exceptions.py	258	42	|	&
+src/click/exceptions.py	259	21	|	&
+src/click/exceptions.py	261	19	is	is not
+src/click/exceptions.py	266	38	|	&
+src/click/exceptions.py	289	59	|	&
+src/click/exceptions.py	309	37	|	&
+src/click/exceptions.py	316	48	|	&
+src/click/exceptions.py	317	16	is	is not
+src/click/exceptions.py	45	30	|	&
+src/click/exceptions.py	54	37	|	&
+src/click/exceptions.py	55	16	is	is not
+src/click/exceptions.py	76	50	|	&
+src/click/exceptions.py	79	26	|	&
+src/click/exceptions.py	81	37	|	&
+src/click/exceptions.py	82	16	is	is not
+src/click/exceptions.py	87	21	is not	is
+src/click/exceptions.py	88	12	and	or
+src/click/exceptions.py	88	59	is not	is
+src/click/exceptions.py	98	20	is not	is
+src/click/formatting.py	11	18	|	&
+src/click/formatting.py	125	19	|	&
+src/click/formatting.py	126	23	|	&
+src/click/formatting.py	129	21	is	is not
+src/click/formatting.py	131	17	is	is not
+src/click/formatting.py	135	21	is	is not
+src/click/formatting.py	136	79	-	+
+src/click/formatting.py	153	65	|	&
+src/click/formatting.py	161	18	is	is not
+src/click/formatting.py	165	32	-	+
+src/click/formatting.py	175	22	>=	<
+src/click/formatting.py	175	22	>=	>
+src/click/formatting.py	175	49	+	-
+src/click/formatting.py	190	71	+	-
+src/click/formatting.py	240	23	!=	==
+src/click/formatting.py	243	44	+	-
+src/click/formatting.py	250	31	<=	<
+src/click/formatting.py	250	31	<=	>
+src/click/formatting.py	250	44	-	+
+src/click/formatting.py	251	44	-	+
+src/click/formatting.py	254	44	+	-
+src/click/formatting.py	256	40	-	+
+src/click/formatting.py	256	52	-	+
+src/click/formatting.py	28	18	+	-
+src/click/formatting.py	28	26	*	/
+src/click/formatting.py	28	39	-	+
+src/click/formatting.py	309	18	==	!=
+src/click/formatting.py	81	26	==	!=
+src/click/formatting.py	82	29	or	and
+src/click/formatting.py	84	29	or	and
+src/click/formatting.py	92	22	is	is not
+src/click/formatting.py	95	34	-	+
+src/click/globals.py	17	55	|	&
+src/click/globals.py	20	57	|	&
+src/click/globals.py	54	38	|	&
+src/click/globals.py	54	61	|	&
+src/click/globals.py	59	13	is not	is
+src/click/globals.py	64	11	is not	is
+src/click/parser.py	103	12	is not	is
+src/click/parser.py	106	16	+	-
+src/click/parser.py	106	42	+	-
+src/click/parser.py	115	16	==	!=
+src/click/parser.py	120	42	|	&
+src/click/parser.py	121	11	is	is not
+src/click/parser.py	121	19	or	and
+src/click/parser.py	121	47	is	is not
+src/click/parser.py	132	18	|	&
+src/click/parser.py	133	20	|	&
+src/click/parser.py	135	21	|	&
+src/click/parser.py	150	27	==	!=
+src/click/parser.py	150	32	and	or
+src/click/parser.py	150	47	==	!=
+src/click/parser.py	156	18	is	is not
+src/click/parser.py	170	23	==	!=
+src/click/parser.py	172	25	==	!=
+src/click/parser.py	174	25	==	!=
+src/click/parser.py	176	25	==	!=
+src/click/parser.py	178	25	==	!=
+src/click/parser.py	179	65	+	-
+src/click/parser.py	186	52	|	&
+src/click/parser.py	193	19	|	&
+src/click/parser.py	193	39	|	&
+src/click/parser.py	193	50	|	&
+src/click/parser.py	196	22	>	<=
+src/click/parser.py	196	22	>	>=
+src/click/parser.py	198	26	is	is not
+src/click/parser.py	199	21	==	!=
+src/click/parser.py	201	23	!=	==
+src/click/parser.py	209	17	==	!=
+src/click/parser.py	241	36	|	&
+src/click/parser.py	256	15	is not	is
+src/click/parser.py	269	18	|	&
+src/click/parser.py	270	20	|	&
+src/click/parser.py	272	21	|	&
+src/click/parser.py	290	56	|	&
+src/click/parser.py	312	24	is	is not
+src/click/parser.py	312	32	or	and
+src/click/parser.py	318	24	+	-
+src/click/parser.py	333	19	==	!=
+src/click/parser.py	335	47	and	or
+src/click/parser.py	335	58	>	<=
+src/click/parser.py	335	58	>	>=
+src/click/parser.py	364	44	|	&
+src/click/parser.py	375	30	is not	is
+src/click/parser.py	380	28	is not	is
+src/click/parser.py	409	21	<	<=
+src/click/parser.py	409	21	<	>=
+src/click/parser.py	427	39	and	or
+src/click/parser.py	432	13	|	&
+src/click/parser.py	432	34	|	&
+src/click/parser.py	432	44	|	&
+src/click/parser.py	435	19	|	&
+src/click/parser.py	435	40	|	&
+src/click/parser.py	435	50	|	&
+src/click/parser.py	437	28	<	<=
+src/click/parser.py	437	28	<	>=
+src/click/parser.py	450	19	==	!=
+src/click/parser.py	455	16	and	or
+src/click/parser.py	456	16	and	or
+src/click/parser.py	457	16	and	or
+src/click/parser.py	457	35	>	<=
+src/click/parser.py	457	35	>	>=
+src/click/parser.py	522	12	==	!=
+src/click/parser.py	53	29	|	&
+src/click/parser.py	53	49	|	&
+src/click/parser.py	53	60	|	&
+src/click/parser.py	65	17	|	&
+src/click/parser.py	65	29	|	&
+src/click/parser.py	65	45	|	&
+src/click/parser.py	66	14	|	&
+src/click/parser.py	68	37	|	&
+src/click/parser.py	70	20	is	is not
+src/click/parser.py	78	16	is	is not
+src/click/parser.py	83	17	==	!=
+src/click/parser.py	85	19	>	<=
+src/click/parser.py	85	19	>	>=
+src/click/parser.py	86	24	|	&
+src/click/parser.py	90	20	is not	is
+src/click/parser.py	94	19	<	<=
+src/click/parser.py	94	19	<	>=
+src/click/parser.py	95	20	is not	is
+src/click/shell_completion.py	266	36	%	*
+src/click/shell_completion.py	321	20	is	is not
+src/click/shell_completion.py	330	17	is not	is
+src/click/shell_completion.py	333	21	<	<=
+src/click/shell_completion.py	333	21	<	>=
+src/click/shell_completion.py	333	27	or	and
+src/click/shell_completion.py	333	36	==	!=
+src/click/shell_completion.py	333	43	and	or
+src/click/shell_completion.py	333	53	<	<=
+src/click/shell_completion.py	333	53	<	>=
+src/click/shell_completion.py	386	26	or	and
+src/click/shell_completion.py	399	56	!=	==
+src/click/shell_completion.py	41	16	is	is not
+src/click/shell_completion.py	418	22	and	or
+src/click/shell_completion.py	418	31	and	or
+src/click/shell_completion.py	418	44	==	!=
+src/click/shell_completion.py	434	26	or	and
+src/click/shell_completion.py	451	38	|	&
+src/click/shell_completion.py	46	19	==	!=
+src/click/shell_completion.py	462	12	is	is not
+src/click/shell_completion.py	470	60	|	&
+src/click/shell_completion.py	50	19	==	!=
+src/click/shell_completion.py	530	20	==	!=
+src/click/shell_completion.py	531	48	is not	is
+src/click/shell_completion.py	531	8	or	and
+src/click/shell_completion.py	532	8	or	and
+src/click/shell_completion.py	533	24	>	<=
+src/click/shell_completion.py	533	24	>	>=
+src/click/shell_completion.py	534	12	and	or
+src/click/shell_completion.py	535	12	and	or
+src/click/shell_completion.py	535	27	<	<=
+src/click/shell_completion.py	535	27	<	>=
+src/click/shell_completion.py	558	21	or	and
+src/click/shell_completion.py	564	17	+	-
+src/click/shell_completion.py	564	21	>	<=
+src/click/shell_completion.py	564	21	>	>=
+src/click/shell_completion.py	571	23	is not	is
+src/click/shell_completion.py	571	35	and	or
+src/click/shell_completion.py	590	35	+	-
+src/click/shell_completion.py	599	27	is	is not
+src/click/shell_completion.py	606	51	+	-
+src/click/shell_completion.py	613	31	is	is not
+src/click/shell_completion.py	637	19	|	&
+src/click/shell_completion.py	650	18	==	!=
+src/click/shell_completion.py	652	27	and	or
+src/click/shell_completion.py	660	24	and	or
+src/click/shell_completion.py	82	18	|	&
+src/click/shell_completion.py	87	23	|	&
+src/click/termui.py	107	23	|	&
+src/click/termui.py	108	19	|	&
+src/click/termui.py	110	27	|	&
+src/click/termui.py	113	12	is not	is
+src/click/termui.py	113	24	and	or
+src/click/termui.py	113	41	and	or
+src/click/termui.py	117	15	is not	is
+src/click/termui.py	117	27	and	or
+src/click/termui.py	123	50	and	or
+src/click/termui.py	131	19	|	&
+src/click/termui.py	133	30	|	&
+src/click/termui.py	134	27	|	&
+src/click/termui.py	134	35	|	&
+src/click/termui.py	135	41	|	&
+src/click/termui.py	137	23	|	&
+src/click/termui.py	203	18	is	is not
+src/click/termui.py	211	31	is	is not
+src/click/termui.py	221	25	is not	is
+src/click/termui.py	234	33	and	or
+src/click/termui.py	235	22	or	and
+src/click/termui.py	237	17	==	!=
+src/click/termui.py	244	18	|	&
+src/click/termui.py	278	25	is	is not
+src/click/termui.py	290	21	is not	is
+src/click/termui.py	290	33	and	or
+src/click/termui.py	290	43	==	!=
+src/click/termui.py	296	13	and	or
+src/click/termui.py	302	16	|	&
+src/click/termui.py	321	42	|	&
+src/click/termui.py	321	79	|	&
+src/click/termui.py	322	16	|	&
+src/click/termui.py	355	15	|	&
+src/click/termui.py	358	23	|	&
+src/click/termui.py	365	19	|	&
+src/click/termui.py	366	16	|	&
+src/click/termui.py	373	31	|	&
+src/click/termui.py	374	16	|	&
+src/click/termui.py	375	15	|	&
+src/click/termui.py	378	23	|	&
+src/click/termui.py	380	34	|	&
+src/click/termui.py	380	47	|	&
+src/click/termui.py	380	55	|	&
+src/click/termui.py	386	19	|	&
+src/click/termui.py	387	16	|	&
+src/click/termui.py	393	31	|	&
+src/click/termui.py	394	16	|	&
+src/click/termui.py	395	15	|	&
+src/click/termui.py	398	23	|	&
+src/click/termui.py	400	34	|	&
+src/click/termui.py	400	47	|	&
+src/click/termui.py	400	55	|	&
+src/click/termui.py	406	19	|	&
+src/click/termui.py	407	16	|	&
+src/click/termui.py	565	32	|	&
+src/click/termui.py	565	55	|	&
+src/click/termui.py	567	21	+	-
+src/click/termui.py	571	21	+	-
+src/click/termui.py	573	35	+	-
+src/click/termui.py	578	12	|	&
+src/click/termui.py	578	35	|	&
+src/click/termui.py	578	41	|	&
+src/click/termui.py	579	12	|	&
+src/click/termui.py	579	35	|	&
+src/click/termui.py	579	41	|	&
+src/click/termui.py	580	15	|	&
+src/click/termui.py	581	14	|	&
+src/click/termui.py	582	20	|	&
+src/click/termui.py	583	19	|	&
+src/click/termui.py	584	17	|	&
+src/click/termui.py	585	16	|	&
+src/click/termui.py	586	18	|	&
+src/click/termui.py	587	24	|	&
+src/click/termui.py	683	12	is not	is
+src/click/termui.py	685	11	is not	is
+src/click/termui.py	687	17	is not	is
+src/click/termui.py	689	16	is not	is
+src/click/termui.py	691	14	is not	is
+src/click/termui.py	693	13	is not	is
+src/click/termui.py	695	15	is not	is
+src/click/termui.py	697	21	is not	is
+src/click/termui.py	718	19	|	&
+src/click/termui.py	719	25	|	&
+src/click/termui.py	722	16	|	&
+src/click/termui.py	745	15	is not	is
+src/click/termui.py	745	27	and	or
+src/click/termui.py	753	16	|	&
+src/click/termui.py	754	16	|	&
+src/click/termui.py	755	32	|	&
+src/click/termui.py	758	11	|	&
+src/click/termui.py	764	16	|	&
+src/click/termui.py	765	32	|	&
+src/click/termui.py	768	9	|	&
+src/click/termui.py	774	16	|	&
+src/click/termui.py	775	32	|	&
+src/click/termui.py	778	18	|	&
+src/click/termui.py	778	39	|	&
+src/click/termui.py	783	14	|	&
+src/click/termui.py	783	22	|	&
+src/click/termui.py	783	34	|	&
+src/click/termui.py	784	16	|	&
+src/click/termui.py	785	32	|	&
+src/click/termui.py	788	18	|	&
+src/click/termui.py	788	39	|	&
+src/click/termui.py	789	17	|	&
+src/click/termui.py	789	29	|	&
+src/click/termui.py	789	9	|	&
+src/click/termui.py	830	16	is	is not
+src/click/termui.py	871	34	|	&
+src/click/termui.py	896	16	is	is not
+src/click/termui.py	910	20	|	&
+src/click/termui.py	926	29	or	and
+src/click/termui.py	929	12	is	is not
+src/click/testing.py	176	29	>=	<
+src/click/testing.py	176	29	>=	>
+src/click/testing.py	190	15	|	&
+src/click/testing.py	190	23	|	&
+src/click/testing.py	190	37	|	&
+src/click/testing.py	196	14	is not	is
+src/click/testing.py	201	13	is	is not
+src/click/testing.py	239	33	|	&
+src/click/testing.py	241	8	|	&
+src/click/testing.py	327	35	|	&
+src/click/testing.py	327	43	|	&
+src/click/testing.py	336	19	==	!=
+src/click/testing.py	336	27	and	or
+src/click/testing.py	336	44	==	!=
+src/click/testing.py	341	40	|	&
+src/click/testing.py	341	54	or	and
+src/click/testing.py	351	24	or	and
+src/click/testing.py	354	47	|	&
+src/click/testing.py	354	55	|	&
+src/click/testing.py	355	31	|	&
+src/click/testing.py	365	19	|	&
+src/click/testing.py	365	27	|	&
+src/click/testing.py	365	41	|	&
+src/click/testing.py	366	35	|	&
+src/click/testing.py	366	43	|	&
+src/click/testing.py	439	38	|	&
+src/click/testing.py	440	36	or	and
+src/click/testing.py	450	37	|	&
+src/click/testing.py	451	39	or	and
+src/click/testing.py	471	32	|	&
+src/click/testing.py	471	59	|	&
+src/click/testing.py	473	21	is	is not
+src/click/testing.py	492	29	|	&
+src/click/testing.py	493	30	|	&
+src/click/testing.py	518	21	is	is not
+src/click/testing.py	520	22	is	is not
+src/click/testing.py	532	25	is	is not
+src/click/testing.py	542	25	is	is not
+src/click/testing.py	563	18	|	&
+src/click/testing.py	563	39	|	&
+src/click/testing.py	564	19	|	&
+src/click/testing.py	564	27	|	&
+src/click/testing.py	564	41	|	&
+src/click/testing.py	565	35	|	&
+src/click/testing.py	565	43	|	&
+src/click/testing.py	566	31	|	&
+src/click/testing.py	614	28	is	is not
+src/click/testing.py	618	28	|	&
+src/click/testing.py	619	28	|	&
+src/click/testing.py	621	24	==	!=
+src/click/testing.py	63	37	|	&
+src/click/testing.py	634	23	is not	is
+src/click/testing.py	634	35	and	or
+src/click/testing.py	634	47	is not	is
+src/click/testing.py	639	37	|	&
+src/click/testing.py	64	14	is	is not
+src/click/testing.py	651	50	or	and
+src/click/testing.py	656	26	is	is not
+src/click/testing.py	659	26	!=	==
+src/click/testing.py	682	27	is not	is
+src/click/testing.py	682	39	and	or
+src/click/testing.py	682	51	is not	is
+src/click/testing.py	707	28	|	&
+src/click/testing.py	707	47	|	&
+src/click/testing.py	730	24	is	is not
+src/click/testing.py	86	34	|	&
+src/click/testing.py	94	29	is not	is
+src/click/types.py	100	65	|	&
+src/click/types.py	1006	25	|	&
+src/click/types.py	1007	13	|	&
+src/click/types.py	1007	21	|	&
+src/click/types.py	1008	21	is not	is
+src/click/types.py	1008	33	and	or
+src/click/types.py	1009	25	is	is not
+src/click/types.py	1011	27	is	is not
+src/click/types.py	1020	19	|	&
+src/click/types.py	1021	25	|	&
+src/click/types.py	1022	21	|	&
+src/click/types.py	1023	13	|	&
+src/click/types.py	1023	21	|	&
+src/click/types.py	1026	33	and	or
+src/click/types.py	1026	53	and	or
+src/click/types.py	103	65	|	&
+src/click/types.py	103	80	|	&
+src/click/types.py	1045	34	and	or
+src/click/types.py	1053	33	and	or
+src/click/types.py	1062	29	and	or
+src/click/types.py	1071	29	and	or
+src/click/types.py	1080	31	and	or
+src/click/types.py	1106	38	and	or
+src/click/types.py	111	45	|	&
+src/click/types.py	111	66	|	&
+src/click/types.py	1128	56	|	&
+src/click/types.py	1146	45	|	&
+src/click/types.py	1146	66	|	&
+src/click/types.py	1151	21	!=	==
+src/click/types.py	1168	20	|	&
+src/click/types.py	1168	39	|	&
+src/click/types.py	1169	19	|	&
+src/click/types.py	1170	17	|	&
+src/click/types.py	1170	43	|	&
+src/click/types.py	1170	62	|	&
+src/click/types.py	1177	10	is not	is
+src/click/types.py	1180	15	is	is not
+src/click/types.py	1208	20	|	&
+src/click/types.py	1208	55	|	&
+src/click/types.py	1214	14	|	&
+src/click/types.py	1214	37	|	&
+src/click/types.py	1219	14	|	&
+src/click/types.py	1219	44	|	&
+src/click/types.py	1226	25	is not	is
+src/click/types.py	1234	15	is	is not
+src/click/types.py	1234	22	or	and
+src/click/types.py	1234	33	is	is not
+src/click/types.py	1237	15	is	is not
+src/click/types.py	1240	15	is	is not
+src/click/types.py	1243	15	is	is not
+src/click/types.py	144	19	or	and
+src/click/types.py	149	25	|	&
+src/click/types.py	150	21	|	&
+src/click/types.py	194	45	|	&
+src/click/types.py	194	66	|	&
+src/click/types.py	214	45	|	&
+src/click/types.py	214	66	|	&
+src/click/types.py	226	45	|	&
+src/click/types.py	226	66	|	&
+src/click/types.py	234	26	!=	==
+src/click/types.py	292	27	|	&
+src/click/types.py	309	68	|	&
+src/click/types.py	321	15	is not	is
+src/click/types.py	321	27	and	or
+src/click/types.py	321	56	is not	is
+src/click/types.py	329	65	|	&
+src/click/types.py	330	33	==	!=
+src/click/types.py	330	45	and	or
+src/click/types.py	341	26	and	or
+src/click/types.py	341	52	==	!=
+src/click/types.py	347	65	|	&
+src/click/types.py	358	45	|	&
+src/click/types.py	358	66	|	&
+src/click/types.py	372	30	==	!=
+src/click/types.py	381	68	|	&
+src/click/types.py	449	51	|	&
+src/click/types.py	450	51	or	and
+src/click/types.py	459	65	|	&
+src/click/types.py	462	74	|	&
+src/click/types.py	469	45	|	&
+src/click/types.py	469	66	|	&
+src/click/types.py	477	25	is not	is
+src/click/types.py	499	45	|	&
+src/click/types.py	499	66	|	&
+src/click/types.py	514	15	|	&
+src/click/types.py	515	15	|	&
+src/click/types.py	524	19	|	&
+src/click/types.py	525	19	|	&
+src/click/types.py	547	45	|	&
+src/click/types.py	547	66	|	&
+src/click/types.py	554	27	is not	is
+src/click/types.py	554	39	and	or
+src/click/types.py	557	27	is not	is
+src/click/types.py	557	39	and	or
+src/click/types.py	562	19	is not	is
+src/click/types.py	562	31	and	or
+src/click/types.py	565	19	is not	is
+src/click/types.py	565	31	and	or
+src/click/types.py	568	18	or	and
+src/click/types.py	594	20	is	is not
+src/click/types.py	598	20	is	is not
+src/click/types.py	640	21	+	-
+src/click/types.py	67	41	|	&
+src/click/types.py	671	19	|	&
+src/click/types.py	672	19	|	&
+src/click/types.py	681	21	or	and
+src/click/types.py	681	34	and	or
+src/click/types.py	731	31	|	&
+src/click/types.py	731	47	|	&
+src/click/types.py	746	45	|	&
+src/click/types.py	746	66	|	&
+src/click/types.py	749	22	is	is not
+src/click/types.py	767	45	|	&
+src/click/types.py	767	66	|	&
+src/click/types.py	787	18	|	&
+src/click/types.py	826	22	|	&
+src/click/types.py	827	20	|	&
+src/click/types.py	828	19	|	&
+src/click/types.py	844	43	|	&
+src/click/types.py	845	21	is not	is
+src/click/types.py	847	28	==	!=
+src/click/types.py	855	19	|	&
+src/click/types.py	855	38	|	&
+src/click/types.py	856	25	|	&
+src/click/types.py	857	21	|	&
+src/click/types.py	872	23	is not	is
+src/click/types.py	886	19	is not	is
+src/click/types.py	918	34	or	and
+src/click/types.py	93	25	|	&
+src/click/types.py	930	25	|	&
+src/click/types.py	930	33	|	&
+src/click/types.py	94	21	|	&
+src/click/types.py	95	24	|	&
+src/click/types.py	96	17	is not	is
+src/click/types.py	974	31	|	&
+src/click/types.py	987	26	and	or
+src/click/types.py	989	27	and	or
+src/click/utils.py	102	12	>	<=
+src/click/utils.py	102	12	>	>=
+src/click/utils.py	103	38	+	-
+src/click/utils.py	103	43	>	<=
+src/click/utils.py	103	43	>	>=
+src/click/utils.py	105	24	<=	<
+src/click/utils.py	105	24	<=	>
+src/click/utils.py	122	18	|	&
+src/click/utils.py	123	16	|	&
+src/click/utils.py	125	20	|	&
+src/click/utils.py	130	22	|	&
+src/click/utils.py	132	22	|	&
+src/click/utils.py	133	20	|	&
+src/click/utils.py	142	21	==	!=
+src/click/utils.py	157	19	is not	is
+src/click/utils.py	166	19	is not	is
+src/click/utils.py	181	19	is not	is
+src/click/utils.py	196	38	|	&
+src/click/utils.py	197	33	|	&
+src/click/utils.py	198	26	|	&
+src/click/utils.py	221	38	|	&
+src/click/utils.py	222	33	|	&
+src/click/utils.py	223	26	|	&
+src/click/utils.py	235	19	|	&
+src/click/utils.py	236	22	|	&
+src/click/utils.py	239	16	|	&
+src/click/utils.py	279	12	is	is not
+src/click/utils.py	287	16	is	is not
+src/click/utils.py	291	15	is not	is
+src/click/utils.py	291	27	and	or
+src/click/utils.py	292	17	|	&
+src/click/utils.py	292	25	|	&
+src/click/utils.py	292	37	|	&
+src/click/utils.py	297	18	or	and
+src/click/utils.py	314	23	is not	is
+src/click/utils.py	328	34	is not	is
+src/click/utils.py	344	14	is	is not
+src/click/utils.py	351	18	|	&
+src/click/utils.py	352	16	|	&
+src/click/utils.py	365	14	is	is not
+src/click/utils.py	37	56	|	&
+src/click/utils.py	371	18	|	&
+src/click/utils.py	373	18	|	&
+src/click/utils.py	374	16	|	&
+src/click/utils.py	40	56	|	&
+src/click/utils.py	420	18	|	&
+src/click/utils.py	420	26	|	&
+src/click/utils.py	420	45	|	&
+src/click/utils.py	495	18	is	is not
+src/click/utils.py	500	20	==	!=
+src/click/utils.py	530	23	!=	==
+src/click/utils.py	538	14	|	&
+src/click/utils.py	538	47	|	&
+src/click/utils.py	560	13	is	is not
+src/click/utils.py	570	57	or	and
+src/click/utils.py	571	16	==	!=
+src/click/utils.py	572	30	==	!=
+src/click/utils.py	572	8	and	or
+src/click/utils.py	573	8	and	or
+src/click/utils.py	574	8	and	or
+src/click/utils.py	586	12	!=	==
+src/click/utils.py	68	21	!=	==
+src/click/utils.py	78	16	==	!=
+src/click/utils.py	82	28	-	+
+src/click/utils.py	85	34	+	-
+src/click/utils.py	85	39	>	<=
+src/click/utils.py	85	39	>	>=
+src/click/utils.py	87	24	>	<=
+src/click/utils.py	87	24	>	>=
+src/click/utils.py	90	20	==	!=
+src/click/utils.py	91	38	+	-
+src/click/utils.py	93	24	==	!=
+src/click/utils.py	93	38	and	or
+src/click/utils.py	93	44	!=	==
+tests/test_arguments.py	118	29	==	!=
+tests/test_arguments.py	119	32	==	!=
+tests/test_arguments.py	121	28	==	!=
+tests/test_arguments.py	124	29	==	!=
+tests/test_arguments.py	125	32	==	!=
+tests/test_arguments.py	135	25	==	!=
+tests/test_arguments.py	136	28	==	!=
+tests/test_arguments.py	147	31	==	!=
+tests/test_arguments.py	153	29	==	!=
+tests/test_arguments.py	154	32	==	!=
+tests/test_arguments.py	156	28	==	!=
+tests/test_arguments.py	168	25	==	!=
+tests/test_arguments.py	169	25	==	!=
+tests/test_arguments.py	185	13	==	!=
+tests/test_arguments.py	20	38	==	!=
+tests/test_arguments.py	201	35	==	!=
+tests/test_arguments.py	211	31	==	!=
+tests/test_arguments.py	214	31	==	!=
+tests/test_arguments.py	224	28	==	!=
+tests/test_arguments.py	225	25	==	!=
+tests/test_arguments.py	233	28	==	!=
+tests/test_arguments.py	244	28	==	!=
+tests/test_arguments.py	280	34	==	!=
+tests/test_arguments.py	284	21	==	!=
+tests/test_arguments.py	294	28	==	!=
+tests/test_arguments.py	295	25	==	!=
+tests/test_arguments.py	305	28	==	!=
+tests/test_arguments.py	320	28	==	!=
+tests/test_arguments.py	324	28	==	!=
+tests/test_arguments.py	34	38	==	!=
+tests/test_arguments.py	346	38	==	!=
+tests/test_arguments.py	349	38	==	!=
+tests/test_arguments.py	362	38	==	!=
+tests/test_arguments.py	375	38	==	!=
+tests/test_arguments.py	419	25	==	!=
+tests/test_arguments.py	54	28	is	is not
+tests/test_arguments.py	55	38	==	!=
+tests/test_arguments.py	619	25	is not	is
+tests/test_arguments.py	629	28	==	!=
+tests/test_arguments.py	75	25	==	!=
+tests/test_arguments.py	78	28	==	!=
+tests/test_basic.py	107	25	==	!=
+tests/test_basic.py	130	32	is not	is
+tests/test_basic.py	132	32	is	is not
+tests/test_basic.py	147	27	*	/
+tests/test_basic.py	153	32	is not	is
+tests/test_basic.py	155	32	is	is not
+tests/test_basic.py	181	32	is not	is
+tests/test_basic.py	183	32	is	is not
+tests/test_basic.py	204	32	is not	is
+tests/test_basic.py	206	32	is	is not
+tests/test_basic.py	23	28	==	!=
+tests/test_basic.py	233	31	is	is not
+tests/test_basic.py	256	31	is	is not
+tests/test_basic.py	273	25	==	!=
+tests/test_basic.py	276	25	==	!=
+tests/test_basic.py	29	28	==	!=
+tests/test_basic.py	334	25	==	!=
+tests/test_basic.py	353	28	==	!=
+tests/test_basic.py	355	29	==	!=
+tests/test_basic.py	377	35	==	!=
+tests/test_basic.py	381	35	==	!=
+tests/test_basic.py	394	35	==	!=
+tests/test_basic.py	412	28	==	!=
+tests/test_basic.py	45	25	==	!=
+tests/test_basic.py	452	25	==	!=
+tests/test_basic.py	455	28	==	!=
+tests/test_basic.py	46	23	==	!=
+tests/test_basic.py	47	28	==	!=
+tests/test_basic.py	473	25	==	!=
+tests/test_basic.py	476	28	==	!=
+tests/test_basic.py	499	25	==	!=
+tests/test_basic.py	503	28	==	!=
+tests/test_basic.py	531	25	==	!=
+tests/test_basic.py	534	28	==	!=
+tests/test_basic.py	549	24	|	&
+tests/test_basic.py	550	39	or	and
+tests/test_basic.py	550	49	is	is not
+tests/test_basic.py	555	25	==	!=
+tests/test_basic.py	559	25	==	!=
+tests/test_basic.py	57	18	==	!=
+tests/test_basic.py	580	25	==	!=
+tests/test_basic.py	584	25	==	!=
+tests/test_basic.py	587	28	==	!=
+tests/test_basic.py	607	25	==	!=
+tests/test_basic.py	617	28	==	!=
+tests/test_basic.py	653	18	==	!=
+tests/test_basic.py	671	28	==	!=
+tests/test_basic.py	685	28	==	!=
+tests/test_basic.py	703	28	==	!=
+tests/test_basic.py	740	28	==	!=
+tests/test_basic.py	76	28	==	!=
+tests/test_basic.py	81	28	==	!=
+tests/test_basic.py	95	25	==	!=
+tests/test_chain.py	104	25	==	!=
+tests/test_chain.py	124	38	==	!=
+tests/test_chain.py	167	38	==	!=
+tests/test_chain.py	189	38	==	!=
+tests/test_chain.py	218	38	==	!=
+tests/test_chain.py	245	38	==	!=
+tests/test_chain.py	30	38	==	!=
+tests/test_chain.py	85	38	==	!=
+tests/test_command_decorators.py	12	28	is	is not
+tests/test_command_decorators.py	13	25	==	!=
+tests/test_command_decorators.py	32	28	is	is not
+tests/test_command_decorators.py	33	25	==	!=
+tests/test_command_decorators.py	54	28	is	is not
+tests/test_command_decorators.py	55	25	==	!=
+tests/test_command_decorators.py	58	28	is	is not
+tests/test_command_decorators.py	59	25	==	!=
+tests/test_command_decorators.py	70	30	==	!=
+tests/test_command_decorators.py	71	30	==	!=
+tests/test_command_decorators.py	73	25	==	!=
+tests/test_command_decorators.py	92	18	==	!=
+tests/test_commands.py	100	28	==	!=
+tests/test_commands.py	117	25	==	!=
+tests/test_commands.py	140	28	==	!=
+tests/test_commands.py	195	28	is	is not
+tests/test_commands.py	196	38	==	!=
+tests/test_commands.py	199	28	is	is not
+tests/test_commands.py	200	38	==	!=
+tests/test_commands.py	21	25	==	!=
+tests/test_commands.py	217	23	is	is not
+tests/test_commands.py	227	32	is	is not
+tests/test_commands.py	228	29	==	!=
+tests/test_commands.py	276	31	==	!=
+tests/test_commands.py	283	34	is	is not
+tests/test_commands.py	295	25	==	!=
+tests/test_commands.py	299	25	==	!=
+tests/test_commands.py	329	28	==	!=
+tests/test_commands.py	391	8	==	!=
+tests/test_commands.py	41	25	==	!=
+tests/test_commands.py	420	28	==	!=
+tests/test_commands.py	427	28	==	!=
+tests/test_commands.py	434	28	==	!=
+tests/test_commands.py	443	32	==	!=
+tests/test_commands.py	451	28	==	!=
+tests/test_commands.py	461	28	==	!=
+tests/test_commands.py	474	38	==	!=
+tests/test_commands.py	517	29	==	!=
+tests/test_commands.py	539	29	==	!=
+tests/test_commands.py	563	24	==	!=
+tests/test_commands.py	573	24	==	!=
+tests/test_commands.py	575	39	==	!=
+tests/test_commands.py	63	25	==	!=
+tests/test_commands.py	94	8	is not	is
+tests/test_compat.py	42	16	|	&
+tests/test_compat.py	43	28	|	&
+tests/test_compat.py	53	25	is not	is
+tests/test_compat.py	55	71	==	!=
+tests/test_context.py	102	28	is not	is
+tests/test_context.py	126	28	is	is not
+tests/test_context.py	127	18	==	!=
+tests/test_context.py	134	43	is	is not
+tests/test_context.py	136	47	==	!=
+tests/test_context.py	138	50	is	is not
+tests/test_context.py	140	50	is	is not
+tests/test_context.py	155	30	==	!=
+tests/test_context.py	157	30	==	!=
+tests/test_context.py	174	31	==	!=
+tests/test_context.py	189	43	is	is not
+tests/test_context.py	206	47	is	is not
+tests/test_context.py	213	47	is	is not
+tests/test_context.py	222	43	is	is not
+tests/test_context.py	256	38	==	!=
+tests/test_context.py	291	28	==	!=
+tests/test_context.py	309	26	==	!=
+tests/test_context.py	311	14	==	!=
+tests/test_context.py	315	26	==	!=
+tests/test_context.py	317	14	==	!=
+tests/test_context.py	333	25	==	!=
+tests/test_context.py	346	51	==	!=
+tests/test_context.py	353	25	==	!=
+tests/test_context.py	354	18	==	!=
+tests/test_context.py	36	25	==	!=
+tests/test_context.py	367	51	==	!=
+tests/test_context.py	377	18	==	!=
+tests/test_context.py	433	18	==	!=
+tests/test_context.py	457	32	==	!=
+tests/test_context.py	458	46	==	!=
+tests/test_context.py	474	32	==	!=
+tests/test_context.py	475	46	==	!=
+tests/test_context.py	491	33	==	!=
+tests/test_context.py	496	28	==	!=
+tests/test_context.py	497	42	==	!=
+tests/test_context.py	510	18	==	!=
+tests/test_context.py	515	24	==	!=
+tests/test_context.py	516	38	==	!=
+tests/test_context.py	533	21	==	!=
+tests/test_context.py	535	14	==	!=
+tests/test_context.py	554	42	|	&
+tests/test_context.py	555	37	|	&
+tests/test_context.py	556	37	|	&
+tests/test_context.py	557	18	|	&
+tests/test_context.py	559	45	-	+
+tests/test_context.py	562	41	+	-
+tests/test_context.py	574	21	==	!=
+tests/test_context.py	576	14	==	!=
+tests/test_context.py	576	27	-	+
+tests/test_context.py	582	14	==	!=
+tests/test_context.py	582	27	+	-
+tests/test_context.py	59	25	==	!=
+tests/test_context.py	608	42	|	&
+tests/test_context.py	609	37	|	&
+tests/test_context.py	610	37	|	&
+tests/test_context.py	611	18	|	&
+tests/test_context.py	613	45	-	+
+tests/test_context.py	616	41	+	-
+tests/test_context.py	629	21	==	!=
+tests/test_context.py	630	28	==	!=
+tests/test_context.py	632	14	==	!=
+tests/test_context.py	632	27	-	+
+tests/test_context.py	633	21	==	!=
+tests/test_context.py	633	41	-	+
+tests/test_context.py	642	21	==	!=
+tests/test_context.py	642	41	+	-
+tests/test_context.py	643	14	==	!=
+tests/test_context.py	643	27	-	+
+tests/test_context.py	652	21	==	!=
+tests/test_context.py	652	41	+	-
+tests/test_context.py	653	14	==	!=
+tests/test_context.py	653	27	+	-
+tests/test_context.py	693	25	==	!=
+tests/test_context.py	697	25	==	!=
+tests/test_context.py	720	75	==	!=
+tests/test_context.py	727	75	==	!=
+tests/test_context.py	774	27	==	!=
+tests/test_context.py	782	29	==	!=
+tests/test_context.py	82	25	==	!=
+tests/test_custom_classes.py	112	26	is	is not
+tests/test_custom_classes.py	36	23	!=	==
+tests/test_custom_classes.py	79	28	is	is not
+tests/test_custom_classes.py	81	28	is	is not
+tests/test_custom_classes.py	97	26	is	is not
+tests/test_custom_classes.py	99	26	is	is not
+tests/test_defaults.py	101	31	==	!=
+tests/test_defaults.py	104	31	==	!=
+tests/test_defaults.py	191	19	is not	is
+tests/test_defaults.py	193	35	==	!=
+tests/test_defaults.py	210	49	==	!=
+tests/test_defaults.py	211	50	is	is not
+tests/test_defaults.py	260	19	is not	is
+tests/test_defaults.py	284	23	is not	is
+tests/test_defaults.py	289	55	or	and
+tests/test_defaults.py	353	19	is not	is
+tests/test_defaults.py	356	28	==	!=
+tests/test_defaults.py	357	25	==	!=
+tests/test_defaults.py	393	28	==	!=
+tests/test_defaults.py	394	33	==	!=
+tests/test_defaults.py	412	28	==	!=
+tests/test_defaults.py	413	33	==	!=
+tests/test_defaults.py	57	38	==	!=
+tests/test_defaults.py	83	38	==	!=
+tests/test_formatting.py	113	38	==	!=
+tests/test_formatting.py	136	38	==	!=
+tests/test_formatting.py	155	28	==	!=
+tests/test_formatting.py	156	38	==	!=
+tests/test_formatting.py	176	28	==	!=
+tests/test_formatting.py	177	38	==	!=
+tests/test_formatting.py	192	28	==	!=
+tests/test_formatting.py	193	38	==	!=
+tests/test_formatting.py	212	28	==	!=
+tests/test_formatting.py	213	38	==	!=
+tests/test_formatting.py	228	28	==	!=
+tests/test_formatting.py	229	38	==	!=
+tests/test_formatting.py	243	28	==	!=
+tests/test_formatting.py	244	38	==	!=
+tests/test_formatting.py	307	28	==	!=
+tests/test_formatting.py	309	20	==	!=
+tests/test_formatting.py	310	21	==	!=
+tests/test_formatting.py	311	21	is not	is
+tests/test_formatting.py	32	38	==	!=
+tests/test_formatting.py	330	38	==	!=
+tests/test_formatting.py	354	38	==	!=
+tests/test_formatting.py	379	38	==	!=
+tests/test_formatting.py	414	38	==	!=
+tests/test_formatting.py	436	18	==	!=
+tests/test_formatting.py	487	26	==	!=
+tests/test_formatting.py	501	19	==	!=
+tests/test_formatting.py	570	14	is	is not
+tests/test_formatting.py	574	24	==	!=
+tests/test_formatting.py	586	32	==	!=
+tests/test_formatting.py	616	41	==	!=
+tests/test_formatting.py	78	38	==	!=
+tests/test_imports.py	78	18	==	!=
+tests/test_imports.py	78	29	or	and
+tests/test_info_dict.py	213	15	==	!=
+tests/test_info_dict.py	255	15	==	!=
+tests/test_info_dict.py	261	15	==	!=
+tests/test_info_dict.py	275	45	==	!=
+tests/test_normalization.py	15	25	==	!=
+tests/test_normalization.py	32	25	==	!=
+tests/test_normalization.py	37	25	==	!=
+tests/test_normalization.py	40	28	==	!=
+tests/test_normalization.py	63	25	==	!=
+tests/test_options.py	1050	25	is not	is
+tests/test_options.py	1060	28	==	!=
+tests/test_options.py	111	38	==	!=
+tests/test_options.py	1126	32	==	!=
+tests/test_options.py	1147	25	==	!=
+tests/test_options.py	1149	25	==	!=
+tests/test_options.py	1151	25	==	!=
+tests/test_options.py	1159	25	==	!=
+tests/test_options.py	1161	25	==	!=
+tests/test_options.py	1163	25	==	!=
+tests/test_options.py	1187	30	==	!=
+tests/test_options.py	1192	33	==	!=
+tests/test_options.py	1213	35	==	!=
+tests/test_options.py	122	25	==	!=
+tests/test_options.py	1230	35	==	!=
+tests/test_options.py	1248	35	==	!=
+tests/test_options.py	1257	35	==	!=
+tests/test_options.py	130	25	==	!=
+tests/test_options.py	1311	35	==	!=
+tests/test_options.py	1322	35	==	!=
+tests/test_options.py	1324	19	==	!=
+tests/test_options.py	133	55	is not	is
+tests/test_options.py	1345	35	==	!=
+tests/test_options.py	1347	32	is	is not
+tests/test_options.py	1378	31	==	!=
+tests/test_options.py	1397	31	==	!=
+tests/test_options.py	1406	22	is	is not
+tests/test_options.py	1408	22	is	is not
+tests/test_options.py	1411	22	is	is not
+tests/test_options.py	1413	22	is	is not
+tests/test_options.py	1525	25	==	!=
+tests/test_options.py	1611	25	==	!=
+tests/test_options.py	1612	28	==	!=
+tests/test_options.py	171	25	==	!=
+tests/test_options.py	1711	28	==	!=
+tests/test_options.py	1712	25	==	!=
+tests/test_options.py	1736	26	is	is not
+tests/test_options.py	1737	31	is	is not
+tests/test_options.py	1765	28	==	!=
+tests/test_options.py	1839	28	==	!=
+tests/test_options.py	1845	28	==	!=
+tests/test_options.py	1855	32	==	!=
+tests/test_options.py	1903	46	==	!=
+tests/test_options.py	1907	22	is	is not
+tests/test_options.py	2036	21	is	is not
+tests/test_options.py	2053	45	==	!=
+tests/test_options.py	2060	33	==	!=
+tests/test_options.py	2061	48	==	!=
+tests/test_options.py	2180	29	==	!=
+tests/test_options.py	2316	29	==	!=
+tests/test_options.py	2369	28	==	!=
+tests/test_options.py	2373	29	==	!=
+tests/test_options.py	2392	25	==	!=
+tests/test_options.py	2396	25	==	!=
+tests/test_options.py	2400	25	==	!=
+tests/test_options.py	2421	28	==	!=
+tests/test_options.py	244	25	==	!=
+tests/test_options.py	2476	23	is	is not
+tests/test_options.py	2480	43	is	is not
+tests/test_options.py	2498	28	==	!=
+tests/test_options.py	2499	25	==	!=
+tests/test_options.py	2502	28	==	!=
+tests/test_options.py	2503	25	==	!=
+tests/test_options.py	2506	28	==	!=
+tests/test_options.py	2507	25	==	!=
+tests/test_options.py	2517	28	==	!=
+tests/test_options.py	2518	25	==	!=
+tests/test_options.py	2521	28	==	!=
+tests/test_options.py	2522	25	==	!=
+tests/test_options.py	2544	25	==	!=
+tests/test_options.py	2545	28	==	!=
+tests/test_options.py	2548	25	==	!=
+tests/test_options.py	2549	28	==	!=
+tests/test_options.py	2580	28	==	!=
+tests/test_options.py	2581	25	==	!=
+tests/test_options.py	2835	28	==	!=
+tests/test_options.py	2836	25	==	!=
+tests/test_options.py	2869	28	==	!=
+tests/test_options.py	2870	25	==	!=
+tests/test_options.py	2894	28	==	!=
+tests/test_options.py	2895	25	==	!=
+tests/test_options.py	30	25	==	!=
+tests/test_options.py	3173	28	==	!=
+tests/test_options.py	3174	25	==	!=
+tests/test_options.py	3211	17	is not	is
+tests/test_options.py	3213	19	is	is not
+tests/test_options.py	3220	17	is not	is
+tests/test_options.py	3222	19	is	is not
+tests/test_options.py	3232	28	==	!=
+tests/test_options.py	3233	25	==	!=
+tests/test_options.py	3248	28	==	!=
+tests/test_options.py	3272	28	==	!=
+tests/test_options.py	3273	25	==	!=
+tests/test_options.py	33	58	is not	is
+tests/test_options.py	3336	28	==	!=
+tests/test_options.py	3337	25	==	!=
+tests/test_options.py	3393	19	is not	is
+tests/test_options.py	3397	28	==	!=
+tests/test_options.py	3398	25	==	!=
+tests/test_options.py	34	56	is not	is
+tests/test_options.py	3418	17	is	is not
+tests/test_options.py	3426	19	is	is not
+tests/test_options.py	3440	28	==	!=
+tests/test_options.py	3441	25	==	!=
+tests/test_options.py	378	25	is	is not
+tests/test_options.py	403	28	is	is not
+tests/test_options.py	404	25	==	!=
+tests/test_options.py	417	25	==	!=
+tests/test_options.py	426	25	==	!=
+tests/test_options.py	440	25	==	!=
+tests/test_options.py	507	41	or	and
+tests/test_options.py	507	57	is	is not
+tests/test_options.py	515	28	==	!=
+tests/test_options.py	516	25	==	!=
+tests/test_options.py	551	28	==	!=
+tests/test_options.py	585	21	==	!=
+tests/test_options.py	587	20	is	is not
+tests/test_options.py	589	32	==	!=
+tests/test_options.py	594	21	==	!=
+tests/test_options.py	597	26	==	!=
+tests/test_options.py	599	58	==	!=
+tests/test_options.py	613	25	==	!=
+tests/test_options.py	628	28	==	!=
+tests/test_options.py	646	28	==	!=
+tests/test_options.py	662	35	==	!=
+tests/test_options.py	678	42	==	!=
+tests/test_options.py	687	42	==	!=
+tests/test_options.py	689	18	==	!=
+tests/test_options.py	703	42	==	!=
+tests/test_options.py	716	25	==	!=
+tests/test_options.py	72	28	==	!=
+tests/test_options.py	729	25	==	!=
+tests/test_options.py	741	25	==	!=
+tests/test_options.py	76	28	==	!=
+tests/test_options.py	783	17	<	<=
+tests/test_options.py	783	17	<	>=
+tests/test_options.py	796	25	==	!=
+tests/test_options.py	801	17	<	<=
+tests/test_options.py	801	17	<	>=
+tests/test_options.py	812	25	==	!=
+tests/test_options.py	822	25	==	!=
+tests/test_options.py	824	25	==	!=
+tests/test_options.py	826	25	==	!=
+tests/test_options.py	839	25	==	!=
+tests/test_options.py	841	25	==	!=
+tests/test_options.py	870	34	==	!=
+tests/test_options.py	874	21	==	!=
+tests/test_options.py	882	28	==	!=
+tests/test_options.py	893	28	==	!=
+tests/test_options.py	9	20	<	<=
+tests/test_options.py	9	20	<	>=
+tests/test_options.py	906	28	==	!=
+tests/test_options.py	913	28	==	!=
+tests/test_options.py	920	28	==	!=
+tests/test_options.py	931	28	==	!=
+tests/test_options.py	932	25	==	!=
+tests/test_options.py	935	28	==	!=
+tests/test_options.py	936	25	==	!=
+tests/test_options.py	939	28	==	!=
+tests/test_options.py	940	25	==	!=
+tests/test_options.py	948	28	==	!=
+tests/test_options.py	951	28	==	!=
+tests/test_options.py	954	28	==	!=
+tests/test_options.py	964	28	==	!=
+tests/test_options.py	965	25	==	!=
+tests/test_options.py	984	28	==	!=
+tests/test_parser.py	19	35	==	!=
+tests/test_parser.py	24	32	==	!=
+tests/test_parser.py	32	32	==	!=
+tests/test_shell_completion.py	100	48	==	!=
+tests/test_shell_completion.py	101	41	==	!=
+tests/test_shell_completion.py	106	43	==	!=
+tests/test_shell_completion.py	107	41	==	!=
+tests/test_shell_completion.py	120	35	==	!=
+tests/test_shell_completion.py	121	36	==	!=
+tests/test_shell_completion.py	123	39	==	!=
+tests/test_shell_completion.py	124	44	==	!=
+tests/test_shell_completion.py	136	35	==	!=
+tests/test_shell_completion.py	137	39	==	!=
+tests/test_shell_completion.py	139	39	==	!=
+tests/test_shell_completion.py	144	39	==	!=
+tests/test_shell_completion.py	145	40	==	!=
+tests/test_shell_completion.py	146	41	==	!=
+tests/test_shell_completion.py	151	39	==	!=
+tests/test_shell_completion.py	152	40	==	!=
+tests/test_shell_completion.py	153	41	==	!=
+tests/test_shell_completion.py	164	39	==	!=
+tests/test_shell_completion.py	165	40	==	!=
+tests/test_shell_completion.py	170	39	==	!=
+tests/test_shell_completion.py	171	40	==	!=
+tests/test_shell_completion.py	183	43	==	!=
+tests/test_shell_completion.py	184	44	==	!=
+tests/test_shell_completion.py	185	54	==	!=
+tests/test_shell_completion.py	195	20	==	!=
+tests/test_shell_completion.py	197	19	==	!=
+tests/test_shell_completion.py	198	18	==	!=
+tests/test_shell_completion.py	204	20	==	!=
+tests/test_shell_completion.py	206	19	==	!=
+tests/test_shell_completion.py	218	37	==	!=
+tests/test_shell_completion.py	220	42	==	!=
+tests/test_shell_completion.py	233	55	==	!=
+tests/test_shell_completion.py	248	43	==	!=
+tests/test_shell_completion.py	249	44	==	!=
+tests/test_shell_completion.py	257	39	==	!=
+tests/test_shell_completion.py	259	50	==	!=
+tests/test_shell_completion.py	266	39	==	!=
+tests/test_shell_completion.py	267	44	==	!=
+tests/test_shell_completion.py	268	49	==	!=
+tests/test_shell_completion.py	280	35	==	!=
+tests/test_shell_completion.py	281	38	==	!=
+tests/test_shell_completion.py	282	43	==	!=
+tests/test_shell_completion.py	283	48	==	!=
+tests/test_shell_completion.py	284	53	==	!=
+tests/test_shell_completion.py	285	49	==	!=
+tests/test_shell_completion.py	286	54	==	!=
+tests/test_shell_completion.py	298	36	==	!=
+tests/test_shell_completion.py	299	43	==	!=
+tests/test_shell_completion.py	300	35	==	!=
+tests/test_shell_completion.py	301	39	==	!=
+tests/test_shell_completion.py	31	35	==	!=
+tests/test_shell_completion.py	32	36	==	!=
+tests/test_shell_completion.py	321	44	==	!=
+tests/test_shell_completion.py	322	49	==	!=
+tests/test_shell_completion.py	33	37	==	!=
+tests/test_shell_completion.py	334	15	==	!=
+tests/test_shell_completion.py	335	15	is	is not
+tests/test_shell_completion.py	34	38	==	!=
+tests/test_shell_completion.py	36	45	==	!=
+tests/test_shell_completion.py	370	25	==	!=
+tests/test_shell_completion.py	41	35	==	!=
+tests/test_shell_completion.py	42	36	==	!=
+tests/test_shell_completion.py	443	25	==	!=
+tests/test_shell_completion.py	457	25	==	!=
+tests/test_shell_completion.py	467	23	==	!=
+tests/test_shell_completion.py	492	46	is	is not
+tests/test_shell_completion.py	496	60	is	is not
+tests/test_shell_completion.py	517	59	is	is not
+tests/test_shell_completion.py	522	60	is	is not
+tests/test_shell_completion.py	537	60	is	is not
+tests/test_shell_completion.py	592	28	==	!=
+tests/test_shell_completion.py	599	33	-	+
+tests/test_shell_completion.py	600	20	==	!=
+tests/test_shell_completion.py	600	31	and	or
+tests/test_shell_completion.py	600	43	+	-
+tests/test_shell_completion.py	601	32	+	-
+tests/test_shell_completion.py	72	39	==	!=
+tests/test_shell_completion.py	79	36	==	!=
+tests/test_shell_completion.py	80	45	==	!=
+tests/test_shell_completion.py	81	50	==	!=
+tests/test_shell_completion.py	82	61	==	!=
+tests/test_shell_completion.py	95	35	==	!=
+tests/test_shell_completion.py	96	36	==	!=
+tests/test_shell_completion.py	97	49	==	!=
+tests/test_shell_completion.py	99	40	==	!=
+tests/test_stream_lifecycle.py	104	24	==	!=
+tests/test_stream_lifecycle.py	105	24	==	!=
+tests/test_stream_lifecycle.py	133	35	==	!=
+tests/test_stream_lifecycle.py	134	35	==	!=
+tests/test_stream_lifecycle.py	135	35	==	!=
+tests/test_stream_lifecycle.py	148	28	==	!=
+tests/test_stream_lifecycle.py	149	25	==	!=
+tests/test_stream_lifecycle.py	150	25	==	!=
+tests/test_stream_lifecycle.py	162	35	is	is not
+tests/test_stream_lifecycle.py	171	29	==	!=
+tests/test_stream_lifecycle.py	172	29	==	!=
+tests/test_stream_lifecycle.py	181	29	==	!=
+tests/test_stream_lifecycle.py	200	28	==	!=
+tests/test_stream_lifecycle.py	216	28	==	!=
+tests/test_stream_lifecycle.py	238	32	==	!=
+tests/test_stream_lifecycle.py	257	32	==	!=
+tests/test_stream_lifecycle.py	285	32	==	!=
+tests/test_stream_lifecycle.py	303	51	*	/
+tests/test_stream_lifecycle.py	309	28	==	!=
+tests/test_stream_lifecycle.py	333	28	==	!=
+tests/test_stream_lifecycle.py	349	28	==	!=
+tests/test_stream_lifecycle.py	359	42	+	-
+tests/test_stream_lifecycle.py	365	32	==	!=
+tests/test_stream_lifecycle.py	366	37	==	!=
+tests/test_stream_lifecycle.py	366	46	+	-
+tests/test_stream_lifecycle.py	385	32	==	!=
+tests/test_stream_lifecycle.py	386	37	==	!=
+tests/test_stream_lifecycle.py	400	32	==	!=
+tests/test_stream_lifecycle.py	401	37	==	!=
+tests/test_stream_lifecycle.py	402	37	==	!=
+tests/test_stream_lifecycle.py	417	25	==	!=
+tests/test_stream_lifecycle.py	418	25	==	!=
+tests/test_stream_lifecycle.py	419	25	==	!=
+tests/test_stream_lifecycle.py	430	22	==	!=
+tests/test_stream_lifecycle.py	437	24	==	!=
+tests/test_stream_lifecycle.py	441	24	==	!=
+tests/test_stream_lifecycle.py	445	24	==	!=
+tests/test_stream_lifecycle.py	462	22	is	is not
+tests/test_stream_lifecycle.py	463	22	is	is not
+tests/test_stream_lifecycle.py	464	21	is	is not
+tests/test_stream_lifecycle.py	479	22	is	is not
+tests/test_stream_lifecycle.py	480	22	is	is not
+tests/test_stream_lifecycle.py	505	28	==	!=
+tests/test_stream_lifecycle.py	521	28	==	!=
+tests/test_stream_lifecycle.py	536	28	==	!=
+tests/test_stream_lifecycle.py	70	26	==	!=
+tests/test_stream_lifecycle.py	82	26	==	!=
+tests/test_stream_lifecycle.py	98	26	==	!=
+tests/test_termui.py	105	41	==	!=
+tests/test_termui.py	111	43	==	!=
+tests/test_termui.py	1167	4	+	-
+tests/test_termui.py	117	28	==	!=
+tests/test_termui.py	1184	13	is not	is
+tests/test_termui.py	1193	32	==	!=
+tests/test_termui.py	1197	18	is not	is
+tests/test_termui.py	1206	24	is	is not
+tests/test_termui.py	1216	29	==	!=
+tests/test_termui.py	1218	32	==	!=
+tests/test_termui.py	1225	22	<	<=
+tests/test_termui.py	1225	22	<	>=
+tests/test_termui.py	1234	17	==	!=
+tests/test_termui.py	1248	22	<	<=
+tests/test_termui.py	1248	22	<	>=
+tests/test_termui.py	133	43	is not	is
+tests/test_termui.py	134	37	==	!=
+tests/test_termui.py	141	22	==	!=
+tests/test_termui.py	1431	27	is not	is
+tests/test_termui.py	1453	28	==	!=
+tests/test_termui.py	155	37	==	!=
+tests/test_termui.py	178	47	==	!=
+tests/test_termui.py	219	28	is	is not
+tests/test_termui.py	257	25	==	!=
+tests/test_termui.py	264	21	==	!=
+tests/test_termui.py	267	38	==	!=
+tests/test_termui.py	275	22	==	!=
+tests/test_termui.py	280	35	==	!=
+tests/test_termui.py	345	36	==	!=
+tests/test_termui.py	346	19	==	!=
+tests/test_termui.py	348	36	==	!=
+tests/test_termui.py	349	19	==	!=
+tests/test_termui.py	359	31	==	!=
+tests/test_termui.py	374	27	==	!=
+tests/test_termui.py	389	38	==	!=
+tests/test_termui.py	392	18	==	!=
+tests/test_termui.py	395	38	==	!=
+tests/test_termui.py	402	22	is	is not
+tests/test_termui.py	413	40	==	!=
+tests/test_termui.py	516	51	or	and
+tests/test_termui.py	517	20	==	!=
+tests/test_termui.py	518	52	is	is not
+tests/test_termui.py	544	51	or	and
+tests/test_termui.py	545	20	==	!=
+tests/test_termui.py	545	36	+	-
+tests/test_termui.py	546	52	is	is not
+tests/test_termui.py	555	19	is not	is
+tests/test_termui.py	556	29	==	!=
+tests/test_termui.py	625	34	==	!=
+tests/test_termui.py	636	22	is not	is
+tests/test_termui.py	652	15	==	!=
+tests/test_termui.py	701	18	==	!=
+tests/test_termui.py	725	15	==	!=
+tests/test_termui.py	726	15	==	!=
+tests/test_termui.py	748	49	==	!=
+tests/test_termui.py	768	49	==	!=
+tests/test_termui.py	789	64	is not	is
+tests/test_termui.py	795	49	==	!=
+tests/test_termui.py	815	21	is	is not
+tests/test_termui.py	818	33	==	!=
+tests/test_termui.py	83	28	is	is not
+tests/test_termui.py	845	25	is	is not
+tests/test_termui.py	848	30	==	!=
+tests/test_termui.py	898	13	is not	is
+tests/test_termui.py	904	28	is	is not
+tests/test_termui.py	905	31	==	!=
+tests/test_termui.py	930	28	is	is not
+tests/test_termui.py	931	31	==	!=
+tests/test_termui.py	933	14	==	!=
+tests/test_termui.py	94	41	==	!=
+tests/test_termui.py	985	15	is not	is
+tests/test_termui.py	995	17	is not	is
+tests/test_termui.py	997	21	is not	is
+tests/test_testing.py	106	25	==	!=
+tests/test_testing.py	111	25	==	!=
+tests/test_testing.py	123	25	==	!=
+tests/test_testing.py	133	25	==	!=
+tests/test_testing.py	144	25	==	!=
+tests/test_testing.py	149	25	==	!=
+tests/test_testing.py	158	25	==	!=
+tests/test_testing.py	163	25	==	!=
+tests/test_testing.py	178	33	is	is not
+tests/test_testing.py	179	32	==	!=
+tests/test_testing.py	187	28	==	!=
+tests/test_testing.py	205	33	is	is not
+tests/test_testing.py	206	32	==	!=
+tests/test_testing.py	220	25	==	!=
+tests/test_testing.py	224	25	==	!=
+tests/test_testing.py	240	25	==	!=
+tests/test_testing.py	244	25	==	!=
+tests/test_testing.py	256	25	==	!=
+tests/test_testing.py	30	25	==	!=
+tests/test_testing.py	301	28	==	!=
+tests/test_testing.py	302	25	==	!=
+tests/test_testing.py	305	28	==	!=
+tests/test_testing.py	306	25	==	!=
+tests/test_testing.py	309	28	==	!=
+tests/test_testing.py	310	25	==	!=
+tests/test_testing.py	313	28	==	!=
+tests/test_testing.py	314	25	==	!=
+tests/test_testing.py	317	28	==	!=
+tests/test_testing.py	318	25	==	!=
+tests/test_testing.py	321	28	==	!=
+tests/test_testing.py	322	25	==	!=
+tests/test_testing.py	325	28	==	!=
+tests/test_testing.py	326	25	==	!=
+tests/test_testing.py	341	28	==	!=
+tests/test_testing.py	342	25	==	!=
+tests/test_testing.py	344	22	==	!=
+tests/test_testing.py	358	29	==	!=
+tests/test_testing.py	359	29	==	!=
+tests/test_testing.py	360	29	==	!=
+tests/test_testing.py	369	25	==	!=
+tests/test_testing.py	370	25	==	!=
+tests/test_testing.py	371	25	==	!=
+tests/test_testing.py	392	28	==	!=
+tests/test_testing.py	393	25	==	!=
+tests/test_testing.py	404	25	==	!=
+tests/test_testing.py	415	25	==	!=
+tests/test_testing.py	416	31	==	!=
+tests/test_testing.py	417	28	==	!=
+tests/test_testing.py	428	25	==	!=
+tests/test_testing.py	454	30	==	!=
+tests/test_testing.py	465	30	==	!=
+tests/test_testing.py	474	25	==	!=
+tests/test_testing.py	48	25	==	!=
+tests/test_testing.py	486	30	is	is not
+tests/test_testing.py	487	31	is	is not
+tests/test_testing.py	492	25	==	!=
+tests/test_testing.py	505	30	is	is not
+tests/test_testing.py	506	31	is	is not
+tests/test_testing.py	523	28	is	is not
+tests/test_testing.py	527	17	==	!=
+tests/test_testing.py	538	33	!=	==
+tests/test_testing.py	60	25	==	!=
+tests/test_testing.py	645	28	==	!=
+tests/test_testing.py	665	28	==	!=
+tests/test_testing.py	69	25	==	!=
+tests/test_testing.py	736	28	==	!=
+tests/test_testing.py	78	25	==	!=
+tests/test_testing.py	88	25	==	!=
+tests/test_types.py	104	28	is	is not
+tests/test_types.py	105	31	==	!=
+tests/test_types.py	124	28	is	is not
+tests/test_types.py	125	31	==	!=
+tests/test_types.py	159	18	==	!=
+tests/test_types.py	164	18	==	!=
+tests/test_types.py	210	17	==	!=
+tests/test_types.py	259	19	==	!=
+tests/test_types.py	263	22	==	!=
+tests/test_types.py	276	19	==	!=
+tests/test_types.py	32	43	==	!=
+tests/test_types.py	97	13	==	!=
+tests/test_utils.py	150	40	==	!=
+tests/test_utils.py	151	30	==	!=
+tests/test_utils.py	156	31	==	!=
+tests/test_utils.py	160	45	==	!=
+tests/test_utils.py	161	48	==	!=
+tests/test_utils.py	162	47	==	!=
+tests/test_utils.py	163	61	==	!=
+tests/test_utils.py	164	64	==	!=
+tests/test_utils.py	177	25	==	!=
+tests/test_utils.py	181	25	==	!=
+tests/test_utils.py	185	25	==	!=
+tests/test_utils.py	196	25	==	!=
+tests/test_utils.py	200	25	==	!=
+tests/test_utils.py	204	25	==	!=
+tests/test_utils.py	212	25	==	!=
+tests/test_utils.py	229	15	==	!=
+tests/test_utils.py	259	20	==	!=
+tests/test_utils.py	26	17	is	is not
+tests/test_utils.py	27	17	==	!=
+tests/test_utils.py	272	28	==	!=
+tests/test_utils.py	28	23	==	!=
+tests/test_utils.py	29	22	==	!=
+tests/test_utils.py	30	23	is	is not
+tests/test_utils.py	438	17	==	!=
+tests/test_utils.py	441	15	==	!=
+tests/test_utils.py	444	15	==	!=
+tests/test_utils.py	455	23	==	!=
+tests/test_utils.py	459	15	==	!=
+tests/test_utils.py	463	15	==	!=
+tests/test_utils.py	468	15	==	!=
+tests/test_utils.py	476	29	==	!=
+tests/test_utils.py	480	29	==	!=
+tests/test_utils.py	498	15	==	!=
+tests/test_utils.py	499	15	==	!=
+tests/test_utils.py	503	15	==	!=
+tests/test_utils.py	504	15	==	!=
+tests/test_utils.py	509	15	==	!=
+tests/test_utils.py	510	15	==	!=
+tests/test_utils.py	515	15	==	!=
+tests/test_utils.py	516	15	==	!=
+tests/test_utils.py	524	15	==	!=
+tests/test_utils.py	525	15	==	!=
+tests/test_utils.py	531	15	==	!=
+tests/test_utils.py	532	15	==	!=
+tests/test_utils.py	537	15	==	!=
+tests/test_utils.py	538	15	==	!=
+tests/test_utils.py	543	15	==	!=
+tests/test_utils.py	544	15	==	!=
+tests/test_utils.py	550	15	==	!=
+tests/test_utils.py	551	15	==	!=
+tests/test_utils.py	557	15	==	!=
+tests/test_utils.py	558	15	==	!=
+tests/test_utils.py	565	15	==	!=
+tests/test_utils.py	566	15	==	!=
+tests/test_utils.py	570	15	==	!=
+tests/test_utils.py	571	15	==	!=
+tests/test_utils.py	577	15	==	!=
+tests/test_utils.py	594	32	is	is not
+tests/test_utils.py	595	29	==	!=
+tests/test_utils.py	598	32	is	is not
+tests/test_utils.py	599	29	==	!=
+tests/test_utils.py	614	32	is	is not
+tests/test_utils.py	615	29	==	!=
+tests/test_utils.py	626	28	is	is not
+tests/test_utils.py	635	28	==	!=
+tests/test_utils.py	64	21	!=	==
+tests/test_utils.py	65	21	is not	is
+tests/test_utils.py	670	32	is	is not
+tests/test_utils.py	671	61	==	!=
+tests/test_utils.py	690	32	is	is not
+tests/test_utils.py	691	56	==	!=
+tests/test_utils.py	700	26	==	!=
+tests/test_utils.py	710	30	==	!=
+tests/test_utils.py	732	72	==	!=
+tests/test_utils.py	746	62	==	!=
+tests/test_utils.py	776	23	<=	<
+tests/test_utils.py	776	23	<=	>
+tests/test_utils.py	78	21	==	!=
+tests/test_utils.py	782	15	==	!=
+tests/test_utils.py	86	31	==	!=
+tests/test_utils.py	91	40	==	!=
+tests/test_utils.py	97	24	==	!=
+tests/typing/typing_aliased_group.py	11	78	|	&
+tests/typing/typing_aliased_group.py	13	14	is not	is
+tests/typing/typing_aliased_group.py	18	26	==	!=
+tests/typing/typing_aliased_group.py	24	19	|	&
+tests/typing/typing_aliased_group.py	27	19	is not	is
