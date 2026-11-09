@@ -1,4 +1,0 @@
-source_code_directory=project/src
-mutator_type=EMPTY_RETURNS
-compile_command=
-test_command=racket ./project/tests/all-tests.rkt

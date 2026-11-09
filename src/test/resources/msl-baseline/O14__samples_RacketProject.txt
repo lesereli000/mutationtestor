@@ -1,0 +1,5 @@
+project/src/demo-logical-and-to-or.rkt	5	16	>	>=
+project/src/demo-logical-and-to-or.rkt	5	8	>	>=
+project/src/demo-logical-or-to-and.rkt	5	15	>	>=
+project/src/demo-logical-or-to-and.rkt	5	7	>	>=
+project/src/demo.rkt	23	7	>	>=

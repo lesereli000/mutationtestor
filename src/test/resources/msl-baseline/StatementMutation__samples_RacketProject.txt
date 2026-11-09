@@ -1,0 +1,855 @@
+project/doc/manual-racket.js	10	16	document.getElementsByTagName(tag_names[j])	null
+project/doc/manual-racket.js	101	13	prefixes.hasOwnProperty(parsed.host)	null
+project/doc/manual-racket.js	106	4	if (info) AddSourceElement(correct_url, info);	;
+project/doc/manual-racket.js	110	12	document.createElement("span")	null
+project/doc/manual-racket.js	113	4	s.appendChild(document.createTextNode(str));	;
+project/doc/manual-racket.js	114	4	dest.appendChild(s);	;
+project/doc/manual-racket.js	12	23	elems.item(i)	null
+project/doc/manual-racket.js	13	12	AddPartTitleOnClick(elem);	;
+project/doc/manual-racket.js	146	19	elem.getAttribute("x-source-module")	null
+project/doc/manual-racket.js	147	14	elem.getAttribute("x-part-tag")	null
+project/doc/manual-racket.js	148	21	elem.getAttribute("x-source-pkg")	null
+project/doc/manual-racket.js	151	15	document.createElement("div")	null
+project/doc/manual-racket.js	160	12	AddSourceElement(cached[0], mod_path, cached[1], info);	;
+project/doc/manual-racket.js	164	51	response.json()	null
+project/doc/manual-racket.js	172	24	AddSourceUrl(source, mod_path, collection, info);	;
+project/doc/manual-racket.js	180	23	elem.getAttribute("x-part-prefixes")	null
+project/doc/manual-racket.js	197	20	document.createElement("div")	null
+project/doc/manual-racket.js	202	8	addSpan(line1, "\\xA0@", "RktRdr");	;
+project/doc/manual-racket.js	203	8	addSpan(line1, (is_top ? "other-doc" : "secref"), "RktSym");	;
+project/doc/manual-racket.js	204	8	addSpan(line1, "[", "RktPn");	;
+project/doc/manual-racket.js	206	12	addSpan(line1, tag, "RktVal");	;
+project/doc/manual-racket.js	210	16	addSpan(line1x, "\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0", "RktPn");	;
+project/doc/manual-racket.js	211	12	addSpan(line2, "\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0\\xA0", "RktPn");	;
+project/doc/manual-racket.js	214	12	addSpan(line1x, " #:tag-prefixes ", "RktPn");	;
+project/doc/manual-racket.js	215	12	addSpan(line1x, "'", "RktVal");	;
+project/doc/manual-racket.js	216	12	addSpan(line1x, prefixes, "RktVal");	;
+project/doc/manual-racket.js	219	12	addSpan(line2, " #:doc ", "RktPn");	;
+project/doc/manual-racket.js	220	8	addSpan(line2, "'", "RktVal");	;
+project/doc/manual-racket.js	221	8	addSpan(line2, mod_path, "RktVal");	;
+project/doc/manual-racket.js	222	8	addSpan(line2, "]", "RktPn");	;
+project/doc/manual-racket.js	224	8	info.appendChild(line1);	;
+project/doc/manual-racket.js	226	12	info.appendChild(line1x);	;
+project/doc/manual-racket.js	228	12	info.appendChild(line2);	;
+project/doc/manual-racket.js	23	21	new URL(source)	null
+project/doc/manual-racket.js	235	12	elem.parentNode.insertBefore(info, n);	;
+project/doc/manual-racket.js	237	12	elem.parentNode.appendChild(info);	;
+project/doc/manual-racket.js	240	24	elem.querySelector('.heading-source')	null
+project/doc/manual-racket.js	243	16	info.style.display === "none"	false
+project/doc/manual-racket.js	243	16	info.style.display === "none"	true
+project/doc/manual-racket.js	25	8	source_url.protocol == "github:"	false
+project/doc/manual-racket.js	25	8	source_url.protocol == "github:"	true
+project/doc/manual-racket.js	27	21	new URL("https" + source.substring(6))	null
+project/doc/manual-racket.js	29	23	source_url.pathname.substring(1)	null
+project/doc/manual-racket.js	30	12	!(url_path.length >= 2)	false
+project/doc/manual-racket.js	30	12	!(url_path.length >= 2)	true
+project/doc/manual-racket.js	31	19	url_path.shift()	null
+project/doc/manual-racket.js	32	19	url_path.shift()	null
+project/doc/manual-racket.js	33	21	url_path.shift()	null
+project/doc/manual-racket.js	34	26	url_path.join("/")	null
+project/doc/manual-racket.js	36	13	("https:" == source_url.protocol) || ("git:" == source_url.protocol)	false
+project/doc/manual-racket.js	36	13	("https:" == source_url.protocol) || ("git:" == source_url.protocol)	true
+project/doc/manual-racket.js	38	12	"git:" == source_url.protocol	false
+project/doc/manual-racket.js	38	12	"git:" == source_url.protocol	true
+project/doc/manual-racket.js	39	25	new URL("https" + source.substring(3))	null
+project/doc/manual-racket.js	42	26	source_url.searchParams.get("path")	null
+project/doc/manual-racket.js	44	23	source_url.pathname.substring(1)	null
+project/doc/manual-racket.js	45	12	url_path.length < 2	false
+project/doc/manual-racket.js	45	12	url_path.length < 2	true
+project/doc/manual-racket.js	46	19	url_path.shift()	null
+project/doc/manual-racket.js	47	19	url_path.shift()	null
+project/doc/manual-racket.js	48	19	repo.match(/(.*)\\.git$/)	null
+project/doc/manual-racket.js	61	8	mod_path_elems.shift();	;
+project/doc/manual-racket.js	63	20	mod_path_elems.join("/")	null
+project/doc/manual-racket.js	70	11	{ user: user,\r\n             repo: repo,\r\n             file_path: file_path,\r\n             branch: branch,\r\n             host: host }	{}
+project/doc/manual-racket.js	78	4	info.appendChild(document.createTextNode("Document source "));	;
+project/doc/manual-racket.js	79	19	document.createElement("div")	null
+project/doc/manual-racket.js	80	12	document.createElement("a")	null
+project/doc/manual-racket.js	83	4	a.appendChild(document.createTextNode(pkg_url));	;
+project/doc/manual-racket.js	84	4	addSpan(url_line, "\\xA0", "RktRdr");	;
+project/doc/manual-racket.js	85	4	url_line.appendChild(a);	;
+project/doc/manual-racket.js	86	4	info.appendChild(url_line);	;
+project/doc/scribble-common.js	10	9	GetURL().searchParams	null
+project/doc/scribble-common.js	106	11	(tmp = path.replace(normalize_rxs[i], "/")) != path	false
+project/doc/scribble-common.js	106	11	(tmp = path.replace(normalize_rxs[i], "/")) != path	true
+project/doc/scribble-common.js	106	18	path.replace(normalize_rxs[i], "/")	null
+project/doc/scribble-common.js	107	9	path	null
+project/doc/scribble-common.js	118	6	event && event.key === 'Enter'	false
+project/doc/scribble-common.js	118	6	event && event.key === 'Enter'	true
+project/doc/scribble-common.js	119	12	GetRootPath(ver)	null
+project/doc/scribble-common.js	120	8	u == null	false
+project/doc/scribble-common.js	120	8	u == null	true
+project/doc/scribble-common.js	122	8	MergePageArgsIntoUrl(u)	null
+project/doc/scribble-common.js	126	9	true	false
+project/doc/scribble-common.js	130	10	document.getElementById(id)	null
+project/doc/scribble-common.js	137	2	document.body.classList.toggle("tocsetoverlay");	;
+project/doc/scribble-common.js	14	9	GetPageArgs().toString()	null
+project/doc/scribble-common.js	146	26	on_load_funcs.push(fun);	;
+project/doc/scribble-common.js	148	2	for (var i=0; i<on_load_funcs.length; i++) on_load_funcs[i]();	;
+project/doc/scribble-common.js	152	16	document.getElementsByTagName("a")	null
+project/doc/scribble-common.js	153	4	for (var i=0; i<links.length; i++) MergePageArgsIntoLink(links[i]);	;
+project/doc/scribble-common.js	154	16	GetPageArg("ctxtname",false)	null
+project/doc/scribble-common.js	156	20	document.getElementById("contextindicator")	null
+project/doc/scribble-common.js	165	8	(e.key === 's' || e.key === 'S') && e.target === document.body	false
+project/doc/scribble-common.js	165	8	(e.key === 's' || e.key === 'S') && e.target === document.body	true
+project/doc/scribble-common.js	166	22	document.getElementById('searchbox')	null
+project/doc/scribble-common.js	168	8	searchBox.focus();	;
+project/doc/scribble-common.js	18	9	GetPageArgs().get(key) || def	null
+project/doc/scribble-common.js	22	6	GetPageArgs().size === 0 || !a.dataset.pltdoc	false
+project/doc/scribble-common.js	22	6	GetPageArgs().size === 0 || !a.dataset.pltdoc	true
+project/doc/scribble-common.js	23	11	MergePageArgsIntoUrl(a.href)	null
+project/doc/scribble-common.js	27	14	new URL(href, window.location.href)	null
+project/doc/scribble-common.js	32	9	url.href	null
+project/doc/scribble-common.js	43	11	v	null
+project/doc/scribble-common.js	47	10	document.cookie.length <= 0	false
+project/doc/scribble-common.js	47	10	document.cookie.length <= 0	true
+project/doc/scribble-common.js	47	46	def	null
+project/doc/scribble-common.js	48	19	document.cookie.split(/; */)	null
+project/doc/scribble-common.js	49	25	def	null
+project/doc/scribble-common.js	52	16	cur.indexOf('=')	null
+project/doc/scribble-common.js	53	10	eql >= 0 && cur.substring(0,eql) == key	false
+project/doc/scribble-common.js	53	10	eql >= 0 && cur.substring(0,eql) == key	true
+project/doc/scribble-common.js	54	15	unescape(cur.substring(eql+1))	null
+project/doc/scribble-common.js	56	11	def	null
+project/doc/scribble-common.js	6	9	new URL(location)	null
+project/doc/scribble-common.js	64	12	new Date()	null
+project/doc/scribble-common.js	65	4	d.setTime(d.getTime()+(365*24*60*60*1000));	;
+project/doc/scribble-common.js	77	2	SetCookie("PLT_Root."+ver, root);	;
+project/doc/scribble-common.js	82	10	GetRootPath(ver)	null
+project/doc/scribble-common.js	83	24	true	false
+project/doc/scribble-common.js	83	6	u == null	false
+project/doc/scribble-common.js	83	6	u == null	true
+project/doc/scribble-common.js	91	12	GetCookie("PLT_Root."+ver, null)	null
+project/doc/scribble-common.js	92	8	u != null	false
+project/doc/scribble-common.js	92	8	u != null	true
+project/doc/scribble-common.js	93	15	u	null
+project/doc/scribble-common.js	95	8	typeof user_doc_root != "undefined"	false
+project/doc/scribble-common.js	95	8	typeof user_doc_root != "undefined"	true
+project/doc/scribble-common.js	96	15	user_doc_root	null
+project/main.rkt	9	13	(add1 (add2 3))	0
+project/main.rkt	9	19	(add2 3)	'()
+project/src/add1.rkt	6	2	(+ 1 x)	0
+project/src/add2.rkt	6	2	(+ 2 x)	0
+project/src/demo-equal-to-not-equal.rkt	10	10	(vector-ref v i)	'()
+project/src/demo-equal-to-not-equal.rkt	10	2	(equal? (vector-ref v i) val)	#f
+project/src/demo-equal-to-not-equal.rkt	13	2	(equal? s null)	#f
+project/src/demo-equal-to-not-equal.rkt	18	8	(equal? x y)	#f
+project/src/demo-equal-to-not-equal.rkt	18	8	(equal? x y)	#t
+project/src/demo-equal-to-not-equal.rkt	19	8	(displayln "test-basic-equality: fails (should pass)")	'()
+project/src/demo-equal-to-not-equal.rkt	20	8	(displayln "test-basic-equality: passes (should fail)")	'()
+project/src/demo-equal-to-not-equal.rkt	25	8	(equal? x y)	#f
+project/src/demo-equal-to-not-equal.rkt	25	8	(equal? x y)	#t
+project/src/demo-equal-to-not-equal.rkt	26	8	(displayln "test-inequality-check: passes")	'()
+project/src/demo-equal-to-not-equal.rkt	27	8	(displayln "test-inequality-check: fails")	'()
+project/src/demo-equal-to-not-equal.rkt	33	13	(equal? a b)	#f
+project/src/demo-equal-to-not-equal.rkt	33	26	(equal? b c)	#f
+project/src/demo-equal-to-not-equal.rkt	33	8	(and (equal? a b) (equal? b c))	#f
+project/src/demo-equal-to-not-equal.rkt	33	8	(and (equal? a b) (equal? b c))	#t
+project/src/demo-equal-to-not-equal.rkt	34	8	(displayln "test-multiple-conditions: fails (all equal)")	'()
+project/src/demo-equal-to-not-equal.rkt	35	8	(displayln "test-multiple-conditions: passes")	'()
+project/src/demo-equal-to-not-equal.rkt	4	2	(equal? a b)	#f
+project/src/demo-equal-to-not-equal.rkt	45	11	(is-equal 5 5)	'()
+project/src/demo-equal-to-not-equal.rkt	46	11	(is-equal 5 10)	'()
+project/src/demo-equal-to-not-equal.rkt	47	11	(chained-equality 5 5 5)	'()
+project/src/demo-equal-to-not-equal.rkt	48	11	(chained-equality 5 5 10)	'()
+project/src/demo-equal-to-not-equal.rkt	49	11	(array-equals #(10 20 30)	'()
+project/src/demo-equal-to-not-equal.rkt	50	11	(null-check null)	'()
+project/src/demo-equal-to-not-equal.rkt	51	11	(null-check "test")	'()
+project/src/demo-equal-to-not-equal.rkt	53	11	(equal? 5 5)	#f
+project/src/demo-equal-to-not-equal.rkt	54	11	(equal? 5 10)	#f
+project/src/demo-equal-to-not-equal.rkt	55	16	(equal? 5 5)	#f
+project/src/demo-equal-to-not-equal.rkt	55	29	(equal? 10 10)	#f
+project/src/demo-equal-to-not-equal.rkt	57	0	(test-basic-equality)	'()
+project/src/demo-equal-to-not-equal.rkt	58	0	(test-inequality-check)	'()
+project/src/demo-equal-to-not-equal.rkt	59	0	(test-multiple-conditions)	'()
+project/src/demo-equal-to-not-equal.rkt	7	2	(and (equal? a b) (equal? b c))	#f
+project/src/demo-equal-to-not-equal.rkt	7	20	(equal? b c)	#f
+project/src/demo-equal-to-not-equal.rkt	7	7	(equal? a b)	#f
+project/src/demo-logical-and-to-or.rkt	5	2	(and (> a 0) (> b 0))	#f
+project/src/demo-logical-and-to-or.rkt	8	13	(string-append "Both positive? " (if (both-positive 2 3) "#t" "#f"))	""
+project/src/demo-logical-and-to-or.rkt	8	50	(both-positive 2 3)	'()
+project/src/demo-logical-or-to-and.rkt	5	2	(or (> a 0) (> b 0))	#f
+project/src/demo-logical-or-to-and.rkt	8	13	(string-append "Either positive? " (if (either-positive 2 -3) "#t" "#f"))	""
+project/src/demo-logical-or-to-and.rkt	8	52	(either-positive 2 -3)	'()
+project/src/demo-minus-to-plus.rkt	10	2	(- (vector-ref v i) 1)	0
+project/src/demo-minus-to-plus.rkt	10	5	(vector-ref v i)	'()
+project/src/demo-minus-to-plus.rkt	13	2	(- a)	0
+project/src/demo-minus-to-plus.rkt	16	11	(sub 5 3)	'()
+project/src/demo-minus-to-plus.rkt	17	11	(chain 10 3 2)	'()
+project/src/demo-minus-to-plus.rkt	18	11	(array-minus #(10 20 30)	'()
+project/src/demo-minus-to-plus.rkt	19	11	(unary-minus 7)	'()
+project/src/demo-minus-to-plus.rkt	4	2	(- a b)	0
+project/src/demo-minus-to-plus.rkt	7	2	(- (- a b) c)	0
+project/src/demo-not-equal-to-equal.rkt	10	2	(and (not-equal? a b) (not-equal? b c))	#f
+project/src/demo-not-equal-to-equal.rkt	10	24	(not-equal? b c)	#f
+project/src/demo-not-equal-to-equal.rkt	10	7	(not-equal? a b)	#f
+project/src/demo-not-equal-to-equal.rkt	13	14	(vector-ref v i)	'()
+project/src/demo-not-equal-to-equal.rkt	13	2	(not-equal? (vector-ref v i) val)	#f
+project/src/demo-not-equal-to-equal.rkt	16	2	(not-equal? s null)	#f
+project/src/demo-not-equal-to-equal.rkt	21	8	(not-equal? x y)	#f
+project/src/demo-not-equal-to-equal.rkt	22	8	(displayln "test-basic-inequality: fails (should pass)")	'()
+project/src/demo-not-equal-to-equal.rkt	23	8	(displayln "test-basic-inequality: passes (should fail)")	'()
+project/src/demo-not-equal-to-equal.rkt	28	8	(not-equal? x y)	#f
+project/src/demo-not-equal-to-equal.rkt	29	8	(displayln "test-equality-check: passes")	'()
+project/src/demo-not-equal-to-equal.rkt	30	8	(displayln "test-equality-check: fails")	'()
+project/src/demo-not-equal-to-equal.rkt	36	13	(not-equal? a b)	#f
+project/src/demo-not-equal-to-equal.rkt	36	30	(not-equal? b c)	#f
+project/src/demo-not-equal-to-equal.rkt	37	8	(displayln "test-multiple-conditions: fails (all different)")	'()
+project/src/demo-not-equal-to-equal.rkt	38	8	(displayln "test-multiple-conditions: passes")	'()
+project/src/demo-not-equal-to-equal.rkt	4	2	(not (equal? a b))	#f
+project/src/demo-not-equal-to-equal.rkt	4	7	(equal? a b)	#f
+project/src/demo-not-equal-to-equal.rkt	48	11	(is-not-equal 5 10)	'()
+project/src/demo-not-equal-to-equal.rkt	49	11	(is-not-equal 5 5)	'()
+project/src/demo-not-equal-to-equal.rkt	50	11	(chained-inequality 5 10 15)	'()
+project/src/demo-not-equal-to-equal.rkt	51	11	(chained-inequality 5 5 10)	'()
+project/src/demo-not-equal-to-equal.rkt	52	11	(array-not-equals #(10 20 30)	'()
+project/src/demo-not-equal-to-equal.rkt	53	11	(not-null-check null)	'()
+project/src/demo-not-equal-to-equal.rkt	54	11	(not-null-check "test")	'()
+project/src/demo-not-equal-to-equal.rkt	55	11	(not-equal? 5 10)	#f
+project/src/demo-not-equal-to-equal.rkt	56	11	(not-equal? 5 5)	#f
+project/src/demo-not-equal-to-equal.rkt	57	16	(not-equal? 5 10)	#f
+project/src/demo-not-equal-to-equal.rkt	57	34	(not-equal? 10 15)	#f
+project/src/demo-not-equal-to-equal.rkt	59	0	(test-basic-inequality)	'()
+project/src/demo-not-equal-to-equal.rkt	60	0	(test-equality-check)	'()
+project/src/demo-not-equal-to-equal.rkt	61	0	(test-multiple-conditions)	'()
+project/src/demo-not-equal-to-equal.rkt	7	2	(not-equal? a b)	#f
+project/src/demo.rkt	23	6	(> a equal)	#f
+project/src/demo.rkt	23	6	(> a equal)	#t
+project/src/demo.rkt	24	6	(displayln "GT to GE Passes")	'()
+project/src/demo.rkt	25	6	(displayln "GT to GE Fails")	'()
+project/src/demo.rkt	30	6	(>= a equal)	#f
+project/src/demo.rkt	30	6	(>= a equal)	#t
+project/src/demo.rkt	31	6	(displayln "GE to GT Fails")	'()
+project/src/demo.rkt	32	6	(displayln "GE to GT Passes")	'()
+project/src/demo.rkt	35	11	(add 2 3)	'()
+project/src/demo.rkt	36	11	(chain 1 2 3)	'()
+project/src/demo.rkt	39	0	(GTtoGE)	'()
+project/src/demo.rkt	40	0	(GEtoGT)	'()
+project/src/demo.rkt	5	2	(+ a b)	0
+project/src/demo.rkt	9	2	(+ (+ a b) c)	0
+project/src/loop-demo.rkt	14	19	#t	#f
+project/src/loop-demo.rkt	14	6	(<= n limit)	#f
+project/src/loop-demo.rkt	14	6	(<= n limit)	#t
+project/src/loop-demo.rkt	8	17	(+ 1 (countdown-to-zero (- n 1)))	0
+project/src/loop-demo.rkt	8	22	(countdown-to-zero (- n 1))	'()
+project/src/loop-demo.rkt	8	6	(<= n 0)	#f
+project/src/loop-demo.rkt	8	6	(<= n 0)	#t
+project/src/operators.rkt	10	2	(- x y)	0
+project/src/operators.rkt	14	6	(> x y)	#f
+project/src/operators.rkt	14	6	(> x y)	#t
+project/src/operators.rkt	15	6	"greater"	""
+project/src/operators.rkt	16	6	"not-greater"	""
+project/src/operators.rkt	19	6	(>= x y)	#f
+project/src/operators.rkt	19	6	(>= x y)	#t
+project/src/operators.rkt	20	6	"greater-or-equal"	""
+project/src/operators.rkt	21	6	"less"	""
+project/src/operators.rkt	25	6	(< x y)	#f
+project/src/operators.rkt	25	6	(< x y)	#t
+project/src/operators.rkt	26	6	"less"	""
+project/src/operators.rkt	27	6	"not-less"	""
+project/src/operators.rkt	30	6	(<= x y)	#f
+project/src/operators.rkt	30	6	(<= x y)	#t
+project/src/operators.rkt	31	6	"less-or-equal"	""
+project/src/operators.rkt	32	6	"greater"	""
+project/src/operators.rkt	37	6	(= x y)	#f
+project/src/operators.rkt	37	6	(= x y)	#t
+project/src/operators.rkt	38	6	"equal"	""
+project/src/operators.rkt	39	6	"not-equal"	""
+project/src/operators.rkt	43	6	(and (> x 0) (> y 0))	#f
+project/src/operators.rkt	43	6	(and (> x 0) (> y 0))	#t
+project/src/operators.rkt	44	6	"both-positive"	""
+project/src/operators.rkt	45	10	(or (> x 0) (> y 0))	#f
+project/src/operators.rkt	45	10	(or (> x 0) (> y 0))	#t
+project/src/operators.rkt	46	10	"one-positive"	""
+project/src/operators.rkt	47	10	"neither-positive"	""
+project/src/operators.rkt	54	2	(list a b c)	'()
+project/src/operators.rkt	58	2	(* x y)	0
+project/src/operators.rkt	61	2	(/ x y)	0
+project/src/operators.rkt	65	2	(modulo x y)	0
+project/src/operators.rkt	69	2	(bitwise-and x y)	0
+project/src/operators.rkt	7	2	(+ x y)	0
+project/src/operators.rkt	72	2	(bitwise-ior x y)	0
+project/src/operators.rkt	77	4	(display name)	(void)
+project/src/operators.rkt	78	4	(string-length name)	0
+project/src/operators.rkt	83	17	n	'()
+project/src/operators.rkt	83	6	(<= n 0)	#f
+project/src/operators.rkt	83	6	(<= n 0)	#t
+project/src/operators.rkt	87	19	#t	#f
+project/src/operators.rkt	87	6	(<= x limit)	#f
+project/src/operators.rkt	87	6	(<= x limit)	#t
+project/src/pit-mutations.rkt	101	2	(eq? a b)	#f
+project/src/pit-mutations.rkt	16	4	(display items)	(void)
+project/src/pit-mutations.rkt	17	4	(length items)	0
+project/src/pit-mutations.rkt	21	2	(add1 x)	0
+project/src/pit-mutations.rkt	25	2	(sub1 x)	0
+project/src/pit-mutations.rkt	29	2	(- x)	0
+project/src/pit-mutations.rkt	33	2	#t	#f
+project/src/pit-mutations.rkt	45	2	42	0
+project/src/pit-mutations.rkt	49	2	(cons x y)	'()
+project/src/pit-mutations.rkt	53	2	x	'()
+project/src/pit-mutations.rkt	57	14	"zero"	""
+project/src/pit-mutations.rkt	57	21	"non-zero"	""
+project/src/pit-mutations.rkt	57	6	(= n 0)	#f
+project/src/pit-mutations.rkt	57	6	(= n 0)	#t
+project/src/pit-mutations.rkt	61	17	"negative"	""
+project/src/pit-mutations.rkt	61	9	(< n 0)	#f
+project/src/pit-mutations.rkt	61	9	(< n 0)	#t
+project/src/pit-mutations.rkt	62	17	"positive"	""
+project/src/pit-mutations.rkt	62	9	(> n 0)	#f
+project/src/pit-mutations.rkt	62	9	(> n 0)	#t
+project/src/pit-mutations.rkt	63	14	"zero"	""
+project/src/pit-mutations.rkt	67	2	(string-append "Hello, " name)	""
+project/src/pit-mutations.rkt	71	2	'(a e i o u)	'()
+project/src/pit-mutations.rkt	75	2	(list x y)	'()
+project/src/pit-mutations.rkt	79	13	(sqr b)	0
+project/src/pit-mutations.rkt	79	2	(+ (sqr a) (sqr b))	0
+project/src/pit-mutations.rkt	79	5	(sqr a)	0
+project/src/pit-mutations.rkt	83	16	"even"	""
+project/src/pit-mutations.rkt	83	23	"odd"	""
+project/src/pit-mutations.rkt	83	6	(even? n)	#f
+project/src/pit-mutations.rkt	89	2	(make-point 0 0)	'()
+project/src/pit-mutations.rkt	93	2	(make-hash)	'()
+project/src/pit-mutations.rkt	97	2	(not (empty? items))	#f
+project/src/pit-mutations.rkt	97	7	(empty? items)	#f
+project/src/prototypeSample.rkt	13	13	(quotient a b)	0
+project/src/prototypeSample.rkt	14	13	(modulo a b)	0
+project/src/prototypeSample.rkt	15	4	(list add sub mul div mod)	'()
+project/src/prototypeSample.rkt	24	8	(equal? a b)	#f
+project/src/prototypeSample.rkt	25	8	(eq? a b)	#f
+project/src/prototypeSample.rkt	35	8	(bitwise-and a b)	0
+project/src/prototypeSample.rkt	36	8	(bitwise-ior a b)	0
+project/src/prototypeSample.rkt	37	8	(bitwise-xor a b)	0
+project/src/prototypeSample.rkt	38	8	(bitwise-not a)	'()
+project/src/prototypeSample.rkt	39	8	(arithmetic-shift a 1)	0
+project/src/prototypeSample.rkt	40	8	(arithmetic-shift a -1)	0
+project/src/prototypeSample.rkt	45	13	"positive"	""
+project/src/prototypeSample.rkt	45	5	(> a 0)	#f
+project/src/prototypeSample.rkt	45	5	(> a 0)	#t
+project/src/prototypeSample.rkt	46	13	"negative"	""
+project/src/prototypeSample.rkt	46	5	(< a 0)	#f
+project/src/prototypeSample.rkt	46	5	(< a 0)	#t
+project/src/prototypeSample.rkt	47	10	"zero"	""
+project/src/prototypeSample.rkt	50	14	a	'()
+project/src/prototypeSample.rkt	50	16	b	'()
+project/src/prototypeSample.rkt	50	6	(> a b)	#f
+project/src/prototypeSample.rkt	50	6	(> a b)	#t
+project/src/prototypeSample.rkt	54	6	(null? lst)	#f
+project/src/prototypeSample.rkt	54	6	(null? lst)	#t
+project/src/prototypeSample.rkt	56	16	(cdr lst)	'()
+project/src/prototypeSample.rkt	56	33	(car lst)	'()
+project/src/prototypeSample.rkt	56	6	(sum-list (cdr lst) (+ acc (car lst)))	'()
+project/src/prototypeSample.rkt	60	17	(map (lambda (x) (* x 2)) lst)	'()
+project/src/prototypeSample.rkt	61	16	(foldl + 0 lst)	'()
+project/src/prototypeSample.rkt	62	4	(list doubled summed)	'()
+project/src/prototypeSample.rkt	71	6	(hash-has-key? obj 'quack)	#f
+project/src/prototypeSample.rkt	72	6	((hash-ref obj 'quack))	'()
+project/src/prototypeSample.rkt	72	7	(hash-ref obj 'quack)	'()
+project/src/prototypeSample.rkt	73	6	"Not a duck"	""
+project/src/prototypeSample.rkt	77	16	(add1 counter)	0
+project/src/prototypeSample.rkt	78	2	(math-ops 10 5)	(void)
+project/src/prototypeSample.rkt	79	2	(relational-ops 10 5)	(void)
+project/src/prototypeSample.rkt	80	2	(logical-ops 10 5)	(void)
+project/src/prototypeSample.rkt	81	2	(bitwise-ops 10 5)	(void)
+project/src/prototypeSample.rkt	82	2	(conditional-check 10)	(void)
+project/src/prototypeSample.rkt	83	2	(ternary-check 10 5)	(void)
+project/src/prototypeSample.rkt	84	2	(sum-list '(1 2 3))	(void)
+project/src/prototypeSample.rkt	85	2	(process-list '(1 2 3))	(void)
+project/src/prototypeSample.rkt	86	2	(when-positive 5 (set! counter (add1 counter)))	(void)
+project/src/prototypeSample.rkt	86	33	(add1 counter)	0
+project/src/prototypeSample.rkt	88	15	(make-hash)	'()
+project/src/prototypeSample.rkt	89	2	(hash-set! duck 'quack (lambda () "Quack"))	(void)
+project/src/prototypeSample.rkt	90	2	(quack duck)	'()
+project/src/typed-functions.rkt	12	2	(quotient x y)	0
+project/src/typed-functions.rkt	15	6	(> a 0)	#f
+project/src/typed-functions.rkt	15	6	(> a 0)	#t
+project/src/typed-functions.rkt	16	6	"positive"	""
+project/src/typed-functions.rkt	17	6	"non-positive"	""
+project/src/typed-functions.rkt	20	2	(+ (* a b) (* c d) 3)	0
+project/src/typed-functions.rkt	6	2	(+ x y 1)	0
+project/src/typed-functions.rkt	9	2	(* x y 2)	0
+project/tests/all-tests.rkt	101	16	(non-empty? '(1 2))	#f
+project/tests/all-tests.rkt	101	4	(check-true (non-empty? '(1 2)))	'()
+project/tests/all-tests.rkt	102	17	(non-empty? '())	#f
+project/tests/all-tests.rkt	102	4	(check-false (non-empty? '()))	'()
+project/tests/all-tests.rkt	112	20	(list 1 2)	'()
+project/tests/all-tests.rkt	113	18	(same-object? items items)	#f
+project/tests/all-tests.rkt	113	6	(check-true (same-object? items items))	'()
+project/tests/all-tests.rkt	114	19	(same-object? (list 1 2) (list 1 2))	#f
+project/tests/all-tests.rkt	114	33	(list 1 2)	'()
+project/tests/all-tests.rkt	114	44	(list 1 2)	'()
+project/tests/all-tests.rkt	114	6	(check-false (same-object? (list 1 2) (list 1 2)))	'()
+project/tests/all-tests.rkt	121	18	(add1 5)	0
+project/tests/all-tests.rkt	121	4	(check-equal? (add1 5)   6)	#f
+project/tests/all-tests.rkt	122	18	(add1 0)	0
+project/tests/all-tests.rkt	122	4	(check-equal? (add1 0)   1)	#f
+project/tests/all-tests.rkt	123	18	(add1 -1)	0
+project/tests/all-tests.rkt	123	4	(check-equal? (add1 -1)  0)	#f
+project/tests/all-tests.rkt	124	18	(add1 788)	0
+project/tests/all-tests.rkt	124	4	(check-equal? (add1 788) 789)	#f
+project/tests/all-tests.rkt	128	18	(add2 5)	'()
+project/tests/all-tests.rkt	128	4	(check-equal? (add2 5)   7)	#f
+project/tests/all-tests.rkt	129	18	(add2 0)	'()
+project/tests/all-tests.rkt	129	4	(check-equal? (add2 0)   2)	#f
+project/tests/all-tests.rkt	130	18	(add2 -1)	'()
+project/tests/all-tests.rkt	130	4	(check-equal? (add2 -1)  1)	#f
+project/tests/all-tests.rkt	131	18	(add2 788)	'()
+project/tests/all-tests.rkt	131	4	(check-equal? (add2 788) 790)	#f
+project/tests/all-tests.rkt	138	18	(add 3 4)	'()
+project/tests/all-tests.rkt	138	4	(check-equal? (add 3 4) 7)	#f
+project/tests/all-tests.rkt	139	18	(add 0 0)	'()
+project/tests/all-tests.rkt	139	4	(check-equal? (add 0 0) 0)	#f
+project/tests/all-tests.rkt	140	18	(subtract 10 3)	'()
+project/tests/all-tests.rkt	140	4	(check-equal? (subtract 10 3) 7)	#f
+project/tests/all-tests.rkt	141	18	(subtract 5 5)	'()
+project/tests/all-tests.rkt	141	4	(check-equal? (subtract 5 5) 0)	#f
+project/tests/all-tests.rkt	142	18	(compare-gt 5 3)	'()
+project/tests/all-tests.rkt	142	4	(check-equal? (compare-gt 5 3) "greater")	#f
+project/tests/all-tests.rkt	143	18	(compare-gt 3 5)	'()
+project/tests/all-tests.rkt	143	4	(check-equal? (compare-gt 3 5) "not-greater")	#f
+project/tests/all-tests.rkt	144	18	(compare-gt 5 5)	'()
+project/tests/all-tests.rkt	144	4	(check-equal? (compare-gt 5 5) "not-greater")	#f
+project/tests/all-tests.rkt	145	18	(compare-ge 5 5)	'()
+project/tests/all-tests.rkt	145	4	(check-equal? (compare-ge 5 5) "greater-or-equal")	#f
+project/tests/all-tests.rkt	146	18	(compare-ge 3 5)	'()
+project/tests/all-tests.rkt	146	4	(check-equal? (compare-ge 3 5) "less")	#f
+project/tests/all-tests.rkt	147	18	(compare-lt 3 5)	'()
+project/tests/all-tests.rkt	147	4	(check-equal? (compare-lt 3 5) "less")	#f
+project/tests/all-tests.rkt	148	18	(compare-lt 5 3)	'()
+project/tests/all-tests.rkt	148	4	(check-equal? (compare-lt 5 3) "not-less")	#f
+project/tests/all-tests.rkt	149	18	(compare-lt 5 5)	'()
+project/tests/all-tests.rkt	149	4	(check-equal? (compare-lt 5 5) "not-less")	#f
+project/tests/all-tests.rkt	150	18	(compare-le 5 5)	'()
+project/tests/all-tests.rkt	150	4	(check-equal? (compare-le 5 5) "less-or-equal")	#f
+project/tests/all-tests.rkt	151	18	(compare-le 5 3)	'()
+project/tests/all-tests.rkt	151	4	(check-equal? (compare-le 5 3) "greater")	#f
+project/tests/all-tests.rkt	152	18	(check-equal 5 5)	'()
+project/tests/all-tests.rkt	152	4	(check-equal? (check-equal 5 5) "equal")	#f
+project/tests/all-tests.rkt	153	18	(check-equal 5 3)	'()
+project/tests/all-tests.rkt	153	4	(check-equal? (check-equal 5 3) "not-equal")	#f
+project/tests/all-tests.rkt	154	18	(check-logic 1 2)	'()
+project/tests/all-tests.rkt	154	4	(check-equal? (check-logic 1 2) "both-positive")	#f
+project/tests/all-tests.rkt	155	18	(check-logic 0 2)	'()
+project/tests/all-tests.rkt	155	4	(check-equal? (check-logic 0 2) "one-positive")	#f
+project/tests/all-tests.rkt	156	18	(check-logic 2 0)	'()
+project/tests/all-tests.rkt	156	4	(check-equal? (check-logic 2 0) "one-positive")	#f
+project/tests/all-tests.rkt	157	18	(check-logic 0 0)	'()
+project/tests/all-tests.rkt	157	4	(check-equal? (check-logic 0 0) "neither-positive")	#f
+project/tests/all-tests.rkt	158	18	(check-logic -1 2)	'()
+project/tests/all-tests.rkt	158	4	(check-equal? (check-logic -1 2) "one-positive")	#f
+project/tests/all-tests.rkt	159	18	(check-logic -1 -2)	'()
+project/tests/all-tests.rkt	159	4	(check-equal? (check-logic -1 -2) "neither-positive")	#f
+project/tests/all-tests.rkt	161	18	(check-floats)	'()
+project/tests/all-tests.rkt	161	4	(check-equal? (check-floats) '(5 3.14 10))	#f
+project/tests/all-tests.rkt	162	18	(multiply 3 4)	'()
+project/tests/all-tests.rkt	162	4	(check-equal? (multiply 3 4) 12)	#f
+project/tests/all-tests.rkt	163	18	(multiply 2 5)	'()
+project/tests/all-tests.rkt	163	4	(check-equal? (multiply 2 5) 10)	#f
+project/tests/all-tests.rkt	164	18	(divide 10 2)	'()
+project/tests/all-tests.rkt	164	4	(check-equal? (divide 10 2) 5)	#f
+project/tests/all-tests.rkt	165	18	(divide 9 3)	'()
+project/tests/all-tests.rkt	165	4	(check-equal? (divide 9 3) 3)	#f
+project/tests/all-tests.rkt	167	18	(clamp-to-zero 0)	'()
+project/tests/all-tests.rkt	167	4	(check-equal? (clamp-to-zero 0)  0)	#f
+project/tests/all-tests.rkt	168	18	(clamp-to-zero -1)	'()
+project/tests/all-tests.rkt	168	4	(check-equal? (clamp-to-zero -1) 0)	#f
+project/tests/all-tests.rkt	169	18	(clamp-to-zero 5)	'()
+project/tests/all-tests.rkt	169	4	(check-equal? (clamp-to-zero 5)  5)	#f
+project/tests/all-tests.rkt	17	18	(open-output-string)	'()
+project/tests/all-tests.rkt	170	18	(under-limit? 3 5)	#f
+project/tests/all-tests.rkt	170	4	(check-equal? (under-limit? 3 5) #t)	#f
+project/tests/all-tests.rkt	171	18	(under-limit? 5 5)	#f
+project/tests/all-tests.rkt	171	4	(check-equal? (under-limit? 5 5) #t)	#f
+project/tests/all-tests.rkt	172	18	(under-limit? 6 5)	#f
+project/tests/all-tests.rkt	172	4	(check-equal? (under-limit? 6 5) #f)	#f
+project/tests/all-tests.rkt	175	18	(open-output-string)	'()
+project/tests/all-tests.rkt	177	8	(greet "Alice")	'()
+project/tests/all-tests.rkt	178	19	(string=? (get-output-string out) "")	#f
+project/tests/all-tests.rkt	178	29	(get-output-string out)	'()
+project/tests/all-tests.rkt	180	18	(greet "Alice")	'()
+project/tests/all-tests.rkt	180	4	(check-equal? (greet "Alice") 5)	#f
+project/tests/all-tests.rkt	187	18	(typed-add 2 3)	'()
+project/tests/all-tests.rkt	187	4	(check-equal? (typed-add 2 3) 6)	#f
+project/tests/all-tests.rkt	188	18	(typed-add 0 0)	'()
+project/tests/all-tests.rkt	188	4	(check-equal? (typed-add 0 0) 1)	#f
+project/tests/all-tests.rkt	189	18	(typed-multiply 2 3)	'()
+project/tests/all-tests.rkt	189	4	(check-equal? (typed-multiply 2 3) 12)	#f
+project/tests/all-tests.rkt	19	8	(log-and-count '(a b c))	'()
+project/tests/all-tests.rkt	190	18	(typed-multiply 1 1)	'()
+project/tests/all-tests.rkt	190	4	(check-equal? (typed-multiply 1 1) 2)	#f
+project/tests/all-tests.rkt	191	18	(typed-divide 10 2)	'()
+project/tests/all-tests.rkt	191	4	(check-equal? (typed-divide 10 2) 5)	#f
+project/tests/all-tests.rkt	192	18	(typed-divide 9 3)	'()
+project/tests/all-tests.rkt	192	4	(check-equal? (typed-divide 9 3) 3)	#f
+project/tests/all-tests.rkt	193	18	(check-types 1 0)	'()
+project/tests/all-tests.rkt	193	4	(check-equal? (check-types 1 0) "positive")	#f
+project/tests/all-tests.rkt	194	18	(check-types -1 0)	'()
+project/tests/all-tests.rkt	194	4	(check-equal? (check-types -1 0) "non-positive")	#f
+project/tests/all-tests.rkt	195	18	(mixed-types 2 3 4 5)	'()
+project/tests/all-tests.rkt	195	4	(check-equal? (mixed-types 2 3 4 5) 29)	#f
+project/tests/all-tests.rkt	196	18	(mixed-types 1 1 1 1)	'()
+project/tests/all-tests.rkt	196	4	(check-equal? (mixed-types 1 1 1 1) 5)	#f
+project/tests/all-tests.rkt	20	19	(string=? (get-output-string out) "")	#f
+project/tests/all-tests.rkt	20	29	(get-output-string out)	'()
+project/tests/all-tests.rkt	216	8	(run-tests all-tests)	'()
+project/tests/all-tests.rkt	23	20	(log-and-count '(1 2 3))	'()
+project/tests/all-tests.rkt	23	6	(check-equal? (log-and-count '(1 2 3)) 3)	#f
+project/tests/all-tests.rkt	27	18	(increment-x 5)	'()
+project/tests/all-tests.rkt	27	4	(check-equal? (increment-x 5)  6)	#f
+project/tests/all-tests.rkt	28	18	(increment-x 0)	'()
+project/tests/all-tests.rkt	28	4	(check-equal? (increment-x 0)  1)	#f
+project/tests/all-tests.rkt	29	18	(increment-x -1)	'()
+project/tests/all-tests.rkt	29	4	(check-equal? (increment-x -1) 0)	#f
+project/tests/all-tests.rkt	30	18	(decrement-x 5)	'()
+project/tests/all-tests.rkt	30	4	(check-equal? (decrement-x 5)  4)	#f
+project/tests/all-tests.rkt	31	18	(decrement-x 1)	'()
+project/tests/all-tests.rkt	31	4	(check-equal? (decrement-x 1)  0)	#f
+project/tests/all-tests.rkt	32	18	(decrement-x 0)	'()
+project/tests/all-tests.rkt	32	4	(check-equal? (decrement-x 0) -1)	#f
+project/tests/all-tests.rkt	36	18	(negate-x  5)	'()
+project/tests/all-tests.rkt	36	4	(check-equal? (negate-x  5)  -5)	#f
+project/tests/all-tests.rkt	37	18	(negate-x -3)	'()
+project/tests/all-tests.rkt	37	4	(check-equal? (negate-x -3)   3)	#f
+project/tests/all-tests.rkt	38	18	(negate-x  0)	'()
+project/tests/all-tests.rkt	38	4	(check-equal? (negate-x  0)   0)	#f
+project/tests/all-tests.rkt	42	18	(always-true)	'()
+project/tests/all-tests.rkt	42	4	(check-equal? (always-true)  #t)	#f
+project/tests/all-tests.rkt	43	18	(always-false)	'()
+project/tests/all-tests.rkt	43	4	(check-equal? (always-false) #f)	#f
+project/tests/all-tests.rkt	44	18	(return-zero)	'()
+project/tests/all-tests.rkt	44	4	(check-equal? (return-zero)  0)	#f
+project/tests/all-tests.rkt	45	18	(return-nonzero)	'()
+project/tests/all-tests.rkt	45	4	(check-equal? (return-nonzero) 42)	#f
+project/tests/all-tests.rkt	46	18	(get-pair 1 2)	'()
+project/tests/all-tests.rkt	46	4	(check-equal? (get-pair 1 2) '(1 . 2))	#f
+project/tests/all-tests.rkt	47	18	(get-pair 0 0)	'()
+project/tests/all-tests.rkt	47	4	(check-equal? (get-pair 0 0) '(0 . 0))	#f
+project/tests/all-tests.rkt	48	18	(get-id 42)	'()
+project/tests/all-tests.rkt	48	4	(check-equal? (get-id 42)  42)	#f
+project/tests/all-tests.rkt	49	18	(get-id "hi")	'()
+project/tests/all-tests.rkt	49	4	(check-equal? (get-id "hi") "hi")	#f
+project/tests/all-tests.rkt	58	18	(describe-zero 0)	'()
+project/tests/all-tests.rkt	58	4	(check-equal? (describe-zero 0)  "zero")	#f
+project/tests/all-tests.rkt	59	18	(describe-zero 1)	'()
+project/tests/all-tests.rkt	59	4	(check-equal? (describe-zero 1)  "non-zero")	#f
+project/tests/all-tests.rkt	60	18	(sign -5)	'()
+project/tests/all-tests.rkt	60	4	(check-equal? (sign -5) "negative")	#f
+project/tests/all-tests.rkt	61	18	(sign  5)	'()
+project/tests/all-tests.rkt	61	4	(check-equal? (sign  5) "positive")	#f
+project/tests/all-tests.rkt	62	18	(sign  0)	'()
+project/tests/all-tests.rkt	62	4	(check-equal? (sign  0) "zero")	#f
+project/tests/all-tests.rkt	70	18	(greeting "Ada")	'()
+project/tests/all-tests.rkt	70	4	(check-equal? (greeting "Ada") "Hello, Ada")	#f
+project/tests/all-tests.rkt	71	18	(vowels)	'()
+project/tests/all-tests.rkt	71	4	(check-equal? (vowels) '(a e i o u))	#f
+project/tests/all-tests.rkt	72	18	(pair-list 1 2)	'()
+project/tests/all-tests.rkt	72	4	(check-equal? (pair-list 1 2) '(1 2))	#f
+project/tests/all-tests.rkt	80	18	(sum-of-squares 3 4)	'()
+project/tests/all-tests.rkt	80	4	(check-equal? (sum-of-squares 3 4) 25)	#f
+project/tests/all-tests.rkt	81	18	(parity 2)	'()
+project/tests/all-tests.rkt	81	4	(check-equal? (parity 2) "even")	#f
+project/tests/all-tests.rkt	82	18	(parity 3)	'()
+project/tests/all-tests.rkt	82	4	(check-equal? (parity 3) "odd")	#f
+project/tests/all-tests.rkt	90	16	(point? (origin))	#f
+project/tests/all-tests.rkt	90	24	(origin)	'()
+project/tests/all-tests.rkt	90	4	(check-true (point? (origin)))	'()
+project/tests/all-tests.rkt	91	18	(point-x (origin))	'()
+project/tests/all-tests.rkt	91	27	(origin)	'()
+project/tests/all-tests.rkt	91	4	(check-equal? (point-x (origin)) 0)	#f
+project/tests/all-tests.rkt	92	18	(point-y (origin))	'()
+project/tests/all-tests.rkt	92	27	(origin)	'()
+project/tests/all-tests.rkt	92	4	(check-equal? (point-y (origin)) 0)	#f
+project/tests/all-tests.rkt	93	16	(hash? (empty-table))	#f
+project/tests/all-tests.rkt	93	23	(empty-table)	'()
+project/tests/all-tests.rkt	93	4	(check-true (hash? (empty-table)))	'()
+project/tests/pit-mutations-test.rkt	102	18	(sum-of-squares 3 4)	'()
+project/tests/pit-mutations-test.rkt	102	4	(check-equal? (sum-of-squares 3 4) 25)	#f
+project/tests/pit-mutations-test.rkt	103	18	(parity 2)	'()
+project/tests/pit-mutations-test.rkt	103	4	(check-equal? (parity 2) "even")	#f
+project/tests/pit-mutations-test.rkt	104	18	(parity 3)	'()
+project/tests/pit-mutations-test.rkt	104	4	(check-equal? (parity 3) "odd")	#f
+project/tests/pit-mutations-test.rkt	112	16	(point? (origin))	#f
+project/tests/pit-mutations-test.rkt	112	24	(origin)	'()
+project/tests/pit-mutations-test.rkt	112	4	(check-true (point? (origin)))	'()
+project/tests/pit-mutations-test.rkt	113	18	(point-x (origin))	'()
+project/tests/pit-mutations-test.rkt	113	27	(origin)	'()
+project/tests/pit-mutations-test.rkt	113	4	(check-equal? (point-x (origin)) 0)	#f
+project/tests/pit-mutations-test.rkt	114	18	(point-y (origin))	'()
+project/tests/pit-mutations-test.rkt	114	27	(origin)	'()
+project/tests/pit-mutations-test.rkt	114	4	(check-equal? (point-y (origin)) 0)	#f
+project/tests/pit-mutations-test.rkt	115	16	(hash? (empty-table))	#f
+project/tests/pit-mutations-test.rkt	115	23	(empty-table)	'()
+project/tests/pit-mutations-test.rkt	115	4	(check-true (hash? (empty-table)))	'()
+project/tests/pit-mutations-test.rkt	123	16	(non-empty? '(1 2))	#f
+project/tests/pit-mutations-test.rkt	123	4	(check-true (non-empty? '(1 2)))	'()
+project/tests/pit-mutations-test.rkt	124	17	(non-empty? '())	#f
+project/tests/pit-mutations-test.rkt	124	4	(check-false (non-empty? '()))	'()
+project/tests/pit-mutations-test.rkt	134	20	(list 1 2)	'()
+project/tests/pit-mutations-test.rkt	135	18	(same-object? items items)	#f
+project/tests/pit-mutations-test.rkt	135	6	(check-true (same-object? items items))	'()
+project/tests/pit-mutations-test.rkt	136	19	(same-object? (list 1 2) (list 1 2))	#f
+project/tests/pit-mutations-test.rkt	136	33	(list 1 2)	'()
+project/tests/pit-mutations-test.rkt	136	44	(list 1 2)	'()
+project/tests/pit-mutations-test.rkt	136	6	(check-false (same-object? (list 1 2) (list 1 2)))	'()
+project/tests/pit-mutations-test.rkt	15	18	(open-output-string)	'()
+project/tests/pit-mutations-test.rkt	152	8	(run-tests all-tests)	'()
+project/tests/pit-mutations-test.rkt	17	8	(log-and-count '(a b c))	'()
+project/tests/pit-mutations-test.rkt	18	19	(string=? (get-output-string out) "")	#f
+project/tests/pit-mutations-test.rkt	18	29	(get-output-string out)	'()
+project/tests/pit-mutations-test.rkt	21	20	(log-and-count '(1 2 3))	'()
+project/tests/pit-mutations-test.rkt	21	6	(check-equal? (log-and-count '(1 2 3)) 3)	#f
+project/tests/pit-mutations-test.rkt	30	18	(increment-x 5)	'()
+project/tests/pit-mutations-test.rkt	30	4	(check-equal? (increment-x 5)  6)	#f
+project/tests/pit-mutations-test.rkt	31	18	(increment-x 0)	'()
+project/tests/pit-mutations-test.rkt	31	4	(check-equal? (increment-x 0)  1)	#f
+project/tests/pit-mutations-test.rkt	32	18	(increment-x -1)	'()
+project/tests/pit-mutations-test.rkt	32	4	(check-equal? (increment-x -1) 0)	#f
+project/tests/pit-mutations-test.rkt	33	18	(decrement-x 5)	'()
+project/tests/pit-mutations-test.rkt	33	4	(check-equal? (decrement-x 5)  4)	#f
+project/tests/pit-mutations-test.rkt	34	18	(decrement-x 1)	'()
+project/tests/pit-mutations-test.rkt	34	4	(check-equal? (decrement-x 1)  0)	#f
+project/tests/pit-mutations-test.rkt	35	18	(decrement-x 0)	'()
+project/tests/pit-mutations-test.rkt	35	4	(check-equal? (decrement-x 0) -1)	#f
+project/tests/pit-mutations-test.rkt	43	18	(negate-x  5)	'()
+project/tests/pit-mutations-test.rkt	43	4	(check-equal? (negate-x  5)  -5)	#f
+project/tests/pit-mutations-test.rkt	44	18	(negate-x -3)	'()
+project/tests/pit-mutations-test.rkt	44	4	(check-equal? (negate-x -3)   3)	#f
+project/tests/pit-mutations-test.rkt	45	18	(negate-x  0)	'()
+project/tests/pit-mutations-test.rkt	45	4	(check-equal? (negate-x  0)   0)	#f
+project/tests/pit-mutations-test.rkt	54	18	(always-true)	'()
+project/tests/pit-mutations-test.rkt	54	4	(check-equal? (always-true)  #t)	#f
+project/tests/pit-mutations-test.rkt	57	18	(always-false)	'()
+project/tests/pit-mutations-test.rkt	57	4	(check-equal? (always-false) #f)	#f
+project/tests/pit-mutations-test.rkt	60	18	(return-zero)	'()
+project/tests/pit-mutations-test.rkt	60	4	(check-equal? (return-zero)  0)	#f
+project/tests/pit-mutations-test.rkt	63	18	(return-nonzero)	'()
+project/tests/pit-mutations-test.rkt	63	4	(check-equal? (return-nonzero) 42)	#f
+project/tests/pit-mutations-test.rkt	66	18	(get-pair 1 2)	'()
+project/tests/pit-mutations-test.rkt	66	4	(check-equal? (get-pair 1 2) '(1 . 2))	#f
+project/tests/pit-mutations-test.rkt	67	18	(get-pair 0 0)	'()
+project/tests/pit-mutations-test.rkt	67	4	(check-equal? (get-pair 0 0) '(0 . 0))	#f
+project/tests/pit-mutations-test.rkt	70	18	(get-id 42)	'()
+project/tests/pit-mutations-test.rkt	70	4	(check-equal? (get-id 42)  42)	#f
+project/tests/pit-mutations-test.rkt	71	18	(get-id "hi")	'()
+project/tests/pit-mutations-test.rkt	71	4	(check-equal? (get-id "hi") "hi")	#f
+project/tests/pit-mutations-test.rkt	80	18	(describe-zero 0)	'()
+project/tests/pit-mutations-test.rkt	80	4	(check-equal? (describe-zero 0)  "zero")	#f
+project/tests/pit-mutations-test.rkt	81	18	(describe-zero 1)	'()
+project/tests/pit-mutations-test.rkt	81	4	(check-equal? (describe-zero 1)  "non-zero")	#f
+project/tests/pit-mutations-test.rkt	82	18	(sign -5)	'()
+project/tests/pit-mutations-test.rkt	82	4	(check-equal? (sign -5) "negative")	#f
+project/tests/pit-mutations-test.rkt	83	18	(sign  5)	'()
+project/tests/pit-mutations-test.rkt	83	4	(check-equal? (sign  5) "positive")	#f
+project/tests/pit-mutations-test.rkt	84	18	(sign  0)	'()
+project/tests/pit-mutations-test.rkt	84	4	(check-equal? (sign  0) "zero")	#f
+project/tests/pit-mutations-test.rkt	92	18	(greeting "Ada")	'()
+project/tests/pit-mutations-test.rkt	92	4	(check-equal? (greeting "Ada") "Hello, Ada")	#f
+project/tests/pit-mutations-test.rkt	93	18	(vowels)	'()
+project/tests/pit-mutations-test.rkt	93	4	(check-equal? (vowels) '(a e i o u))	#f
+project/tests/pit-mutations-test.rkt	94	18	(pair-list 1 2)	'()
+project/tests/pit-mutations-test.rkt	94	4	(check-equal? (pair-list 1 2) '(1 2))	#f
+project/tests/prototypeSample-test.rkt	11	16	(math-ops 10 5)	'()
+project/tests/prototypeSample-test.rkt	11	2	(check-equal? (math-ops 10 5) '(15 5 50 2 0))	#f
+project/tests/prototypeSample-test.rkt	12	16	(relational-ops 10 5)	'()
+project/tests/prototypeSample-test.rkt	12	2	(check-equal? (relational-ops 10 5) '(#f #t #f #t #f #f #f))	#f
+project/tests/prototypeSample-test.rkt	13	16	(logical-ops 1 2)	'()
+project/tests/prototypeSample-test.rkt	13	2	(check-equal? (logical-ops 1 2) '(#t #t #f))	#f
+project/tests/prototypeSample-test.rkt	14	16	(bitwise-ops 6 3)	'()
+project/tests/prototypeSample-test.rkt	14	2	(check-equal? (bitwise-ops 6 3) '(2 7 5 -7 12 3))	#f
+project/tests/prototypeSample-test.rkt	17	16	(conditional-check 1)	'()
+project/tests/prototypeSample-test.rkt	17	2	(check-equal? (conditional-check 1) "positive")	#f
+project/tests/prototypeSample-test.rkt	18	16	(conditional-check -1)	'()
+project/tests/prototypeSample-test.rkt	18	2	(check-equal? (conditional-check -1) "negative")	#f
+project/tests/prototypeSample-test.rkt	19	16	(conditional-check 0)	'()
+project/tests/prototypeSample-test.rkt	19	2	(check-equal? (conditional-check 0) "zero")	#f
+project/tests/prototypeSample-test.rkt	20	16	(ternary-check 10 5)	'()
+project/tests/prototypeSample-test.rkt	20	2	(check-equal? (ternary-check 10 5) 10)	#f
+project/tests/prototypeSample-test.rkt	23	16	(sum-list '(1 2 3))	'()
+project/tests/prototypeSample-test.rkt	23	2	(check-equal? (sum-list '(1 2 3)) 6)	#f
+project/tests/prototypeSample-test.rkt	24	16	(process-list '(1 2 3))	'()
+project/tests/prototypeSample-test.rkt	24	2	(check-equal? (process-list '(1 2 3)) '((2 4 6) 6))	#f
+project/tests/prototypeSample-test.rkt	25	12	(make-hash)	'()
+project/tests/prototypeSample-test.rkt	26	16	(quack h)	'()
+project/tests/prototypeSample-test.rkt	26	2	(check-equal? (quack h) "Not a duck")	#f
+project/tests/prototypeSample-test.rkt	7	2	(main)	'()
+project/tests/prototypeSample-test.rkt	8	2	(check-true (> counter 0))	'()
+project/tests/racket-project.rkt	13	20	(add1 5)	0
+project/tests/racket-project.rkt	13	4	(check-equal? 6 (add1 5))	#f
+project/tests/racket-project.rkt	14	20	(add1 -1)	0
+project/tests/racket-project.rkt	14	4	(check-equal? 0 (add1 -1))	#f
+project/tests/racket-project.rkt	15	22	(add1 788)	0
+project/tests/racket-project.rkt	15	4	(check-equal? 789 (add1 788))	#f
+project/tests/racket-project.rkt	16	21	(add1 11)	0
+project/tests/racket-project.rkt	16	4	(check-equal? 12 (add1 11))	#f
+project/tests/racket-project.rkt	20	20	(add2 5)	'()
+project/tests/racket-project.rkt	20	4	(check-equal? 7 (add2 5))	#f
+project/tests/racket-project.rkt	21	20	(add2 -1)	'()
+project/tests/racket-project.rkt	21	4	(check-equal? 1 (add2 -1))	#f
+project/tests/racket-project.rkt	22	22	(add2 788)	'()
+project/tests/racket-project.rkt	22	4	(check-equal? 790 (add2 788))	#f
+project/tests/racket-project.rkt	23	21	(add2 11)	'()
+project/tests/racket-project.rkt	23	4	(check-equal? 13 (add2 11))	#f
+project/tests/racket-project.rkt	27	18	(add 3 4)	'()
+project/tests/racket-project.rkt	27	4	(check-equal? (add 3 4) 7)	#f
+project/tests/racket-project.rkt	28	18	(add 0 0)	'()
+project/tests/racket-project.rkt	28	4	(check-equal? (add 0 0) 0)	#f
+project/tests/racket-project.rkt	29	18	(subtract 10 3)	'()
+project/tests/racket-project.rkt	29	4	(check-equal? (subtract 10 3) 7)	#f
+project/tests/racket-project.rkt	30	18	(compare-gt 5 3)	'()
+project/tests/racket-project.rkt	30	4	(check-equal? (compare-gt 5 3) "greater")	#f
+project/tests/racket-project.rkt	31	18	(compare-gt 3 5)	'()
+project/tests/racket-project.rkt	31	4	(check-equal? (compare-gt 3 5) "not-greater")	#f
+project/tests/racket-project.rkt	32	18	(compare-gt 5 5)	'()
+project/tests/racket-project.rkt	32	4	(check-equal? (compare-gt 5 5) "not-greater")	#f
+project/tests/racket-project.rkt	33	18	(compare-ge 5 5)	'()
+project/tests/racket-project.rkt	33	4	(check-equal? (compare-ge 5 5) "greater-or-equal")	#f
+project/tests/racket-project.rkt	34	18	(compare-ge 3 5)	'()
+project/tests/racket-project.rkt	34	4	(check-equal? (compare-ge 3 5) "less")	#f
+project/tests/racket-project.rkt	35	18	(compare-lt 3 5)	'()
+project/tests/racket-project.rkt	35	4	(check-equal? (compare-lt 3 5) "less")	#f
+project/tests/racket-project.rkt	36	18	(compare-lt 5 3)	'()
+project/tests/racket-project.rkt	36	4	(check-equal? (compare-lt 5 3) "not-less")	#f
+project/tests/racket-project.rkt	37	18	(compare-lt 5 5)	'()
+project/tests/racket-project.rkt	37	4	(check-equal? (compare-lt 5 5) "not-less")	#f
+project/tests/racket-project.rkt	38	18	(compare-le 5 5)	'()
+project/tests/racket-project.rkt	38	4	(check-equal? (compare-le 5 5) "less-or-equal")	#f
+project/tests/racket-project.rkt	39	18	(compare-le 5 3)	'()
+project/tests/racket-project.rkt	39	4	(check-equal? (compare-le 5 3) "greater")	#f
+project/tests/racket-project.rkt	40	18	(check-equal 5 5)	'()
+project/tests/racket-project.rkt	40	4	(check-equal? (check-equal 5 5) "equal")	#f
+project/tests/racket-project.rkt	41	18	(check-equal 5 3)	'()
+project/tests/racket-project.rkt	41	4	(check-equal? (check-equal 5 3) "not-equal")	#f
+project/tests/racket-project.rkt	42	18	(check-logic 1 2)	'()
+project/tests/racket-project.rkt	42	4	(check-equal? (check-logic 1 2) "both-positive")	#f
+project/tests/racket-project.rkt	43	18	(check-logic 0 2)	'()
+project/tests/racket-project.rkt	43	4	(check-equal? (check-logic 0 2) "one-positive")	#f
+project/tests/racket-project.rkt	44	18	(check-logic 2 0)	'()
+project/tests/racket-project.rkt	44	4	(check-equal? (check-logic 2 0) "one-positive")	#f
+project/tests/racket-project.rkt	45	18	(check-logic 0 0)	'()
+project/tests/racket-project.rkt	45	4	(check-equal? (check-logic 0 0) "neither-positive")	#f
+project/tests/racket-project.rkt	46	18	(check-logic -1 2)	'()
+project/tests/racket-project.rkt	46	4	(check-equal? (check-logic -1 2) "one-positive")	#f
+project/tests/racket-project.rkt	47	18	(check-logic -1 -2)	'()
+project/tests/racket-project.rkt	47	4	(check-equal? (check-logic -1 -2) "neither-positive")	#f
+project/tests/racket-project.rkt	48	18	(check-floats)	'()
+project/tests/racket-project.rkt	48	4	(check-equal? (check-floats) '(5 3.14 10))	#f
+project/tests/racket-project.rkt	49	18	(multiply 3 4)	'()
+project/tests/racket-project.rkt	49	4	(check-equal? (multiply 3 4) 12)	#f
+project/tests/racket-project.rkt	50	18	(multiply 2 5)	'()
+project/tests/racket-project.rkt	50	4	(check-equal? (multiply 2 5) 10)	#f
+project/tests/racket-project.rkt	51	18	(divide 10 2)	'()
+project/tests/racket-project.rkt	51	4	(check-equal? (divide 10 2) 5)	#f
+project/tests/racket-project.rkt	52	18	(divide 9 3)	'()
+project/tests/racket-project.rkt	52	4	(check-equal? (divide 9 3) 3)	#f
+project/tests/racket-project.rkt	56	18	(clamp-to-zero 0)	'()
+project/tests/racket-project.rkt	56	4	(check-equal? (clamp-to-zero 0)  0)	#f
+project/tests/racket-project.rkt	57	18	(clamp-to-zero -1)	'()
+project/tests/racket-project.rkt	57	4	(check-equal? (clamp-to-zero -1) 0)	#f
+project/tests/racket-project.rkt	58	18	(clamp-to-zero 5)	'()
+project/tests/racket-project.rkt	58	4	(check-equal? (clamp-to-zero 5)  5)	#f
+project/tests/racket-project.rkt	59	18	(under-limit? 3 5)	#f
+project/tests/racket-project.rkt	59	4	(check-equal? (under-limit? 3 5) #t)	#f
+project/tests/racket-project.rkt	60	18	(under-limit? 5 5)	#f
+project/tests/racket-project.rkt	60	4	(check-equal? (under-limit? 5 5) #t)	#f
+project/tests/racket-project.rkt	61	18	(under-limit? 6 5)	#f
+project/tests/racket-project.rkt	61	4	(check-equal? (under-limit? 6 5) #f)	#f
+project/tests/racket-project.rkt	65	18	(typed-add 2 3)	'()
+project/tests/racket-project.rkt	65	4	(check-equal? (typed-add 2 3) 6)	#f
+project/tests/racket-project.rkt	66	18	(mixed-types 2 3 4 5)	'()
+project/tests/racket-project.rkt	66	4	(check-equal? (mixed-types 2 3 4 5) 29)	#f
+project/tests/racket-project.rkt	76	18	(countdown-to-zero 0)	'()
+project/tests/racket-project.rkt	76	4	(check-equal? (countdown-to-zero 0)  0)	#f
+project/tests/racket-project.rkt	77	18	(countdown-to-zero -3)	'()
+project/tests/racket-project.rkt	77	4	(check-equal? (countdown-to-zero -3) 0)	#f
+project/tests/racket-project.rkt	78	18	(countdown-to-zero 1)	'()
+project/tests/racket-project.rkt	78	4	(check-equal? (countdown-to-zero 1)  1)	#f
+project/tests/racket-project.rkt	79	18	(countdown-to-zero 5)	'()
+project/tests/racket-project.rkt	79	4	(check-equal? (countdown-to-zero 5)  5)	#f
+project/tests/racket-project.rkt	81	18	(at-or-below? 3 5)	#f
+project/tests/racket-project.rkt	81	4	(check-equal? (at-or-below? 3 5) #t)	#f
+project/tests/racket-project.rkt	82	18	(at-or-below? 5 5)	#f
+project/tests/racket-project.rkt	82	4	(check-equal? (at-or-below? 5 5) #t)	#f
+project/tests/racket-project.rkt	83	18	(at-or-below? 6 5)	#f
+project/tests/racket-project.rkt	83	4	(check-equal? (at-or-below? 6 5) #f)	#f
+project/tests/racket-project.rkt	99	3	(run-tests all-tests)	'()
+racket-line-coverage.rkt	10	18	(vector-ref args 1)	'()
+racket-line-coverage.rkt	11	20	(vector-ref args 2)	'()
+racket-line-coverage.rkt	16	19	(in-directory dir)	'()
+racket-line-coverage.rkt	16	2	(for/list ([path (in-directory dir)]\r\n             #:when (and (file-exists? path)\r\n                         (regexp-match? #rx"[.]rkt$" (path->string path))))	(void)
+racket-line-coverage.rkt	17	25	(file-exists? path)	#f
+racket-line-coverage.rkt	18	25	(regexp-match? #rx"[.]rkt$" (path->string path))	#f
+racket-line-coverage.rkt	18	53	(path->string path)	'()
+racket-line-coverage.rkt	19	4	path	'()
+racket-line-coverage.rkt	22	2	(regexp-match? #rx"^\\\\(define \\\\([^)]+" (string-trim line))	#f
+racket-line-coverage.rkt	22	42	(string-trim line)	""
+racket-line-coverage.rkt	26	21	(in-list lines)	'()
+racket-line-coverage.rkt	27	20	(in-naturals 1)	'()
+racket-line-coverage.rkt	28	22	(top-level-define-line? line)	#f
+racket-line-coverage.rkt	3	13	(current-command-line-arguments)	'()
+racket-line-coverage.rkt	30	20	(in-list starts)	'()
+racket-line-coverage.rkt	31	25	(in-list (append (rest starts) (list (+ (length lines) 1))))	'()
+racket-line-coverage.rkt	31	34	(append (rest starts) (list (+ (length lines) 1)))	'()
+racket-line-coverage.rkt	31	42	(rest starts)	'()
+racket-line-coverage.rkt	31	56	(list (+ (length lines) 1))	'()
+racket-line-coverage.rkt	31	65	(length lines)	0
+racket-line-coverage.rkt	32	16	(sub1 next-start)	0
+racket-line-coverage.rkt	32	4	(cons start (sub1 next-start))	'()
+racket-line-coverage.rkt	35	19	(file->string path)	'()
+racket-line-coverage.rkt	36	16	(string-split original "\\n" #:trim? #f)	'()
+racket-line-coverage.rkt	37	26	(make-hash)	'()
+racket-line-coverage.rkt	38	15	(in-list (coverage-ranges lines))	'()
+racket-line-coverage.rkt	38	2	(for ([range (in-list (coverage-ranges lines))])	(void)
+racket-line-coverage.rkt	38	24	(coverage-ranges lines)	'()
+racket-line-coverage.rkt	39	31	(car range)	'()
+racket-line-coverage.rkt	39	4	(hash-set! ranges-by-start (car range) (cdr range))	'()
+racket-line-coverage.rkt	39	43	(cdr range)	'()
+racket-line-coverage.rkt	41	18	(string-append (path->string path) backup-suffix)	""
+racket-line-coverage.rkt	41	2	(copy-file path (string-append (path->string path) backup-suffix) #t)	'()
+racket-line-coverage.rkt	41	33	(path->string path)	'()
+racket-line-coverage.rkt	45	18	(in-list lines)	'()
+racket-line-coverage.rkt	45	6	(for ([line (in-list lines)]\r\n            [idx (in-naturals 1)])	(void)
+racket-line-coverage.rkt	46	17	(in-naturals 1)	'()
+racket-line-coverage.rkt	47	8	(fprintf out "~a\\n" line)	(void)
+racket-line-coverage.rkt	48	14	(= idx 1)	#f
+racket-line-coverage.rkt	48	14	(= idx 1)	#t
+racket-line-coverage.rkt	48	8	(when (= idx 1)\r\n          (fprintf out "(define (mutation-coverage-record file start end)\\n")\r\n          (fprintf out "  (call-with-output-file ~s #:exists 'append\\n" trace-file)\r\n          (fprintf out "    (lambda (out)\\n")\r\n          (fprintf out "      (for ([line (in-range start (+ end 1))])\\n")\r\n          (fprintf out "        (fprintf out \\"~~a:~~a\\\\n\\" file line)))))\\n"))	(void)
+racket-line-coverage.rkt	5	11	(vector-length args)	0
+racket-line-coverage.rkt	5	8	(= (vector-length args) 3)	#f
+racket-line-coverage.rkt	5	8	(= (vector-length args) 3)	#t
+racket-line-coverage.rkt	54	14	(hash-has-key? ranges-by-start idx)	#f
+racket-line-coverage.rkt	56	19	(path->string path)	'()
+racket-line-coverage.rkt	58	19	(hash-ref ranges-by-start idx)	'()
+racket-line-coverage.rkt	61	17	(string-append (path->string path) backup-suffix)	""
+racket-line-coverage.rkt	61	32	(path->string path)	'()
+racket-line-coverage.rkt	62	8	(file-exists? backup)	#f
+racket-line-coverage.rkt	63	4	(copy-file backup path #t)	(void)
+racket-line-coverage.rkt	64	4	(delete-file backup)	'()
+racket-line-coverage.rkt	66	14	(source-files source-dir)	'()
+racket-line-coverage.rkt	68	6	(file-exists? trace-file)	#f
+racket-line-coverage.rkt	69	2	(delete-file trace-file)	'()
+racket-line-coverage.rkt	71	12	(in-list files)	'()
+racket-line-coverage.rkt	72	2	(instrument-file file)	'()
+racket-line-coverage.rkt	74	15	(find-executable-path "racket")	'()
+racket-line-coverage.rkt	77	4	(system* racket test-file)	'()
+racket-line-coverage.rkt	79	12	(in-list files)	'()
+racket-line-coverage.rkt	80	2	(restore-file file)	'()
+racket-line-coverage.rkt	85	22	(make-hash)	'()
+racket-line-coverage.rkt	86	6	(file-exists? trace-file)	#f
+racket-line-coverage.rkt	87	14	(in-list (file->lines trace-file))	'()
+racket-line-coverage.rkt	87	2	(for ([line (in-list (file->lines trace-file))]\r\n        #:when (regexp-match #rx"^(.+):([0-9]+)$" line))	(void)
+racket-line-coverage.rkt	87	23	(file->lines trace-file)	'()
+racket-line-coverage.rkt	88	15	(regexp-match #rx"^(.+):([0-9]+)$" line)	'()
+racket-line-coverage.rkt	89	18	(list _ file line-number)	'()
+racket-line-coverage.rkt	89	4	(match-define (list _ file line-number) (regexp-match #rx"^(.+):([0-9]+)$" line))	(void)
+racket-line-coverage.rkt	89	44	(regexp-match #rx"^(.+):([0-9]+)$" line)	'()
+racket-line-coverage.rkt	9	19	(vector-ref args 0)	'()
+racket-line-coverage.rkt	91	37	(set-add existing (string->number line-number))	'()
+racket-line-coverage.rkt	91	55	(string->number line-number)	'()
+racket-line-coverage.rkt	92	18	(set)	'()
+racket-line-coverage.rkt	97	11	(file lines)	'()
+racket-line-coverage.rkt	97	24	(in-hash covered-lines)	'()
+racket-line-coverage.rkt	97	4	(for ([(file lines) (in-hash covered-lines)])	(void)
+racket-line-coverage.rkt	98	6	(fprintf out "SF:~a\\n" file)	(void)
+racket-line-coverage.rkt	99	18	(in-list (sort (set->list lines) <))	'()
+racket-line-coverage.rkt	99	27	(sort (set->list lines) <)	'()
+racket-line-coverage.rkt	99	33	(set->list lines)	'()
+racket-line-coverage.rkt	99	6	(for ([line (in-list (sort (set->list lines) <))])	(void)

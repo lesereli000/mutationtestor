@@ -140,6 +140,7 @@ def_parameters
 def_parameter
     : named_parameter (ASSIGN test)?
     | STAR
+    | DIV // positional-only parameter marker (PEP 570)
     ;
 
 named_parameter
@@ -258,6 +259,7 @@ vardef_parameters
 vardef_parameter
     : name (ASSIGN test)?
     | STAR
+    | DIV // positional-only parameter marker (PEP 570)
     ;
 
 varargs

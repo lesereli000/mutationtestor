@@ -122,6 +122,7 @@ KW_GOTO : 'goto' ;
 KW_GROUP : 'group' ;
 KW_IF : 'if' ;
 KW_IMPLICIT : 'implicit' ;
+KW_INIT : 'init' ;
 KW_IN : 'in' ;
 KW_INT : 'int' ;
 KW_INTERFACE : 'interface' ;
@@ -149,6 +150,8 @@ KW_PRIVATE : 'private' ;
 KW_PROTECTED : 'protected' ;
 KW_PUBLIC : 'public' ;
 KW_READONLY : 'readonly' ;
+KW_RECORD : 'record' ;
+KW_REQUIRED : 'required' ;
 KW_REF : 'ref' ;
 KW_REFTYPE  : '__reftype'  ; // MS extension
 KW_REFVALUE : '__refvalue' ; // MS extension

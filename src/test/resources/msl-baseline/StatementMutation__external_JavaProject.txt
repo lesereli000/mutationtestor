@@ -1,0 +1,437 @@
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductContext.java	28	9	invocationIndex + ": " + parameters	""
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductContext.java	33	35	new CartesianProductResolver(parameters)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductContext.java	33	9	Collections.singletonList(new CartesianProductResolver(parameters))	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	32	9	findAnnotation(context.getTestMethod(), CartesianProductTest.class).isPresent()	false
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	37	23	computeSets(context.getRequiredTestMethod())	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	38	9	cartesianProduct(sets).stream().map(CartesianProductContext::new)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	42	19	findAnnotation(testMethod, CartesianProductTest.class)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	43	23	new AssertionError("@CartesianProductTest not found")	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	46	6	value.length > 0	false
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	46	6	value.length > 0	true
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	47	26	Arrays.asList(value)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	48	24	new ArrayList<>()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	50	4	sets.add(strings);	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	52	10	sets	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	55	9	invokeSetsFactory(testMethod).getSets()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	59	28	testMethod.getDeclaringClass()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	60	16	testMethod.getName()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	61	19	findMethod(declaringClass, name)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	70	6	factory.getParameterCount() != 0	false
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	70	6	factory.getParameterCount() != 0	true
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	73	9	(CartesianProductTest.Sets) invokeMethod(factory, null)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	77	30	new ArrayList<>()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	79	3	resultLists.add(Collections.emptyList());	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	80	10	resultLists	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	82	22	lists.get(0)	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	83	33	cartesianProduct(lists.subList(1, lists.size()))	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	86	35	new ArrayList<>()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	87	4	resultList.add(item);	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	88	4	resultList.addAll(remainingList);	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	89	4	resultLists.add(resultList);	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	92	9	resultLists	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductResolver.java	28	9	parameterContext.getIndex() < parameters.size()	false
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductResolver.java	33	9	parameters.get(parameterContext.getIndex())	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductTest.java	33	37	new ArrayList<>()	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductTest.java	36	12	new ArrayList<>(Arrays.asList(entries))	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductTest.java	36	3	sets.add(new ArrayList<>(Arrays.asList(entries)));	;
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductTest.java	37	10	this	null
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductTest.java	41	10	sets	null
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	48	9	parameterContext.isAnnotated(Random.class)	false
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	53	9	getRandomValue(parameterContext.getParameter(), extensionContext)	null
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	57	18	parameter.getType()	null
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	58	28	extensionContext.getRoot()	null
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	61	10	random.nextInt()	null
+junit-jupiter-extensions/src/main/java/com/example/random/RandomParametersExtension.java	64	10	random.nextDouble()	null
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	23	14	Integer.parseUnsignedInt(a + b + c, 2)	0
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	24	2	assertTrue((0b000 <= value) && (value <= 0b111));	;
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	30	2	assertTrue(string.endsWith("a"));	;
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	31	2	assertTrue(type.isInterface());	;
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	32	2	assertTrue(unit.name().endsWith("S"));	;
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	33	2	assertTrue(info.getTags().isEmpty());	;
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	37	9	new CartesianProductTest.Sets()	null
+junit-jupiter-extensions/src/test/java/com/example/random/RandomParametersExtensionTests.java	29	2	assertNotEquals(i, j);	;
+junit-jupiter-extensions/src/test/java/com/example/random/RandomParametersExtensionTests.java	34	2	assertEquals(0.0, d, 1.0);	;
+junit-jupiter-starter-ant/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-jupiter-starter-ant/src/test/java/com/example/project/CalculatorTests.java	25	26	new Calculator()	null
+junit-jupiter-starter-ant/src/test/java/com/example/project/CalculatorTests.java	26	2	assertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2");	;
+junit-jupiter-starter-ant/src/test/java/com/example/project/CalculatorTests.java	37	26	new Calculator()	null
+junit-jupiter-starter-ant/src/test/java/com/example/project/CalculatorTests.java	38	2	assertEquals(expectedResult, calculator.add(first, second),\r\n\t\t\t\t() -> first + " + " + second + " should equal " + expectedResult);	;
+junit-jupiter-starter-bazel/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-jupiter-starter-bazel/src/test/java/com/example/project/CalculatorTests.java	25	26	new Calculator()	null
+junit-jupiter-starter-bazel/src/test/java/com/example/project/CalculatorTests.java	26	2	assertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2");	;
+junit-jupiter-starter-bazel/src/test/java/com/example/project/CalculatorTests.java	37	26	new Calculator()	null
+junit-jupiter-starter-bazel/src/test/java/com/example/project/CalculatorTests.java	38	2	assertEquals(expectedResult, calculator.add(first, second),\r\n\t\t\t\t() -> first + " + " + second + " should equal " + expectedResult);	;
+junit-jupiter-starter-gradle/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-jupiter-starter-gradle/src/test/java/com/example/project/CalculatorTests.java	25	26	new Calculator()	null
+junit-jupiter-starter-gradle/src/test/java/com/example/project/CalculatorTests.java	26	2	assertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2");	;
+junit-jupiter-starter-gradle/src/test/java/com/example/project/CalculatorTests.java	37	26	new Calculator()	null
+junit-jupiter-starter-gradle/src/test/java/com/example/project/CalculatorTests.java	38	2	assertEquals(expectedResult, calculator.add(first, second),\r\n\t\t\t\t() -> first + " + " + second + " should equal " + expectedResult);	;
+junit-jupiter-starter-maven/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-jupiter-starter-maven/src/test/java/com/example/project/CalculatorTests.java	25	26	new Calculator()	null
+junit-jupiter-starter-maven/src/test/java/com/example/project/CalculatorTests.java	26	2	assertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2");	;
+junit-jupiter-starter-maven/src/test/java/com/example/project/CalculatorTests.java	37	26	new Calculator()	null
+junit-jupiter-starter-maven/src/test/java/com/example/project/CalculatorTests.java	38	2	assertEquals(expectedResult, calculator.add(first, second),\r\n\t\t\t\t() -> first + " + " + second + " should equal " + expectedResult);	;
+junit-migration-gradle/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-migration-gradle/src/test/java/com/example/project/FirstTest.java	26	26	new Calculator()	null
+junit-migration-gradle/src/test/java/com/example/project/FirstTest.java	27	2	\tassertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2")	;
+junit-migration-gradle/src/test/java/com/example/project/FirstTest.java	28	2	\tassertEquals("My 1st JUnit 5 test! 😎", testInfo.getDisplayName(), () -> "TestInfo is injected correctly"	;
+junit-migration-gradle/src/test/java/com/example/project/JUnit4Test.java	21	2	assertEquals(3, 1 + 2);	;
+junit-migration-gradle/src/test/java/com/example/project/SecondTest.java	24	2	assertEquals(2, 1, "2 is not equal to 1");	;
+junit-migration-gradle/src/test/java/com/example/project/SecondTest.java	30	2	Thread.sleep(1000);	;
+junit-migration-maven/src/main/java/com/example/project/Calculator.java	16	9	a + b	0
+junit-migration-maven/src/test/java/com/example/project/FirstTest.java	26	26	new Calculator()	null
+junit-migration-maven/src/test/java/com/example/project/FirstTest.java	27	2	\tassertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2")	;
+junit-migration-maven/src/test/java/com/example/project/FirstTest.java	28	2	\tassertEquals("My 1st JUnit 5 test! 😎", testInfo.getDisplayName(), () -> "TestInfo is injected correctly"	;
+junit-migration-maven/src/test/java/com/example/project/JUnit4Test.java	21	2	assertEquals(3, 1 + 2);	;
+junit-migration-maven/src/test/java/com/example/project/SecondTest.java	24	2	assertEquals(2, 1, "2 is not equal to 1");	;
+junit-migration-maven/src/test/java/com/example/project/SecondTest.java	30	2	Thread.sleep(1000);	;
+junit-modular-world/src/build/Build.java	16	4	project.clean();	;
+junit-modular-world/src/build/Build.java	17	4	project.compile();	;
+junit-modular-world/src/build/Build.java	18	4	project.test();	;
+junit-modular-world/src/build/Compile.java	15	4	Project.ofCurrentWorkingDirectory().compile();	;
+junit-modular-world/src/build/Project.java	107	4	run("jar", "--describe-module", "--file", "bin/main-jars/com.example.application.jar");	;
+junit-modular-world/src/build/Project.java	112	4	run(\r\n        "javac",\r\n        "-d",\r\n        "bin/main",\r\n        "--module-path",\r\n        "lib",\r\n        "--module-source-path",\r\n        "src/main",\r\n        "--module",\r\n        "ice.cream");	;
+junit-modular-world/src/build/Project.java	122	4	run(\r\n        "jar",\r\n        "--create",\r\n        "--file",\r\n        "bin/main-jars/ice.cream.jar",\r\n        "--module-version",\r\n        "47.11",\r\n        "-C",\r\n        "bin/main/ice.cream",\r\n        ".");	;
+junit-modular-world/src/build/Project.java	132	4	run("jar", "--describe-module", "--file", "bin/main-jars/ice.cream.jar");	;
+junit-modular-world/src/build/Project.java	137	4	exe("java", "--module-path", "bin/main-jars", "--module", "com.example.application", "3", "4");	;
+junit-modular-world/src/build/Project.java	141	4	testClasspath();	;
+junit-modular-world/src/build/Project.java	142	4	testPatchCompile();	;
+junit-modular-world/src/build/Project.java	143	4	testPatchRuntime();	;
+junit-modular-world/src/build/Project.java	151	21	new Arguments()	null
+junit-modular-world/src/build/Project.java	152	4	args.add("-d").add("bin/test-classpath");	;
+junit-modular-world/src/build/Project.java	153	4	args.add("--class-path")\r\n        .addPath(path -> path.getFileName().toString().endsWith(".jar"), "bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	155	4	args.addAllFiles(\r\n        "src/test",\r\n        path -> {\r\n          String name = path.getFileName().toString();\r\n          return name.endsWith(".java") && !name.contains("module-info");\r\n        });	;
+junit-modular-world/src/build/Project.java	158	24	path.getFileName()	null
+junit-modular-world/src/build/Project.java	161	4	run("javac", args.toArray());	;
+junit-modular-world/src/build/Project.java	163	11	new Arguments()	null
+junit-modular-world/src/build/Project.java	164	4	args.add("--class-path").addPath("bin/test-classpath", "bin/main-jars/*", "lib/*");	;
+junit-modular-world/src/build/Project.java	165	4	args.add("org.junit.platform.console.ConsoleLauncher");	;
+junit-modular-world/src/build/Project.java	166	4	args.add("execute");	;
+junit-modular-world/src/build/Project.java	167	4	args.add("--reports-dir").add("bin/test-classpath-results/junit-platform");	;
+junit-modular-world/src/build/Project.java	168	4	args.add("--scan-class-path");	;
+junit-modular-world/src/build/Project.java	169	4	exe("java", args.toArray());	;
+junit-modular-world/src/build/Project.java	177	21	new Arguments()	null
+junit-modular-world/src/build/Project.java	178	4	args.add("-d").add("bin/test-patch-compile");	;
+junit-modular-world/src/build/Project.java	179	4	args.add("--module-path").addPath("bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	180	4	args.add("--patch-module").add("com.example.application=src/main/com.example.application");	;
+junit-modular-world/src/build/Project.java	181	4	args.add("--patch-module").add("com.example.tool=src/main/com.example.tool");	;
+junit-modular-world/src/build/Project.java	182	4	args.add("--patch-module").add("ice.cream=src/main/ice.cream");	;
+junit-modular-world/src/build/Project.java	183	4	args.add("--module-source-path").add("src/test");	;
+junit-modular-world/src/build/Project.java	184	4	args.addAllFiles("src/test", ".java");	;
+junit-modular-world/src/build/Project.java	185	4	run("javac", args.toArray());	;
+junit-modular-world/src/build/Project.java	187	11	new Arguments()	null
+junit-modular-world/src/build/Project.java	188	4	args.add("--module-path").addPath("bin/test-patch-compile", "bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	189	4	args.add("--add-modules").add("ALL-MODULE-PATH,ALL-DEFAULT");	;
+junit-modular-world/src/build/Project.java	190	4	args.add("--add-opens")\r\n        .add("org.junit.platform.engine/org.junit.platform.engine.support.filter=net.jqwik.engine");	;
+junit-modular-world/src/build/Project.java	192	4	args.add("--add-opens")\r\n        .add("org.junit.platform.commons/org.junit.platform.commons.util=net.jqwik.engine");	;
+junit-modular-world/src/build/Project.java	194	4	args.add("--module").add("org.junit.platform.console");	;
+junit-modular-world/src/build/Project.java	195	4	args.add("execute");	;
+junit-modular-world/src/build/Project.java	196	4	args.add("--reports-dir").add("bin/test-patch-compile-results/junit-platform");	;
+junit-modular-world/src/build/Project.java	197	4	args.add("--scan-modules");	;
+junit-modular-world/src/build/Project.java	198	4	exe("java", args.toArray());	;
+junit-modular-world/src/build/Project.java	205	21	new Arguments()	null
+junit-modular-world/src/build/Project.java	206	4	args.add("-d").add("bin/test-patch-runtime/com.example.application");	;
+junit-modular-world/src/build/Project.java	207	4	args.add("--class-path")\r\n        .addPath(path -> path.getFileName().toString().endsWith(".jar"), "bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	209	4	args.addAllFiles(\r\n        "src/test/com.example.application",\r\n        path -> {\r\n          String name = path.getFileName().toString();\r\n          return name.endsWith(".java") && !name.contains("module-info");\r\n        });	;
+junit-modular-world/src/build/Project.java	212	24	path.getFileName()	null
+junit-modular-world/src/build/Project.java	215	4	run("javac", args.toArray());	;
+junit-modular-world/src/build/Project.java	216	11	new Arguments()	null
+junit-modular-world/src/build/Project.java	217	4	args.add("-d").add("bin/test-patch-runtime/com.example.tool");	;
+junit-modular-world/src/build/Project.java	218	4	args.add("--class-path")\r\n        .addPath(path -> path.getFileName().toString().endsWith(".jar"), "bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	220	4	args.addAllFiles(\r\n        "src/test/com.example.tool",\r\n        path -> {\r\n          String name = path.getFileName().toString();\r\n          return name.endsWith(".java") && !name.contains("module-info");\r\n        });	;
+junit-modular-world/src/build/Project.java	223	24	path.getFileName()	null
+junit-modular-world/src/build/Project.java	226	4	run("javac", args.toArray());	;
+junit-modular-world/src/build/Project.java	227	11	new Arguments()	null
+junit-modular-world/src/build/Project.java	228	4	args.add("-d").add("bin/test-patch-runtime/ice.cream");	;
+junit-modular-world/src/build/Project.java	229	4	args.add("--class-path")\r\n        .addPath(path -> path.getFileName().toString().endsWith(".jar"), "bin/main-jars", "lib");	;
+junit-modular-world/src/build/Project.java	231	4	args.addAllFiles(\r\n        "src/test/ice.cream",\r\n        path -> {\r\n          String name = path.getFileName().toString();\r\n          return name.endsWith(".java") && !name.contains("module-info");\r\n        });	;
+junit-modular-world/src/build/Project.java	234	24	path.getFileName()	null
+junit-modular-world/src/build/Project.java	237	4	run("javac", args.toArray());	;
+junit-modular-world/src/build/Project.java	239	11	new Arguments()	null
+junit-modular-world/src/build/Project.java	240	4	args.add("--module-path")\r\n        .addPath(\r\n            "bin/main-jars",\r\n            "lib",\r\n            "bin/test-patch-compile/extra.modular");	;
+junit-modular-world/src/build/Project.java	245	4	args.add("--add-modules").add("ALL-MODULE-PATH,ALL-DEFAULT");	;
+junit-modular-world/src/build/Project.java	246	4	args.add("--patch-module")\r\n        .add("com.example.application=bin/test-patch-runtime/com.example.application");	;
+junit-modular-world/src/build/Project.java	248	4	args.add("--patch-module").add("com.example.tool=bin/test-patch-runtime/com.example.tool");	;
+junit-modular-world/src/build/Project.java	249	4	args.add("--patch-module").add("ice.cream=bin/test-patch-runtime/ice.cream");	;
+junit-modular-world/src/build/Project.java	250	4	args.add("--add-opens")\r\n        .add("com.example.application/com.example.application=org.junit.platform.commons");	;
+junit-modular-world/src/build/Project.java	252	4	args.add("--add-opens").add("com.example.tool/com.example.tool=org.junit.platform.commons");	;
+junit-modular-world/src/build/Project.java	253	4	args.add("--add-opens")\r\n        .add("com.example.tool/com.example.tool.internal=org.junit.platform.commons");	;
+junit-modular-world/src/build/Project.java	255	4	args.add("--add-opens").add("ice.cream/ice.cream=org.junit.platform.commons");	;
+junit-modular-world/src/build/Project.java	256	4	args.add("--add-opens")\r\n        .add("org.junit.platform.engine/org.junit.platform.engine.support.filter=net.jqwik.engine");	;
+junit-modular-world/src/build/Project.java	258	4	args.add("--add-opens")\r\n        .add("org.junit.platform.commons/org.junit.platform.commons.util=net.jqwik.engine");	;
+junit-modular-world/src/build/Project.java	260	4	args.add("--add-reads").add("ice.cream=org.junit.jupiter.api");	;
+junit-modular-world/src/build/Project.java	261	4	args.add("--add-reads").add("com.example.application=org.junit.jupiter.api");	;
+junit-modular-world/src/build/Project.java	262	4	args.add("--add-reads").add("com.example.tool=org.junit.jupiter.api");	;
+junit-modular-world/src/build/Project.java	263	4	args.add("--module").add("org.junit.platform.console");	;
+junit-modular-world/src/build/Project.java	264	4	args.add("execute");	;
+junit-modular-world/src/build/Project.java	265	4	args.add("--reports-dir").add("bin/test-patch-runtime-results/junit-platform");	;
+junit-modular-world/src/build/Project.java	266	4	args.add("--scan-modules");	;
+junit-modular-world/src/build/Project.java	267	4	exe("java", args.toArray());	;
+junit-modular-world/src/build/Project.java	273	24	new ArrayList<>()	null
+junit-modular-world/src/build/Project.java	276	6	list.add(String.valueOf(o));	;
+junit-modular-world/src/build/Project.java	277	13	this	null
+junit-modular-world/src/build/Project.java	281	27	new ArrayList<>()	null
+junit-modular-world/src/build/Project.java	284	10	stream.filter(predicate).map(Object::toString).forEach(paths::add);	;
+junit-modular-world/src/build/Project.java	287	6	add(String.join(File.pathSeparator, paths));	;
+junit-modular-world/src/build/Project.java	288	13	this	null
+junit-modular-world/src/build/Project.java	292	6	add(String.join(File.pathSeparator, paths));	;
+junit-modular-world/src/build/Project.java	293	13	this	null
+junit-modular-world/src/build/Project.java	297	13	addAllFiles(root, path -> path.getFileName().toString().endsWith(extension))	null
+junit-modular-world/src/build/Project.java	302	8	stream.filter(predicate).forEach(this::add);	;
+junit-modular-world/src/build/Project.java	304	13	this	null
+junit-modular-world/src/build/Project.java	308	13	list.toArray(new String[0])	null
+junit-modular-world/src/build/Project.java	313	4	printCommandDetails("run", tool, args);	;
+junit-modular-world/src/build/Project.java	314	4	checkExitCode(ToolProvider.findFirst(tool).get().run(System.out, System.err, args));	;
+junit-modular-world/src/build/Project.java	318	4	printCommandDetails("exe", executable, args);	;
+junit-modular-world/src/build/Project.java	319	36	new ProcessBuilder(executable)	null
+junit-modular-world/src/build/Project.java	320	4	Arrays.stream(args).forEach(processBuilder.command()::add);	;
+junit-modular-world/src/build/Project.java	321	4	processBuilder.redirectErrorStream(true);	;
+junit-modular-world/src/build/Project.java	322	22	processBuilder.start()	null
+junit-modular-world/src/build/Project.java	323	4	process.getInputStream().transferTo(System.out);	;
+junit-modular-world/src/build/Project.java	324	4	checkExitCode(process.waitFor());	;
+junit-modular-world/src/build/Project.java	328	8	exitCode != 0	false
+junit-modular-world/src/build/Project.java	328	8	exitCode != 0	true
+junit-modular-world/src/build/Project.java	329	6	System.exit(exitCode);	;
+junit-modular-world/src/build/Project.java	33	11	new Project()	null
+junit-modular-world/src/build/Project.java	334	8	args.length < 2	false
+junit-modular-world/src/build/Project.java	334	8	args.length < 2	true
+junit-modular-world/src/build/Project.java	335	6	System.out.printf("[%s] %s%s%n", context, command, (args.length == 1 ? " " + args[0] : ""));	;
+junit-modular-world/src/build/Project.java	336	6	System.out.println();	;
+junit-modular-world/src/build/Project.java	339	4	System.out.printf("[%s] %s with %d arguments%n", context, command, args.length);	;
+junit-modular-world/src/build/Project.java	345	10	arg.length() > 100	false
+junit-modular-world/src/build/Project.java	345	10	arg.length() > 100	true
+junit-modular-world/src/build/Project.java	348	12	System.out.printf("%-10s%s%n", "", path);	;
+junit-modular-world/src/build/Project.java	352	14	arg.substring(0, 96)	null
+junit-modular-world/src/build/Project.java	354	6	System.out.printf("%-" + indent + "s%s%n", "", arg);	;
+junit-modular-world/src/build/Project.java	356	4	System.out.println();	;
+junit-modular-world/src/build/Project.java	360	4	System.out.printf("[del] %s%n", directory);	;
+junit-modular-world/src/build/Project.java	361	16	Paths.get(directory)	null
+junit-modular-world/src/build/Project.java	365	31	Files.walk(root)	null
+junit-modular-world/src/build/Project.java	366	30	stream.sorted((p, q) -> -p.compareTo(q))	null
+junit-modular-world/src/build/Project.java	368	8	Files.deleteIfExists(path);	;
+junit-modular-world/src/build/Project.java	37	4	del("bin");	;
+junit-modular-world/src/build/Project.java	374	21	uri.getPath()	null
+junit-modular-world/src/build/Project.java	375	16	uriPath.lastIndexOf('/')	0
+junit-modular-world/src/build/Project.java	376	18	uriPath.substring(begin)	null
+junit-modular-world/src/build/Project.java	377	18	Paths.get(directory)	null
+junit-modular-world/src/build/Project.java	378	18	folder.resolve(file)	null
+junit-modular-world/src/build/Project.java	38	4	del("lib");	;
+junit-modular-world/src/build/Project.java	380	13	target	null
+junit-modular-world/src/build/Project.java	382	4	System.out.printf("[get] %s%n", target);	;
+junit-modular-world/src/build/Project.java	383	4	Files.createDirectories(folder);	;
+junit-modular-world/src/build/Project.java	39	4	Files.deleteIfExists(Path.of(".jqwik-database"));	;
+junit-modular-world/src/build/Project.java	390	6	connection.setRequestProperty("Authorization", "Bearer " + mavenCentralUserToken);	;
+junit-modular-world/src/build/Project.java	392	36	connection.getInputStream()	null
+junit-modular-world/src/build/Project.java	393	36	Files.newOutputStream(target)	null
+junit-modular-world/src/build/Project.java	394	6	sourceStream.transferTo(targetStream);	;
+junit-modular-world/src/build/Project.java	396	11	target	null
+junit-modular-world/src/build/Project.java	402	14	URI.create(String.join("/", repo, group.replace('.', '/'), artifact, version, file))	null
+junit-modular-world/src/build/Project.java	403	11	get(directory, uri)	null
+junit-modular-world/src/build/Project.java	47	4	get("lib", "org.junit.platform", "junit-platform-commons", junitVersion);	;
+junit-modular-world/src/build/Project.java	48	4	get("lib", "org.junit.platform", "junit-platform-console", junitVersion);	;
+junit-modular-world/src/build/Project.java	49	4	get("lib", "org.junit.platform", "junit-platform-engine", junitVersion);	;
+junit-modular-world/src/build/Project.java	50	4	get("lib", "org.junit.platform", "junit-platform-launcher", junitVersion);	;
+junit-modular-world/src/build/Project.java	51	4	get("lib", "org.junit.platform", "junit-platform-reporting", junitVersion);	;
+junit-modular-world/src/build/Project.java	52	4	get("lib", "org.junit.jupiter", "junit-jupiter-api", junitVersion);	;
+junit-modular-world/src/build/Project.java	53	4	get("lib", "org.junit.jupiter", "junit-jupiter-params", junitVersion);	;
+junit-modular-world/src/build/Project.java	54	4	get("lib", "org.junit.jupiter", "junit-jupiter-engine", junitVersion);	;
+junit-modular-world/src/build/Project.java	55	4	get("lib", "org.junit.vintage", "junit-vintage-engine", junitVersion);	;
+junit-modular-world/src/build/Project.java	56	4	get("lib", "junit", "junit", "4.13.2");	;
+junit-modular-world/src/build/Project.java	57	4	get("lib", "org.hamcrest", "hamcrest-core", "1.3");	;
+junit-modular-world/src/build/Project.java	58	4	get("lib", "org.apiguardian", "apiguardian-api", "1.1.2");	;
+junit-modular-world/src/build/Project.java	59	4	get("lib", "org.jspecify", "jspecify", "1.0.0");	;
+junit-modular-world/src/build/Project.java	60	4	get("lib", "org.opentest4j", "opentest4j", "1.3.0");	;
+junit-modular-world/src/build/Project.java	61	4	get("lib", "org.opentest4j.reporting", "open-test-reporting-tooling-spi", "0.2.4");	;
+junit-modular-world/src/build/Project.java	62	4	get("lib", "net.jqwik", "jqwik-api", "1.9.3");	;
+junit-modular-world/src/build/Project.java	63	4	get("lib", "net.jqwik", "jqwik-engine", "1.9.3");	;
+junit-modular-world/src/build/Project.java	68	4	run(\r\n        "javac",\r\n        "-d",\r\n        "bin/main",\r\n        "--module-source-path",\r\n        "src/main",\r\n        "--module",\r\n        "com.example.tool");	;
+junit-modular-world/src/build/Project.java	76	4	run(\r\n        "jar",\r\n        "--create",\r\n        "--file",\r\n        "bin/main-jars/com.example.tool.jar",\r\n        "-C",\r\n        "bin/main/com.example.tool",\r\n        ".");	;
+junit-modular-world/src/build/Project.java	84	4	run("jar", "--describe-module", "--file", "bin/main-jars/com.example.tool.jar");	;
+junit-modular-world/src/build/Project.java	89	4	run(\r\n        "javac",\r\n        "-d",\r\n        "bin/main",\r\n        "--module-source-path",\r\n        "src/main",\r\n        "--module",\r\n        "com.example.application");	;
+junit-modular-world/src/build/Project.java	97	4	run(\r\n        "jar",\r\n        "--create",\r\n        "--file",\r\n        "bin/main-jars/com.example.application.jar",\r\n        "--main-class",\r\n        "com.example.application.Main",\r\n        "-C",\r\n        "bin/main/com.example.application",\r\n        ".");	;
+junit-modular-world/src/main/com.example.application/com/example/application/Main.java	20	2	System.out.printf("%d + %d = %d%n", a, b, new Calculator().add(a, b));	;
+junit-modular-world/src/main/com.example.application/com/example/application/Main.java	20	44	new Calculator()	null
+junit-modular-world/src/main/com.example.tool/com/example/tool/Calculator.java	18	9	a + b	0
+junit-modular-world/src/main/com.example.tool/com/example/tool/Calculator.java	22	9	a * b	0
+junit-modular-world/src/main/com.example.tool/com/example/tool/Calculator.java	26	9	MathHelper.pow(a, b)	0
+junit-modular-world/src/main/com.example.tool/com/example/tool/internal/MathHelper.java	16	9	(int) Math.pow(a, b)	0
+junit-modular-world/src/main/ice.cream/ice/cream/Flavor.java	22	21	values()	null
+junit-modular-world/src/main/ice.cream/ice/cream/Flavor.java	23	9	flavors[(int) (Math.random() * flavors.length)]	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	30	9	"ice-cream-machine"	""
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	37	26	new StringBuilder()	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	38	2	builder.append("Ice Cream Machine");	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	40	3	builder.append(" ").append(getVersion().get());	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	43	3	builder.append(" (").append(getArtifactId().get()).append(")");	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	45	9	builder.toString()	""
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	52	39	discoveryRequest.getConfigurationParameters()	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	53	18	parameters.get("scoops")	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	54	9	Integer.valueOf(scoops)	0
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	59	26	new EngineDescriptor(uniqueId, getCaption())	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	61	19	new Scoop(engine.getUniqueId(), i, Flavor.random())	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	61	3	engine.addChild(new Scoop(engine.getUniqueId(), i, Flavor.random()));	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	63	9	engine	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	68	26	request.getRootTestDescriptor()	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	69	37	request.getEngineExecutionListener()	null
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	70	2	listener.executionStarted(engine);	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	72	3	listener.executionStarted(child);	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	73	3	listener.executionFinished(child, TestExecutionResult.successful());	;
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	75	2	listener.executionFinished(engine, TestExecutionResult.successful());	;
+junit-modular-world/src/main/ice.cream/ice/cream/Scoop.java	19	2	super(uniqueId.append("scoop", "#" + counter), flavor.name());	;
+junit-modular-world/src/main/ice.cream/ice/cream/Scoop.java	24	9	Type.TEST	null
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	21	2	Assertions.assertEquals("Main", Main.class.getSimpleName());	;
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	28	33	new ByteArrayOutputStream()	null
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	29	17	new PrintStream(bytes)	null
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	29	3	System.setOut(new PrintStream(bytes));	;
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	30	3	Main.main("99", "1");	;
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	31	19	bytes.toString()	null
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	32	3	Assertions.assertEquals("99 + 1 = 100", actual);	;
+junit-modular-world/src/test/com.example.application/com/example/application/MainTests.java	34	3	System.setOut(standard);	;
+junit-modular-world/src/test/com.example.tool/com/example/tool/CalculatorTests.java	18	39	new Calculator()	null
+junit-modular-world/src/test/com.example.tool/com/example/tool/CalculatorTests.java	22	2	Assertions.assertEquals(2, calculator.add(1, 1), "1 + 1 should equal 2");	;
+junit-modular-world/src/test/com.example.tool/com/example/tool/CalculatorTests.java	27	2	Assertions.assertEquals(4, calculator.mul(2, 2), "2 * 2 should equal 4");	;
+junit-modular-world/src/test/com.example.tool/com/example/tool/CalculatorTests.java	32	2	Assertions.assertEquals(8, calculator.pow(2, 3), "2 ^ 3 should equal 8");	;
+junit-modular-world/src/test/com.example.tool/com/example/tool/internal/MathHelperTests.java	22	8	Assertions.assertEquals(8, MathHelper.pow(2, 3), "2 ^ 3 should equal 8");	;
+junit-modular-world/src/test/com.example.tool/com/example/tool/internal/MathHelperTests.java	35	8	Assertions.assertEquals(expectedResult, MathHelper.pow(first, second),\r\n                     () -> first + " ^ " + second + " should equal " + expectedResult);	;
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	25	2	Assertions.assertEquals("com.example.tool", Calculator.class.getPackage().getName());	;
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	31	2	Assumptions.assumeTrue(Calculator.class.getModule().isNamed(), "Calculator resides in a named module");	;
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	32	2	Assertions.assertEquals("com.example.tool", Calculator.class.getModule().getName());	;
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	37	10	info.getCurrentRepetition()	0
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	38	10	info.getTotalRepetitions()	0
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	39	15	new Calculator()	null
+junit-modular-world/src/test/extra.modular/extra/modular/ExtraModularTests.java	41	2	Assertions.assertEquals(expected, actual);	;
+junit-modular-world/src/test/extra.modular/extra/modular/GoodOldTest.java	20	2	Assert.assertEquals(18, new Calculator().add(9, 9));	;
+junit-modular-world/src/test/extra.modular/extra/modular/GoodOldTest.java	20	26	new Calculator()	null
+junit-modular-world/src/test/extra.modular/extra/modular/JQwikTests.java	20	9	new Calculator()	null
+junit-modular-world/src/test/extra.modular/extra/modular/JQwikTests.java	20	9	new Calculator().add(1, 3) == 4	false
+junit-modular-world/src/test/extra.modular/extra/modular/JQwikTests.java	25	9	new Calculator()	null
+junit-modular-world/src/test/extra.modular/extra/modular/JQwikTests.java	25	9	new Calculator().add(a, b) == a + b	false
+junit-modular-world/src/test/ice.cream/ice/cream/FlavorTests.java	21	18	Flavor.random()	null
+junit-modular-world/src/test/ice.cream/ice/cream/FlavorTests.java	22	2	assertNotNull(flavor);	;
+junit-modular-world/src/test/ice.cream/ice/cream/MachineTests.java	22	18	new Machine()	null
+junit-modular-world/src/test/ice.cream/ice/cream/MachineTests.java	23	2	assertTrue(actual.startsWith("Ice Cream Machine"));	;
+junit-modular-world/src/test/ice.cream/ice/cream/MachineTests.java	29	18	new Machine()	null
+junit-modular-world/src/test/ice.cream/ice/cream/MachineTests.java	30	2	assertEquals(expected, actual, "Machine ID mismatch!");	;
+junit-multiple-engines/src/test/java/jqwik/JQwikTest.java	19	9	true	false
+junit-multiple-engines/src/test/java/junit/jupiter/JupiterTests.java	23	2	assertEquals(3, 1 + 2);	;
+junit-multiple-engines/src/test/java/junit/vintage/JUnit3Test.java	18	2	assertEquals(3, 1 + 2);	;
+junit-multiple-engines/src/test/java/junit/vintage/JUnit4Test.java	21	2	assertEquals(3, 1 + 2);	;
+junit-source-launcher/lib/DownloadRequiredModules.java	100	9	new TreeSet<>(names)	null
+junit-source-launcher/lib/DownloadRequiredModules.java	106	9	!isStatic || isTransitive	false
+junit-source-launcher/lib/DownloadRequiredModules.java	11	17	Path.of("lib")	null
+junit-source-launcher/lib/DownloadRequiredModules.java	12	26	Set.of("org.junit.start")	null
+junit-source-launcher/lib/DownloadRequiredModules.java	47	19	new Properties()	null
+junit-source-launcher/lib/DownloadRequiredModules.java	48	18	new StringReader(lookup)	null
+junit-source-launcher/lib/DownloadRequiredModules.java	58	14	computeMissingModuleNames()	null
+junit-source-launcher/lib/DownloadRequiredModules.java	80	18	new TreeSet<>(names)	null
+src/Builder.java	101	33	new HashSet<>()	null
+src/Builder.java	104	4	excludedProjects.addAll(Set.of(arg.substring(EXCLUDE_OPTION.length()).split(",")));	;
+src/Builder.java	107	9	Set.copyOf(excludedProjects)	null
+src/Builder.java	112	3	System.out.printf("%n%n%n|%n| %s is excluded.%n|%n", project);	;
+src/Builder.java	115	2	run(project, executable, args);	;
+src/Builder.java	119	6	status != 0	false
+src/Builder.java	119	6	status != 0	true
+src/Builder.java	122	2	System.out.printf("%n%n%n|%n| %s%n|%n", directory);	;
+src/Builder.java	123	2	System.out.printf("| %s %s%n|%n", executable, String.join(" ", args));	;
+src/Builder.java	131	23	new ProcessBuilder(isWindows ? "cmd.exe" : executable)	null
+src/Builder.java	133	3	processBuilder.command().add("/C");	;
+src/Builder.java	134	3	processBuilder.command().add(executable);	;
+src/Builder.java	136	2	Arrays.stream(args).forEach(processBuilder.command()::add);	;
+src/Builder.java	137	2	processBuilder.directory(path.toFile());	;
+src/Builder.java	138	2	processBuilder.redirectErrorStream(true);	;
+src/Builder.java	141	3	process.getInputStream().transferTo(System.out);	;
+src/Builder.java	142	12	process.waitFor()	null
+src/Builder.java	144	3	System.out.printf("%n%n%n| %s failed to build!%n", directory);	;
+src/Builder.java	145	3	exception.printStackTrace(System.err);	;
+src/Builder.java	151	9	System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("win")	false
+src/Builder.java	155	6	status != 0	false
+src/Builder.java	155	6	status != 0	true
+src/Builder.java	158	2	System.out.printf("%n%n%n|%n| check license: %s%n|%n", blueprint);	;
+src/Builder.java	169	5	System.out.printf("| %s%n", path);	;
+src/Builder.java	173	7	errors > 0	false
+src/Builder.java	173	7	errors > 0	true
+src/Builder.java	174	4	System.out.printf("| %d file(s) with no or false license.%n", errors);	;
+src/Builder.java	179	3	System.out.printf("%n%n%n| License `%s` check failed!%n", blueprint);	;
+src/Builder.java	180	3	exception.printStackTrace(System.err);	;
+src/Builder.java	187	6	actual.size() >= expected.size()	false
+src/Builder.java	187	6	actual.size() >= expected.size()	true
+src/Builder.java	188	12	actual.subList(0, expected.size())	null
+src/Builder.java	189	10	actual.equals(expected)	false
+src/Builder.java	34	15	new Builder()	null
+src/Builder.java	35	6	status != 0	false
+src/Builder.java	35	6	status != 0	true
+src/Builder.java	43	2	System.out.printf("|%n| Building all samples (%s)...%n|%n", target);	;
+src/Builder.java	44	2	run(".", "java", "--version");	;
+src/Builder.java	45	6	target == Target.TEST	false
+src/Builder.java	45	6	target == Target.TEST	true
+src/Builder.java	46	3	checkLicense("src/eclipse-public-license-2.0.java", ".java", ".kt", ".scala", ".groovy");	;
+src/Builder.java	58	3	runProject(excludedProjects, "junit-jupiter-starter-ant", "build.sh", "clean", antTarget);	;
+src/Builder.java	61	2	runProject(excludedProjects, "junit-jupiter-starter-gradle", "gradlew", gradleTask);	;
+src/Builder.java	62	2	runProject(excludedProjects, "junit-jupiter-starter-gradle-groovy", "gradlew", gradleTask);	;
+src/Builder.java	63	2	runProject(excludedProjects, "junit-jupiter-starter-gradle-kotlin", "gradlew", gradleTask);	;
+src/Builder.java	64	2	runProject(excludedProjects, "junit-jupiter-starter-maven", "mvnw", "--batch-mode", "clean", mavenLifecycle);	;
+src/Builder.java	65	2	runProject(excludedProjects, "junit-jupiter-starter-maven-kotlin", "mvnw", "--batch-mode", "clean", mavenLifecycle);	;
+src/Builder.java	66	2	runProject(excludedProjects, "junit-jupiter-starter-bazel", "bazel", bazelTarget, "//...");	;
+src/Builder.java	67	2	runProject(excludedProjects, "junit-jupiter-starter-sbt", "sbt", sbtTask);	;
+src/Builder.java	70	2	runProject(excludedProjects, "junit-jupiter-extensions", "gradlew", gradleTask);	;
+src/Builder.java	73	2	runProject(excludedProjects, "junit-migration-gradle", "gradlew", gradleTask);	;
+src/Builder.java	74	2	runProject(excludedProjects, "junit-migration-maven", "mvnw", "--batch-mode", "clean", mavenLifecycle);	;
+src/Builder.java	75	2	runProject(excludedProjects, "junit-multiple-engines", "gradlew", gradleTask);	;
+src/Builder.java	78	2	runProject(excludedProjects, "junit-modular-world", "java", modularAction);	;
+src/Builder.java	81	2	runProject(excludedProjects, "junit-source-launcher", "java", "lib/DownloadRequiredModules.java");	;
+src/Builder.java	82	2	runProject(excludedProjects, "junit-source-launcher",\r\n\t\t\t\t"java",\r\n\t\t\t\t"--module-path", "lib",\r\n\t\t\t\t"--add-modules", "org.junit.start",\r\n\t\t\t\t"src/HelloTests.java");	;
+src/Builder.java	87	2	System.out.printf("%n%n%n|%n| Done. Build exits with status = %d.%n|%n", status);	;
+src/Builder.java	88	9	status	0
+src/Builder.java	94	11	Target.valueOf(arg.substring(TARGET_OPTION.length()).toUpperCase(Locale.ROOT))	null
+src/Builder.java	97	9	Target.TEST	null
+src/StagingRepoInjector.java	101	8	process(path, content -> {\r\n            if (content.indexOf(token) == -1) {\r\n                throw new IllegalStateException("Token not found in " + path);\r\n            }\r\n            content.replace(content.indexOf(token), content.indexOf(token) + token.length(), replacement);\r\n        });	;
+src/StagingRepoInjector.java	102	16	content.indexOf(token) == -1	false
+src/StagingRepoInjector.java	102	16	content.indexOf(token) == -1	true
+src/StagingRepoInjector.java	105	12	content.replace(content.indexOf(token), content.indexOf(token) + token.length(), replacement);	;
+src/StagingRepoInjector.java	110	8	System.out.printf("Processing %s...", path);	;
+src/StagingRepoInjector.java	111	8	System.out.flush();	;
+src/StagingRepoInjector.java	113	22	new StringBuilder(Files.readString(file))	null
+src/StagingRepoInjector.java	114	8	modification.accept(content);	;
+src/StagingRepoInjector.java	115	8	Files.writeString(file, content);	;
+src/StagingRepoInjector.java	116	8	System.out.println(" OK");	;
+src/StagingRepoInjector.java	21	8	new StagingRepoInjector(args[0])	null
+src/StagingRepoInjector.java	21	8	new StagingRepoInjector(args[0]).inject();	;
+src/StagingRepoInjector.java	62	8	appendAfter("junit-jupiter-extensions/build.gradle", "mavenCentral()",\r\n                gradleGroovyDslSnippet);	;
+src/StagingRepoInjector.java	65	8	replace("junit-jupiter-starter-ant/build.sh", "\\"https://repo1.maven.org/maven2",\r\n                "--header \\"Authorization: Bearer $MAVEN_CENTRAL_USER_TOKEN\\" \\"%s".formatted(stagingRepoUrl));	;
+src/StagingRepoInjector.java	68	8	appendAfter("junit-jupiter-starter-gradle/build.gradle", "mavenCentral()",\r\n                gradleGroovyDslSnippet);	;
+src/StagingRepoInjector.java	71	8	appendAfter("junit-jupiter-starter-gradle-groovy/build.gradle", "mavenCentral()",\r\n                gradleGroovyDslSnippet);	;
+src/StagingRepoInjector.java	74	8	appendAfter("junit-jupiter-starter-gradle-kotlin/build.gradle.kts", "mavenCentral()",\r\n                gradleKotlinDslSnippet);	;
+src/StagingRepoInjector.java	77	8	appendAfter("junit-migration-gradle/build.gradle", "mavenCentral()",\r\n                gradleGroovyDslSnippet);	;
+src/StagingRepoInjector.java	80	8	replace("junit-modular-world/src/build/Project.java", "\\"https://repo1.maven.org/maven2\\"",\r\n                "group.startsWith(\\"org.junit\\") ? \\"%s\\" : \\"https://repo1.maven.org/maven2\\"".formatted(stagingRepoUrl));	;
+src/StagingRepoInjector.java	83	8	appendAfter("junit-multiple-engines/build.gradle.kts", "mavenCentral()",\r\n                gradleKotlinDslSnippet);	;
+src/StagingRepoInjector.java	86	8	replace("junit-source-launcher/lib/DownloadRequiredModules.java",\r\n                "final String repository = \\"https://repo.maven.apache.org/maven2\\"",\r\n                "final String repository = \\"%s\\"".formatted(stagingRepoUrl));	;
+src/StagingRepoInjector.java	92	8	process(path, content -> {\r\n            if (content.indexOf(token) == -1) {\r\n                throw new IllegalStateException("Token not found in " + path);\r\n            }\r\n            content.insert(content.indexOf(token) + token.length(), addedContent);\r\n        });	;
+src/StagingRepoInjector.java	93	16	content.indexOf(token) == -1	false
+src/StagingRepoInjector.java	93	16	content.indexOf(token) == -1	true
+src/StagingRepoInjector.java	96	12	content.insert(content.indexOf(token) + token.length(), addedContent);	;
+src/Updater.java	28	8	new Updater(args[0])	null
+src/Updater.java	28	8	new Updater(args[0]).update();	;
+src/Updater.java	47	8	update(Path.of("junit-jupiter-extensions/build.gradle"), List.of(gradleBomReplacement));	;
+src/Updater.java	48	8	update(Path.of("junit-jupiter-starter-ant/build.sh"), List.of(\r\n                Pattern.compile("junit_version='" + VERSION_REGEX + "'")\r\n        ));	;
+src/Updater.java	51	8	update(Path.of("junit-jupiter-starter-bazel/MODULE.bazel"), List.of(\r\n                Pattern.compile("JUNIT_VERSION = \\"" + VERSION_REGEX + '"')\r\n        ));	;
+src/Updater.java	54	8	update(Path.of("junit-jupiter-starter-gradle/build.gradle"), List.of(gradleBomReplacement));	;
+src/Updater.java	55	8	update(Path.of("junit-jupiter-starter-gradle-groovy/build.gradle"), List.of(gradleBomReplacement));	;
+src/Updater.java	56	8	update(Path.of("junit-jupiter-starter-gradle-kotlin/build.gradle.kts"), List.of(gradleBomReplacement));	;
+src/Updater.java	57	8	update(Path.of("junit-jupiter-starter-maven/pom.xml"), List.of(mavenBomReplacement));	;
+src/Updater.java	58	8	update(Path.of("junit-jupiter-starter-maven-kotlin/pom.xml"), List.of(mavenBomReplacement));	;
+src/Updater.java	59	8	update(Path.of("junit-jupiter-starter-sbt/build.sbt"), List.of(\r\n                Pattern.compile("\\"org.junit.jupiter\\" % \\"junit-jupiter\\" % \\"" + VERSION_REGEX + '"'),\r\n                Pattern.compile("\\"org.junit.platform\\" % \\"junit-platform-launcher\\" % \\"" + VERSION_REGEX + '"')\r\n        ));	;
+src/Updater.java	63	8	update(Path.of("junit-migration-gradle/build.gradle"), List.of(gradleBomReplacement));	;
+src/Updater.java	64	8	update(Path.of("junit-migration-gradle/README.md"), List.of(\r\n                Pattern.compile("org.junit.jupiter:junit-jupiter:" + VERSION_REGEX),\r\n                Pattern.compile("org.junit.vintage:junit-vintage-engine:" + VERSION_REGEX)\r\n        ));	;
+src/Updater.java	68	8	update(Path.of("junit-migration-maven/pom.xml"), List.of(mavenBomReplacement));	;
+src/Updater.java	69	8	update(Path.of("junit-modular-world/src/build/Project.java"), List.of(\r\n                Pattern.compile("junitVersion = \\"" + VERSION_REGEX + '"')\r\n        ));	;
+src/Updater.java	72	8	update(Path.of("junit-multiple-engines/build.gradle.kts"), List.of(\r\n                Pattern.compile("junitBomVersion = \\"" + VERSION_REGEX + '"')\r\n        ));	;
+src/Updater.java	75	8	update(Path.of("junit-source-launcher/lib/DownloadRequiredModules.java"), List.of(\r\n                Pattern.compile("final String version = \\"" + VERSION_REGEX + '\\"')\r\n        ));	;
+src/Updater.java	81	8	System.out.printf("Updating %s...", path);	;
+src/Updater.java	82	8	System.out.flush();	;
+src/Updater.java	84	22	new StringBuilder(Files.readString(path))	null
+src/Updater.java	90	28	matcher.start(1)	0
+src/Updater.java	91	26	matcher.end(1)	0
+src/Updater.java	93	16	content.replace(start, end, newVersion);	;
+src/Updater.java	97	8	Files.writeString(path, content);	;
+src/Updater.java	98	8	System.out.printf(" %d%n", matches);	;
+src/Updater.java	99	12	matches == 0	false
+src/Updater.java	99	12	matches == 0	true

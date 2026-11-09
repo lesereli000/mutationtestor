@@ -1,17 +1,17 @@
 package mutationtester;
 
-import mutationtester.coverage.*;
-import mutationtester.core.*;
 import mutationtester.model.*;
 import mutationtester.scanner.*;
 
 import mutationtester.msl.*;
 
+import org.antlr.v4.runtime.CommonToken;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.util.List;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MSLTests {
@@ -76,231 +76,244 @@ public class MSLTests {
     }
 
     @Test
-    void readConfigCustomMutationSpecAbsentYieldsNull(
+    void readConfigRequiresCustomMutationSpec(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        // Mutations always come from a spec file; mutator_type alone isn't enough.
         java.nio.file.Path cfg = tmp.resolve("test.config");
         java.nio.file.Files.writeString(cfg,
             "source_code_directory=src\n" +
             "test_command=mvn test\n" +
             "mutator_type=AOR_PLUS_TO_MINUS\n");
 
-        Main.Config config = Main.readConfig(cfg.toFile());
-        assertNull(config.customMutationSpec);
-    }
-
-    // ── Step 5: QuantityNode ──────────────────────────────────────────────────
-
-    @Test
-    void quantityNodeMatchesTrueWhenAdapterSaysQuantity() {
-        QuantityNode node = new QuantityNode();
-        assertTrue(node.matches(mockAdapter(true), null));
+        java.io.IOException error = assertThrows(java.io.IOException.class, () -> Main.readConfig(cfg.toFile()));
+        assertTrue(error.getMessage().contains("custom_mutation_spec"), error.getMessage());
     }
 
     @Test
-    void quantityNodeMatchesFalseWhenAdapterDenies() {
-        QuantityNode node = new QuantityNode();
-        assertFalse(node.matches(mockAdapter(false), null));
+    void readConfigNoLongerNeedsMutatorType(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        java.nio.file.Path cfg = tmp.resolve("test.config");
+        java.nio.file.Files.writeString(cfg,
+            "source_code_directory=src\n" +
+            "test_command=mvn test\n" +
+            "custom_mutation_spec=specs/OperatorMutations.spec\n");
+
+        assertEquals("specs/OperatorMutations.spec", Main.readConfig(cfg.toFile()).customMutationSpec);
+    }
+
+    // ── Placeholders ──────────────────────────────────────────────────────────
+
+    @Test
+    void quantityPlaceholderMatchesWhenAdapterSaysQuantity() {
+        assertNotNull(MSLMatcher.match(new MSLPlaceholder("quantity"), node("x"), mockAdapter(true)));
     }
 
     @Test
-    void quantityNodeGetReplacementTextDelegatesToAdapter() {
-        QuantityNode node = new QuantityNode();
-        assertEquals("x", node.getReplacementText(mockAdapterWithText("x"), null));
+    void quantityPlaceholderRejectsWhenAdapterDenies() {
+        assertNull(MSLMatcher.match(new MSLPlaceholder("quantity"), node("x"), mockAdapter(false)));
+    }
+
+    @Test
+    void placeholderBindsTheMatchedNode() {
+        ParseTree x = node("x");
+        MSLBindings bindings = MSLMatcher.match(new MSLPlaceholder("quantity"), x, mockAdapter(true));
+        assertSame(x, bindings.get("quantity", 0));
+    }
+
+    @Test
+    void unknownPlaceholderTypeMatchesNothing() {
+        assertNull(MSLMatcher.match(new MSLPlaceholder("no_such_thing"), node("x"), mockAdapter(true)));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /** A one-token CST node, enough for adapters that answer from text. */
+    private static ParseTree node(String text) {
+        return new TerminalNodeImpl(new CommonToken(0, text));
+    }
+
     private static MSLScannerAdapter mockAdapter(boolean isQuantityResult) {
         return new MSLScannerAdapter() {
-            public boolean isBinaryExpressionFor(org.antlr.v4.runtime.tree.ParseTree c, String op) { return false; }
-            public org.antlr.v4.runtime.tree.ParseTree getLeftOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getRightOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getOperatorToken(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public boolean isQuantity(org.antlr.v4.runtime.tree.ParseTree c) { return isQuantityResult; }
-            public String getNodeText(org.antlr.v4.runtime.tree.ParseTree c) { return ""; }
-            public int[] getTokenPosition(org.antlr.v4.runtime.tree.ParseTree c) { return new int[]{1, 0}; }
-            public org.antlr.v4.runtime.tree.ParseTree getRootContext() { return null; }
+            public boolean isBinaryExpressionFor(ParseTree c, String op) { return false; }
+            public ParseTree getLeftOperand(ParseTree c) { return null; }
+            public ParseTree getRightOperand(ParseTree c) { return null; }
+            public ParseTree getOperatorToken(ParseTree c) { return null; }
+            public boolean isQuantity(ParseTree c) { return isQuantityResult; }
+            public String getNodeText(ParseTree c) { return c == null ? "" : c.getText(); }
+            public int[] getTokenPosition(ParseTree c) { return new int[]{1, 0}; }
+            public ParseTree getRootContext() { return null; }
         };
     }
 
-    private static MSLScannerAdapter mockAdapterWithText(String text) {
-        return new MSLScannerAdapter() {
-            public boolean isBinaryExpressionFor(org.antlr.v4.runtime.tree.ParseTree c, String op) { return false; }
-            public org.antlr.v4.runtime.tree.ParseTree getLeftOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getRightOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getOperatorToken(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public boolean isQuantity(org.antlr.v4.runtime.tree.ParseTree c) { return true; }
-            public String getNodeText(org.antlr.v4.runtime.tree.ParseTree c) { return text; }
-            public int[] getTokenPosition(org.antlr.v4.runtime.tree.ParseTree c) { return new int[]{1, 0}; }
-            public org.antlr.v4.runtime.tree.ParseTree getRootContext() { return null; }
-        };
-    }
+    // ── Binary operator trees ─────────────────────────────────────────────────
 
-    // ── Step 6: BinaryOpNode ──────────────────────────────────────────────────
+    private static final MSLTree PLUS = MSLPatternParser.parse("{quantity} + {quantity}");
+    private static final MSLTree MINUS = MSLPatternParser.parse("{quantity} - {quantity}");
 
     @Test
-    void binaryOpNodeMatchesWhenAdapterConfirms() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", true, true, true);
-        BinaryOpNode node = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        assertTrue(node.matches(adapter, null));
+    void binaryTreeMatchesWhenAdapterConfirms() {
+        assertNotNull(MSLMatcher.match(PLUS, node("a+b"), mockBinaryAdapter("+", true, true, true)));
     }
 
     @Test
-    void binaryOpNodeRejectsWhenAdapterDeniesExpression() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", false, true, true);
-        BinaryOpNode node = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        assertFalse(node.matches(adapter, null));
+    void binaryTreeRejectsWhenAdapterDeniesExpression() {
+        assertNull(MSLMatcher.match(PLUS, node("a+b"), mockBinaryAdapter("+", false, true, true)));
     }
 
     @Test
-    void binaryOpNodeRejectsWhenLeftNotQuantity() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", true, false, true);
-        BinaryOpNode node = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        assertFalse(node.matches(adapter, null));
+    void binaryTreeRejectsWhenLeftNotQuantity() {
+        assertNull(MSLMatcher.match(PLUS, node("a+b"), mockBinaryAdapter("+", true, false, true)));
     }
 
     @Test
-    void binaryOpNodeRejectsWhenRightNotQuantity() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", true, true, false);
-        BinaryOpNode node = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        assertFalse(node.matches(adapter, null));
+    void binaryTreeRejectsWhenRightNotQuantity() {
+        assertNull(MSLMatcher.match(PLUS, node("a+b"), mockBinaryAdapter("+", true, true, false)));
     }
 
     @Test
-    void binaryOpNodeGetOperatorReturnsStoredOperator() {
-        BinaryOpNode node = new BinaryOpNode(">>", new QuantityNode(), new QuantityNode());
-        assertEquals(">>", node.getOperator());
+    void binaryTreeKeepsItsOperator() {
+        MSLNode shift = (MSLNode) MSLPatternParser.parse("{quantity} >> {quantity}");
+        assertEquals(MSLNode.BINARY, shift.kind());
+        assertEquals(">>", shift.value());
     }
 
     /** Adapter where isBinaryExpressionFor checks op match, and left/right isQuantity is configurable. */
     private static MSLScannerAdapter mockBinaryAdapter(
             String expectedOp, boolean binaryMatch,
             boolean leftIsQuantity, boolean rightIsQuantity) {
+        ParseTree left = node("a");
+        ParseTree right = node("b");
         return new MSLScannerAdapter() {
-            int callCount = 0;
-            public boolean isBinaryExpressionFor(org.antlr.v4.runtime.tree.ParseTree c, String op) {
-                return binaryMatch && op.equals(expectedOp);
+            public boolean isBinaryExpressionFor(ParseTree c, String op) {
+                return binaryMatch && op.equals(expectedOp) && c != left && c != right;
             }
-            public org.antlr.v4.runtime.tree.ParseTree getLeftOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getRightOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getOperatorToken(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public boolean isQuantity(org.antlr.v4.runtime.tree.ParseTree c) {
-                return callCount++ == 0 ? leftIsQuantity : rightIsQuantity;
+            public ParseTree getLeftOperand(ParseTree c) { return left; }
+            public ParseTree getRightOperand(ParseTree c) { return right; }
+            public ParseTree getOperatorToken(ParseTree c) { return null; }
+            public boolean isQuantity(ParseTree c) {
+                return c == left ? leftIsQuantity : rightIsQuantity;
             }
-            public String getNodeText(org.antlr.v4.runtime.tree.ParseTree c) { return ""; }
-            public int[] getTokenPosition(org.antlr.v4.runtime.tree.ParseTree c) { return new int[]{1, 0}; }
-            public org.antlr.v4.runtime.tree.ParseTree getRootContext() { return null; }
+            public String getNodeText(ParseTree c) { return c == null ? "" : c.getText(); }
+            public int[] getTokenPosition(ParseTree c) { return new int[]{1, 0}; }
+            public ParseTree getRootContext() { return null; }
         };
     }
 
-    // ── Step 7: MSLExpressionFactory ─────────────────────────────────────────
+    // ── Pattern parser ────────────────────────────────────────────────────────
 
-    @Test
-    void expressionFactoryParsesQuantity() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity}");
-        assertInstanceOf(QuantityNode.class, expr);
+    private static String binaryOperator(String pattern) {
+        MSLNode node = (MSLNode) MSLPatternParser.parse(pattern);
+        assertEquals(MSLNode.BINARY, node.kind());
+        return node.value();
     }
 
     @Test
-    void expressionFactoryParsesBinaryPlus() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} + {quantity}");
-        assertInstanceOf(BinaryOpNode.class, expr);
-        assertEquals("+", ((BinaryOpNode) expr).getOperator());
+    void parserParsesQuantity() {
+        assertEquals(new MSLPlaceholder("quantity"), MSLPatternParser.parse("{quantity}"));
     }
 
     @Test
-    void expressionFactoryParsesBinaryShiftRight() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} >> {quantity}");
-        assertEquals(">>", ((BinaryOpNode) expr).getOperator());
+    void parserParsesCanonicalOperators() {
+        for (String op : List.of("+", "-", "*", "/", "%", "//", "**", "<", "<=", ">", ">=", "==", "!=",
+                "&&", "||", "&", "|", "^", "<<", ">>", ">>>")) {
+            assertEquals(op, binaryOperator("{quantity} " + op + " {quantity}"), op);
+        }
     }
 
     @Test
-    void expressionFactoryParsesBinaryUnsignedShift() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} >>> {quantity}");
-        assertEquals(">>>", ((BinaryOpNode) expr).getOperator());
+    void parserReadsTheLongestOperator() {
+        // >>> is one operator, not >> followed by >.
+        assertEquals(">>>", binaryOperator("{quantity}>>>{quantity}"));
     }
 
     @Test
-    void expressionFactoryParsesModulo() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} % {quantity}");
-        assertEquals("%", ((BinaryOpNode) expr).getOperator());
+    void parserRespectsPrecedence() {
+        MSLNode sum = (MSLNode) MSLPatternParser.parse("{quantity} + {quantity} * {quantity}");
+        assertEquals("+", sum.value());
+        assertEquals("*", ((MSLNode) sum.child(1)).value());
+        MSLNode grouped = (MSLNode) MSLPatternParser.parse("({quantity} + {quantity}) * {quantity}");
+        assertEquals("*", grouped.value());
     }
 
     @Test
-    void expressionFactoryParsesGreaterThan() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} > {quantity}");
-        assertEquals(">", ((BinaryOpNode) expr).getOperator());
+    void parserReadsPlainEnglishChecks() {
+        MSLNode check = (MSLNode) MSLPatternParser.parse("{quantity} is null");
+        assertEquals(MSLNode.PREDICATE, check.kind());
+        assertEquals("is null", check.value());
+        assertEquals("is not null", ((MSLNode) MSLPatternParser.parse("{quantity} is not null")).value());
     }
 
     @Test
-    void expressionFactoryParsesEquality() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} == {quantity}");
-        assertEquals("==", ((BinaryOpNode) expr).getOperator());
+    void parserReadsCallsAndLiterals() {
+        MSLNode call = (MSLNode) MSLPatternParser.parse("max({quantity}, 0)");
+        assertEquals(MSLNode.CALL, call.kind());
+        assertEquals("max", call.value());
+        assertEquals(new MSLNode(MSLNode.LITERAL, "0"), call.child(1));
+        assertEquals(new MSLNode(MSLNode.LITERAL, "null"), MSLPatternParser.parse("null"));
     }
 
     @Test
-    void expressionFactoryParsesLogicalAnd() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} && {quantity}");
-        assertEquals("&&", ((BinaryOpNode) expr).getOperator());
+    void parserReadsStatements() {
+        MSLNode guard = (MSLNode) MSLPatternParser.parse("if ({match: {quantity} <= 0}) {quantity} = 0");
+        assertEquals(MSLNode.IF, guard.kind());
+        MSLPlaceholder match = (MSLPlaceholder) guard.child(0);
+        assertTrue(match.isMatch());
+        assertEquals("<=", ((MSLNode) match.constraint()).value());
+        assertEquals(MSLNode.ASSIGN, ((MSLNode) guard.child(1)).kind());
+
+        MSLNode loop = (MSLNode) MSLPatternParser.parse("for ({quantity}; {match}; {quantity}) {statement}");
+        assertEquals(MSLNode.FOR, loop.kind());
+        assertEquals(4, loop.children().size());
+
+        MSLNode block = (MSLNode) MSLPatternParser.parse("while ({match}) { {quantity} = 0 }");
+        assertEquals(MSLNode.BLOCK, ((MSLNode) block.child(1)).kind());
     }
 
     @Test
-    void expressionFactoryAcceptsCanonicalLessThanOrEqualSymbol() {
-        MSLExpression expr = MSLExpressionFactory.parse("{quantity} <= {quantity}");
-        assertEquals("<=", ((BinaryOpNode) expr).getOperator());
-    }
-
-    @Test
-    void expressionFactoryRejectsParserTokenAlias() {
+    void parserRejectsParserTokenAlias() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-            () -> MSLExpressionFactory.parse("{quantity} LE {quantity}"));
+            () -> MSLPatternParser.parse("{quantity} LE {quantity}"));
         assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
             error.getMessage());
     }
 
     @Test
-    void expressionFactoryRejectsCaseVariantAlias() {
+    void parserRejectsCaseVariantAlias() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-            () -> MSLExpressionFactory.parse("{quantity} leq {quantity}"));
+            () -> MSLPatternParser.parse("{quantity} leq {quantity}"));
         assertTrue(error.getMessage().contains("Use the canonical operator \"<=\""),
             error.getMessage());
     }
 
     @Test
-    void expressionFactoryThrowsOnUnknownPattern() {
-        assertThrows(IllegalArgumentException.class,
-            () -> MSLExpressionFactory.parse("{unknown} + {unknown}"));
+    void parserRejectsMalformedPatterns() {
+        assertThrows(IllegalArgumentException.class, () -> MSLPatternParser.parse("{quantity} +"));
+        assertThrows(IllegalArgumentException.class, () -> MSLPatternParser.parse("for ({quantity}"));
+        assertThrows(IllegalArgumentException.class, () -> MSLPatternParser.parse("{quantity} is"));
+        assertThrows(IllegalArgumentException.class, () -> MSLPatternParser.parse(""));
     }
 
-    // ── Steps 9: ReplacementRule ─────────────────────────────────────────────────────
+    // ── Rules ─────────────────────────────────────────────────────────────────
 
     @Test
-    void swapRuleMatchesDelegatesToFromExpr() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", true, true, true);
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
-        assertTrue(rule.matches(adapter, null));
-    }
-
-    @Test
-    void swapRuleDoesNotMatchWhenFromDoesNot() {
-        MSLScannerAdapter adapter = mockBinaryAdapter("+", false, true, true);
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
-        assertFalse(rule.matches(adapter, null));
+    void replaceRuleMatchesWhenItsTreeMatches() {
+        ReplaceRule rule = new ReplaceRule(PLUS, MINUS, List.of(), "AOR + to -");
+        assertTrue(rule.matches(mockBinaryAdapter("+", true, true, true), node("a+b")));
     }
 
     @Test
-    void swapRuleApplyProducesCorrectMutationPoint() {
+    void replaceRuleDoesNotMatchWhenItsTreeDoesNot() {
+        ReplaceRule rule = new ReplaceRule(PLUS, MINUS, List.of(), "AOR + to -");
+        assertFalse(rule.matches(mockBinaryAdapter("+", false, true, true), node("a+b")));
+    }
+
+    @Test
+    void replaceRuleApplyProducesCorrectMutationPoint() {
         MSLScannerAdapter adapter = mockBinaryAdapterWithPosition("+", 5, 10);
         File f = new File("Test.java");
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        ReplacementRule rule = new ReplacementRule(from, to, "AOR + to -");
+        ReplaceRule rule = new ReplaceRule(PLUS, MINUS, List.of(), "AOR + to -");
 
-        MutationPoint mp = rule.apply(adapter, null, f);
+        MutationPoint mp = rule.apply(adapter, node("a+b"), f);
         assertAll(
             () -> assertEquals("+",   mp.getOperator()),
             () -> assertEquals("-",   mp.getReplacement()),
@@ -312,97 +325,78 @@ public class MSLTests {
     }
 
     @Test
-    void swapRuleGetLabelReturnsLabel() {
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        assertEquals("my label", new ReplacementRule(from, to, "my label").getLabel());
+    void replaceRuleGetLabelReturnsLabel() {
+        assertEquals("my label", new ReplaceRule(PLUS, MINUS, List.of(), "my label").getLabel());
     }
 
     /** Adapter that returns specific line/col for position-extraction test. */
     private static MSLScannerAdapter mockBinaryAdapterWithPosition(
             String expectedOp, int line, int col) {
+        ParseTree left = node("a");
+        ParseTree right = node("b");
         return new MSLScannerAdapter() {
-            public boolean isBinaryExpressionFor(org.antlr.v4.runtime.tree.ParseTree c, String op) {
-                return op.equals(expectedOp);
+            public boolean isBinaryExpressionFor(ParseTree c, String op) {
+                return op.equals(expectedOp) && c != left && c != right;
             }
-            public org.antlr.v4.runtime.tree.ParseTree getLeftOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getRightOperand(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public org.antlr.v4.runtime.tree.ParseTree getOperatorToken(org.antlr.v4.runtime.tree.ParseTree c) { return null; }
-            public boolean isQuantity(org.antlr.v4.runtime.tree.ParseTree c) { return true; }
-            public String getNodeText(org.antlr.v4.runtime.tree.ParseTree c) { return ""; }
-            public int[] getTokenPosition(org.antlr.v4.runtime.tree.ParseTree c) { return new int[]{line, col}; }
-            public org.antlr.v4.runtime.tree.ParseTree getRootContext() { return null; }
+            public ParseTree getLeftOperand(ParseTree c) { return left; }
+            public ParseTree getRightOperand(ParseTree c) { return right; }
+            public ParseTree getOperatorToken(ParseTree c) { return null; }
+            public boolean isQuantity(ParseTree c) { return true; }
+            public String getNodeText(ParseTree c) { return c == null ? "" : c.getText(); }
+            public int[] getTokenPosition(ParseTree c) { return new int[]{line, col}; }
+            public ParseTree getRootContext() { return null; }
         };
     }
 
-    // ── Step 10: MutationRuleFactory ──────────────────────────────────────────
+    // ── MutationRuleFactory ───────────────────────────────────────────────────
 
-    @Test
-    void ruleFactoryCreatesSwapRule() {
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        MutationRule rule = MutationRuleFactory.create("Replace", from, to, "label");
-        assertInstanceOf(ReplacementRule.class, rule);
+    // ── MutationRuleGenerator ─────────────────────────────────────────────────
+
+    private static List<MutationRule> rulesFrom(java.nio.file.Path tmp, String spec) throws Exception {
+        java.nio.file.Path file = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(file, spec);
+        return MutationRuleGenerator.generateRules(file.toFile());
     }
-
-    @Test
-    void ruleFactoryLabelIsPreserved() {
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        MutationRule rule = MutationRuleFactory.create("Replace", from, to, "my label");
-        assertEquals("my label", rule.getLabel());
-    }
-
-    @Test
-    void ruleFactoryThrowsOnUnknownKeyword() {
-        BinaryOpNode from = new BinaryOpNode("+", new QuantityNode(), new QuantityNode());
-        BinaryOpNode to   = new BinaryOpNode("-", new QuantityNode(), new QuantityNode());
-        assertThrows(IllegalArgumentException.class,
-            () -> MutationRuleFactory.create("Delete", from, to, "label"));
-    }
-
-    // ── Step 11: MutationRuleGenerator ───────────────────────────────────────
 
     @Test
     void ruleGeneratorParsesAllRulesFromRealSpec() throws Exception {
-        // The real OperatorMutations.txt: 19 Replace blocks, 6 with And: Inverse -> 25 total
-        java.io.File spec = new java.io.File(
-            "OperatorMutations.txt");
-        java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(spec);
-        assertEquals(25, rules.size());
+        // The real specs/OperatorMutations.spec: 25 Replace blocks, 7 with And: Inverse,
+        // and 2 Delete blocks -> 34 total
+        java.util.List<MutationRule> rules = MutationRuleGenerator.generateRules(new java.io.File("specs/OperatorMutations.spec"));
+        assertEquals(34, rules.size());
+    }
+
+    @Test
+    void ruleGeneratorParsesEveryBundledSpec() throws Exception {
+        for (String spec : List.of("specs/OperatorMutations.spec", "specs/StatementMutation.spec", "specs/StringMutation.spec",
+                "specs/context-sensitive-mutations.spec")) {
+            assertFalse(MutationRuleGenerator.generateRules(new File(spec)).isEmpty(), spec);
+        }
     }
 
     @Test
     void ruleGeneratorLabelIncludesGroupLabel(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
+        List<MutationRule> rules = rulesFrom(tmp,
             "Math Operations\n\n" +
             "\tReplace: {quantity} + {quantity}\n" +
             "\tWith: {quantity} - {quantity}\n\n" +
             "End\n");
-
-        java.util.List<MutationRule> rules =
-            MutationRuleGenerator.generateRules(spec.toFile());
         assertEquals(1, rules.size());
-        assertTrue(rules.get(0).getLabel().contains("Math Operations"),
-            "Label was: " + rules.get(0).getLabel());
+        assertEquals("Math Operations: + → -", rules.get(0).getLabel());
     }
 
     @Test
     void ruleGeneratorInverseProducesExtraRule(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
+        List<MutationRule> rules = rulesFrom(tmp,
             "Group\n\n" +
             "\tReplace: {quantity} + {quantity}\n" +
             "\tWith: {quantity} - {quantity}\n" +
             "\tAnd: Inverse\n\n" +
             "End\n");
-
-        java.util.List<MutationRule> rules =
-            MutationRuleGenerator.generateRules(spec.toFile());
         assertEquals(2, rules.size());
+        assertEquals("Group: - → +", rules.get(1).getLabel());
     }
 
     // ── Bad spec files: one clear line naming the file, line and fix ──────────
@@ -459,23 +453,22 @@ public class MSLTests {
 
     @Test
     void everySpecFileInTheRepoStillLoads() throws Exception {
-        List<File> specs = new java.util.ArrayList<>(List.of(new File("OperatorMutations.txt"),
-            new File("StatementMutation.txt"), new File("StringMutation.txt")));
-        for (String dir : List.of("specs", "proto-operator-verify")) {
-            File[] found = new File(dir).listFiles((d, n) -> n.endsWith(".spec"));
-            if (found != null) specs.addAll(List.of(found));
+        List<File> specs;
+        try (var paths = java.nio.file.Files.walk(java.nio.file.Path.of("specs"))) {
+            specs = paths.filter(p -> p.toString().endsWith(".spec")).map(java.nio.file.Path::toFile).toList();
         }
+        assertFalse(specs.isEmpty(), "no spec files under specs/");
         for (File spec : specs) {
             assertFalse(MutationRuleGenerator.generateRules(spec).isEmpty(), spec + " has no rules");
         }
     }
 
     @Test
-    void ruleGeneratorParsesPitStyleScannerBackedRules(
+    void ruleGeneratorBuildsPitStyleRulesAsTrees(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
+        List<MutationRule> rules = rulesFrom(tmp,
             "PIT Built-in Mutations\n\n" +
+            "\tDelete: {invocation_statement}\n\n" +
             "\tReplace: {return_value}\n" +
             "\tWith: {empty_value}\n\n" +
             "\tReplace: {constructor_call}\n" +
@@ -488,86 +481,94 @@ public class MSLTests {
             "\tWith: false\n\n" +
             "End\n");
 
-        java.util.List<MutationRule> rules =
-            MutationRuleGenerator.generateRules(spec.toFile());
-
-        assertEquals(5, rules.size());
-        assertTrue(rules.stream().allMatch(rule -> rule instanceof ScannerBackedRule));
-        assertEquals("PIT Built-in Mutations: return value \u2192 empty value", rules.get(0).getLabel());
-        assertEquals("PIT Built-in Mutations: constructor call \u2192 null", rules.get(1).getLabel());
-        assertEquals("PIT Built-in Mutations: non-void method call \u2192 default value", rules.get(2).getLabel());
-        assertEquals("PIT Built-in Mutations: equality condition \u2192 true", rules.get(3).getLabel());
-        assertEquals("PIT Built-in Mutations: order condition \u2192 false", rules.get(4).getLabel());
+        assertEquals(6, rules.size());
+        assertInstanceOf(DeleteRule.class, rules.get(0));
+        assertTrue(rules.subList(1, 6).stream().allMatch(rule -> rule instanceof ReplaceRule));
+        assertEquals("PIT Built-in Mutations: delete invocation statement", rules.get(0).getLabel());
+        assertEquals("PIT Built-in Mutations: return value → empty value", rules.get(1).getLabel());
+        assertEquals("PIT Built-in Mutations: constructor call → null", rules.get(2).getLabel());
+        assertEquals("PIT Built-in Mutations: non void method call → default value", rules.get(3).getLabel());
+        assertEquals("PIT Built-in Mutations: equality condition → true", rules.get(4).getLabel());
+        assertEquals("PIT Built-in Mutations: order condition → false", rules.get(5).getLabel());
     }
 
     @Test
-    void ruleGeneratorInverseInheritsExceptPatterns(
+    void ruleGeneratorReadsInsertBeforeAndAfter(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
+        List<MutationRule> rules = rulesFrom(tmp,
+            "Inserts\n\n" +
+            "\tInsert: {quantity} = 0\n" +
+            "\tBefore: {quantity} = {quantity}\n\n" +
+            "\tInsert: {quantity} = 0\n" +
+            "\tAfter: {quantity} = {quantity}\n\n" +
+            "End\n");
+        assertEquals(2, rules.size());
+        assertTrue(((InsertRule) rules.get(0)).isBefore());
+        assertFalse(((InsertRule) rules.get(1)).isBefore());
+        assertEquals("Inserts: insert {quantity} = 0 before {quantity} = {quantity}", rules.get(0).getLabel());
+    }
+
+    @Test
+    void ruleGeneratorRejectsBadClauses(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) {
+        // Except: without {match}
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tReplace: {quantity} + {quantity}\n\tWith: {quantity} - {quantity}\n"
+            + "\tExcept: if ({quantity} > 0) {quantity} = 0\nEnd\n"));
+        // Insert: with neither Before: nor After:
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tInsert: {quantity} = 0\n\tWith: {quantity}\nEnd\n"));
+        // Insert: with both
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tInsert: {quantity} = 0\n\tBefore: {quantity} = 1\n\tAfter: {quantity} = 1\nEnd\n"));
+        // With: reads more {quantity} than Replace: matched
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tReplace: -{quantity}\n\tWith: {quantity} - {quantity}\nEnd\n"));
+        // And: Inverse on a Delete:
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tDelete: {invocation_statement}\n\tAnd: Inverse\nEnd\n"));
+        // An old-style fragment that isn't a whole pattern
+        assertThrows(java.io.IOException.class, () -> rulesFrom(tmp,
+            "G\n\tReplace: {quantity} < {quantity}\n\tWith: {quantity} <= {quantity}\n\tExcept: for ({quantity}\nEnd\n"));
+    }
+
+    @Test
+    void ruleGeneratorInverseInheritsExcepts(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        List<MutationRule> rules = rulesFrom(tmp,
             "Group\n\n" +
             "\tReplace: {quantity} <= {quantity}\n" +
             "\tWith: {quantity} < {quantity}\n" +
-            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n" +
+            "\tExcept: if ({match: {quantity} <= 0}) {quantity} = 0\n" +
             "\tAnd: Inverse\n\n" +
             "End\n");
-
-        java.util.List<MutationRule> rules =
-            MutationRuleGenerator.generateRules(spec.toFile());
         assertEquals(2, rules.size());
-
-        // Forward rule: <= -> <, should carry the Except: pattern
-        ReplacementRule forward = (ReplacementRule) rules.get(0);
-        assertEquals(1, forward.getExceptPatterns().size(),
+        assertEquals(1, ((ReplaceRule) rules.get(0)).getExcepts().size(),
             "Forward rule should have 1 Except: pattern");
-
-        // Inverse rule: < -> <=, must ALSO inherit the same Except: pattern
-        ReplacementRule inverse = (ReplacementRule) rules.get(1);
-        assertEquals(1, inverse.getExceptPatterns().size(),
+        assertEquals(1, ((ReplaceRule) rules.get(1)).getExcepts().size(),
             "Inverse rule should inherit Except: patterns from the forward rule");
     }
 
-    // ── Step 13: JavaMutationScanner.createAdapter() ──────────────────────────
+    // ── JavaMutationScanner.createAdapter() ───────────────────────────────────
 
     @Test
     void javaAdapterIsBinaryExpressionForPlus(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { int x = 1 + 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        // Walk tree looking for a BinaryOpNode match for "+"
-        boolean found = treeContainsMatch(adapter, root, "+");
-        assertTrue(found, "Should find '1 + 2' as a + binary expression");
+        MSLScannerAdapter adapter = javaAdapter(tmp, "class A { int x = 1 + 2; }");
+        assertTrue(treeMatches(adapter, adapter.getRootContext(), PLUS), "Should find '1 + 2' as a + binary expression");
     }
 
     @Test
     void javaAdapterIsBinaryExpressionForMinus(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { int x = 1 + 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        boolean found = treeContainsMatch(adapter, root, "-");
-        assertFalse(found, "Should NOT find '1 + 2' as a - expression");
+        MSLScannerAdapter adapter = javaAdapter(tmp, "class A { int x = 1 + 2; }");
+        assertFalse(treeMatches(adapter, adapter.getRootContext(), MINUS), "Should NOT find '1 + 2' as a - expression");
     }
 
     @Test
     void javaAdapterIsQuantityTrueForIntLiteral(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { int x = 1 + 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        // Find any integer literal terminal and confirm isQuantity
-        boolean found = anyLiteralIsQuantity(adapter, root);
-        assertTrue(found, "Integer literals should be quantities");
+        MSLScannerAdapter adapter = javaAdapter(tmp, "class A { int x = 1 + 2; }");
+        assertTrue(anyLiteralIsQuantity(adapter, adapter.getRootContext()), "Integer literals should be quantities");
     }
 
     @Test
@@ -575,83 +576,51 @@ public class MSLTests {
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
         // String literals are operands (s == "" is mutated), but the adapter
         // flags them so arithmetic rules skip concatenation like "a" + b.
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { String s = \"hello\"; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        assertTrue(anyStringLiteralIsFlagged(adapter, root), "String literals should be flagged as strings");
+        MSLScannerAdapter adapter = javaAdapter(tmp, "class A { String s = \"hello\"; }");
+        assertTrue(anyStringLiteralIsFlagged(adapter, adapter.getRootContext()), "String literals should be flagged as strings");
     }
 
     @Test
-    void javaAdapterHandlesShiftOperator(
+    void javaAdapterMatchesEachOperatorKind(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { int x = 1 >> 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        assertTrue(treeContainsMatch(adapter, root, ">>"),
-            "Should find '1 >> 2' as a >> binary expression");
+        for (String[] c : new String[][]{{"int", ">>"}, {"boolean", ">"}, {"boolean", "=="}, {"boolean", "&&"}}) {
+            MSLScannerAdapter adapter = javaAdapter(tmp, "class A { " + c[0] + " x = a " + c[1] + " b; }");
+            MSLTree tree = MSLPatternParser.parse("{quantity} " + c[1] + " {quantity}");
+            assertTrue(treeMatches(adapter, adapter.getRootContext(), tree), "Should find a " + c[1] + " b");
+        }
     }
 
     @Test
-    void javaAdapterHandlesRelationalOperator(
+    void javaAdapterMatchesStatementTrees(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { boolean x = 1 > 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        assertTrue(treeContainsMatch(adapter, root, ">"),
-            "Should find '1 > 2' as a > binary expression");
-    }
-
-    @Test
-    void javaAdapterHandlesEqualityOperator(
-            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { boolean x = 1 == 2; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        assertTrue(treeContainsMatch(adapter, root, "=="),
-            "Should find '1 == 2' as a == binary expression");
-    }
-
-    @Test
-    void javaAdapterHandlesLogicalAndOperator(
-            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src, "class A { boolean x = a && b; }");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        org.antlr.v4.runtime.tree.ParseTree root = adapter.getRootContext();
-
-        assertTrue(treeContainsMatch(adapter, root, "&&"),
-            "Should find 'a && b' as a && binary expression");
+        MSLScannerAdapter adapter = javaAdapter(tmp,
+            "class A { void f(int n) { if (n <= 0) n = 0; while (n > 1) { n = 0; } } }");
+        assertTrue(treeMatches(adapter, adapter.getRootContext(), MSLPatternParser.parse("if ({quantity}) {quantity} = 0")));
+        assertTrue(treeMatches(adapter, adapter.getRootContext(), MSLPatternParser.parse("while ({quantity}) { {quantity} = 0 }")));
+        assertFalse(treeMatches(adapter, adapter.getRootContext(), MSLPatternParser.parse("while ({quantity}) {quantity} = 0")),
+            "A block body is not a bare assignment");
     }
 
     // ── Tree-walking helpers for adapter tests ────────────────────────────────
 
-    /** Returns true if any node in the tree is a binary expression for the given op. */
-    private boolean treeContainsMatch(MSLScannerAdapter adapter,
-                                       org.antlr.v4.runtime.tree.ParseTree node, String op) {
-        if (adapter.isBinaryExpressionFor(node, op)) return true;
+    private static MSLScannerAdapter javaAdapter(java.nio.file.Path tmp, String source) throws Exception {
+        java.nio.file.Path src = tmp.resolve("A.java");
+        java.nio.file.Files.writeString(src, source);
+        return JavaMutationScanner.createAdapter(src.toFile());
+    }
+
+    /** Returns true if any node in the tree matches the MSL tree. */
+    private boolean treeMatches(MSLScannerAdapter adapter, ParseTree node, MSLTree pattern) {
+        if (MSLMatcher.match(pattern, node, adapter) != null) return true;
         for (int i = 0; i < node.getChildCount(); i++) {
-            if (treeContainsMatch(adapter, node.getChild(i), op)) return true;
+            if (treeMatches(adapter, node.getChild(i), pattern)) return true;
         }
         return false;
     }
 
     /** Returns true if any TerminalNode in the tree is considered a quantity. */
-    private boolean anyLiteralIsQuantity(MSLScannerAdapter adapter,
-                                          org.antlr.v4.runtime.tree.ParseTree node) {
-        if (node instanceof org.antlr.v4.runtime.tree.TerminalNode tn) {
+    private boolean anyLiteralIsQuantity(MSLScannerAdapter adapter, ParseTree node) {
+        if (node instanceof TerminalNode tn) {
             String txt = tn.getText();
             try { Integer.parseInt(txt); return adapter.isQuantity(node); } catch (NumberFormatException ignored) {}
         }
@@ -661,10 +630,9 @@ public class MSLTests {
         return false;
     }
 
-    /** Returns true if any string-literal TerminalNode is considered a quantity. */
-    private boolean anyStringLiteralIsFlagged(MSLScannerAdapter adapter,
-                                              org.antlr.v4.runtime.tree.ParseTree node) {
-        if (node instanceof org.antlr.v4.runtime.tree.TerminalNode tn) {
+    /** Returns true if any string-literal TerminalNode is flagged as a string. */
+    private boolean anyStringLiteralIsFlagged(MSLScannerAdapter adapter, ParseTree node) {
+        if (node instanceof TerminalNode tn) {
             String txt = tn.getText();
             if (txt.startsWith("\"") && adapter.isStringLiteral(node)) return true;
         }
@@ -674,71 +642,27 @@ public class MSLTests {
         return false;
     }
 
-    // ── Step 14: Java context-sensitive (Except:) mutations ───────────────────
+    // ── Java context-sensitive (Except:) mutations ────────────────────────────
 
-    @Test
-    void javaAdapterGetSourceLineReturnsLineOneContent(
-            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src,
-            "class A {\n" +
-            "    int x = 1;\n" +
-            "}\n");
+    private static final String LE_CLAMP_SPEC =
+            "Test\n\n" +
+            "\tReplace: {quantity} <= {quantity}\n" +
+            "\tWith: {quantity} < {quantity}\n" +
+            "\tExcept: if ({match: {quantity} <= 0}) {quantity} = 0\n\n" +
+            "End\n";
 
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        ParseTree root = adapter.getRootContext();
-        ParseTree nodeOnLine1 = findFirstTerminalOnLine(root, 1);
-
-        assertNotNull(nodeOnLine1, "Should find a terminal node on line 1");
-        String line = adapter.getSourceLine(nodeOnLine1);
-        assertFalse(line.isBlank(),
-            "getSourceLine() should return non-blank content for line 1, not \"\"");
-        assertTrue(line.contains("class A"),
-            "Line 1 should contain 'class A', but was: \"" + line + "\"");
-    }
-
-    @Test
-    void javaAdapterGetSourceLineReturnsDifferentContentForDifferentLines(
-            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("A.java");
-        java.nio.file.Files.writeString(src,
-            "class A {\n" +
-            "    int x = 1;\n" +
-            "}\n");
-
-        MSLScannerAdapter adapter = JavaMutationScanner.createAdapter(src.toFile());
-        ParseTree root = adapter.getRootContext();
-        ParseTree nodeOnLine1 = findFirstTerminalOnLine(root, 1);
-        ParseTree nodeOnLine2 = findFirstTerminalOnLine(root, 2);
-
-        assertNotNull(nodeOnLine1, "Should find a node on line 1");
-        assertNotNull(nodeOnLine2, "Should find a node on line 2");
-        assertNotEquals(
-            adapter.getSourceLine(nodeOnLine1),
-            adapter.getSourceLine(nodeOnLine2),
-            "getSourceLine() must return different content for different lines");
-    }
+    private static final String GE_CLAMP_SPEC = LE_CLAMP_SPEC.replace("<=", ">=").replace(" < ", " > ");
 
     @Test
     void exceptSuppressesMutationOnLeClampLineInJava(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("T.java");
-        java.nio.file.Files.writeString(src,
+        List<MutationPoint> points = scanJava(tmp,
             "public class T {\n" +
             "    int clamp(int n) {\n" +
             "        if (n <= 0) n = 0;\n" +
             "        return n;\n" +
             "    }\n" +
-            "}\n");
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
-            "Test\n\n" +
-            "\tReplace: {quantity} <= {quantity}\n" +
-            "\tWith: {quantity} < {quantity}\n" +
-            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n\n" +
-            "End\n");
-
-        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+            "}\n", LE_CLAMP_SPEC);
         assertEquals(0, points.size(),
             "Clamp line should be suppressed by Except: — expected 0, got " + points.size());
     }
@@ -746,8 +670,7 @@ public class MSLTests {
     @Test
     void exceptSuppressesLeClampButNotRealLogicLineInJava(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("T.java");
-        java.nio.file.Files.writeString(src,
+        List<MutationPoint> points = scanJava(tmp,
             "public class T {\n" +
             "    int clamp(int n) {\n" +
             "        if (n <= 0) n = 0;\n" +   // guard — suppressed
@@ -756,41 +679,39 @@ public class MSLTests {
             "    boolean isUnder(int x, int limit) {\n" +
             "        return x <= limit;\n" +    // real logic — fires
             "    }\n" +
-            "}\n");
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
-            "Test\n\n" +
-            "\tReplace: {quantity} <= {quantity}\n" +
-            "\tWith: {quantity} < {quantity}\n" +
-            "\tExcept: if ({quantity} <= 0) {quantity} = 0\n\n" +
-            "End\n");
-
-        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+            "}\n", LE_CLAMP_SPEC);
         assertEquals(1, points.size(),
             "Only real-logic <= should fire; clamp suppressed. Points: " + points.size());
         assertEquals("<=", points.get(0).getOperator());
     }
 
     @Test
+    void exceptOnlyCoversTheMatchPosition(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        // The guard's condition is suppressed, but a <= elsewhere inside the
+        // same if statement is not: {match} pins the position.
+        List<MutationPoint> points = scanJava(tmp,
+            "public class T {\n" +
+            "    int f(int n, int m) {\n" +
+            "        if (n <= 0) n = 0;\n" +
+            "        if (m <= 1) m = 0;\n" +   // not "<= 0": mutated
+            "        return n;\n" +
+            "    }\n" +
+            "}\n", LE_CLAMP_SPEC);
+        assertEquals(1, points.size());
+        assertEquals(4, points.get(0).getLineNumber());
+    }
+
+    @Test
     void exceptSuppressesMutationOnGeClampLineInJava(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("T.java");
-        java.nio.file.Files.writeString(src,
+        List<MutationPoint> points = scanJava(tmp,
             "public class T {\n" +
             "    int clamp(int n) {\n" +
             "        if (n >= 0) n = 0;\n" +
             "        return n;\n" +
             "    }\n" +
-            "}\n");
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
-            "Test\n\n" +
-            "\tReplace: {quantity} >= {quantity}\n" +
-            "\tWith: {quantity} > {quantity}\n" +
-            "\tExcept: if ({quantity} >= 0) {quantity} = 0\n\n" +
-            "End\n");
-
-        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+            "}\n", GE_CLAMP_SPEC);
         assertEquals(0, points.size(),
             ">= clamp line should be suppressed by Except: — expected 0, got " + points.size());
     }
@@ -798,8 +719,7 @@ public class MSLTests {
     @Test
     void exceptSuppressesGeClampButNotRealLogicLineInJava(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("T.java");
-        java.nio.file.Files.writeString(src,
+        List<MutationPoint> points = scanJava(tmp,
             "public class T {\n" +
             "    int clamp(int n) {\n" +
             "        if (n >= 0) n = 0;\n" +   // guard — suppressed
@@ -808,16 +728,7 @@ public class MSLTests {
             "    boolean isAbove(int x, int threshold) {\n" +
             "        return x >= threshold;\n" + // real logic — fires
             "    }\n" +
-            "}\n");
-        java.nio.file.Path spec = tmp.resolve("spec.txt");
-        java.nio.file.Files.writeString(spec,
-            "Test\n\n" +
-            "\tReplace: {quantity} >= {quantity}\n" +
-            "\tWith: {quantity} > {quantity}\n" +
-            "\tExcept: if ({quantity} >= 0) {quantity} = 0\n\n" +
-            "End\n");
-
-        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
+            "}\n", GE_CLAMP_SPEC);
         assertEquals(1, points.size(),
             "Only real-logic >= should fire; clamp suppressed. Points: " + points.size());
         assertEquals(">=", points.get(0).getOperator());
@@ -838,8 +749,7 @@ public class MSLTests {
             "    }\n" +
             "}\n");
 
-        File specFile = new File("specs/context-sensitive-mutations.spec");
-        List<MutationPoint> points = scanWithSpec(src.toFile(), specFile);
+        List<MutationPoint> points = scanWithSpec(src.toFile(), new File("specs/context-sensitive-mutations.spec"));
 
         long lePoints = points.stream()
             .filter(p -> p.getOperator().equals("<="))
@@ -850,32 +760,59 @@ public class MSLTests {
     }
 
     @Test
-    void exceptPatternRobustlyMatchesSpacingAndNewlines(
+    void exceptBlockPatternMatchesAcrossLines(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
-        java.nio.file.Path src = tmp.resolve("SpacingTest.java");
-        java.nio.file.Files.writeString(src,
+        List<MutationPoint> points = scanJava(tmp,
             "public class SpacingTest {\n" +
             "    void test(int a) {\n" +
             "        if (a > 0) {\n" +
             "            a = 0;\n" +
             "        }\n" +
             "    }\n" +
-            "}\n");
-
-        java.nio.file.Path spec = tmp.resolve("spacing.spec");
-        java.nio.file.Files.writeString(spec,
+            "}\n",
             "Test Spacing\n\n" +
             "    Replace: {quantity} > {quantity}\n" +
             "    With: {quantity} >= {quantity}\n" +
-            "    Except: if ({quantity} > {quantity}) { {quantity} = {quantity}\n\n" +
+            "    Except: if ({match}) { {quantity} = {quantity} }\n\n" +
             "End\n");
-
-        List<MutationPoint> points = scanWithSpec(src.toFile(), spec.toFile());
         assertEquals(0, points.size(),
             "The multi-line brace structure should be successfully matched and suppressed.");
     }
 
-    // ── Helpers for Step 14 ───────────────────────────────────────────────────
+    @Test
+    void deleteAndInsertRulesEditStatements(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        List<MutationPoint> points = scanJava(tmp,
+            "class T {\n" +
+            "    void f(int n) {\n" +
+            "        log(n);\n" +
+            "    }\n" +
+            "}\n",
+            "Statements\n\n" +
+            "\tDelete: {invocation_statement}\n\n" +
+            "\tInsert: n = 0\n" +
+            "\tBefore: {invocation_statement}\n\n" +
+            "End\n");
+        assertEquals(2, points.size());
+        MutationPoint delete = points.get(0);
+        assertEquals("log(n);", delete.getOperator());
+        assertEquals(";", delete.getReplacement());
+        MutationPoint insert = points.get(1);
+        assertEquals("", insert.getOperator());
+        assertEquals("n = 0;\n        ", insert.getReplacement());
+        assertEquals(3, insert.getLineNumber());
+        assertEquals(8, insert.getColumnNumber());
+    }
+
+    // ── Helpers for the Except: tests ─────────────────────────────────────────
+
+    private List<MutationPoint> scanJava(java.nio.file.Path tmp, String source, String spec) throws Exception {
+        java.nio.file.Path src = tmp.resolve("T.java");
+        java.nio.file.Files.writeString(src, source);
+        java.nio.file.Path specFile = tmp.resolve("spec.txt");
+        java.nio.file.Files.writeString(specFile, spec);
+        return scanWithSpec(src.toFile(), specFile.toFile());
+    }
 
     /** Runs adapter + rule pipeline, returns all mutation points found. */
     private List<MutationPoint> scanWithSpec(File sourceFile, File specFile)
@@ -887,18 +824,5 @@ public class MSLTests {
             points.addAll(rule.findMutationPoints(adapter, sourceFile));
         }
         return points;
-    }
-
-    /** Depth-first search: returns the first TerminalNode on the given 1-based line. */
-    private ParseTree findFirstTerminalOnLine(ParseTree node, int targetLine) {
-        if (node instanceof TerminalNode tn) {
-            org.antlr.v4.runtime.Token sym = tn.getSymbol();
-            if (sym.getLine() == targetLine) return tn;
-        }
-        for (int i = 0; i < node.getChildCount(); i++) {
-            ParseTree result = findFirstTerminalOnLine(node.getChild(i), targetLine);
-            if (result != null) return result;
-        }
-        return null;
     }
 }

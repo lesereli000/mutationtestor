@@ -1,0 +1,12 @@
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	46	19	>	>=
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductProvider.java	49	21	<	<=
+junit-jupiter-extensions/src/main/java/com/example/cartesian/CartesianProductResolver.java	28	37	<	<=
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	24	20	<=	<
+junit-jupiter-extensions/src/test/java/com/example/cartesian/CartesianProductTests.java	24	40	<=	<
+junit-modular-world/src/build/Project.java	334	20	<	<=
+junit-modular-world/src/build/Project.java	345	23	>	>=
+junit-modular-world/src/main/com.example.application/com/example/application/Main.java	18	22	>	>=
+junit-modular-world/src/main/com.example.application/com/example/application/Main.java	19	22	>	>=
+junit-modular-world/src/main/ice.cream/ice/cream/Machine.java	60	20	<	<=
+src/Builder.java	173	14	>	>=
+src/Builder.java	187	20	>=	>

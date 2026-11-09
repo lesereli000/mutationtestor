@@ -45,6 +45,7 @@ demo-output/
 /samples/PytestProject/src/__pycache__
 /samples/PytestProject/coverage/
 /samples/JSProject/coverage/
+/samples/JSProject/mutation-summary.txt
 /samples/RacketProject/.mutation-racket-coverage.tmp
 /samples/RacketProject/racket-coverage.info
 # Share settings.json (it turns off the Java extension's autobuild, which
@@ -61,4 +62,6 @@ demo-output/
 /demo-env.ps1
 /demo-env.cmd
 
-/.github
+# Local notes and scripts stay untracked; workflows are shared.
+/.github/*
+!/.github/workflows/

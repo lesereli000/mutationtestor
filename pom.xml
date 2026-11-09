@@ -46,6 +46,20 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Bundle the mutation specs so a deployed jar can load them by path
+                 (custom_mutation_spec=specs/OperatorMutations.spec) from any directory. -->
+            <resource>
+                <directory>${project.basedir}/specs</directory>
+                <targetPath>specs</targetPath>
+                <includes>
+                    <include>**/*.spec</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <!-- Pinned so the build doesn't depend on which Maven is installed.
                  Older Maven defaults to compiler plugin 3.1, which predates the
@@ -86,7 +100,7 @@
                 <version>4.13.2</version> <!-- Match with runtime version -->
                 <configuration>
                     <visitor>true</visitor> <!-- Generates visitor classes -->
-                    <listener>true</listener> <!-- Generates listener classes (default) -->
+                    <listener>false</listener> <!-- Nothing walks the trees with listeners -->
                     <arguments>
                         <argument>-package</argument>
                         <argument>mutationtester</argument>

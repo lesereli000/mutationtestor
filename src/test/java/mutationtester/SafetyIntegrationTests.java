@@ -47,6 +47,15 @@ class SafetyIntegrationTests {
         assertEquals("value = x + y\n", Files.readString(file));
     }
 
+    @Test void runUnknownUnattendedTestsOnlyUnknownMutants() {
+        SafetyController safety = controller(null);
+        safety.setRunUnknownUnattended(true);
+        MutationPoint point = new MutationPoint(dir.resolve("a.txt").toFile(), 1, 0, "+", "-", Mutator.MutatorType.CUSTOM);
+        assertEquals(SafetyAction.CONTINUE, safety.decide(point, "return x + y;", "return x - y;"));
+        assertEquals(SafetyAction.SKIP, safety.decide(point, "fetch(url)", "fetch(other)"));
+        assertEquals(SafetyAction.SKIP, safety.decide(point, "run('SELECT * FROM users')", "run('DROP TABLE users')"));
+    }
+
     @Test void explicitContinueRunsAndRestoresSource() throws Exception {
         Path file = dir.resolve("sample.py");
         Files.writeString(file, "value = x + y\n");

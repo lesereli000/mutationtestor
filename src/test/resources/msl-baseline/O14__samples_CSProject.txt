@@ -1,0 +1,5 @@
+src/CSProject/Demo.cs	37	13	>	>=
+src/CSProject/DemoLogicalAndToOr.cs	7	17	>	>=
+src/CSProject/DemoLogicalAndToOr.cs	7	26	>	>=
+src/CSProject/DemoLogicalOrToAnd.cs	7	17	>	>=
+src/CSProject/DemoLogicalOrToAnd.cs	7	26	>	>=

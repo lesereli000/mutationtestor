@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -25,6 +23,7 @@ import mutationtester.ISLParser;
 import mutationtester.QuietAntlrErrorListener;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
+import mutationtester.msl.CstNodes;
 import mutationtester.msl.MSLScannerAdapter;
 
 /**
@@ -34,168 +33,13 @@ import mutationtester.msl.MSLScannerAdapter;
  * at https://docs.racket-lang.org/htdp-langs/intermediate-lam.html.
  * The grammar is sourced from the official ANTLR grammars-v4 repository and
  * adapted minimally to support standard #lang racket forms used in this project.
- * Supported mutation types:
- *   AOR_PLUS_TO_MINUS            : (+ a b) → (- a b)
- *   AOR_MINUS_TO_PLUS            : (- a b) → (+ a b)
- *   AOR_MULTIPLY_TO_DIVIDE       : (* a b) → (/ a b)
- *   AOR_DIVIDE_TO_MULTIPLY       : (/ a b) → (* a b)
- *   AOR_MODULO_TO_MULTIPLY       : (modulo a b) or (remainder a b) → (* a b)
- *   AOR_INCREMENT_TO_DECREMENT   : (add1 x) → (sub1 x)
- *   AOR_DECREMENT_TO_INCREMENT   : (sub1 x) → (add1 x)
- *   BOR_AND_TO_OR                : (bitwise-and x y) → (bitwise-ior x y)
- *   BOR_OR_TO_AND                : (bitwise-ior x y) → (bitwise-and x y)
- *   ROR_GT_TO_GE                 : (> a b) → (>= a b)
- *   ROR_GE_TO_GT                 : (>= a b) → (> a b)
- *   ROR_LT_TO_LE                 : (< a b) → (<= a b)
- *   ROR_LE_TO_LT                 : (<= a b) → (< a b)
- *   EQ_NEGATE                    : (= a b), (equal? a b), (string=? a b) ... → (not ...)
- *   LOGICAL_AND_TO_OR            : (and p q) → (or p q)
- *   LOGICAL_OR_TO_AND            : (or p q) → (and p q)
- *   CONDITIONAL_TRUE             : (if cond t f) → (if #t t f)
- *   CONDITIONAL_FALSE            : (if cond t f) → (if #f t f)
- *   NEGATE_CONDITIONALS          : (if cond ...) → (if (not cond) ...)
- *   REMOVE_CONDITIONALS_EQUAL_IF   : equality condition in if/cond/when/unless → #t
- *   REMOVE_CONDITIONALS_EQUAL_ELSE : equality condition in if/cond/when/unless → #f
- *   REMOVE_CONDITIONALS_ORDER_IF   : order condition in if/cond/when/unless → #t
- *   REMOVE_CONDITIONALS_ORDER_ELSE : order condition in if/cond/when/unless → #f
- *   STATEMENT_MUTATION           : a call whose value is discarded → (void)
- *   VML_VOID_METHOD_CALL         : a call whose value is discarded → removed entirely
- *                                  (in function, let, lambda, when/unless and begin/begin0 bodies)
- *   INEG_INVERT_NEGATIVE         : (- x) → x
- *   NLT_INTEGER_TO_FLOAT         : 5 → 5.0
- *   NLT_FLOAT_TO_INTEGER         : 5.0 → 5
- *   RVM_TRUE_TO_FALSE            : function returning #t → #f
- *   RVM_FALSE_TO_TRUE            : function returning #f → #t
- *   RVM_ZERO_TO_ONE              : function returning 0 → 1
- *   RVM_NONZERO_TO_ZERO          : function returning non-zero integer → 0
- *   RVM_OBJECT_TO_NULL           : function returning expression/identifier → '()
- *   RVM_PRIMITIVE_TO_ZERO        : function returning numeric literal → 0
- *   EMPTY_RETURNS                : function returning a string/list → "" / '()
- *   NON_VOID_METHOD_CALLS        : (f x) whose result is used → #f / 0 / "" / '()
- *   CONSTRUCTOR_CALLS            : (make-posn 1 2) or (posn 1 2) for a declared struct → '()
- *   REMOVE_LOGICAL_NEGATION      : (not p) → p
- *   JS_STRICT_EQ_TO_LOOSE_EQ     : (eq? a b) or (eqv? a b) → (equal? a b)
+ * Its adapter (createAdapter) applies spec rules to Racket code. For the
+ * PIT-style placeholders it reuses this scanner's parse-tree visitor, which
+ * finds returned values (EMPTY_RETURNS), used call results
+ * (NON_VOID_METHOD_CALLS), constructor calls (CONSTRUCTOR_CALLS) and the
+ * equality and order tests of if/cond/when/unless (REMOVE_CONDITIONALS_*_IF).
  */
 public class RacketMutationScanner {
-
-    // Matches `<operand> OP <operand>` inside an infix Except: template so it
-    // can be rewritten to Racket's prefix form `(OP <operand> <operand>)`.
-    // Operand alternatives: {quantity}, numeric literal, or identifier.
-    // Multi-char comparison/equality operators come first so they win over
-    // their single-char prefixes.
-    private static final Pattern INFIX_OPERATOR_SEGMENT = Pattern.compile(
-            "(\\{quantity\\}|-?\\d+(?:\\.\\d+)?|[A-Za-z_][A-Za-z0-9_]*)" +
-                    "\\s*(<=|>=|==|!=|&&|\\|\\||<<|>>|\\+|-|\\*|/|<|>)\\s*" +
-                    "(\\{quantity\\}|-?\\d+(?:\\.\\d+)?|[A-Za-z_][A-Za-z0-9_]*)"
-    );
-
-    // Rewrites the C-style guarded-assignment clamp form
-    //   if (COND) {quantity} = VALUE
-    // into Racket's if-expression form
-    //   (if COND VALUE
-    // so that the shared spec's Except clause suppresses Racket's
-    // (if (<= n 0) 0 n) clamp pattern.
-    private static final Pattern IF_ASSIGN_CLAMP = Pattern.compile(
-            "if\\s*\\(\\s*(.+?)\\s*\\)\\s*\\{quantity\\}\\s*=\\s*(\\S+)"
-    );
-
-    // -------------------------------------------------------------------------
-    // Supported types
-    // -------------------------------------------------------------------------
-
-    public static List<Mutator.MutatorType> getSupportedTypes() {
-        return List.of(
-                Mutator.MutatorType.AOR_PLUS_TO_MINUS,
-                Mutator.MutatorType.AOR_MINUS_TO_PLUS,
-                Mutator.MutatorType.AOR_MULTIPLY_TO_DIVIDE,
-                Mutator.MutatorType.AOR_DIVIDE_TO_MULTIPLY,
-                Mutator.MutatorType.AOR_MODULO_TO_MULTIPLY,
-                Mutator.MutatorType.AOR_INCREMENT_TO_DECREMENT,
-                Mutator.MutatorType.AOR_DECREMENT_TO_INCREMENT,
-                Mutator.MutatorType.BOR_AND_TO_OR,
-                Mutator.MutatorType.BOR_OR_TO_AND,
-                Mutator.MutatorType.ROR_GT_TO_GE,
-                Mutator.MutatorType.ROR_GE_TO_GT,
-                Mutator.MutatorType.ROR_LT_TO_LE,
-                Mutator.MutatorType.ROR_LE_TO_LT,
-                Mutator.MutatorType.EQ_NEGATE,
-                Mutator.MutatorType.LOGICAL_AND_TO_OR,
-                Mutator.MutatorType.LOGICAL_OR_TO_AND,
-                Mutator.MutatorType.CONDITIONAL_TRUE,
-                Mutator.MutatorType.CONDITIONAL_FALSE,
-                Mutator.MutatorType.NEGATE_CONDITIONALS,
-                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF,
-                Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_ELSE,
-                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF,
-                Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_ELSE,
-                Mutator.MutatorType.STATEMENT_MUTATION,
-                Mutator.MutatorType.VML_VOID_METHOD_CALL,
-                Mutator.MutatorType.REMOVE_LOGICAL_NEGATION,
-                Mutator.MutatorType.JS_STRICT_EQ_TO_LOOSE_EQ,
-                Mutator.MutatorType.EMPTY_RETURNS,
-                Mutator.MutatorType.NON_VOID_METHOD_CALLS,
-                Mutator.MutatorType.CONSTRUCTOR_CALLS,
-                Mutator.MutatorType.INEG_INVERT_NEGATIVE,
-                Mutator.MutatorType.NLT_INTEGER_TO_FLOAT,
-                Mutator.MutatorType.NLT_FLOAT_TO_INTEGER,
-                Mutator.MutatorType.RVM_TRUE_TO_FALSE,
-                Mutator.MutatorType.RVM_FALSE_TO_TRUE,
-                Mutator.MutatorType.RVM_ZERO_TO_ONE,
-                Mutator.MutatorType.RVM_NONZERO_TO_ZERO,
-                Mutator.MutatorType.RVM_OBJECT_TO_NULL,
-                Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO,
-                Mutator.MutatorType.EMPTY_RETURNS,
-                Mutator.MutatorType.NON_VOID_METHOD_CALLS
-        );
-    }
-
-    // -------------------------------------------------------------------------
-    // Public entry point
-    // -------------------------------------------------------------------------
-
-    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        return scan(file, type, false);
-    }
-
-    /**
-     * EMPTY_RETURNS for every returned value, not just strings and lists: each
-     * tail value becomes the empty value of its inferred type (0, "", '(), #f,
-     * or '() when the type can't be told). This is MSL's
-     * {return_value} → {empty_value}, which Java and C# apply to every return
-     * using the declared type.
-     */
-    public static List<MutationPoint> scanTypedEmptyReturns(File file) throws IOException {
-        return scan(file, Mutator.MutatorType.EMPTY_RETURNS, true);
-    }
-
-    private static List<MutationPoint> scan(File file, Mutator.MutatorType type, boolean typedEmptyValues)
-            throws IOException {
-        String sourceCode = Files.readString(file.toPath());
-
-        CharStream input = CharStreams.fromString(sourceCode);
-        ISLLexer lexer = new ISLLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        ISLParser parser = new ISLParser(tokens);
-
-        lexer.removeErrorListeners();
-        lexer.addErrorListener(QuietAntlrErrorListener.INSTANCE);
-        parser.removeErrorListeners();
-        parser.addErrorListener(QuietAntlrErrorListener.INSTANCE);
-
-        ParseTree tree = parser.program();
-
-
-        ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
-        visitor.typedEmptyValues = typedEmptyValues;
-        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
-            // Structs may be defined after their first use, so collect them up front
-            visitor.collectStructConstructors(tree);
-            visitor.structConstructors.addAll(requiredStructConstructors(file));
-        }
-        visitor.visit(tree);
-
-        return visitor.getMutationPoints();
-    }
 
     // -------------------------------------------------------------------------
     // Visitor
@@ -208,23 +52,8 @@ public class RacketMutationScanner {
         private final String sourceCode;
         private final List<MutationPoint> mutationPoints = new ArrayList<>();
 
-        // EMPTY_RETURNS: mutate every returned value by its inferred type
-        // (see scanTypedEmptyReturns), not only strings and lists
-        private boolean typedEmptyValues;
-
-        private static final java.util.Set<String> SPECIAL_FORMS = java.util.Set.of(
-                "if", "and", "or", "cond", "let", "let*", "letrec", "lambda", "λ",
-                "begin", "begin0", "define", "define-struct", "provide", "require",
-                "local", "shared", "recur", "delay", "set!", "time", "module+"
-        );
-
         // Condition heads for REMOVE_CONDITIONALS_* are EQUALITY_TESTS and ORDER_TESTS
         // (outer class), shared with ScannerBackedRule's text fallback.
-
-        private boolean isStatementHead(String text) {
-            if (SPECIAL_FORMS.contains(text)) return false;
-            return text.matches("[a-zA-Z_$%&!~^][a-zA-Z0-9_\\-?!.~^]*");
-        }
 
         ISLMutationVisitor(File sourceFile, Mutator.MutatorType mutationType, String sourceCode) {
             this.sourceFile = sourceFile;
@@ -257,7 +86,10 @@ public class RacketMutationScanner {
                     // or a nested expr that resolves to a single terminal
                     Token headToken = extractToken(second);
                     if (headToken != null) {
-                        checkOperatorToken(headToken, ctx);
+                        if (mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF
+                                || mutationType == Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF) {
+                            handleRemoveConditionals(headToken.getText(), ctx);
+                        }
 
                         if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
                             checkNonVoidCall(headToken, ctx);
@@ -268,56 +100,11 @@ public class RacketMutationScanner {
                             checkConstructorCall(headToken, ctx);
                         }
 
-                        if (mutationType == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION) {
-                            checkLogicalNegation(headToken, ctx);
-                        }
-
-                        // STATEMENT_MUTATION / VML_VOID_METHOD_CALL: the forms whose values are
-                        // discarded (function bodies are handled in visitDefinition)
-                        if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
-                                || mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
-                            discardedForms(headToken.getText(), ctx).forEach(this::checkStatement);
-                        }
                     }
                 }
             }
 
             return visitChildren(ctx);
-        }
-
-        /**
-         * Removes (VML) or voids (STATEMENT_MUTATION) a discarded form if it's a call:
-         * (displayln x) yes; a variable, a literal, or a form like (when ...) or
-         * (set! ...) no.
-         */
-        private void checkStatement(ISLParser.ExprContext stmtCtx) {
-            if (stmtCtx.getChildCount() < 3) return;
-            if (!(stmtCtx.getChild(0) instanceof TerminalNode tn)
-                    || !tn.getSymbol().getText().equals("(")) return;
-            Token stmtHead = extractToken(stmtCtx.getChild(1));
-            if (stmtHead == null) return;
-
-            // A discarded (when c ... (displayln x)) discards its value form too
-            // (its other forms are found when that form itself is visited)
-            ISLParser.ExprContext valueForm = valueForm(stmtHead.getText(), stmtCtx);
-            if (valueForm != null) {
-                checkStatement(valueForm);
-                return;
-            }
-
-            if (!isStatementHead(stmtHead.getText()) || NON_CALL_HEADS.contains(stmtHead.getText())) return;
-            String stmtText = extractSourceText(stmtCtx);
-            Token startTok = stmtCtx.getStart();
-            String replacement = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "" : "(void)";
-            String label = (mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) ? "Void method call" : "Statement mutation";
-            mutationPoints.add(new MutationPoint(
-                    sourceFile,
-                    startTok.getLine(),
-                    startTok.getCharPositionInLine(),
-                    stmtText, replacement,
-                    mutationType,
-                    label
-            ));
         }
 
         /**
@@ -347,133 +134,6 @@ public class RacketMutationScanner {
             }
 
             return null;
-        }
-
-        /**
-         * Checks a head-position token for operator mutation targets.
-         */
-        private void checkOperatorToken(Token token, ISLParser.ExprContext ctx) {
-            String text = token.getText();
-            int line    = token.getLine();
-            int col     = token.getCharPositionInLine();
-
-            switch (mutationType) {
-                case AOR_PLUS_TO_MINUS -> {
-                    if (text.equals("+"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "+", "-", mutationType));
-                }
-                case AOR_MINUS_TO_PLUS -> {
-                    if (text.equals("-"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "-", "+", mutationType));
-                }
-                case ROR_GT_TO_GE -> {
-                    if (text.equals(">"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, ">", ">=", mutationType));
-                }
-                case ROR_GE_TO_GT -> {
-                    if (text.equals(">="))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, ">=", ">", mutationType));
-                }
-                case ROR_LT_TO_LE -> {
-                    if (text.equals("<"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<", "<=", mutationType));
-                }
-                case ROR_LE_TO_LT -> {
-                    if (text.equals("<="))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "<=", "<", mutationType));
-                }
-                case EQ_NEGATE -> {
-                    // (= a b), (equal? a b), (string=? a b) ... → (not ...), the same
-                    // equality tests as the spec's == rule
-                    if (EQUALITY_FUNCTIONS.contains(text)) {
-                        String exprText = extractSourceText(ctx);
-                        int[] pos = getExprPosition(ctx);
-                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
-                                exprText, "(not " + exprText + ")", mutationType));
-                    }
-                }
-                case LOGICAL_AND_TO_OR -> {
-                    if (text.equals("and"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "and", "or", mutationType));
-                }
-                case LOGICAL_OR_TO_AND -> {
-                    if (text.equals("or"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "or", "and", mutationType));
-                }
-                case JS_STRICT_EQ_TO_LOOSE_EQ -> {
-                    // eq? (identity) and eqv? are Racket's strict checks; equal? is the
-                    // loose, structural one, like === → == in JavaScript
-                    if (text.equals("eq?") || text.equals("eqv?"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "equal?", mutationType));
-                }
-                case AOR_MULTIPLY_TO_DIVIDE -> {
-                    if (text.equals("*"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "*", "/", mutationType));
-                }
-                case AOR_DIVIDE_TO_MULTIPLY -> {
-                    if (text.equals("/"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "/", "*", mutationType));
-                }
-                case NEGATE_CONDITIONALS -> {
-                    // ( if cond then else ): wrap the condition, not the keyword. Only the
-                    // grammar's if form, where 'if' is a token; as a plain call, expr(0) is the head.
-                    if (text.equals("if") && ctx.getChild(1) instanceof TerminalNode && !ctx.expr().isEmpty()) {
-                        ISLParser.ExprContext cond = ctx.expr(0);
-                        String condText = extractSourceText(cond);
-                        int[] pos = getExprPosition(cond);
-                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
-                                condText, "(not " + condText + ")", mutationType));
-                    }
-                }
-                case AOR_MODULO_TO_MULTIPLY -> {
-                    if (text.equals("modulo") || text.equals("remainder"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, text, "*", mutationType));
-                }
-                case AOR_INCREMENT_TO_DECREMENT -> {
-                    if (text.equals("add1"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "add1", "sub1", mutationType));
-                }
-                case AOR_DECREMENT_TO_INCREMENT -> {
-                    if (text.equals("sub1"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "sub1", "add1", mutationType));
-                }
-                case INEG_INVERT_NEGATIVE -> {
-                    // Unary minus: (- arg) has exactly 4 children: '(' '-' arg ')'
-                    if (text.equals("-") && ctx.getChildCount() == 4) {
-                        ParseTree argExpr = ctx.getChild(2);
-                        String argText = extractSourceText(argExpr);
-                        String fullExpr = extractSourceText(ctx);
-                        int[] exprPos = getExprPosition(ctx);
-                        mutationPoints.add(new MutationPoint(
-                                sourceFile, exprPos[0], exprPos[1],
-                                fullExpr, argText, mutationType));
-                    }
-                }
-                case BOR_AND_TO_OR -> {
-                    if (text.equals("bitwise-and"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-and", "bitwise-ior", mutationType));
-                }
-                case BOR_OR_TO_AND -> {
-                    if (text.equals("bitwise-ior"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, "bitwise-ior", "bitwise-and", mutationType));
-                }
-                case REMOVE_CONDITIONALS_EQUAL_IF, REMOVE_CONDITIONALS_EQUAL_ELSE,
-                     REMOVE_CONDITIONALS_ORDER_IF, REMOVE_CONDITIONALS_ORDER_ELSE -> {
-                    handleRemoveConditionals(text, ctx);
-                }
-                case CONDITIONAL_TRUE, CONDITIONAL_FALSE -> {
-                    // ISL: (if cond then else) — child(2) is the condition
-                    if (text.equals("if") && ctx.getChildCount() >= 6) {
-                        ParseTree condExpr = ctx.getChild(2);
-                        String condText = extractSourceText(condExpr);
-                        int[] pos = getExprPosition(condExpr);
-                        String replacement = (mutationType == Mutator.MutatorType.CONDITIONAL_TRUE) ? "#t" : "#f";
-                        mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1], condText, replacement, mutationType));
-                    }
-                }
-
-                default -> { }
-            }
         }
 
         /**
@@ -569,32 +229,6 @@ public class RacketMutationScanner {
             return new int[]{0, 0};
         }
 
-        /**
-         * Checks a token for numeric literal mutation targets.
-         * NLT_INTEGER_TO_FLOAT : 5   → 5.0
-         * NLT_FLOAT_TO_INTEGER : 5.0 → 5
-         */
-        private void checkNumberToken(Token token) {
-            if (token.getType() != ISLLexer.NUMBER) return;
-
-            String text = token.getText();
-            int line    = token.getLine();
-            int col     = token.getCharPositionInLine();
-
-            if (text.contains("/")) return;
-
-            boolean isFloat   = text.contains(".");
-            boolean isInteger = !isFloat;
-
-            if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT && isInteger) {
-                mutationPoints.add(new MutationPoint(sourceFile, line, col, text, text + ".0", mutationType));
-            } else if (mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER && isFloat) {
-                int dotIndex = text.indexOf('.');
-                String intPart = dotIndex > 0 ? text.substring(0, dotIndex) : text;
-                mutationPoints.add(new MutationPoint(sourceFile, line, col, text, intPart, mutationType));
-            }
-        }
-
         // -------------------------------------------------------------------------
         // RVM: Return Value Mutations — applied to the last expr of function bodies
         // -------------------------------------------------------------------------
@@ -605,13 +239,9 @@ public class RacketMutationScanner {
             if (mutationType == Mutator.MutatorType.NON_VOID_METHOD_CALLS) {
                 markDiscarded(discardedBodyForms(ctx));
             }
-            if (mutationType == Mutator.MutatorType.STATEMENT_MUTATION
-                    || mutationType == Mutator.MutatorType.VML_VOID_METHOD_CALL) {
-                discardedBodyForms(ctx).forEach(this::checkStatement);
-            }
 
             boolean emptyReturns = mutationType == Mutator.MutatorType.EMPTY_RETURNS;
-            if ((isRVMMutation() || emptyReturns) && ctx.getChildCount() >= 6) {
+            if (emptyReturns && ctx.getChildCount() >= 6) {
                 // Function definition: '(' 'define' '(' name NAME* ')' expr+ ')'
                 // Distinguish from value definition by checking child(2) == '('
                 ParseTree thirdChild = ctx.getChild(2);
@@ -619,13 +249,9 @@ public class RacketMutationScanner {
                     List<ISLParser.ExprContext> bodyExprs = ctx.expr();
                     if (!bodyExprs.isEmpty()) {
                         ISLParser.ExprContext body = bodyExprs.get(bodyExprs.size() - 1);
-                        if (emptyReturns) {
-                            List<ISLParser.ExprContext> tails = new ArrayList<>();
-                            collectTailExprs(body, tails);
-                            tails.forEach(this::checkEmptyReturn);
-                        } else {
-                            checkReturnValueMutation(body);
-                        }
+                        List<ISLParser.ExprContext> tails = new ArrayList<>();
+                        collectTailExprs(body, tails);
+                        tails.forEach(this::checkEmptyReturn);
                     }
                 }
             }
@@ -696,7 +322,8 @@ public class RacketMutationScanner {
         }
 
         private void checkEmptyReturn(ISLParser.ExprContext returnExpr) {
-            String replacement = typedEmptyValues ? typedEmptyValue(returnExpr) : emptyReplacement(returnExpr);
+            // Every returned value becomes the empty value of its inferred type.
+            String replacement = typedEmptyValue(returnExpr);
             if (replacement == null) return;
 
             if (returnExpr.getStart() == null || returnExpr.getStop() == null) return;
@@ -768,7 +395,7 @@ public class RacketMutationScanner {
                     default -> "'()";
                 };
             }
-            if (extractSourceText(ctx).replaceAll("\\s", "").equals("'()")) return null;
+            if (mutationtester.msl.CstNodes.compactText(ctx).equals("'()")) return null;
 
             if (ctx.getChildCount() >= 3
                     && ctx.getChild(0) instanceof TerminalNode open
@@ -999,133 +626,16 @@ public class RacketMutationScanner {
         // Racket negates with the not function, so (not p) → p.
         // -------------------------------------------------------------------------
 
-        private void checkLogicalNegation(Token head, ISLParser.ExprContext call) {
-            // (not p) parses as an application: exprs(0) is the head, exprs(1) the operand
-            if (head.getType() != ISLLexer.NAME || !head.getText().equals("not")
-                    || call.expr().size() != 2) return;
-
-            // Main.applyMutation rewrites a single line; skip negations that span lines.
-            if (call.getStart().getLine() != call.getStop().getLine()) return;
-
-            ISLParser.ExprContext operand = call.expr(1);
-            int[] pos = getExprPosition(call);
-            mutationPoints.add(new MutationPoint(sourceFile, pos[0], pos[1],
-                    extractSourceText(call), extractSourceText(operand), mutationType,
-                    "Remove logical negation"));
-        }
-
-        private boolean isRVMMutation() {
-            return mutationType == Mutator.MutatorType.RVM_TRUE_TO_FALSE
-                    || mutationType == Mutator.MutatorType.RVM_FALSE_TO_TRUE
-                    || mutationType == Mutator.MutatorType.RVM_ZERO_TO_ONE
-                    || mutationType == Mutator.MutatorType.RVM_NONZERO_TO_ZERO
-                    || mutationType == Mutator.MutatorType.RVM_OBJECT_TO_NULL
-                    || mutationType == Mutator.MutatorType.RVM_PRIMITIVE_TO_ZERO;
-        }
-
-        private void checkReturnValueMutation(ISLParser.ExprContext returnExpr) {
-            String exprText = extractSourceText(returnExpr);
-            int[] pos = getExprPosition(returnExpr);
-            int line = pos[0], col = pos[1];
-
-            switch (mutationType) {
-                case RVM_TRUE_TO_FALSE -> {
-                    if (isBooleanToken(returnExpr, "#t", "#true", "#T"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "#f", mutationType));
-                }
-                case RVM_FALSE_TO_TRUE -> {
-                    if (isBooleanToken(returnExpr, "#f", "#false", "#F"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "#t", mutationType));
-                }
-                case RVM_ZERO_TO_ONE -> {
-                    if (isLiteralNumber(returnExpr, "0"))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "1", mutationType));
-                }
-                case RVM_NONZERO_TO_ZERO -> {
-                    if (isNonZeroIntegerLiteral(returnExpr))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "0", mutationType));
-                }
-                case RVM_OBJECT_TO_NULL -> {
-                    if (isObjectReturn(returnExpr))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "'()", mutationType));
-                }
-                case RVM_PRIMITIVE_TO_ZERO -> {
-                    if (isNumericLiteralNonZero(returnExpr))
-                        mutationPoints.add(new MutationPoint(sourceFile, line, col, exprText, "0", mutationType));
-                }
-                default -> { }
-            }
-        }
-
         private Token getSingleExprToken(ISLParser.ExprContext ctx) {
             if (ctx.getChildCount() == 1 && ctx.getChild(0) instanceof TerminalNode tn)
                 return tn.getSymbol();
             return null;
         }
 
-        private boolean isBooleanToken(ISLParser.ExprContext ctx, String... variants) {
-            Token tok = getSingleExprToken(ctx);
-            if (tok == null || tok.getType() != ISLLexer.BOOLEAN) return false;
-            String text = tok.getText();
-            for (String v : variants) { if (text.equals(v)) return true; }
-            return false;
-        }
-
-        private boolean isLiteralNumber(ISLParser.ExprContext ctx, String value) {
-            Token tok = getSingleExprToken(ctx);
-            return tok != null && tok.getType() == ISLLexer.NUMBER && tok.getText().equals(value);
-        }
-
-        private boolean isNonZeroIntegerLiteral(ISLParser.ExprContext ctx) {
-            Token tok = getSingleExprToken(ctx);
-            if (tok == null || tok.getType() != ISLLexer.NUMBER) return false;
-            String text = tok.getText();
-            if (text.contains(".") || text.contains("/")) return false;
-            try { return Long.parseLong(text) != 0; } catch (NumberFormatException e) { return false; }
-        }
-
-        private boolean isNumericLiteralNonZero(ISLParser.ExprContext ctx) {
-            Token tok = getSingleExprToken(ctx);
-            if (tok == null || tok.getType() != ISLLexer.NUMBER) return false;
-            return !tok.getText().equals("0");
-        }
-
-        private boolean isObjectReturn(ISLParser.ExprContext ctx) {
-            // Exclude: number, boolean, string literals
-            Token tok = getSingleExprToken(ctx);
-            if (tok != null) {
-                int type = tok.getType();
-                if (type == ISLLexer.NUMBER || type == ISLLexer.BOOLEAN || type == ISLLexer.STRING)
-                    return false;
-            }
-            // Include: identifiers (NAME/SYMBOL) resolved via extractToken fallback
-            Token resolved = extractToken(ctx);
-            if (resolved != null) {
-                int type = resolved.getType();
-                if (type == ISLLexer.NAME || type == ISLLexer.SYMBOL)
-                    return true;
-            }
-            // Include: paren expressions like (cons x y), (list ...), (add1 x), etc.
-            if (ctx.getChildCount() >= 3) {
-                ParseTree first = ctx.getChild(0);
-                if (first instanceof TerminalNode tn && tn.getText().equals("("))
-                    return true;
-            }
-            return false;
-        }
-
         public List<MutationPoint> getMutationPoints() {
             return mutationPoints;
         }
 
-        @Override
-        public Void visitTerminal(TerminalNode node) {
-            if (mutationType == Mutator.MutatorType.NLT_INTEGER_TO_FLOAT
-                    || mutationType == Mutator.MutatorType.NLT_FLOAT_TO_INTEGER) {
-                checkNumberToken(node.getSymbol());
-            }
-            return null;
-        }
     }
     /** Racket equality tests that MSL's == (and the inner form of !=) stand for. */
     private static final List<String> EQUALITY_FUNCTIONS = List.of("=", "equal?", "eqv?", "eq?", "string=?", "char=?");
@@ -1150,6 +660,16 @@ public class RacketMutationScanner {
             "string-ci<?", "string-ci>?", "string-ci<=?", "string-ci>=?",
             "char<?", "char>?", "char<=?", "char>=?",
             "char-ci<?", "char-ci>?", "char-ci<=?", "char-ci>=?");
+
+    /** True for define-syntax-rule and the other macro-defining form names above. */
+    public static boolean isMacroDefinitionForm(String head) {
+        return MACRO_DEFINITION_FORMS.contains(head);
+    }
+
+    /** "-12": a minus sign and digits. */
+    private static boolean isNegativeInteger(String text) {
+        return text.startsWith("-") && MSLScannerAdapter.isIntegerText(text, true);
+    }
 
     /**
      * Built-in functions that create a new object, Racket's nearest thing to `new`.
@@ -1338,19 +858,29 @@ public class RacketMutationScanner {
         return top;
     }
 
-    /** True if a call to this function is an equality test. */
-    public static boolean isEqualityTest(String head) {
-        return EQUALITY_TESTS.contains(head);
+    /**
+     * What the scanner's own visitor finds for one of EMPTY_RETURNS,
+     * NON_VOID_METHOD_CALLS, CONSTRUCTOR_CALLS, REMOVE_CONDITIONALS_EQUAL_IF or
+     * REMOVE_CONDITIONALS_ORDER_IF, the kinds the adapter's placeholders use.
+     */
+    public static List<MutationPoint> visitorPoints(File file, Mutator.MutatorType type) throws IOException {
+        String sourceCode = Files.readString(file.toPath());
+        ISLParser parser = new ISLParser(new CommonTokenStream(new ISLLexer(CstNodes.utf16(sourceCode))));
+        parser.removeErrorListeners();
+        parser.addErrorListener(QuietAntlrErrorListener.INSTANCE);
+        return visitorPoints(file, sourceCode, parser.program(), type);
     }
 
-    /** True if a call to this function is an order test. */
-    public static boolean isOrderTest(String head) {
-        return ORDER_TESTS.contains(head);
-    }
-
-    /** True for define-syntax-rule and the other macro-defining form names above. */
-    public static boolean isMacroDefinitionForm(String head) {
-        return MACRO_DEFINITION_FORMS.contains(head);
+    /** The same, for a tree the adapter has already parsed. */
+    static List<MutationPoint> visitorPoints(File file, String sourceCode, ParseTree tree, Mutator.MutatorType type) {
+        ISLMutationVisitor visitor = new ISLMutationVisitor(file, type, sourceCode);
+        if (type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
+            // Structs may be declared after their first use, or in a required file.
+            visitor.collectStructConstructors(tree);
+            visitor.structConstructors.addAll(requiredStructConstructors(file));
+        }
+        visitor.visit(tree);
+        return visitor.getMutationPoints();
     }
 
     /** True for (define-syntax-rule ...) and the other forms above. */
@@ -1361,6 +891,17 @@ public class RacketMutationScanner {
                 && isMacroDefinitionForm(ctx.getChild(1).getText());
     }
 
+    /** Forms that hold other forms; a discarded one discards its own value form instead. */
+    private static final java.util.Set<String> VALUE_FORMS = java.util.Set.of(
+            "begin", "begin0", "let", "let*", "letrec", "lambda", "λ", "if", "cond");
+
+    /** Exprs whose value is discarded, as the visitor finds them for NON_VOID_METHOD_CALLS. */
+    static java.util.Set<ParseTree> discardedExprs(File file, String sourceCode, ParseTree tree) {
+        ISLMutationVisitor visitor = new ISLMutationVisitor(file, Mutator.MutatorType.NON_VOID_METHOD_CALLS, sourceCode);
+        visitor.visit(tree);
+        return visitor.statementExprs;
+    }
+
     /** Forms that define or declare something; removing them isn't a call removal. */
     private static final java.util.Set<String> NON_STATEMENT_FORMS = java.util.Set.of(
             "define", "define-values", "define-syntax", "define-struct", "struct",
@@ -1368,7 +909,7 @@ public class RacketMutationScanner {
 
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-        CharStream input = CharStreams.fromString(sourceCode);
+        CharStream input = CstNodes.utf16(sourceCode);
         ISLLexer lexer = new ISLLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         ISLParser parser = new ISLParser(tokens);
@@ -1584,13 +1125,13 @@ public class RacketMutationScanner {
 
             /** A shift amount written as (- n) or a negative literal shifts right. */
             private boolean isNegatedAmount(ParseTree amount) {
-                if (amount.getText().matches("-\\d+")) return true;
+                if (isNegativeInteger(amount.getText())) return true;
                 return isApplication(amount, 1) && amount.getChildCount() == 4 && head(amount).equals("-");
             }
 
             private String unnegate(ParseTree amount) {
                 String text = getNodeText(amount);
-                if (text.matches("-\\d+")) return text.substring(1);
+                if (isNegativeInteger(text)) return text.substring(1);
                 return getNodeText(amount.getChild(2));
             }
 
@@ -1641,43 +1182,12 @@ public class RacketMutationScanner {
                 if (ctx == null) return false;
                 String text = getNodeText(ctx).strip();
                 // Any expression except bracket or quote punctuation.
-                return !text.isEmpty() && !text.matches("[()\\[\\]']");
+                return !text.isEmpty() && !java.util.Set.of("(", ")", "[", "]", "'").contains(text);
             }
 
             @Override
             public boolean isStringLiteral(ParseTree ctx) {
                 return ctx != null && MSLScannerAdapter.isStringLiteral(getNodeText(ctx).strip(), false);
-            }
-
-            @Override
-            public String translateExceptTemplate(String infixTemplate) {
-                // First fold the C-style guarded-assignment clamp form into
-                // Racket's (if cond value ...) form, then rewrite operator
-                // subexpressions into prefix.
-                String t = rewriteAll(IF_ASSIGN_CLAMP, infixTemplate,
-                        m -> "(if " + m.group(1) + " " + m.group(2));
-                t = rewriteAll(INFIX_OPERATOR_SEGMENT, t,
-                        m -> "(" + m.group(2) + " " + m.group(1) + " " + m.group(3) + ")");
-                return t;
-            }
-
-            private String rewriteAll(Pattern p, String input,
-                                      java.util.function.Function<Matcher, String> fn) {
-                Matcher m = p.matcher(input);
-                StringBuilder sb = new StringBuilder();
-                while (m.find()) {
-                    m.appendReplacement(sb, Matcher.quoteReplacement(fn.apply(m)));
-                }
-                m.appendTail(sb);
-                return sb.toString();
-            }
-
-            @Override
-            public String getSourceLine(ParseTree ctx) {
-                String[] lines = sourceCode.split("\n", -1);
-                int[] pos = getTokenPosition(ctx);
-                int idx = pos[0] - 1;   // ANTLR lines are 1-based
-                return (idx >= 0 && idx < lines.length) ? lines[idx] : "";
             }
 
             @Override
@@ -1701,15 +1211,638 @@ public class RacketMutationScanner {
              * body's last form, since the last form is the return value.
              * Definitions are never removed.
              */
-            // Racket has no IsNullOrEmpty; with #f as "no string" the check is
-            // (or (not s) (string=? s "")) or a variant.
-            private static final List<Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
-                    Pattern.compile("\\(or\\s+\\(not\\s+([^\\s()\\[\\]\"]+)\\)\\s+\\((?:string=\\?|equal\\?)\\s+\\1\\s+\"\"\\)\\)"),
-                    Pattern.compile("\\(or\\s+\\(not\\s+([^\\s()\\[\\]\"]+)\\)\\s+\\(zero\\?\\s+\\(string-length\\s+\\1\\)\\)\\)"));
+            // MSL's "s is null" is a null-or-empty check. With #f as "no string",
+            // Racket writes it (or (not s) (string=? s "")) or a variant.
+            @Override
+            public ParseTree nullCheckSubject(ParseTree ctx) {
+                if (isApplication(ctx, 1) && ctx.getChildCount() == 4 && head(ctx).equals("string.IsNullOrEmpty")) {
+                    return ctx.getChild(2);
+                }
+                if (!(ctx instanceof ISLParser.ExprContext) || ctx.getChildCount() != 5
+                        || !ctx.getChild(1).getText().equals("or")) {
+                    return null;
+                }
+                ParseTree not = ctx.getChild(2);
+                if (!isApplication(not, 1) || not.getChildCount() != 4 || !head(not).equals("not")) return null;
+                ParseTree subject = not.getChild(2);
+                TerminalNode token = CstNodes.singleToken(subject);
+                if (token == null || token.getSymbol().getType() == ISLLexer.STRING) return null;
+                String s = token.getText();
+                ParseTree check = ctx.getChild(3);
+                if (!isApplication(check, 1)) return null;
+                String name = head(check);
+                if ((name.equals("string=?") || name.equals("equal?")) && check.getChildCount() == 5) {
+                    return check.getChild(2).getText().equals(s) && check.getChild(3).getText().equals("\"\"")
+                            ? subject : null;
+                }
+                if (name.equals("zero?") && check.getChildCount() == 4) {
+                    ParseTree length = check.getChild(2);
+                    return isApplication(length, 1) && length.getChildCount() == 4
+                            && head(length).equals("string-length") && length.getChild(2).getText().equals(s)
+                            ? subject : null;
+                }
+                return null;
+            }
+
+            /** Operators are prefix calls: (- a b), (not (= a b)), (arithmetic-shift a b). */
+            @Override
+            public String renderBinary(mutationtester.msl.MSLNode node, String left, String right, ParseTree ctx) {
+                if (node.value().equals("!=") && node.child(1) instanceof mutationtester.msl.MSLNode r
+                        && r.kind().equals(mutationtester.msl.MSLNode.LITERAL)
+                        && (r.value().equals("null") || r.value().equals("\"\""))) {
+                    return MSLScannerAdapter.super.renderBinary(node, left, right, ctx);
+                }
+                return buildCall(node.value(), List.of(left, right));
+            }
+
+            /** Racket forms need no terminator. */
+            @Override
+            public String renderStatement(mutationtester.msl.MSLTree tree, mutationtester.msl.MSLBindings.Cursor bindings,
+                                          ParseTree ctx) {
+                return render(tree, bindings, ctx);
+            }
 
             @Override
-            public String getNullOrEmptySubject(ParseTree ctx) {
-                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            public String renderCall(String function, List<String> arguments, ParseTree ctx) {
+                return arguments.isEmpty() ? "(" + function + ")" : "(" + function + " " + String.join(" ", arguments) + ")";
+            }
+
+            @Override
+            public String renderUnary(String operator, String operand, ParseTree ctx) {
+                return switch (operator) {
+                    case "!" -> "(not " + operand + ")";
+                    case "-" -> "(- " + operand + ")";
+                    case "~" -> "(bitwise-not " + operand + ")";
+                    default -> null;
+                };
+            }
+
+            /** Racket forms: (set! x v), (if c a b), (begin ...), (void); no loops, if needs an else. */
+            @Override
+            public String renderStatementNode(mutationtester.msl.MSLNode node,
+                                              mutationtester.msl.MSLBindings.Cursor bindings, ParseTree ctx) {
+                List<String> parts = new ArrayList<>();
+                for (mutationtester.msl.MSLTree child : node.children()) {
+                    String part = render(child, bindings, ctx);
+                    if (part == null) return null;
+                    parts.add(part);
+                }
+                return switch (node.kind()) {
+                    case mutationtester.msl.MSLNode.ASSIGN -> "(set! " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.IF -> parts.size() == 3
+                            ? "(if " + parts.get(0) + " " + parts.get(1) + " " + parts.get(2) + ")" : null;
+                    case mutationtester.msl.MSLNode.BLOCK -> parts.isEmpty() ? "(void)" : "(begin " + String.join(" ", parts) + ")";
+                    case mutationtester.msl.MSLNode.EMPTY -> getEmptyStatement(ctx);
+                    // A function's result is its last form, so return v is just v.
+                    case mutationtester.msl.MSLNode.RETURN -> parts.isEmpty() ? null : parts.get(0);
+                    case mutationtester.msl.MSLNode.THROW -> "(raise " + parts.get(0) + ")";
+                    case mutationtester.msl.MSLNode.DECLARE -> isLetBindingValue(ctx) ? parts.get(1)
+                            : "(define " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.WHEN, mutationtester.msl.MSLNode.UNLESS ->
+                            "(" + node.kind() + " " + parts.get(0) + " " + parts.get(1) + ")";
+                    case mutationtester.msl.MSLNode.FOR_EACH -> "(for ((" + parts.get(0) + " " + parts.get(1) + ")) " + parts.get(2) + ")";
+                    default -> null;
+                };
+            }
+
+            /** (f a b): its arguments, when f is the named function. */
+            @Override
+            public List<ParseTree> callArguments(ParseTree ctx, String functionName) {
+                if (!isApplication(ctx, 0) || !ctx.getChild(0).getText().equals("(") || !head(ctx).equals(functionName)) {
+                    return null;
+                }
+                List<ParseTree> args = new ArrayList<>();
+                for (int i = 2; i < ctx.getChildCount() - 1; i++) args.add(ctx.getChild(i));
+                return args;
+            }
+
+            @Override
+            public String renderLiteral(String canonical, ParseTree ctx) {
+                return switch (canonical) {
+                    case "true" -> "#t";
+                    case "false" -> "#f";
+                    // '() is Racket's null, as in the other Racket null-value mutators.
+                    case "null" -> "'()";
+                    default -> canonical;
+                };
+            }
+
+            // ── Forms, for Except: trees ─────────────────────────────────
+
+            /**
+             * (if c v x) is the expression form of "if (c) x = v": the value is
+             * v when c holds and x otherwise, so an Except: such as
+             * if ({match}) {quantity} = 0 also covers the clamp (if (<= n 0) 0 n).
+             * (set! x v) is a plain assignment.
+             */
+            @Override
+            public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                switch (pattern.kind()) {
+                    case mutationtester.msl.MSLNode.IF -> {
+                        return matchIf(pattern, ctx, false);
+                    }
+                    case mutationtester.msl.MSLNode.ASSIGN -> {
+                        return isApplication(ctx, 2) && head(ctx).equals("set!") && ctx.getChildCount() == 5
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.UNARY -> {
+                        String function = switch (pattern.value()) {
+                            case "!" -> "not";
+                            case "-" -> "-";
+                            case "~" -> "bitwise-not";
+                            default -> null;
+                        };
+                        List<ParseTree> args = function == null ? null : callArguments(ctx, function);
+                        return args != null && args.size() == 1 ? args : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONDITIONAL -> {
+                        return isApplication(ctx, 3) && head(ctx).equals("if") && ctx.getChildCount() == 6
+                                ? List.of(ctx.getChild(2), ctx.getChild(3), ctx.getChild(4)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INDEX -> {
+                        if (!isApplication(ctx, 2) || ctx.getChildCount() != 5) return null;
+                        String h = head(ctx);
+                        return h.equals("list-ref") || h.equals("vector-ref") || h.equals("string-ref")
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.RETURN -> {
+                        return isFunctionResult(ctx) ? List.of(ctx) : null;
+                    }
+                    case mutationtester.msl.MSLNode.THROW -> {
+                        if (!isApplication(ctx, 1)) return null;
+                        String h = head(ctx);
+                        return h.equals("raise") || h.equals("error") ? List.of(ctx.getChild(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DECLARE -> {
+                        // a [name value] binding of let, let* or letrec, matched at its value
+                        if (isLetBindingValue(ctx)) {
+                            ParseTree p = ctx.getParent();
+                            for (int i = 0; i < p.getChildCount(); i++) {
+                                if (p.getChild(i) == ctx) return List.of(p.getChild(i - 1), ctx);
+                            }
+                        }
+                        return ctx instanceof ISLParser.DefinitionContext d && d.getChildCount() == 5
+                                && d.getChild(1).getText().equals("define") && !d.getChild(2).getText().equals("(")
+                                ? List.of(d.getChild(2), d.getChild(3)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR_EACH -> {
+                        // (for ([x xs]) body)
+                        ParseTree[] binding = singleBinding(ctx, "for");
+                        return binding == null ? null : List.of(binding[0], binding[1], ctx.getChild(3));
+                    }
+                    case mutationtester.msl.MSLNode.TRY -> {
+                        // (with-handlers ([predicate handler]) body)
+                        ParseTree[] binding = singleBinding(ctx, "with-handlers");
+                        return binding == null ? null : java.util.Arrays.asList(ctx.getChild(3), binding[1], null);
+                    }
+                    case mutationtester.msl.MSLNode.COLLECTION -> {
+                        return isApplication(ctx, 0) && (head(ctx).equals("list") || head(ctx).equals("vector"))
+                                ? callParts(ctx).subList(1, ctx.getChildCount() - 2) : null;
+                    }
+                    case mutationtester.msl.MSLNode.OBJECT -> {
+                        if (!isApplication(ctx, 0) || !head(ctx).equals("hash") || (ctx.getChildCount() - 3) % 2 != 0) return null;
+                        List<ParseTree> entries = new ArrayList<>();
+                        for (int i = 2; i + 1 < ctx.getChildCount() - 1; i += 2) {
+                            entries.add(mutationtester.msl.CstNodes.span(List.of(ctx.getChild(i), ctx.getChild(i + 1))));
+                        }
+                        return entries;
+                    }
+                    case mutationtester.msl.MSLNode.ENTRY -> {
+                        return mutationtester.msl.CstNodes.isSpan(ctx) && ctx.getChildCount() == 2
+                                ? List.of(ctx.getChild(0), ctx.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LAMBDA -> {
+                        if (!isApplication(ctx, 1) || !(head(ctx).equals("lambda") || head(ctx).equals("\u03BB"))) return null;
+                        List<ParseTree> parts = parameterNames(ctx, 2);
+                        // One body form: ( lambda ( names... ) body ), or ( lambda () body )
+                        int oneBody = ctx.getChild(2).getText().equals("()") ? 5 : (parts == null ? 0 : parts.size()) + 6;
+                        if (parts == null || ctx.getChildCount() != oneBody) return null;
+                        ParseTree body = ctx.getChild(ctx.getChildCount() - 2);
+                        parts.add(body);
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof ISLParser.DefinitionContext d) || !d.getChild(1).getText().equals("define")
+                                || !d.getChild(2).getText().equals("(")) {
+                            return null;
+                        }
+                        List<ParseTree> params = parameterNames(d, 2);
+                        if (params == null || params.isEmpty()) return null;
+                        List<ParseTree> parts = new ArrayList<>(params);
+                        int bodyStart = 2 + params.size() + 2;
+                        List<ParseTree> body = new ArrayList<>();
+                        for (int i = bodyStart; i < d.getChildCount() - 1; i++) body.add(d.getChild(i));
+                        if (body.isEmpty()) return null;
+                        parts.add(mutationtester.msl.CstNodes.span(body));
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.PARAMETER -> {
+                        return isParameterName(ctx) ? List.of(ctx) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TYPE_CHECK -> {
+                        return isApplication(ctx, 1) && ctx.getChildCount() == 4 && head(ctx).endsWith("?")
+                                ? List.of(ctx.getChild(2), ctx.getChild(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.ARM -> {
+                        // a (pattern value) clause of (match v clause ...)
+                        ParseTree p = ctx.getParent();
+                        return ctx.getChildCount() == 4 && isApplication(p, 1) && head(p).equals("match")
+                                && p.getChild(2) != ctx ? List.of(ctx.getChild(1), ctx.getChild(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WHEN, mutationtester.msl.MSLNode.UNLESS -> {
+                        return isApplication(ctx, 2) && ctx.getChildCount() == 5 && head(ctx).equals(pattern.kind())
+                                ? List.of(ctx.getChild(2), ctx.getChild(3)) : null;
+                    }
+                    default -> {
+                        return MSLScannerAdapter.super.matchNode(pattern, ctx);
+                    }
+                }
+            }
+
+            /** In Except: only, (if c v x) also reads as "if (c) x = v", covering clamps. */
+            @Override
+            public List<ParseTree> matchNodeInExcept(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                if (pattern.kind().equals(mutationtester.msl.MSLNode.ASSIGN)) {
+                    ParseTree parent = ctx.getParent();
+                    if (isApplication(parent, 2) && head(parent).equals("if") && parent.getChildCount() == 6
+                            && parent.getChild(3) == ctx) {
+                        return List.of(parent.getChild(4), ctx);
+                    }
+                }
+                return MSLScannerAdapter.super.matchNodeInExcept(pattern, ctx);
+            }
+
+            /** (f a b): [f, a, b]. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                if (!isApplication(ctx, 0) || !ctx.getChild(0).getText().equals("(")) return null;
+                List<ParseTree> parts = new ArrayList<>();
+                for (int i = 1; i < ctx.getChildCount() - 1; i++) parts.add(ctx.getChild(i));
+                return parts;
+            }
+
+            @Override
+            public String joinArguments(List<ParseTree> arguments, ParseTree ctx) {
+                List<String> texts = new ArrayList<>();
+                for (ParseTree argument : arguments) texts.add(boundText(argument));
+                return String.join(" ", texts);
+            }
+
+            @Override
+            public String renderConditional(String condition, String then, String otherwise, ParseTree ctx) {
+                return "(if " + condition + " " + then + " " + otherwise + ")";
+            }
+
+            /** (list-ref l i), or the original's own -ref form. */
+            @Override
+            public String renderIndex(String collection, String index, ParseTree ctx) {
+                String h = isApplication(ctx, 2) ? head(ctx) : "";
+                String form = h.equals("vector-ref") || h.equals("string-ref") ? h : "list-ref";
+                return "(" + form + " " + collection + " " + index + ")";
+            }
+
+            @Override
+            public String renderMember(String object, String member, ParseTree ctx) {
+                return null;
+            }
+
+            @Override
+            public String renderMemberCall(String object, String method, List<String> arguments, ParseTree ctx) {
+                return null;
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.RACKET, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                return Literals.convert(Literals.Lang.RACKET, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            /** (if c a b) always has an else; (when c s) is Racket's if without one. */
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (isApplication(ctx, 3) && head(ctx).equals("if") && ctx.getChildCount() == 6) {
+                    return java.util.Arrays.asList(ctx.getChild(2), ctx.getChild(3), ctx.getChild(4));
+                }
+                if (isApplication(ctx, 2) && head(ctx).equals("when") && ctx.getChildCount() == 5) {
+                    return java.util.Arrays.asList(ctx.getChild(2), ctx.getChild(3), null);
+                }
+                return null;
+            }
+
+            /** The value a function returns: the last form of a define or lambda body. */
+            private boolean isFunctionResult(ParseTree ctx) {
+                ParseTree parent = ctx.getParent();
+                if (parent == null || parent.getChildCount() < 4 || parent.getChild(parent.getChildCount() - 2) != ctx) {
+                    return false;
+                }
+                if (parent instanceof ISLParser.DefinitionContext d) {
+                    return d.getChild(1).getText().equals("define") && d.getChild(2).getText().equals("(");
+                }
+                String h = isApplication(parent, 1) ? head(parent) : "";
+                return h.equals("lambda") || h.equals("\u03BB");
+            }
+
+            /** [name, value] of the one binding in (form ([name value]) body). */
+            private ParseTree[] singleBinding(ParseTree ctx, String form) {
+                if (!isApplication(ctx, 2) || ctx.getChildCount() != 5 || !head(ctx).equals(form)) return null;
+                ParseTree bindings = ctx.getChild(2);
+                if (bindings.getChildCount() != 3) return null;
+                ParseTree binding = bindings.getChild(1);
+                return binding.getChildCount() == 4 ? new ParseTree[]{binding.getChild(1), binding.getChild(2)} : null;
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                // (begin ...), or a function's body forms
+                if (isApplication(ctx, 1) && head(ctx).equals("begin") || mutationtester.msl.CstNodes.isSpan(ctx)) return true;
+                // the one body form of (define (f ...) body)
+                return ctx.getParent() instanceof ISLParser.DefinitionContext d && d.getChild(2).getText().equals("(")
+                        && d.getChildCount() >= 5 && d.getChild(d.getChildCount() - 2) == ctx
+                        && d.getChild(d.getChildCount() - 3).getText().equals(")");
+            }
+
+            @Override
+            public String emptyBlock(ParseTree ctx) {
+                return "(void)";
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            /** The names in the "(...)" at {@code open}: (define (f a b) ...) or (lambda (a b) ...). */
+            private List<ParseTree> parameterNames(ParseTree form, int open) {
+                if (form.getChildCount() <= open) return null;
+                if (form.getChild(open).getText().equals("()")) return new ArrayList<>();
+                if (!form.getChild(open).getText().equals("(")) return null;
+                List<ParseTree> names = new ArrayList<>();
+                for (int i = open + 1; i < form.getChildCount() && !form.getChild(i).getText().equals(")"); i++) {
+                    names.add(form.getChild(i));
+                }
+                return names;
+            }
+
+            /** A parameter name in a (define (f a b) ...) header (not f) or a lambda's list. */
+            private boolean isParameterName(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                if (p == null) return false;
+                if (ctx instanceof ISLParser.NameContext && p.getParent() instanceof ISLParser.DefinitionContext) return false;
+                ParseTree form = p instanceof ISLParser.NameContext ? p.getParent() : p;
+                if (!(ctx instanceof TerminalNode) || form == null) return false;
+                if (form instanceof ISLParser.DefinitionContext d && d.getChild(2).getText().equals("(")) {
+                    List<ParseTree> names = parameterNames(d, 2);
+                    return names != null && names.indexOf(ctx) > 0;
+                }
+                if (isApplication(form, 1) && (head(form).equals("lambda") || head(form).equals("\u03BB"))) {
+                    List<ParseTree> names = parameterNames(form, 2);
+                    return names != null && names.contains(ctx);
+                }
+                return false;
+            }
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return isApplication(ctx, 1) && (head(ctx).equals("lambda") || head(ctx).equals("\u03BB"));
+            }
+
+            /** A predicate's name, the "type" of (number? x). */
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                return p != null && isApplication(p, 1) && p.getChildCount() == 4 && p.getChild(1) == ctx
+                        && ctx.getText().endsWith("?");
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return isApplication(ctx, 0) && head(ctx).equals("hash") ? "(hash)" : "'()";
+            }
+
+            @Override
+            public String renderCollection(List<String> elements, ParseTree ctx) {
+                return elements.isEmpty() ? "'()" : "(list " + String.join(" ", elements) + ")";
+            }
+
+            @Override
+            public String renderObject(List<String> entries, ParseTree ctx) {
+                return entries.isEmpty() ? "(hash)" : "(hash " + String.join(" ", entries) + ")";
+            }
+
+            @Override
+            public String renderEntry(String key, String value, ParseTree ctx) {
+                return key + " " + value;
+            }
+
+            @Override
+            public String renderLambda(List<String> parameters, String body, ParseTree ctx) {
+                return "(lambda (" + String.join(" ", parameters) + ") " + body + ")";
+            }
+
+            @Override
+            public String renderTypeCheck(String value, String type, ParseTree ctx) {
+                return "(" + type + " " + value + ")";
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            @Override
+            public String renderArm(String pattern, String value, ParseTree ctx) {
+                return "(" + pattern + " " + value + ")";
+            }
+
+            // ── Language-only ───────────────────────────────────────────────
+
+            /** The value of a [name value] binding in (let ([name value] ...) body). */
+            private boolean isLetBindingValue(ParseTree ctx) {
+                ParseTree p = ctx.getParent();
+                if (p == null || p.getChildCount() < 4) return false;
+                String form = p.getChild(1).getText();
+                if (!form.equals("let") && !form.equals("let*") && !form.equals("letrec")) return false;
+                for (int i = 2; i + 1 < p.getChildCount(); i++) {
+                    if (p.getChild(i) == ctx) {
+                        return p.getChild(i - 2).getText().equals("[") && p.getChild(i + 1).getText().equals("]");
+                    }
+                }
+                return false;
+            }
+
+            // ── Increments ───────────────────────────────────────────────
+
+            /** (add1 x) and (sub1 x), Racket's increment and decrement. */
+            @Override
+            public ParseTree incrementOperand(String operator, ParseTree ctx) {
+                String function = operator.equals("++") ? "add1" : operator.equals("--") ? "sub1" : null;
+                List<ParseTree> args = function == null ? null : callArguments(ctx, function);
+                return args != null && args.size() == 1 ? args.get(0) : null;
+            }
+
+            @Override
+            public String renderIncrement(String operator, String operand, ParseTree ctx) {
+                return "(" + (operator.equals("++") ? "add1" : "sub1") + " " + operand + ")";
+            }
+
+            @Override
+            public java.util.Set<String> supportedKinds() {
+                return java.util.Set.of("binary", "predicate", "literal", "identifier", "call", "if", "assign",
+                        "increment", "unary", "conditional", "index", "return", "declare", "for_each", "throw", "try",
+                        "collection", "object", "entry", "lambda", "function", "parameter", "type_check", "arm", "when", "unless");
+            }
+
+            @Override
+            public java.util.Set<String> supportedPlaceholders() {
+                return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
+                        "return_value", "constructor_call", "non_void_method_call",
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "based_integer", "rational", "string", "char", "boolean",
+                        "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type");
+            }
+
+            // ── PIT-style placeholders ───────────────────────────────────
+            //
+            // The scanner's own parse-tree visitor already finds Racket's
+            // returned values, constructor calls, used call results and
+            // conditions; a node fits a placeholder when the visitor would
+            // mutate it. Single-line forms it leaves out are added below.
+
+            private final java.util.Map<Mutator.MutatorType, java.util.Map<String, MutationPoint>> found =
+                    new java.util.EnumMap<>(Mutator.MutatorType.class);
+
+            private MutationPoint visitorPoint(Mutator.MutatorType type, ParseTree ctx) {
+                java.util.Map<String, MutationPoint> points = found.computeIfAbsent(type, t -> {
+                    java.util.Map<String, MutationPoint> byPosition = new java.util.HashMap<>();
+                    for (MutationPoint p : visitorPoints(file, sourceCode, tree, t)) {
+                        byPosition.putIfAbsent(p.getLineNumber() + ":" + p.getColumnNumber() + ":" + p.getOperator(), p);
+                    }
+                    return byPosition;
+                });
+                int[] pos = getTokenPosition(ctx);
+                return points.get(pos[0] + ":" + pos[1] + ":" + getNodeText(ctx));
+            }
+
+            private Mutator.MutatorType visitorType(String placeholder) {
+                return switch (placeholder) {
+                    case "return_value" -> Mutator.MutatorType.EMPTY_RETURNS;
+                    case "constructor_call" -> Mutator.MutatorType.CONSTRUCTOR_CALLS;
+                    case "non_void_method_call" -> Mutator.MutatorType.NON_VOID_METHOD_CALLS;
+                    case "equality_condition" -> Mutator.MutatorType.REMOVE_CONDITIONALS_EQUAL_IF;
+                    case "order_condition" -> Mutator.MutatorType.REMOVE_CONDITIONALS_ORDER_IF;
+                    default -> null;
+                };
+            }
+
+            @Override
+            public boolean matchesPlaceholder(String type, ParseTree ctx) {
+                if (type.equals("statement")) return ctx instanceof ISLParser.ExprContext;
+                Mutator.MutatorType visitor = visitorType(type);
+                if (visitor == null) return MSLScannerAdapter.super.matchesPlaceholder(type, ctx);
+                if (!(ctx instanceof ISLParser.ExprContext)) return false;
+                if (visitorPoint(visitor, ctx) != null) return true;
+                return switch (type) {
+                    case "constructor_call" -> isConstructorForm(ctx);
+                    case "non_void_method_call" -> isDefinedCallValue(ctx);
+                    case "equality_condition" -> isTest(ctx, EQUALITY_TESTS);
+                    case "order_condition" -> isTest(ctx, ORDER_TESTS);
+                    default -> false;
+                };
+            }
+
+            /**
+             * The visitor's replacement where it mutates the node; otherwise the
+             * spec's own replacement ('() for constructors, #f for call results,
+             * #t / #f for conditions).
+             */
+            @Override
+            public OperatorEdit replace(ParseTree ctx, mutationtester.msl.MSLTree from, mutationtester.msl.MSLTree to,
+                                        mutationtester.msl.MSLBindings bindings) {
+                if (from instanceof mutationtester.msl.MSLPlaceholder p && visitorType(p.type()) != null) {
+                    MutationPoint point = visitorPoint(visitorType(p.type()), ctx);
+                    String replacement = point != null && !p.type().endsWith("_condition") ? point.getReplacement()
+                            : render(to, bindings.cursor(), ctx);
+                    if (replacement == null) return null;
+                    int[] pos = getTokenPosition(ctx);
+                    return new OperatorEdit(pos[0], pos[1], getNodeText(ctx), replacement);
+                }
+                return MSLScannerAdapter.super.replace(ctx, from, to, bindings);
+            }
+
+            @Override
+            public String renderValue(String placeholderType, ParseTree ctx) {
+                return placeholderType.equals("default_value") ? "#f" : null;
+            }
+
+            private boolean oneLine(ParseTree ctx) {
+                Token start = CstNodes.start(ctx);
+                Token stop = CstNodes.stop(ctx);
+                return start != null && stop != null && start.getLine() == stop.getLine();
+            }
+
+            private java.util.Set<String> structNames;
+
+            /**
+             * (new thing% ...), a built-in like (make-hash), or a constructor of a struct declared
+             * here or in a required file. Other make-... names are ordinary functions.
+             */
+            private boolean isConstructorForm(ParseTree ctx) {
+                if (!isApplication(ctx, 0) || !oneLine(ctx) || !ctx.getChild(0).getText().equals("(")) return false;
+                if (structNames == null) {
+                    structNames = new java.util.HashSet<>(requiredStructConstructors(file));
+                    collectStructNames(tree);
+                }
+                String name = head(ctx);
+                return name.equals("new") || isBuiltInConstructor(name) || structNames.contains(name);
+            }
+
+            /** (struct posn ...) binds posn, (define-struct posn ...) binds make-posn. */
+            private void collectStructNames(ParseTree node) {
+                if (node instanceof ISLParser.DefinitionContext def && def.getChild(1).getText().equals("define-struct")
+                        && !def.name().isEmpty()) {
+                    structNames.add("make-" + def.name(0).getText());
+                }
+                if (isApplication(node, 1) && head(node).equals("struct")) {
+                    structNames.add(node.getChild(2).getText());
+                }
+                if (isApplication(node, 1) && head(node).equals("define-struct")) {
+                    structNames.add("make-" + node.getChild(2).getText());
+                }
+                for (int i = 0; i < node.getChildCount(); i++) collectStructNames(node.getChild(i));
+            }
+
+            /** The call in a one-line (define name (f ...)), unless f is a special form. */
+            private boolean isDefinedCallValue(ParseTree ctx) {
+                ParseTree def = ctx.getParent();
+                if (!(def instanceof ISLParser.DefinitionContext) || def.getChildCount() != 5
+                        || !def.getChild(1).getText().equals("define") || def.getChild(3) != ctx
+                        || !oneLine(def) || !isApplication(ctx, 0) || !ctx.getChild(0).getText().equals("(")) {
+                    return false;
+                }
+                return !java.util.Set.of("and", "or", "if", "cond", "case", "when", "unless", "let", "let*", "letrec",
+                        "lambda", "λ", "begin", "quote", "quasiquote", "match", "for", "for/list", "do").contains(head(ctx));
+            }
+
+            /** A one-line test of if / when / unless or of a cond clause whose function is in tests. */
+            private boolean isTest(ParseTree ctx, java.util.Set<String> tests) {
+                if (!isApplication(ctx, 0) || !oneLine(ctx) || !ctx.getChild(0).getText().equals("(")
+                        || !tests.contains(head(ctx))) {
+                    return false;
+                }
+                ParseTree parent = ctx.getParent();
+                if (isApplication(parent, 1) && parent.getChild(2) == ctx) {
+                    String form = head(parent);
+                    return form.equals("if") || form.equals("when") || form.equals("unless");
+                }
+                // [test body ...] in a cond: the test directly follows the '['.
+                for (int i = 1; parent != null && i < parent.getChildCount(); i++) {
+                    if (parent.getChild(i) == ctx) return parent.getChild(i - 1).getText().equals("[");
+                }
+                return false;
             }
 
             @Override
@@ -1722,6 +1855,13 @@ public class RacketMutationScanner {
                 return "(not (equal? " + subject + " \"\"))";
             }
 
+            private java.util.Set<ParseTree> discarded;
+
+            /**
+             * A form whose value is thrown away: one before the last in a body (begin, when,
+             * unless, lambda, let or define), or a call the visitor finds discarded, such as
+             * one after begin0's first form or the value form of a discarded when.
+             */
             @Override
             public boolean isInvocationStatement(ParseTree ctx) {
                 if (!isApplication(ctx, 0) || NON_STATEMENT_FORMS.contains(head(ctx))) {
@@ -1734,7 +1874,13 @@ public class RacketMutationScanner {
                 int index = indexInParent(ctx);
                 int bodyStart = bodyStartIndex(parent);
                 int lastForm = parent.getChildCount() - 2;
-                return bodyStart > 0 && index >= bodyStart && index < lastForm;
+                if (bodyStart > 0 && index >= bodyStart && index < lastForm) return true;
+                if (ISLMutationVisitor.NON_CALL_HEADS.contains(head(ctx)) || VALUE_FORMS.contains(head(ctx))
+                        || head(parent).equals("struct") || head(parent).equals("define-struct")) {
+                    return false;   // not a call (a struct's field list isn't either)
+                }
+                if (discarded == null) discarded = discardedExprs(file, sourceCode, tree);
+                return discarded.contains(ctx);
             }
 
             @Override
@@ -1796,37 +1942,6 @@ public class RacketMutationScanner {
                     default:
                         return -1;
                 }
-            }
-
-            @Override
-            public String getSingleArgumentText(ParseTree ctx, String functionName) {
-                String text = getNodeText(ctx);
-                String prefix = "(" + functionName;
-                if (!text.startsWith(prefix) || !text.endsWith(")")) return null;
-                String inner = text.substring(prefix.length(), text.length() - 1).trim();
-                if (inner.isEmpty() || hasMultipleTopLevelArgs(inner)) return null;
-                return inner;
-            }
-
-            private boolean hasMultipleTopLevelArgs(String args) {
-                int depth = 0;
-                boolean seenArg = false;
-                boolean inWhitespace = false;
-                for (int i = 0; i < args.length(); i++) {
-                    char c = args.charAt(i);
-                    if (Character.isWhitespace(c)) {
-                        if (depth == 0 && seenArg) inWhitespace = true;
-                    } else {
-                        if (c == '(' || c == '[') depth++;
-                        else if (c == ')' || c == ']') depth--;
-                        if (depth == 0) {
-                            if (inWhitespace && seenArg) return true;
-                            seenArg = true;
-                            inWhitespace = false;
-                        }
-                    }
-                }
-                return false;
             }
 
             @Override

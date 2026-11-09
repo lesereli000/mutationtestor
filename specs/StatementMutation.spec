@@ -1,0 +1,26 @@
+Statement Mutations
+
+	Delete: {invocation_statement}
+
+	Replace: {return_value}
+	With: {empty_value}
+
+	Replace: {constructor_call}
+	With: null
+
+	Replace: {non_void_method_call}
+	With: {default_value}
+
+	Replace: {equality_condition}
+	With: true
+
+	Replace: {equality_condition}
+	With: false
+
+	Replace: {order_condition}
+	With: true
+
+	Replace: {order_condition}
+	With: false
+
+End

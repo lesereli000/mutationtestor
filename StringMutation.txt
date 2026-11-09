@@ -1,9 +1,0 @@
-String Mutations
-
-	Replace: string.IsNullOrEmpty({quantity})
-	With: {quantity} != null
-
-	Replace: string.IsNullOrEmpty({quantity})
-	With: {quantity} != ""
-
-End

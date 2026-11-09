@@ -2,6 +2,7 @@ package mutationtester.report;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +59,13 @@ public class AllSurvivorsPageGenerator {
     public static void generateAllSurvivorsPage(
             List<?> survivedMutants,
             String outputPath) throws IOException {
+        generateAllSurvivorsPage(survivedMutants, outputPath, EquivalentsPageData.empty());
+    }
+
+    public static void generateAllSurvivorsPage(
+            List<?> survivedMutants,
+            String outputPath,
+            EquivalentsPageData equivalents) throws IOException {
 
         List<SurvivorEntry> survivors = convertToSurvivorEntries(survivedMutants);
 
@@ -65,9 +73,11 @@ public class AllSurvivorsPageGenerator {
         html.append(generateHeader());
         html.append(generateSearchAndFilters(survivors));
         html.append(generateSurvivorsTable(survivors));
+        html.append(equivalents.toDataScript());
+        html.append(EquivalentsPageData.sharedScript());
         html.append(generateFooter());
 
-        try (FileWriter writer = new FileWriter(outputPath)) {
+        try (FileWriter writer = new FileWriter(outputPath, StandardCharsets.UTF_8)) {
             writer.write(html.toString());
         }
     }
@@ -283,15 +293,24 @@ public class AllSurvivorsPageGenerator {
         sb.append("<div class=\"table-container\">\n");
         // Control panel
         sb.append("    <div class=\"equivalent-panel\">\n");
-        sb.append("        <div id=\"equivalent-stats\" class=\"equivalent-stats\">\n");
-        sb.append("            <strong>0</strong> mutant(s) marked as equivalent\n");
+        sb.append("        <div>\n");
+        sb.append("            <div id=\"equivalent-stats\" class=\"equivalent-stats\">\n");
+        sb.append("                <strong>0</strong> mutant(s) marked as equivalent\n");
+        sb.append("            </div>\n");
+        sb.append("            <div id=\"equivalent-changes\" class=\"equivalent-changes hidden\"></div>\n");
         sb.append("        </div>\n");
-        sb.append("        <label class=\"filter-checkbox\">\n");
+        sb.append("        <div class=\"equivalent-actions\">\n");
+        sb.append("            <button type=\"button\" id=\"save-equivalents\" class=\"save-btn hidden\">Save to GitHub</button>\n");
+        sb.append("            <button type=\"button\" id=\"discard-equivalents\" class=\"discard-btn hidden\">Discard changes</button>\n");
+        sb.append("            <a id=\"equivalent-history\" class=\"history-link hidden\" target=\"_blank\" rel=\"noopener\">History</a>\n");
+        sb.append("            <label class=\"filter-checkbox\">\n");
         sb.append(
-                "            <input type=\"checkbox\" id=\"hide-equivalent\" checked onchange=\"toggleEquivalent()\">\n");
-        sb.append("            Hide equivalent mutants\n");
-        sb.append("        </label>\n");
+                "                <input type=\"checkbox\" id=\"hide-equivalent\" checked onchange=\"toggleEquivalent()\">\n");
+        sb.append("                Hide equivalent mutants\n");
+        sb.append("            </label>\n");
+        sb.append("        </div>\n");
         sb.append("    </div>\n");
+        sb.append("    <div id=\"equivalent-save-status\" class=\"save-status hidden\"></div>\n");
 
         sb.append("    <table class=\"survivors-table\">\n");
         sb.append("        <thead>\n");
@@ -463,6 +482,15 @@ public class AllSurvivorsPageGenerator {
         sb.append("            font-size: 14px;\n");
         sb.append("            cursor: pointer;\n");
         sb.append("        }\n");
+        sb.append("        .equivalent-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }\n");
+        sb.append("        .equivalent-changes { font-size: 13px; color: #b45309; margin-top: 4px; }\n");
+        sb.append("        .save-btn { padding: 8px 14px; border: none; background: #2563eb; color: white; border-radius: 4px; cursor: pointer; font-weight: 600; }\n");
+        sb.append("        .save-btn:hover { background: #1d4ed8; }\n");
+        sb.append("        .discard-btn { padding: 8px 14px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; cursor: pointer; }\n");
+        sb.append("        .history-link { font-size: 14px; color: #2563eb; }\n");
+        sb.append("        .save-status { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 12px 20px; margin: 0 0 15px; border-radius: 6px; font-size: 14px; line-height: 1.5; }\n");
+        sb.append("        .save-status a { color: #047857; font-weight: 600; margin-right: 12px; }\n");
+        sb.append("        .mutant-row.unsaved .mark-equivalent-btn { border-style: dashed; }\n");
         sb.append("    </style>\n");
         sb.append("</head>\n<body>\n");
         sb.append("<div class=\"container\">\n");
@@ -509,134 +537,14 @@ public class AllSurvivorsPageGenerator {
         sb.append("    noResults.classList.toggle('hidden', visibleRowCount > 0);\n");
         sb.append("}\n\n");
 
-        sb.append("searchInput.addEventListener('input', toggleEquivalent);\n");
-        sb.append("fileFilter.addEventListener('change', toggleEquivalent);\n");
-        sb.append("operatorFilter.addEventListener('change', toggleEquivalent);\n");
+        sb.append("searchInput.addEventListener('input', () => toggleEquivalent());\n");
+        sb.append("fileFilter.addEventListener('change', () => toggleEquivalent());\n");
+        sb.append("operatorFilter.addEventListener('change', () => toggleEquivalent());\n");
         sb.append("</script>\n\n");
 
         // Mark as Equivalent JavaScript
         sb.append("<script>\n");
-        sb.append("class EquivalentMutantManager {\n");
-        sb.append("    constructor() {\n");
-        sb.append("        this.apiUrl = 'http://localhost:8081/api/equivalent-mutants';\n");
-        sb.append("        this.equivalentMutants = new Set();\n");
-        sb.append("        this.initPromise = this.init();\n");
-        sb.append("    }\n");
-
-        sb.append("    getMutantIds(row) {\n");
-        sb.append("        try {\n");
-        sb.append("            const ids = JSON.parse(row.dataset.mutantIds || '[]');\n");
-        sb.append("            return ids.length ? ids : [row.dataset.mutantId].filter(Boolean);\n");
-        sb.append("        } catch (e) {\n");
-        sb.append("            return [row.dataset.mutantId].filter(Boolean);\n");
-        sb.append("        }\n");
-        sb.append("    }\n");
-
-        sb.append("    findEquivalentId(row) {\n");
-        sb.append("        return this.getMutantIds(row).find(id => this.equivalentMutants.has(id)) || null;\n");
-        sb.append("    }\n");
-
-        sb.append("    async load() {\n");
-        sb.append("        try {\n");
-        sb.append("            const res = await fetch(this.apiUrl);\n");
-        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
-        sb.append("            const data = await res.json();\n");
-        sb.append("            this.equivalentMutants = new Set(data.hiddenMutantIds || []);\n");
-        sb.append("        } catch (e) {\n");
-        sb.append("            console.error('Failed to load equivalent mutants:', e);\n");
-        sb.append("            this.equivalentMutants = new Set();\n");
-        sb.append("        }\n");
-        sb.append("    }\n");
-
-        sb.append("    async markAsEquivalent(mutantId) {\n");
-        sb.append("        try {\n");
-        sb.append("            const res = await fetch(this.apiUrl, {\n");
-        sb.append("                method: 'POST',\n");
-        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
-        sb.append("                body: JSON.stringify({ id: mutantId })\n");
-        sb.append("            });\n");
-        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
-        sb.append("            this.equivalentMutants.add(mutantId);\n");
-        sb.append("            this.updateUI();\n");
-        sb.append("            toggleEquivalent();\n");
-        sb.append("        } catch (e) {\n");
-        sb.append("            console.error('Failed to mark equivalent mutant:', e);\n");
-        sb.append(
-                "            alert('Failed to mark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
-        sb.append("        }\n");
-        sb.append("    }\n");
-
-        sb.append("    async unmarkAsEquivalent(mutantId) {\n");
-        sb.append("        try {\n");
-        sb.append("            const res = await fetch(this.apiUrl, {\n");
-        sb.append("                method: 'DELETE',\n");
-        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
-        sb.append("                body: JSON.stringify({ id: mutantId })\n");
-        sb.append("            });\n");
-        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
-        sb.append("            this.equivalentMutants.delete(mutantId);\n");
-        sb.append("            this.updateUI();\n");
-        sb.append("            toggleEquivalent();\n");
-        sb.append("        } catch (e) {\n");
-        sb.append("            console.error('Failed to unmark equivalent mutant:', e);\n");
-        sb.append(
-                "            alert('Failed to unmark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
-        sb.append("        }\n");
-        sb.append("    }\n");
-
-        sb.append("    updateUI() {\n");
-        sb.append("        let pageEquivalentCount = 0;\n");
-        sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
-        sb.append("            const isEq = this.findEquivalentId(row) !== null;\n");
-        sb.append("            row.classList.toggle('equivalent', isEq);\n");
-        sb.append("            if (isEq) pageEquivalentCount++;\n");
-        sb.append("            const btn = row.querySelector('.mark-equivalent-btn');\n");
-        sb.append("            if (btn) {\n");
-        sb.append("                btn.textContent = isEq ? '✓ Equivalent' : 'Mark as Equivalent';\n");
-        sb.append("                btn.classList.toggle('marked', isEq);\n");
-        sb.append("            }\n");
-        sb.append("        });\n");
-        sb.append("        const statsEl = document.getElementById('equivalent-stats');\n");
-        sb.append("        if (statsEl) {\n");
-        sb.append(
-                "            statsEl.innerHTML = `<strong>${pageEquivalentCount}</strong> mutant(s) marked as equivalent`;\n");
-        sb.append("        }\n");
-        sb.append("        toggleEquivalent();\n");
-        sb.append("    }\n");
-
-        sb.append("    async init() {\n");
-        sb.append("        await this.load();\n");
-        sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
-        sb.append("            const mutantId = row.dataset.mutantId;\n");
-        sb.append("            const actionCell = row.querySelector('.action-cell');\n");
-        sb.append("            if (actionCell && !actionCell.querySelector('.mark-equivalent-btn')) {\n");
-        sb.append("                const btn = document.createElement('button');\n");
-        sb.append("                btn.type = 'button';\n");
-        sb.append("                btn.className = 'mark-equivalent-btn';\n");
-        sb.append("                btn.onclick = async (e) => {\n");
-        sb.append("                    e.preventDefault();\n");
-        sb.append("                    e.stopPropagation();\n");
-        sb.append("                    if (!mutantId) return;\n");
-        sb.append("                    const existingId = this.findEquivalentId(row);\n");
-        sb.append("                    if (existingId) {\n");
-        sb.append("                        await this.unmarkAsEquivalent(existingId);\n");
-        sb.append("                    } else {\n");
-        sb.append("                        await this.markAsEquivalent(mutantId);\n");
-        sb.append("                    }\n");
-        sb.append("                };\n");
-        sb.append("                actionCell.appendChild(btn);\n");
-        sb.append("            }\n");
-        sb.append("        });\n");
-        sb.append("        this.updateUI();\n");
-        sb.append("    }\n");
-        sb.append("}\n");
-
-        sb.append("let equivalentManager;\n");
-        sb.append("document.addEventListener('DOMContentLoaded', async () => {\n");
-        sb.append("    equivalentManager = new EquivalentMutantManager();\n");
-        sb.append("    await equivalentManager.initPromise;\n");
-        sb.append("    toggleEquivalent();\n");
-        sb.append("});\n");
+        sb.append(EQUIVALENT_MANAGER_SCRIPT);
 
         sb.append("function toggleEquivalent() {\n");
         sb.append("    const hide = document.getElementById('hide-equivalent').checked;\n");
@@ -721,4 +629,292 @@ public class AllSurvivorsPageGenerator {
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
     }
+
+    /**
+     * Marking equivalent mutants. Three ways to save, picked when the page loads:
+     *   github   - report from GitHub Actions: changes are kept in the page and
+     *              "Save to GitHub" opens GitHub's new-file page prefilled with a
+     *              pending/ batch on the mutation-data branch (one Commit click).
+     *   server   - local report with the API server running: saved immediately,
+     *              as before.
+     *   download - local report, no server: changes are kept in the page and
+     *              downloaded as equivalent-mutants.json.
+     * Links longer than GitHub accepts are split into several batch files.
+     */
+    static final String EQUIVALENT_MANAGER_SCRIPT = """
+            const MAX_EQUIVALENT_URL_LENGTH = 7000;
+
+            function describeEquivalentBatch(batch) {
+                const parts = [];
+                if (batch.add.length) parts.push(batch.add.length + ' added');
+                if (batch.remove.length) parts.push(batch.remove.length + ' removed');
+                return parts.join(', ');
+            }
+
+            function equivalentBatchUrl(data, fileName, batch, partCount, partIndex) {
+                const body = JSON.stringify({ add: batch.add, remove: batch.remove }, null, 2) + '\\n';
+                const message = 'Mark equivalent mutants: ' + describeEquivalentBatch(batch)
+                    + (partCount > 1 ? ' (part ' + partIndex + ' of ' + partCount + ')' : '');
+                return data.repoUrl + '/new/' + encodeURIComponent(data.branch) + '/' + encodeURIComponent(data.pendingDir)
+                    + '?filename=' + encodeURIComponent(fileName)
+                    + '&value=' + encodeURIComponent(body)
+                    + '&message=' + encodeURIComponent(message);
+            }
+
+            function buildEquivalentBatches(adds, removes, data) {
+                const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const suffix = Math.random().toString(36).slice(2, 6);
+                const items = removes.map(id => ['remove', id]).concat(adds.map(id => ['add', id]));
+                const groups = [];
+                let current = { add: [], remove: [] };
+                for (const [op, id] of items) {
+                    const trial = { add: current.add.slice(), remove: current.remove.slice() };
+                    trial[op].push(id);
+                    const length = equivalentBatchUrl(data, stamp + '-' + suffix + '-p00.json', trial, 99, 99).length;
+                    if (length > MAX_EQUIVALENT_URL_LENGTH && current.add.length + current.remove.length > 0) {
+                        groups.push(current);
+                        current = { add: [], remove: [] };
+                    }
+                    current[op].push(id);
+                }
+                if (current.add.length + current.remove.length > 0) groups.push(current);
+                return groups.map((group, i) => {
+                    const name = groups.length === 1
+                        ? stamp + '-' + suffix + '.json'
+                        : stamp + '-' + suffix + '-p' + String(i + 1).padStart(2, '0') + '.json';
+                    return { url: equivalentBatchUrl(data, name, group, groups.length, i + 1), batch: group };
+                });
+            }
+
+            class EquivalentMutantManager {
+                constructor() {
+                    this.data = readEquivalentsData();
+                    this.applied = new Set();
+                    this.pendingAdd = new Set();
+                    this.pendingRemove = new Set();
+                    this.mode = 'download';
+                    this.initPromise = this.init();
+                }
+
+                getMutantIds(row) {
+                    try {
+                        const ids = JSON.parse(row.dataset.mutantIds || '[]');
+                        return ids.length ? ids : [row.dataset.mutantId].filter(Boolean);
+                    } catch (e) {
+                        return [row.dataset.mutantId].filter(Boolean);
+                    }
+                }
+
+                appliedId(row) {
+                    return this.getMutantIds(row).find(id => this.applied.has(id)) || null;
+                }
+
+                state(row) {
+                    const appliedId = this.appliedId(row);
+                    if (appliedId) return this.pendingRemove.has(appliedId) ? 'removing' : 'marked';
+                    return this.pendingAdd.has(row.dataset.mutantId) ? 'adding' : 'unmarked';
+                }
+
+                changeCount() {
+                    return this.pendingAdd.size + this.pendingRemove.size;
+                }
+
+                async init() {
+                    if (this.data.repoUrl) {
+                        this.mode = 'github';
+                        this.applied = new Set(this.data.hiddenMutantIds || []);
+                    } else {
+                        const fromServer = usesLocalServer(this.data) ? await fetchLocalServerIds() : null;
+                        this.mode = fromServer ? 'server' : 'download';
+                        this.applied = fromServer || new Set(this.data.hiddenMutantIds || []);
+                    }
+
+                    document.querySelectorAll('.mutant-row').forEach(row => {
+                        const actionCell = row.querySelector('.action-cell');
+                        if (actionCell && !actionCell.querySelector('.mark-equivalent-btn')) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'mark-equivalent-btn';
+                            btn.onclick = async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                await this.toggle(row);
+                            };
+                            actionCell.appendChild(btn);
+                        }
+                    });
+
+                    document.getElementById('save-equivalents').onclick = () => this.save();
+                    document.getElementById('discard-equivalents').onclick = () => this.discard();
+                    const history = document.getElementById('equivalent-history');
+                    if (this.mode === 'github' && history) {
+                        history.href = this.data.repoUrl + '/commits/' + encodeURIComponent(this.data.branch) + '/' + this.data.file;
+                        history.classList.remove('hidden');
+                    }
+                    this.updateUI();
+                }
+
+                async toggle(row) {
+                    const id = row.dataset.mutantId;
+                    if (!id) return;
+                    const appliedId = this.appliedId(row);
+                    if (this.mode === 'server') {
+                        await this.serverRequest(appliedId ? 'DELETE' : 'POST', appliedId || id);
+                        return;
+                    }
+                    if (appliedId) {
+                        if (this.pendingRemove.has(appliedId)) this.pendingRemove.delete(appliedId);
+                        else this.pendingRemove.add(appliedId);
+                    } else if (this.pendingAdd.has(id)) {
+                        this.pendingAdd.delete(id);
+                    } else {
+                        this.pendingAdd.add(id);
+                    }
+                    this.updateUI();
+                }
+
+                async serverRequest(method, id) {
+                    try {
+                        const res = await fetch('http://localhost:8081/api/equivalent-mutants', {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id })
+                        });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        if (method === 'POST') this.applied.add(id);
+                        else this.applied.delete(id);
+                    } catch (e) {
+                        // The server went away: keep the change here and offer a download instead.
+                        this.mode = 'download';
+                        if (method === 'POST') this.pendingAdd.add(id);
+                        else this.pendingRemove.add(id);
+                        this.showStatus([document.createTextNode(
+                            'The local API server stopped responding. Your change is kept in this page; use Download to save it.')]);
+                    }
+                    this.updateUI();
+                }
+
+                updateUI() {
+                    const labels = {
+                        marked: '\\u2713 Equivalent',
+                        adding: '\\u2713 Equivalent (unsaved)',
+                        removing: 'Mark as Equivalent (unsaved)',
+                        unmarked: 'Mark as Equivalent'
+                    };
+                    let count = 0;
+                    document.querySelectorAll('.mutant-row').forEach(row => {
+                        const state = this.state(row);
+                        const isEq = state === 'marked' || state === 'adding';
+                        row.classList.toggle('equivalent', isEq);
+                        row.classList.toggle('unsaved', state === 'adding' || state === 'removing');
+                        if (isEq) count++;
+                        const btn = row.querySelector('.mark-equivalent-btn');
+                        if (btn) {
+                            btn.textContent = labels[state];
+                            btn.classList.toggle('marked', isEq);
+                        }
+                    });
+
+                    const statsEl = document.getElementById('equivalent-stats');
+                    if (statsEl) statsEl.innerHTML = `<strong>${count}</strong> mutant(s) marked as equivalent`;
+
+                    const changes = this.changeCount();
+                    const changesEl = document.getElementById('equivalent-changes');
+                    changesEl.textContent = changes + ' unsaved change' + (changes === 1 ? '' : 's');
+                    changesEl.classList.toggle('hidden', changes === 0);
+
+                    const saveBtn = document.getElementById('save-equivalents');
+                    saveBtn.textContent = this.mode === 'github' ? 'Save to GitHub' : 'Download equivalent-mutants.json';
+                    saveBtn.classList.toggle('hidden', changes === 0 || this.mode === 'server');
+                    document.getElementById('discard-equivalents').classList.toggle('hidden', changes === 0);
+                    toggleEquivalent();
+                }
+
+                discard() {
+                    this.pendingAdd.clear();
+                    this.pendingRemove.clear();
+                    this.hideStatus();
+                    this.updateUI();
+                }
+
+                save() {
+                    if (this.changeCount() === 0) return;
+                    if (this.mode === 'github') this.saveToGitHub();
+                    else this.download();
+                }
+
+                commitPending() {
+                    this.pendingRemove.forEach(id => this.applied.delete(id));
+                    this.pendingAdd.forEach(id => this.applied.add(id));
+                    this.pendingAdd.clear();
+                    this.pendingRemove.clear();
+                }
+
+                saveToGitHub() {
+                    const parts = buildEquivalentBatches([...this.pendingAdd], [...this.pendingRemove], this.data);
+                    if (parts.length === 1) window.open(parts[0].url, '_blank', 'noopener');
+
+                    const nodes = [];
+                    if (parts.length === 1) {
+                        nodes.push(document.createTextNode('GitHub opened in a new tab with your changes. Click '));
+                        const strong = document.createElement('strong');
+                        strong.textContent = 'Commit changes';
+                        nodes.push(strong);
+                        nodes.push(document.createTextNode(' there; the next workflow run applies them. No tab? '));
+                    } else {
+                        nodes.push(document.createTextNode('Your changes are split into ' + parts.length
+                            + ' files because GitHub limits link length. Open each one and click Commit changes; the next workflow run applies them. '));
+                    }
+                    parts.forEach((part, i) => {
+                        const link = document.createElement('a');
+                        link.href = part.url;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.textContent = parts.length === 1 ? 'Open it here' : 'Part ' + (i + 1) + ' (' + describeEquivalentBatch(part.batch) + ')';
+                        nodes.push(link);
+                    });
+                    this.showStatus(nodes);
+                    this.commitPending();
+                    this.updateUI();
+                }
+
+                download() {
+                    const ids = [...this.applied].filter(id => !this.pendingRemove.has(id));
+                    this.pendingAdd.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+                    const blob = new Blob([JSON.stringify({ hiddenMutantIds: ids }, null, 2) + '\\n'], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'equivalent-mutants.json';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+
+                    this.showStatus([document.createTextNode(this.data.source === 'branch'
+                        ? 'Downloaded equivalent-mutants.json. This project keeps its list on the ' + this.data.branch
+                            + ' branch, so commit it there as ' + this.data.file + ' to apply it.'
+                        : 'Downloaded equivalent-mutants.json. Put it in output/report/ where you run the tool (or start the API server) and re-run to apply it.')]);
+                    this.commitPending();
+                    this.updateUI();
+                }
+
+                showStatus(nodes) {
+                    const el = document.getElementById('equivalent-save-status');
+                    el.replaceChildren(...nodes);
+                    el.classList.remove('hidden');
+                }
+
+                hideStatus() {
+                    document.getElementById('equivalent-save-status').classList.add('hidden');
+                }
+            }
+
+            let equivalentManager;
+            document.addEventListener('DOMContentLoaded', async () => {
+                equivalentManager = new EquivalentMutantManager();
+                await equivalentManager.initPromise;
+                toggleEquivalent();
+            });
+
+            """;
 }

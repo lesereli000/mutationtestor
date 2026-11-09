@@ -1,0 +1,13 @@
+src/DemoNotEqualToEqual.js	10	18	!==	===
+src/DemoNotEqualToEqual.js	14	13	!==	===
+src/DemoNotEqualToEqual.js	2	13	!==	===
+src/DemoNotEqualToEqual.js	21	10	!==	===
+src/DemoNotEqualToEqual.js	32	10	!==	===
+src/DemoNotEqualToEqual.js	44	11	!==	===
+src/DemoNotEqualToEqual.js	44	24	!==	===
+src/DemoNotEqualToEqual.js	6	14	!==	===
+src/DemoNotEqualToEqual.js	6	27	!==	===
+src/DemoNotEqualToEqual.js	63	14	!==	===
+src/DemoNotEqualToEqual.js	64	14	!==	===
+src/DemoNotEqualToEqual.js	65	15	!==	===
+src/DemoNotEqualToEqual.js	65	30	!==	===

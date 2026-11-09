@@ -18,233 +18,14 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import mutationtester.JavaLexer;
 import mutationtester.JavaParser;
-import mutationtester.JavaParserBaseVisitor;
 import mutationtester.model.MutationPoint;
 import mutationtester.model.Mutator;
 import mutationtester.msl.MSLScannerAdapter;
 
 public class JavaMutationScanner {
-    /**
-     * Scan a Java file for mutations using AST parsing
-     */
-    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type) throws IOException {
-        return scanFile(file, type, false);
-    }
-
-    public static List<MutationPoint> scanFile(File file, Mutator.MutatorType type, boolean showViewer)
-            throws IOException {
-        if (type == Mutator.MutatorType.CONDITIONAL_TRUE
-                || type == Mutator.MutatorType.CONDITIONAL_FALSE
-                || type == Mutator.MutatorType.REMOVE_LOGICAL_NEGATION
-                || type == Mutator.MutatorType.EMPTY_RETURNS
-                || type == Mutator.MutatorType.VML_VOID_METHOD_CALL
-                || type == Mutator.MutatorType.NON_VOID_METHOD_CALLS
-                || type == Mutator.MutatorType.CONSTRUCTOR_CALLS) {
-            return UniversalPitMutationScanner.scan(file, type);
-        }
-        String sourceCode = Files.readString(file.toPath());
-
-        // Parse Java using ANTLR (same as MyParser)
-        CharStream input = CharStreams.fromString(sourceCode);
-        JavaLexer lexer = new JavaLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        JavaParser parser = new JavaParser(tokens);
-
-        // Get parse tree starting from program() rule (same as MyParser)
-        ParseTree tree = parser.compilationUnit();
-
-        if (showViewer) {
-            TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
-            viewer.open();
-        }
-
-        // Create visitor based on mutation type
-        JavaMutationScanner.JavaMutationVisitor visitor = new JavaMutationScanner.JavaMutationVisitor(file, type);
-        visitor.visit(tree);
-
-        return visitor.getMutationPoints();
-    }
-
-    /**
-     * Visitor that walks the Java AST and finds mutation points
-     */
-    private static class JavaMutationVisitor extends JavaParserBaseVisitor<Void> {
-
-        private final File sourceFile;
-        private final Mutator.MutatorType mutationType;
-        private final List<MutationPoint> mutationPoints;
-
-        public JavaMutationVisitor(File sourceFile, Mutator.MutatorType mutationType) {
-            this.sourceFile = sourceFile;
-            this.mutationType = mutationType;
-            this.mutationPoints = new ArrayList<>();
-        }
-
-        /**
-         * Visit binary operator expressions (+, -, &&, ||, *, /, etc.)
-         */
-        @Override
-        public Void visitBinaryOperatorExpression(JavaParser.BinaryOperatorExpressionContext ctx) {
-            // If there aren't exactly 3 children, it's not a simple binary operator (e.g.,
-            // >> or >>>)
-            if (ctx.getChildCount() != 3) {
-                return super.visitBinaryOperatorExpression(ctx);
-            }
-
-            // Walk through all children of this expression
-            for (int i = 0; i < ctx.getChildCount(); i++) {
-                ParseTree child = ctx.getChild(i);
-
-                // Check if this child is a terminal node (operator)
-                if (child instanceof TerminalNode) {
-                    String operator = child.getText();
-                    Token token = ((TerminalNode) child).getSymbol();
-
-                    switch (operator) {
-                        // AOR_PLUS_TO_MINUS: mutate + to -
-                        case "+":
-                            if (mutationType == Mutator.MutatorType.AOR_PLUS_TO_MINUS) {
-                                if (!containsStringLiteral(ctx)) {
-                                    addMutation(token, "+", "-");
-                                }
-                            }
-                            break;
-
-                        // AOR_MINUS_TO_PLUS: mutate - to +
-                        case "-":
-                            if (mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                                addMutation(token, "-", "+");
-                            }
-                            break;
-
-                        case "*":
-                            if (mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                                addMutation(token, "*", "/");
-                            }
-                            break;
-
-                        case "/":
-                            if (mutationType == Mutator.MutatorType.AOR_MINUS_TO_PLUS) {
-                                addMutation(token, "/", "*");
-                            }
-                            break;
-
-                        case "&&":
-                            if (mutationType == Mutator.MutatorType.LOGICAL_AND_TO_OR) {
-                                addMutation(token, "&&", "||");
-                            }
-                            break;
-
-                        case "||":
-                            if (mutationType == Mutator.MutatorType.LOGICAL_OR_TO_AND) {
-                                addMutation(token, "||", "&&");
-                            }
-                            break;
-
-                        case ">":
-                            if (mutationType == Mutator.MutatorType.ROR_GT_TO_GE) {
-                                addMutation(token, ">", ">=");
-                            }
-                            break;
-
-                        case ">=":
-                            if (mutationType == Mutator.MutatorType.ROR_GE_TO_GT) {
-                                addMutation(token, ">=", ">");
-                            }
-                            break;
-
-                        case "<":
-                            if (mutationType == Mutator.MutatorType.ROR_LT_TO_LE) {
-                                addMutation(token, "<", "<=");
-                            }
-                            break;
-
-                        case "<=":
-                            if (mutationType == Mutator.MutatorType.ROR_LE_TO_LT) {
-                                addMutation(token, "<=", "<");
-                            }
-                            break;
-
-                        case "&":
-                            if (mutationType == Mutator.MutatorType.BOR_AND_TO_OR) {
-                                addMutation(token, "&", "|");
-                            }
-                            break;
-
-                        default:
-                            System.out.println("Unrecognized operator: " + operator);
-                            break;
-
-                    }
-                }
-            }
-
-            // Continue visiting children
-            return visitChildren(ctx);
-        }
-
-        /**
-         * Visit primitive types (int, long, double, float, etc.)
-         */
-        @Override
-        public Void visitPrimitiveType(JavaParser.PrimitiveTypeContext ctx) {
-            String typeText = ctx.getText();
-            Token token = ctx.getStart();
-
-            // Mapping of "from" type to "to" type based on mutator
-            if (mutationType == Mutator.MutatorType.TYPE_INT_TO_LONG && typeText.equals("int")) {
-                addMutation(token, "int", "long");
-            } else if (mutationType == Mutator.MutatorType.TYPE_LONG_TO_INT && typeText.equals("long")) {
-                addMutation(token, "long", "int");
-            } else if (mutationType == Mutator.MutatorType.TYPE_INT_TO_DOUBLE && typeText.equals("int")) {
-                addMutation(token, "int", "double");
-            } else if (mutationType == Mutator.MutatorType.TYPE_INT_TO_FLOAT && typeText.equals("int")) {
-                addMutation(token, "int", "float");
-            } else if (mutationType == Mutator.MutatorType.TYPE_DOUBLE_TO_INT && typeText.equals("double")) {
-                addMutation(token, "double", "int");
-            } else if (mutationType == Mutator.MutatorType.TYPE_FLOAT_TO_INT && typeText.equals("float")) {
-                addMutation(token, "float", "int");
-            }
-
-            return visitChildren(ctx);
-        }
-
-        private void addMutation(Token token, String operator, String replacement) {
-            MutationPoint point = new MutationPoint(
-                    sourceFile,
-                    token.getLine(),
-                    token.getCharPositionInLine(),
-                    operator,
-                    replacement,
-                    mutationType);
-            mutationPoints.add(point);
-        }
-
-        private boolean containsStringLiteral(ParseTree tree) {
-            if (tree instanceof TerminalNode terminalNode) {
-                int tokenType = terminalNode.getSymbol().getType();
-                return tokenType == JavaLexer.STRING_LITERAL || tokenType == JavaLexer.TEXT_BLOCK;
-            }
-
-            for (int i = 0; i < tree.getChildCount(); i++) {
-                if (containsStringLiteral(tree.getChild(i))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public List<MutationPoint> getMutationPoints() {
-            // System.out.println(mutationPoints);
-            return mutationPoints;
-        }
-    }
     public static MSLScannerAdapter createAdapter(File file) throws IOException {
         String sourceCode = Files.readString(file.toPath());
-        // Pre-split for O(1) line lookups in getSourceLine()
-        // ANTLR line numbers are 1-based; index 0 = line 1
-        final String[] sourceLines = sourceCode.split("\n", -1);
-        CharStream input = CharStreams.fromString(sourceCode);
+        CharStream input = mutationtester.msl.CstNodes.utf16(sourceCode);
         JavaLexer lexer = new JavaLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         JavaParser parser = new JavaParser(tokens);
@@ -457,23 +238,492 @@ public class JavaMutationScanner {
                 return ctx.getText();
             }
 
-            // Java spells string.IsNullOrEmpty(s) as s == null || s.isEmpty() and
-            // variants (Guava's and Commons' library calls are matched as calls).
-            private static final List<java.util.regex.Pattern> NULL_OR_EMPTY_IDIOMS = List.of(
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.isEmpty\\(\\)"),
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.length\\(\\)\\s*==\\s*0"),
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\\1\\.equals\\(\"\"\\)"),
-                    java.util.regex.Pattern.compile(MSLScannerAdapter.NULL_CHECK_SUBJECT + "\\s*==\\s*null\\s*\\|\\|\\s*\"\"\\.equals\\(\\1\\)"));
+            // MSL's "s is null" is a null-or-empty check. Java spells it with a
+            // library call (Guava's, Commons', or a C#-style name) or writes it
+            // out as s == null || s.isEmpty() and variants.
+            private static final java.util.Set<String> NULL_OR_EMPTY_CALLS = java.util.Set.of(
+                    "string.IsNullOrEmpty", "String.IsNullOrEmpty", "Strings.isNullOrEmpty",
+                    "StringUtils.isEmpty", "isNullOrEmpty");
 
             @Override
-            public String getNullOrEmptySubject(ParseTree ctx) {
-                return MSLScannerAdapter.matchNullOrEmptySubject(getNodeText(ctx), NULL_OR_EMPTY_IDIOMS);
+            public ParseTree nullCheckSubject(ParseTree ctx) {
+                List<JavaParser.ExpressionContext> args = callArguments(ctx);
+                if (args != null) {
+                    return NULL_OR_EMPTY_CALLS.contains(calleeName(ctx)) && args.size() == 1 ? args.get(0) : null;
+                }
+                if (!(ctx instanceof JavaParser.BinaryOperatorExpressionContext or)
+                        || or.bop == null || !or.bop.getText().equals("||")) {
+                    return null;
+                }
+                ParseTree subject = comparedWithNull(or.expression(0));
+                return subject != null && isEmptyCheckOf(or.expression(1), subject.getText()) ? subject : null;
+            }
+
+            /** s for "s == null" where s is a name or dotted path, else null. */
+            private ParseTree comparedWithNull(ParseTree expr) {
+                if (expr instanceof JavaParser.BinaryOperatorExpressionContext eq
+                        && eq.bop != null && eq.bop.getText().equals("==")
+                        && eq.expression(1).getText().equals("null")
+                        && mutationtester.msl.CstNodes.isDottedName(eq.expression(0))) {
+                    return eq.expression(0);
+                }
+                return null;
+            }
+
+            /** s.isEmpty(), s.length() == 0, s.equals("") or "".equals(s). */
+            private boolean isEmptyCheckOf(ParseTree expr, String subject) {
+                if (expr instanceof JavaParser.BinaryOperatorExpressionContext eq
+                        && eq.bop != null && eq.bop.getText().equals("==")
+                        && eq.expression(1).getText().equals("0")) {
+                    return isCallOn(eq.expression(0), subject, "length", null);
+                }
+                return isCallOn(expr, subject, "isEmpty", null)
+                        || isCallOn(expr, subject, "equals", "\"\"")
+                        || isCallOn(expr, "\"\"", "equals", subject);
+            }
+
+            /** receiver.method() with no argument, or receiver.method(argument). */
+            private boolean isCallOn(ParseTree expr, String receiver, String method, String argument) {
+                if (!(expr instanceof JavaParser.MemberReferenceExpressionContext member)
+                        || member.methodCall() == null || member.methodCall().identifier() == null
+                        || !member.methodCall().identifier().getText().equals(method)
+                        || !member.expression().getText().equals(receiver)) {
+                    return false;
+                }
+                JavaParser.ExpressionListContext list = member.methodCall().arguments().expressionList();
+                if (argument == null) return list == null;
+                return list != null && list.expression().size() == 1 && list.expression(0).getText().equals(argument);
+            }
+
+            /** The arguments of a call foo(...) or a.b.foo(...) whose callee is a dotted name; else null. */
+            private List<JavaParser.ExpressionContext> callArguments(ParseTree ctx) {
+                JavaParser.MethodCallContext call = null;
+                if (ctx instanceof JavaParser.MethodCallExpressionContext mc) {
+                    call = mc.methodCall();
+                } else if (ctx instanceof JavaParser.MemberReferenceExpressionContext member
+                        && member.methodCall() != null
+                        && mutationtester.msl.CstNodes.isDottedName(member.expression())) {
+                    call = member.methodCall();
+                }
+                if (call == null || call.identifier() == null) return null;
+                JavaParser.ExpressionListContext list = call.arguments().expressionList();
+                return list == null ? List.of() : list.expression();
+            }
+
+            @Override
+            public List<ParseTree> callArguments(ParseTree ctx, String functionName) {
+                List<JavaParser.ExpressionContext> args = callArguments(ctx);
+                return args != null && calleeName(ctx).equals(functionName) ? new ArrayList<>(args) : null;
+            }
+
+            /** "foo" or "a.b.foo" for a call accepted by callArguments. */
+            private String calleeName(ParseTree ctx) {
+                if (ctx instanceof JavaParser.MemberReferenceExpressionContext member) {
+                    return member.expression().getText() + "." + member.methodCall().identifier().getText();
+                }
+                return ((JavaParser.MethodCallExpressionContext) ctx).methodCall().identifier().getText();
             }
 
             @Override
             public String notEmptyStringCheck(String subject) {
                 // s != "" compares references in Java; compare values as C# does.
                 return "(!\"\".equals(" + subject + "))";
+            }
+
+            // ── Statements, for Except: trees ────────────────────────────
+
+            @Override
+            public List<ParseTree> matchNode(mutationtester.msl.MSLNode pattern, ParseTree ctx) {
+                switch (pattern.kind()) {
+                    case mutationtester.msl.MSLNode.IF -> {
+                        return matchIf(pattern, ctx, false);
+                    }
+                    case mutationtester.msl.MSLNode.WHILE -> {
+                        if (ctx instanceof JavaParser.StatementContext s && s.WHILE() != null && s.DO() == null) {
+                            return List.of(s.expression(0), s.statement(0));
+                        }
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR -> {
+                        if (ctx instanceof JavaParser.StatementContext s && s.FOR() != null
+                                && s.forControl().enhancedForControl() == null) {
+                            JavaParser.ForControlContext control = s.forControl();
+                            return java.util.Arrays.asList(control.forInit(), control.expression(),
+                                    control.forUpdate, s.statement(0));
+                        }
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.ASSIGN -> {
+                        ParseTree expr = ctx instanceof JavaParser.StatementContext s ? s.statementExpression : ctx;
+                        if (expr instanceof JavaParser.BinaryOperatorExpressionContext assign
+                                && assign.bop != null && assign.bop.getText().equals("=")) {
+                            return List.of(assign.expression(0), assign.expression(1));
+                        }
+                        return null;
+                    }
+                    case mutationtester.msl.MSLNode.BLOCK -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s) || s.blockLabel == null
+                                || s.blockLabel.blockStatement().size() < pattern.children().size()) {
+                            return null;
+                        }
+                        List<ParseTree> leading = new ArrayList<>();
+                        for (int i = 0; i < pattern.children().size(); i++) {
+                            JavaParser.BlockStatementContext statement = s.blockLabel.blockStatement(i);
+                            leading.add(statement.statement() != null ? statement.statement() : statement);
+                        }
+                        return leading;
+                    }
+                    case mutationtester.msl.MSLNode.UNARY -> {
+                        return ctx instanceof JavaParser.UnaryOperatorExpressionContext u
+                                && u.prefix.getText().equals(pattern.value()) ? List.of(u.expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.CONDITIONAL -> {
+                        return ctx instanceof JavaParser.TernaryExpressionContext t
+                                ? List.of(t.expression(0), t.expression(1), t.expression(2)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.COMPOUND_ASSIGN -> {
+                        return ctx instanceof JavaParser.BinaryOperatorExpressionContext b && b.bop != null
+                                && b.bop.getText().equals(pattern.value()) && b.expression().size() == 2
+                                ? List.of(b.expression(0), b.expression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.INDEX -> {
+                        return ctx instanceof JavaParser.SquareBracketExpressionContext sq
+                                ? List.of(sq.expression(0), sq.expression(1)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER -> {
+                        return ctx instanceof JavaParser.MemberReferenceExpressionContext m && m.identifier() != null
+                                ? List.of(m.expression(), m.identifier()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.MEMBER_CALL -> {
+                        if (!(ctx instanceof JavaParser.MemberReferenceExpressionContext m) || m.methodCall() == null
+                                || m.methodCall().identifier() == null) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(m.expression(), m.methodCall().identifier()));
+                        parts.addAll(argumentList(m.methodCall().arguments()));
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.RETURN -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s) || s.RETURN() == null) return null;
+                        return s.expression().isEmpty() ? List.of() : List.of(s.expression(0));
+                    }
+                    case mutationtester.msl.MSLNode.BREAK, mutationtester.msl.MSLNode.CONTINUE -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s)
+                                || (pattern.kind().equals("break") ? s.BREAK() : s.CONTINUE()) == null) {
+                            return null;
+                        }
+                        return s.identifier() == null ? List.of() : List.of(s.identifier());
+                    }
+                    case mutationtester.msl.MSLNode.THROW -> {
+                        return ctx instanceof JavaParser.StatementContext s && s.THROW() != null
+                                ? List.of(s.expression(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DO_WHILE -> {
+                        return ctx instanceof JavaParser.StatementContext s && s.DO() != null
+                                ? List.of(s.statement(0), s.expression(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FOR_EACH -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s) || s.FOR() == null
+                                || s.forControl().enhancedForControl() == null) {
+                            return null;
+                        }
+                        JavaParser.EnhancedForControlContext e = s.forControl().enhancedForControl();
+                        return List.of(e.variableDeclaratorId(), e.expression(), s.statement(0));
+                    }
+                    case mutationtester.msl.MSLNode.TRY -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s) || s.TRY() == null
+                                || s.resourceSpecification() != null) {
+                            return null;
+                        }
+                        return java.util.Arrays.asList(s.block(),
+                                s.catchClause().isEmpty() ? null : s.catchClause(0).block(),
+                                s.finallyBlock() == null ? null : s.finallyBlock().block());
+                    }
+                    case mutationtester.msl.MSLNode.CASE, mutationtester.msl.MSLNode.DEFAULT_CASE -> {
+                        if (!(ctx instanceof JavaParser.SwitchBlockStatementGroupContext g) || g.switchLabel().size() != 1) {
+                            return null;
+                        }
+                        JavaParser.SwitchLabelContext label = g.switchLabel(0);
+                        ParseTree body = mutationtester.msl.CstNodes.span(g.blockStatement());
+                        if (pattern.kind().equals("case")) {
+                            return label.CASE() != null && label.constantExpression != null
+                                    ? List.of(label.constantExpression, body) : null;
+                        }
+                        return label.DEFAULT() != null ? List.of(body) : null;
+                    }
+                    case mutationtester.msl.MSLNode.DECLARE -> {
+                        if (!(ctx instanceof JavaParser.LocalVariableDeclarationContext d)) return null;
+                        if (d.VAR() != null) return List.of(d.identifier(), d.expression());
+                        List<JavaParser.VariableDeclaratorContext> declarators = d.variableDeclarators().variableDeclarator();
+                        if (declarators.size() != 1 || declarators.get(0).variableInitializer() == null) return null;
+                        return List.of(declarators.get(0).variableDeclaratorId(), declarators.get(0).variableInitializer());
+                    }
+                    case mutationtester.msl.MSLNode.COLLECTION -> {
+                        return ctx instanceof JavaParser.ArrayInitializerContext a ? new ArrayList<>(a.variableInitializer()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LAMBDA -> {
+                        if (!(ctx instanceof JavaParser.LambdaExpressionContext l)) return null;
+                        JavaParser.LambdaParametersContext p = l.lambdaParameters();
+                        List<ParseTree> parts = new ArrayList<>(p.formalParameterList() != null ? p.formalParameterList().formalParameter()
+                                : p.lambdaLVTIList() != null ? p.lambdaLVTIList().lambdaLVTIParameter() : p.identifier());
+                        parts.add(l.lambdaBody());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.FUNCTION -> {
+                        if (!(ctx instanceof JavaParser.MethodDeclarationContext m) || m.methodBody().block() == null) return null;
+                        List<ParseTree> parts = new ArrayList<>(List.of(m.identifier()));
+                        JavaParser.FormalParametersContext fp = m.formalParameters();
+                        if (fp.formalParameter() != null) parts.add(fp.formalParameter());
+                        for (JavaParser.FormalParameterListContext list : fp.formalParameterList()) parts.addAll(list.formalParameter());
+                        parts.add(m.methodBody().block());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.PARAMETER -> {
+                        return ctx instanceof JavaParser.FormalParameterContext p ? List.of(p.variableDeclaratorId()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.TYPE_CHECK -> {
+                        return ctx instanceof JavaParser.InstanceOfOperatorExpressionContext i && i.typeType() != null
+                                ? List.of(i.expression(), i.typeType()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.CAST -> {
+                        return ctx instanceof JavaParser.CastExpressionContext c && c.typeType().size() == 1
+                                ? List.of(c.typeType(0), c.expression()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.FIELD -> {
+                        if (!(ctx instanceof JavaParser.FieldDeclarationContext f)
+                                || f.variableDeclarators().variableDeclarator().size() != 1) {
+                            return null;
+                        }
+                        JavaParser.VariableDeclaratorContext v = f.variableDeclarators().variableDeclarator(0);
+                        return v.variableInitializer() == null ? List.of(v.variableDeclaratorId())
+                                : List.of(v.variableDeclaratorId(), v.variableInitializer());
+                    }
+                    case mutationtester.msl.MSLNode.INITIALIZED_NEW -> {
+                        // new T(args) { members }: an anonymous class
+                        if (!(ctx instanceof JavaParser.ObjectCreationExpressionContext o)
+                                || o.creator().classCreatorRest() == null || o.creator().classCreatorRest().classBody() == null) {
+                            return null;
+                        }
+                        List<ParseTree> parts = new ArrayList<>(List.of(o.creator().createdName()));
+                        parts.addAll(o.creator().classCreatorRest().classBody().classBodyDeclaration());
+                        return parts;
+                    }
+                    case mutationtester.msl.MSLNode.ASSERT -> {
+                        return ctx instanceof JavaParser.StatementContext s && s.ASSERT() != null ? List.of(s.expression(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.WITH -> {
+                        if (!(ctx instanceof JavaParser.StatementContext s)) return null;
+                        if (s.SYNCHRONIZED() != null) return List.of(s.expression(0), s.block());
+                        return s.TRY() != null && s.resourceSpecification() != null && s.catchClause().isEmpty()
+                                && s.finallyBlock() == null ? List.of(s.resourceSpecification(), s.block()) : null;
+                    }
+                    case mutationtester.msl.MSLNode.YIELD -> {
+                        return ctx instanceof JavaParser.StatementContext s && s.YIELD() != null ? List.of(s.expression(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.LABELED -> {
+                        return ctx instanceof JavaParser.StatementContext s && s.identifierLabel != null
+                                ? List.of(s.identifierLabel, s.statement(0)) : null;
+                    }
+                    case mutationtester.msl.MSLNode.ARM -> {
+                        if (!(ctx instanceof JavaParser.SwitchLabeledRuleContext r) || r.CASE() == null || r.ARROW() == null
+                                || r.expressionList() == null || r.expressionList().expression().size() != 1) {
+                            return null;
+                        }
+                        return List.of(r.expressionList().expression(0), r.switchRuleOutcome());
+                    }
+                    case mutationtester.msl.MSLNode.ANNOTATION -> {
+                        return ctx instanceof JavaParser.AnnotationContext a && a.annotationFieldValues() == null
+                                ? List.of(a.qualifiedName()) : null;
+                    }
+                    default -> {
+                        return MSLScannerAdapter.super.matchNode(pattern, ctx);
+                    }
+                }
+            }
+
+            /** foo(a, b): [foo, a, b]. */
+            @Override
+            public List<ParseTree> callParts(ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.MethodCallExpressionContext call)
+                        || call.methodCall().identifier() == null) {
+                    return null;
+                }
+                List<ParseTree> parts = new ArrayList<>(List.of(call.methodCall().identifier()));
+                parts.addAll(argumentList(call.methodCall().arguments()));
+                return parts;
+            }
+
+            private List<ParseTree> argumentList(JavaParser.ArgumentsContext arguments) {
+                return arguments.expressionList() == null ? List.of()
+                        : new ArrayList<>(arguments.expressionList().expression());
+            }
+
+            // ── Literals and type names ──────────────────────────────────────
+
+            @Override
+            public mutationtester.msl.ValueKind valueKind(ParseTree ctx) {
+                return Literals.valueKind(Literals.Lang.JAVA, ctx);
+            }
+
+            @Override
+            public String convert(ParseTree node, String fromType, String toType, String toCondition, ParseTree ctx) {
+                mutationtester.msl.ValueKind from = valueKind(node);
+                if (from == null) return null;
+                // int n = 42.0; and a[1.0] don't compile: keep integers where the code needs one.
+                if (!from.typeName() && from.fits("integer") && !toType.equals("integer")
+                        && !toType.equals("based_integer") && Literals.needsInteger(node)) {
+                    return null;
+                }
+                return Literals.convert(Literals.Lang.JAVA, getNodeText(node).strip(), from, toType, toCondition);
+            }
+
+            // ── Statements ────────────────────────────────────────────────
+
+            @Override
+            public List<ParseTree> ifParts(ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.StatementContext s) || s.IF() == null) return null;
+                return java.util.Arrays.asList(s.expression(0), s.statement(0), s.ELSE() == null ? null : s.statement(1));
+            }
+
+            @Override
+            public boolean isBlock(ParseTree ctx) {
+                return ctx instanceof JavaParser.BlockContext
+                        || ctx instanceof JavaParser.StatementContext s && s.blockLabel != null;
+            }
+
+            /** Keeps the declared type: int n = 0, not var n = 0. */
+            @Override
+            public String renderDeclaration(String name, String value, ParseTree ctx) {
+                String type = ctx instanceof JavaParser.LocalVariableDeclarationContext d && d.typeType() != null
+                        ? d.typeType().getText() : "var";
+                return type + " " + name + " = " + value;
+            }
+
+            @Override
+            public String renderForEach(String name, String collection, String body, ParseTree ctx) {
+                return "for (var " + name + " : " + collection + ") " + body;
+            }
+
+            // ── Collections, functions and types ────────────────────────────
+
+            @Override
+            public boolean isLambda(ParseTree ctx) {
+                return ctx instanceof JavaParser.LambdaExpressionContext;
+            }
+
+            @Override
+            public boolean isTypeName(ParseTree ctx) {
+                return ctx instanceof JavaParser.TypeTypeContext || ctx instanceof JavaParser.CreatedNameContext;
+            }
+
+            @Override
+            public boolean isField(ParseTree ctx) {
+                return ctx instanceof JavaParser.FieldDeclarationContext;
+            }
+
+            /** Java writes array contents in braces: int[] a = {1, 2}. */
+            @Override
+            public String renderCollection(List<String> elements, ParseTree ctx) {
+                return ctx instanceof JavaParser.ArrayInitializerContext ? "{" + String.join(", ", elements) + "}" : null;
+            }
+
+            @Override
+            public String emptyCollection(ParseTree ctx) {
+                return ctx instanceof JavaParser.ArrayInitializerContext ? "{}" : null;
+            }
+
+            @Override
+            public String renderLambda(List<String> parameters, String body, ParseTree ctx) {
+                return "(" + String.join(", ", parameters) + ") -> " + body;
+            }
+
+            /** Keeps the declared type; Java parameters have no defaults. */
+            @Override
+            public String renderParameter(String name, String defaultValue, ParseTree ctx) {
+                if (defaultValue != null || !(ctx instanceof JavaParser.FormalParameterContext p)) return null;
+                return p.typeType().getText() + " " + name;
+            }
+
+            @Override
+            public String renderField(String name, String value, ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.FieldDeclarationContext f)) return null;
+                return f.typeType().getText() + " " + name + (value == null ? "" : " = " + value) + ";";
+            }
+
+            @Override
+            public String renderCast(String type, String value, ParseTree ctx) {
+                return "(" + type + ") " + value;
+            }
+
+            /** new T(args) {} without its body is new T(args). */
+            @Override
+            public String renderInitializedNew(String type, List<String> initializers, ParseTree ctx) {
+                if (!initializers.isEmpty() || !(ctx instanceof JavaParser.ObjectCreationExpressionContext o)) return null;
+                return "new " + type + getNodeText(o.creator().classCreatorRest().arguments());
+            }
+
+            // ── Remaining statements ────────────────────────────────────────
+
+            @Override
+            public String renderKeywordStatement(String kind, String value, ParseTree ctx) {
+                return switch (kind) {
+                    case "assert" -> "assert " + value;
+                    case "annotation" -> "@" + value;
+                    default -> null;
+                };
+            }
+
+            @Override
+            public String renderArm(String pattern, String value, ParseTree ctx) {
+                return "case " + pattern + " -> " + value;
+            }
+
+            // ── Increments ───────────────────────────────────────────────
+
+            @Override
+            public ParseTree incrementOperand(String operator, ParseTree ctx) {
+                if (ctx instanceof JavaParser.PostIncrementDecrementOperatorExpressionContext post
+                        && post.postfix.getText().equals(operator)) {
+                    return post.expression();
+                }
+                if (ctx instanceof JavaParser.UnaryOperatorExpressionContext pre
+                        && pre.prefix.getText().equals(operator)) {
+                    return pre.expression();
+                }
+                return null;
+            }
+
+            @Override
+            public ParseTree expressionStatement(ParseTree ctx) {
+                return ctx.getParent() instanceof JavaParser.StatementContext s && s.statementExpression == ctx
+                        ? s : null;
+            }
+
+            @Override
+            public boolean discardsValue(ParseTree ctx) {
+                // for (...; ...; i++, j--)
+                return expressionStatement(ctx) != null
+                        || ctx.getParent() instanceof JavaParser.ExpressionListContext list
+                            && list.getParent() instanceof JavaParser.ForControlContext control
+                            && control.forUpdate == list;
+            }
+
+            @Override
+            public java.util.Set<String> supportedKinds() {
+                return java.util.Set.of("binary", "predicate", "literal", "identifier", "call",
+                        "if", "while", "for", "assign", "block", "increment", "return", "break", "continue", "declare", "for_each", "do_while", "case", "default_case", "throw", "try",
+                        "unary", "conditional", "compound_assign", "index", "member", "member_call",
+                        "collection", "lambda", "function", "parameter", "type_check", "cast", "field", "initialized_new",
+                        "assert", "with", "yield", "labeled", "arm", "annotation");
+            }
+
+            @Override
+            public java.util.Set<String> supportedPlaceholders() {
+                return java.util.Set.of("quantity", "match", "statement", "invocation_statement",
+                        "return_value", "constructor_call", "non_void_method_call",
+                        "equality_condition", "order_condition",
+                        "number", "integer", "float", "exponential", "based_integer", "string", "char", "boolean",
+                        "condition", "name", "arguments", "block", "contains", "collection", "lambda", "type", "field");
             }
 
             @Override
@@ -514,72 +764,188 @@ public class JavaMutationScanner {
                 return ";";
             }
 
+            // ── PIT-style placeholders ───────────────────────────────────
+
             @Override
-            public String getSingleArgumentText(ParseTree ctx, String functionName) {
-                String text = getNodeText(ctx);
-                if (text == null) return null;
-                String inner = MSLScannerAdapter.argumentText(text, functionName);
-                if (inner == null || inner.isEmpty() || hasTopLevelComma(inner)) {
+            public boolean matchesPlaceholder(String type, ParseTree ctx) {
+                return switch (type) {
+                    case "statement" -> ctx instanceof JavaParser.StatementContext || ctx instanceof JavaParser.BlockContext
+                            || mutationtester.msl.CstNodes.isSpan(ctx);
+                    case "return_value" -> returnStatementOf(ctx) != null;
+                    case "constructor_call" -> isConstructorCall(ctx);
+                    case "non_void_method_call" -> assignmentOf(ctx) != null;
+                    // javac rejects while (false) and code after while (true) as
+                    // unreachable, so only if-conditions are removed.
+                    case "equality_condition" -> isIfCondition(ctx)
+                            && mutationtester.msl.CstNodes.anyTokenContains(ctx, "==", "!=");
+                    case "order_condition" -> isIfCondition(ctx)
+                            && mutationtester.msl.CstNodes.anyTokenContains(ctx, "<", ">");
+                    default -> MSLScannerAdapter.super.matchesPlaceholder(type, ctx);
+                };
+            }
+
+            /** The return statement whose value ctx is, else null. */
+            private JavaParser.StatementContext returnStatementOf(ParseTree ctx) {
+                return ctx instanceof JavaParser.ExpressionContext
+                        && ctx.getParent() instanceof JavaParser.StatementContext s
+                        && s.RETURN() != null && s.expression(0) == ctx ? s : null;
+            }
+
+            /** new T(...), but not an anonymous class or a thrown exception, which can't become null. */
+            private boolean isConstructorCall(ParseTree ctx) {
+                if (!(ctx instanceof JavaParser.ObjectCreationExpressionContext creation)
+                        || creation.creator().classCreatorRest() == null
+                        || creation.creator().classCreatorRest().classBody() != null) {
+                    return false;
+                }
+                return !(ctx.getParent() instanceof JavaParser.StatementContext s && s.THROW() != null);
+            }
+
+            private boolean isIfCondition(ParseTree ctx) {
+                return ctx instanceof JavaParser.ExpressionContext
+                        && ctx.getParent() instanceof JavaParser.StatementContext s
+                        && s.IF() != null && s.expression(0) == ctx;
+            }
+
+            /**
+             * For a call that starts the value of a plain assignment or an
+             * initialized declaration (v = f(x), int v = a.b(c).d()), the
+             * assignment or declarator; else null. "var v = f()" is left alone,
+             * since "var v = null" doesn't compile.
+             */
+            private ParseTree assignmentOf(ParseTree ctx) {
+                if (callArguments(ctx) == null) return null;
+                ParseTree value = ctx;
+                while (value.getParent() instanceof JavaParser.ExpressionContext parent
+                        && parent.getChild(0) == value) {
+                    value = parent;
+                }
+                ParseTree parent = value.getParent();
+                if (parent instanceof JavaParser.BinaryOperatorExpressionContext assign
+                        && assign.bop != null && assign.bop.getText().equals("=")
+                        && assign.expression(1) == value) {
+                    return assign;
+                }
+                if (parent instanceof JavaParser.VariableInitializerContext init
+                        && init.getParent() instanceof JavaParser.VariableDeclaratorContext declarator) {
+                    return declarator;
+                }
+                // try (Stream<Path> s = Files.walk(root)) - but not "try (var s = ...)"
+                if (parent instanceof JavaParser.ResourceContext resource && resource.VAR() == null
+                        && resource.expression() == value) {
+                    return resource;
+                }
+                return null;
+            }
+
+            @Override
+            public String renderValue(String placeholderType, ParseTree ctx) {
+                switch (placeholderType) {
+                    case "empty_value" -> {
+                        // A value of the method's declared return type.
+                        String returnType = enclosingReturnType(ctx);
+                        return returnType == null
+                                ? TypedEmptyValues.forExpression(getNodeText(ctx), "null", "false")
+                                : TypedEmptyValues.forType(returnType, false);
+                    }
+                    case "default_value" -> {
+                        ParseTree assignment = assignmentOf(ctx);
+                        String type = assignment == null ? null : assignedType(assignment);
+                        if (type == null) return "null";
+                        String value = TypedEmptyValues.forType(type, false);
+                        // A number is the default for numbers, not an "empty" value.
+                        return value == null ? null
+                                : value.equals("\"\"") || value.equals("Optional.empty()") ? "null" : value;
+                    }
+                    default -> {
+                        return null;
+                    }
+                }
+            }
+
+            /** The declared return type of the method around ctx, or null. */
+            private String enclosingReturnType(ParseTree ctx) {
+                for (ParseTree p = ctx.getParent(); p != null; p = p.getParent()) {
+                    if (p instanceof JavaParser.MethodDeclarationContext m) return m.typeTypeOrVoid().getText();
+                    if (p instanceof JavaParser.InterfaceCommonBodyDeclarationContext m) {
+                        return m.typeTypeOrVoid().getText();
+                    }
+                }
+                return null;
+            }
+
+            /**
+             * The declared type of the variable being assigned: from the
+             * declaration itself, or for a plain "v = ...", from the nearest
+             * earlier declaration of v. Null when unknown.
+             */
+            private String assignedType(ParseTree assignment) {
+                if (assignment instanceof JavaParser.ResourceContext resource) {
+                    return resource.classOrInterfaceType().getText();
+                }
+                if (assignment instanceof JavaParser.VariableDeclaratorContext declarator) {
+                    ParseTree declarators = declarator.getParent();
+                    ParseTree owner = declarators == null ? null : declarators.getParent();
+                    if (owner instanceof JavaParser.LocalVariableDeclarationContext local && local.typeType() != null) {
+                        return local.typeType().getText();
+                    }
+                    if (owner instanceof JavaParser.FieldDeclarationContext field) return field.typeType().getText();
                     return null;
                 }
-                return inner;
-            }
-
-            @Override
-            public List<String> getFunctionAliases(String canonicalFunctionName) {
-                if ("string.IsNullOrEmpty".equals(canonicalFunctionName)) {
-                    return List.of(
-                            "string.IsNullOrEmpty",
-                            "String.IsNullOrEmpty",
-                            "Strings.isNullOrEmpty",
-                            "StringUtils.isEmpty",
-                            "isNullOrEmpty"
-                    );
+                JavaParser.ExpressionContext target = ((JavaParser.BinaryOperatorExpressionContext) assignment).expression(0);
+                String name = null;
+                if (target instanceof JavaParser.PrimaryExpressionContext primary && primary.primary().identifier() != null) {
+                    name = primary.primary().identifier().getText();
+                } else if (target instanceof JavaParser.MemberReferenceExpressionContext member && member.identifier() != null) {
+                    name = member.identifier().getText();
                 }
-                return List.of(canonicalFunctionName);
-            }
-
-            private boolean hasTopLevelComma(String text) {
-                int parenDepth = 0;
-                int bracketDepth = 0;
-                int braceDepth = 0;
-                boolean inString = false;
-                char stringDelimiter = '\0';
-
-                for (int i = 0; i < text.length(); i++) {
-                    char c = text.charAt(i);
-                    if (i > 0 && text.charAt(i - 1) == '\\') {
-                        continue;
-                    }
-                    if (inString) {
-                        if (c == stringDelimiter) {
-                            inString = false;
-                            stringDelimiter = '\0';
-                        }
-                        continue;
-                    }
-                    if (c == '"' || c == '\'') {
-                        inString = true;
-                        stringDelimiter = c;
-                        continue;
-                    }
-                    switch (c) {
-                        case '(' -> parenDepth++;
-                        case ')' -> parenDepth--;
-                        case '[' -> bracketDepth++;
-                        case ']' -> bracketDepth--;
-                        case '{' -> braceDepth++;
-                        case '}' -> braceDepth--;
-                        case ',' -> {
-                            if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
-                                return true;
-                            }
-                        }
-                        default -> {
-                        }
+                if (name == null) return null;
+                int before = ((ParserRuleContext) assignment).getStart().getTokenIndex();
+                String type = null;
+                int nearest = -1;
+                for (Object[] declaration : declarations()) {
+                    int index = (Integer) declaration[0];
+                    if (index < before && index > nearest && declaration[1].equals(name)) {
+                        nearest = index;
+                        type = (String) declaration[2];
                     }
                 }
-                return false;
+                return type;
+            }
+
+            private List<Object[]> declarations;
+
+            /** {token index, name, type} for every typed variable, field, parameter and catch variable. */
+            private List<Object[]> declarations() {
+                if (declarations == null) {
+                    declarations = new ArrayList<>();
+                    collectDeclarations(tree);
+                }
+                return declarations;
+            }
+
+            private void collectDeclarations(ParseTree node) {
+                if (node instanceof JavaParser.LocalVariableDeclarationContext local && local.typeType() != null) {
+                    addDeclarators(local.variableDeclarators(), local.typeType().getText());
+                } else if (node instanceof JavaParser.FieldDeclarationContext field) {
+                    addDeclarators(field.variableDeclarators(), field.typeType().getText());
+                } else if (node instanceof JavaParser.FormalParameterContext param) {
+                    addDeclaration(param.variableDeclaratorId().identifier(), param.typeType().getText());
+                } else if (node instanceof JavaParser.CatchClauseContext caught) {
+                    addDeclaration(caught.identifier(), caught.catchType().getText());
+                }
+                for (int i = 0; i < node.getChildCount(); i++) collectDeclarations(node.getChild(i));
+            }
+
+            private void addDeclarators(JavaParser.VariableDeclaratorsContext declarators, String type) {
+                if (declarators == null) return;
+                for (JavaParser.VariableDeclaratorContext d : declarators.variableDeclarator()) {
+                    addDeclaration(d.variableDeclaratorId().identifier(), type);
+                }
+            }
+
+            private void addDeclaration(JavaParser.IdentifierContext id, String type) {
+                if (id != null) declarations.add(new Object[]{id.getStart().getTokenIndex(), id.getText(), type});
             }
 
             @Override
@@ -593,31 +959,6 @@ public class JavaMutationScanner {
                     return new int[]{s.getLine(), s.getCharPositionInLine()};
                 }
                 return new int[]{0, 0};
-            }
-
-            @Override
-            public String getSourceLine(ParseTree ctx) {
-                ParseTree p = ctx;
-                while (p != null && !(p instanceof mutationtester.JavaParser.StatementContext)) {
-                    p = p.getParent();
-                }
-                if (p != null) {
-                    org.antlr.v4.runtime.ParserRuleContext prc = (org.antlr.v4.runtime.ParserRuleContext) p;
-                    if (prc.getStart() != null && prc.getStop() != null) {
-                        int start = prc.getStart().getStartIndex();
-                        int stop = prc.getStop().getStopIndex();
-                        if (start >= 0 && stop >= start) {
-                            return prc.getStart().getInputStream().getText(new org.antlr.v4.runtime.misc.Interval(start, stop));
-                        }
-                    }
-                }
-                
-                int[] pos = getTokenPosition(ctx);
-                int lineIndex = pos[0] - 1; // ANTLR line numbers are 1-based
-                if (lineIndex >= 0 && lineIndex < sourceLines.length) {
-                    return sourceLines[lineIndex];
-                }
-                return "";
             }
 
             @Override

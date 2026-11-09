@@ -2,5 +2,5 @@
 
 These five files contain equivalent examples for conditional replacement,
 logical-negation removal, empty returns, method-call mutation, and constructor-call
-replacement. Run `mvn "-Dtest=UniversalPitBehaviorTests" test` from the repository
-root to print the five-language verification matrix.
+replacement. `MslBaselineTests` scans them with every spec in `specs/`, so a
+change that loses one of their mutants fails the build.

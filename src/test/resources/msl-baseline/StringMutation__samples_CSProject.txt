@@ -1,0 +1,4 @@
+src/CSProject/StringMutation.cs	12	19	string.IsNullOrEmpty(value)	(value != "")
+src/CSProject/StringMutation.cs	12	19	string.IsNullOrEmpty(value)	(value != null)
+src/CSProject/StringMutation.cs	7	19	string.IsNullOrEmpty(value)	(value != "")
+src/CSProject/StringMutation.cs	7	19	string.IsNullOrEmpty(value)	(value != null)

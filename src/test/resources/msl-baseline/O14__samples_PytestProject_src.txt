@@ -1,0 +1,5 @@
+Demo.py	12	9	>	>=
+DemoLogicalAndToOr.py	3	13	>	>=
+DemoLogicalAndToOr.py	3	23	>	>=
+DemoLogicalOrToAnd.py	3	13	>	>=
+DemoLogicalOrToAnd.py	3	22	>	>=

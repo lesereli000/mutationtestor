@@ -1,0 +1,206 @@
+project/doc/manual-racket.js	101	50	&&	||
+project/doc/manual-racket.js	156	17	&&	||
+project/doc/manual-racket.js	156	31	&&	||
+project/doc/manual-racket.js	156	38	&&	||
+project/doc/manual-racket.js	166	48	||	&&
+project/doc/manual-racket.js	167	46	||	&&
+project/doc/manual-racket.js	168	47	||	&&
+project/doc/manual-racket.js	178	17	&&	||
+project/doc/manual-racket.js	185	26	==	!=
+project/doc/manual-racket.js	193	42	+	-
+project/doc/manual-racket.js	194	42	+	-
+project/doc/manual-racket.js	194	60	+	-
+project/doc/manual-racket.js	195	41	>	<=
+project/doc/manual-racket.js	195	41	>	>=
+project/doc/manual-racket.js	198	31	&&	||
+project/doc/manual-racket.js	243	35	===	!==
+project/doc/manual-racket.js	25	28	==	!=
+project/doc/manual-racket.js	30	30	>=	<
+project/doc/manual-racket.js	30	30	>=	>
+project/doc/manual-racket.js	36	23	==	!=
+project/doc/manual-racket.js	36	47	||	&&
+project/doc/manual-racket.js	36	58	==	!=
+project/doc/manual-racket.js	38	19	==	!=
+project/doc/manual-racket.js	43	38	||	&&
+project/doc/manual-racket.js	45	28	<	<=
+project/doc/manual-racket.js	45	28	<	>=
+project/doc/manual-racket.js	56	34	&&	||
+project/doc/manual-racket.js	58	14	||	&&
+project/doc/manual-racket.js	58	23	||	&&
+project/doc/manual-racket.js	95	43	===	!==
+project/doc/manual-racket.js	97	24	&&	||
+project/doc/manual-racket.js	97	36	&&	||
+project/doc/scribble-common.js	106	55	!=	==
+project/doc/scribble-common.js	118	12	&&	||
+project/doc/scribble-common.js	118	25	===	!==
+project/doc/scribble-common.js	120	10	==	!=
+project/doc/scribble-common.js	131	25	==	!=
+project/doc/scribble-common.js	165	15	===	!==
+project/doc/scribble-common.js	165	23	||	&&
+project/doc/scribble-common.js	165	32	===	!==
+project/doc/scribble-common.js	165	41	&&	||
+project/doc/scribble-common.js	165	53	===	!==
+project/doc/scribble-common.js	18	32	||	&&
+project/doc/scribble-common.js	22	25	===	!==
+project/doc/scribble-common.js	22	31	||	&&
+project/doc/scribble-common.js	47	33	<=	<
+project/doc/scribble-common.js	47	33	<=	>
+project/doc/scribble-common.js	53	14	>=	<
+project/doc/scribble-common.js	53	14	>=	>
+project/doc/scribble-common.js	53	19	&&	||
+project/doc/scribble-common.js	53	43	==	!=
+project/doc/scribble-common.js	54	41	+	-
+project/doc/scribble-common.js	65	25	+	-
+project/doc/scribble-common.js	65	30	*	/
+project/doc/scribble-common.js	65	33	*	/
+project/doc/scribble-common.js	65	36	*	/
+project/doc/scribble-common.js	65	39	*	/
+project/doc/scribble-common.js	83	8	==	!=
+project/doc/scribble-common.js	86	15	+	-
+project/doc/scribble-common.js	92	10	!=	==
+project/doc/scribble-common.js	95	29	!=	==
+project/src/add1.rkt	6	3	+	-
+project/src/add2.rkt	6	3	+	-
+project/src/demo-equal-to-not-equal.rkt	10	2	(equal? (vector-ref v i) val)	(not (equal? (vector-ref v i) val))
+project/src/demo-equal-to-not-equal.rkt	13	2	(equal? s null)	(not (equal? s null))
+project/src/demo-equal-to-not-equal.rkt	18	8	(equal? x y)	(not (equal? x y))
+project/src/demo-equal-to-not-equal.rkt	25	8	(equal? x y)	(not (equal? x y))
+project/src/demo-equal-to-not-equal.rkt	33	13	(equal? a b)	(not (equal? a b))
+project/src/demo-equal-to-not-equal.rkt	33	26	(equal? b c)	(not (equal? b c))
+project/src/demo-equal-to-not-equal.rkt	33	9	and	or
+project/src/demo-equal-to-not-equal.rkt	4	2	(equal? a b)	(not (equal? a b))
+project/src/demo-equal-to-not-equal.rkt	53	11	(equal? 5 5)	(not (equal? 5 5))
+project/src/demo-equal-to-not-equal.rkt	54	11	(equal? 5 10)	(not (equal? 5 10))
+project/src/demo-equal-to-not-equal.rkt	55	12	and	or
+project/src/demo-equal-to-not-equal.rkt	55	16	(equal? 5 5)	(not (equal? 5 5))
+project/src/demo-equal-to-not-equal.rkt	55	29	(equal? 10 10)	(not (equal? 10 10))
+project/src/demo-equal-to-not-equal.rkt	7	20	(equal? b c)	(not (equal? b c))
+project/src/demo-equal-to-not-equal.rkt	7	3	and	or
+project/src/demo-equal-to-not-equal.rkt	7	7	(equal? a b)	(not (equal? a b))
+project/src/demo-logical-and-to-or.rkt	5	16	>	<=
+project/src/demo-logical-and-to-or.rkt	5	16	>	>=
+project/src/demo-logical-and-to-or.rkt	5	3	and	or
+project/src/demo-logical-and-to-or.rkt	5	8	>	<=
+project/src/demo-logical-and-to-or.rkt	5	8	>	>=
+project/src/demo-logical-or-to-and.rkt	5	15	>	<=
+project/src/demo-logical-or-to-and.rkt	5	15	>	>=
+project/src/demo-logical-or-to-and.rkt	5	3	or	and
+project/src/demo-logical-or-to-and.rkt	5	7	>	<=
+project/src/demo-logical-or-to-and.rkt	5	7	>	>=
+project/src/demo-minus-to-plus.rkt	10	3	-	+
+project/src/demo-minus-to-plus.rkt	21	12	-	+
+project/src/demo-minus-to-plus.rkt	22	12	-	+
+project/src/demo-minus-to-plus.rkt	22	15	-	+
+project/src/demo-minus-to-plus.rkt	4	3	-	+
+project/src/demo-minus-to-plus.rkt	7	3	-	+
+project/src/demo-minus-to-plus.rkt	7	6	-	+
+project/src/demo-not-equal-to-equal.rkt	10	3	and	or
+project/src/demo-not-equal-to-equal.rkt	36	9	and	or
+project/src/demo-not-equal-to-equal.rkt	4	2	(not (equal? a b))	(equal? a b)
+project/src/demo-not-equal-to-equal.rkt	4	7	(equal? a b)	(not (equal? a b))
+project/src/demo-not-equal-to-equal.rkt	57	12	and	or
+project/src/demo.rkt	23	7	>	<=
+project/src/demo.rkt	23	7	>	>=
+project/src/demo.rkt	30	7	>=	<
+project/src/demo.rkt	30	7	>=	>
+project/src/demo.rkt	37	12	+	-
+project/src/demo.rkt	5	3	+	-
+project/src/demo.rkt	9	3	+	-
+project/src/demo.rkt	9	6	+	-
+project/src/loop-demo.rkt	14	7	<=	<
+project/src/loop-demo.rkt	14	7	<=	>
+project/src/loop-demo.rkt	8	18	+	-
+project/src/loop-demo.rkt	8	42	-	+
+project/src/operators.rkt	10	3	-	+
+project/src/operators.rkt	14	7	>	<=
+project/src/operators.rkt	14	7	>	>=
+project/src/operators.rkt	19	7	>=	<
+project/src/operators.rkt	19	7	>=	>
+project/src/operators.rkt	25	7	<	<=
+project/src/operators.rkt	25	7	<	>=
+project/src/operators.rkt	30	7	<=	<
+project/src/operators.rkt	30	7	<=	>
+project/src/operators.rkt	37	6	(= x y)	(not (= x y))
+project/src/operators.rkt	43	12	>	<=
+project/src/operators.rkt	43	12	>	>=
+project/src/operators.rkt	43	20	>	<=
+project/src/operators.rkt	43	20	>	>=
+project/src/operators.rkt	43	7	and	or
+project/src/operators.rkt	45	11	or	and
+project/src/operators.rkt	45	15	>	<=
+project/src/operators.rkt	45	15	>	>=
+project/src/operators.rkt	45	23	>	<=
+project/src/operators.rkt	45	23	>	>=
+project/src/operators.rkt	58	3	*	/
+project/src/operators.rkt	61	3	/	*
+project/src/operators.rkt	65	3	modulo	*
+project/src/operators.rkt	69	3	bitwise-and	bitwise-ior
+project/src/operators.rkt	7	3	+	-
+project/src/operators.rkt	72	3	bitwise-ior	bitwise-and
+project/src/operators.rkt	87	7	<=	<
+project/src/operators.rkt	87	7	<=	>
+project/src/pit-mutations.rkt	101	2	(eq? a b)	(not (eq? a b))
+project/src/pit-mutations.rkt	57	6	(= n 0)	(not (= n 0))
+project/src/pit-mutations.rkt	61	10	<	<=
+project/src/pit-mutations.rkt	61	10	<	>=
+project/src/pit-mutations.rkt	62	10	>	<=
+project/src/pit-mutations.rkt	62	10	>	>=
+project/src/pit-mutations.rkt	79	3	+	-
+project/src/prototypeSample.rkt	10	14	+	-
+project/src/prototypeSample.rkt	11	14	-	+
+project/src/prototypeSample.rkt	12	14	*	/
+project/src/prototypeSample.rkt	13	14	quotient	/
+project/src/prototypeSample.rkt	14	14	modulo	*
+project/src/prototypeSample.rkt	19	8	(= a b)	(not (= a b))
+project/src/prototypeSample.rkt	20	9	>	<=
+project/src/prototypeSample.rkt	20	9	>	>=
+project/src/prototypeSample.rkt	21	9	<	<=
+project/src/prototypeSample.rkt	21	9	<	>=
+project/src/prototypeSample.rkt	22	9	>=	<
+project/src/prototypeSample.rkt	22	9	>=	>
+project/src/prototypeSample.rkt	23	9	<=	<
+project/src/prototypeSample.rkt	23	9	<=	>
+project/src/prototypeSample.rkt	24	8	(equal? a b)	(not (equal? a b))
+project/src/prototypeSample.rkt	25	8	(eq? a b)	(not (eq? a b))
+project/src/prototypeSample.rkt	29	14	>	<=
+project/src/prototypeSample.rkt	29	14	>	>=
+project/src/prototypeSample.rkt	29	22	>	<=
+project/src/prototypeSample.rkt	29	22	>	>=
+project/src/prototypeSample.rkt	29	9	and	or
+project/src/prototypeSample.rkt	30	13	>	<=
+project/src/prototypeSample.rkt	30	13	>	>=
+project/src/prototypeSample.rkt	30	21	>	<=
+project/src/prototypeSample.rkt	30	21	>	>=
+project/src/prototypeSample.rkt	30	9	or	and
+project/src/prototypeSample.rkt	31	14	>	<=
+project/src/prototypeSample.rkt	31	14	>	>=
+project/src/prototypeSample.rkt	35	9	bitwise-and	bitwise-ior
+project/src/prototypeSample.rkt	36	9	bitwise-ior	bitwise-and
+project/src/prototypeSample.rkt	37	9	bitwise-xor	bitwise-and
+project/src/prototypeSample.rkt	39	28	1	(- 1)
+project/src/prototypeSample.rkt	40	28	-1	1
+project/src/prototypeSample.rkt	45	6	>	<=
+project/src/prototypeSample.rkt	45	6	>	>=
+project/src/prototypeSample.rkt	46	6	<	<=
+project/src/prototypeSample.rkt	46	6	<	>=
+project/src/prototypeSample.rkt	50	7	>	<=
+project/src/prototypeSample.rkt	50	7	>	>=
+project/src/prototypeSample.rkt	56	27	+	-
+project/src/prototypeSample.rkt	60	35	*	/
+project/src/typed-functions.rkt	12	3	quotient	/
+project/src/typed-functions.rkt	15	7	>	<=
+project/src/typed-functions.rkt	15	7	>	>=
+project/src/typed-functions.rkt	20	14	*	/
+project/src/typed-functions.rkt	20	3	+	-
+project/src/typed-functions.rkt	20	6	*	/
+project/src/typed-functions.rkt	6	3	+	-
+project/src/typed-functions.rkt	9	3	*	/
+project/tests/all-tests.rkt	178	19	(string=? (get-output-string out) "")	(not (string=? (get-output-string out) ""))
+project/tests/all-tests.rkt	20	19	(string=? (get-output-string out) "")	(not (string=? (get-output-string out) ""))
+project/tests/pit-mutations-test.rkt	18	19	(string=? (get-output-string out) "")	(not (string=? (get-output-string out) ""))
+project/tests/prototypeSample-test.rkt	8	15	>	<=
+project/tests/prototypeSample-test.rkt	8	15	>	>=
+racket-line-coverage.rkt	17	21	and	or
+racket-line-coverage.rkt	31	63	+	-
+racket-line-coverage.rkt	48	14	(= idx 1)	(not (= idx 1))
+racket-line-coverage.rkt	5	8	(= (vector-length args) 3)	(not (= (vector-length args) 3))

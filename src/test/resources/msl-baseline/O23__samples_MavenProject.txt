@@ -1,0 +1,13 @@
+src/main/java/DemoNotEqualToEqual.java	12	22	!=	==
+src/main/java/DemoNotEqualToEqual.java	16	17	!=	==
+src/main/java/DemoNotEqualToEqual.java	23	14	!=	==
+src/main/java/DemoNotEqualToEqual.java	34	14	!=	==
+src/main/java/DemoNotEqualToEqual.java	4	17	!=	==
+src/main/java/DemoNotEqualToEqual.java	46	15	!=	==
+src/main/java/DemoNotEqualToEqual.java	46	27	!=	==
+src/main/java/DemoNotEqualToEqual.java	66	29	!=	==
+src/main/java/DemoNotEqualToEqual.java	67	29	!=	==
+src/main/java/DemoNotEqualToEqual.java	68	30	!=	==
+src/main/java/DemoNotEqualToEqual.java	68	44	!=	==
+src/main/java/DemoNotEqualToEqual.java	8	18	!=	==
+src/main/java/DemoNotEqualToEqual.java	8	30	!=	==

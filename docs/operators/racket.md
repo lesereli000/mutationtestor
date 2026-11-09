@@ -11,7 +11,8 @@ Nothing inside a macro definition (`define-syntax-rule`, `define-syntax`,
 
 ## Built-in operators
 
-Use these names in `mutator_type`. `ALL` runs every one of them.
+These are the deprecated built-in operators. `mutator_type` is now ignored, so
+they only run through the scanner's own tests; write spec rules instead.
 
 ### Arithmetic
 
@@ -121,11 +122,11 @@ its body. The `RVM_*` operators only look at that expression itself;
 
 ## Spec rules (MSL)
 
-With `mutator_type=CUSTOM`, the rules in a spec file run instead. Spec files
+The rules in the `custom_mutation_spec` file are what runs. Spec files
 always use the canonical operator, and the Racket adapter matches and writes
 Racket's own form.
 
-### Operators (`OperatorMutations.txt`)
+### Operators (`specs/OperatorMutations.spec`)
 
 | Spec operator | In Racket code |
 |---------------|----------------|
@@ -142,19 +143,20 @@ Racket's own form.
 | `!=` | `(not (= a b))`; `==` ↔ `!=` adds or removes the `not` |
 | `&&` `\|\|` | `and` `or` |
 
-### Statements (`StatementMutation.txt`)
+### Statements (`specs/StatementMutation.spec`)
 
 | Spec rule | In Racket code |
 |-----------|----------------|
-| `{invocation_statement}` → `;` | A call whose result is discarded → `(void)` |
+| `Delete: {invocation_statement}` | A call whose result is discarded → `(void)` |
 | `{return_value}` → `{empty_value}` | Each returned value → the empty value of its type: `0`, `#f`, `""` or `'()` |
 | `{constructor_call}` → `null` | `(posn 0 0)` → `'()` |
 | `{non_void_method_call}` → `{default_value}` | `(helper a)` → a default chosen by name, as in `NON_VOID_METHOD_CALLS` |
 | `{equality_condition}` → `true` / `false` | `(= a b)` → `#t` / `#f` |
 | `{order_condition}` → `true` / `false` | `(< a b)` → `#t` / `#f` |
 
-The string rules in `StringMutation.txt` (`string.IsNullOrEmpty`) are C#-only
-and find nothing in Racket.
+The string rules in `specs/StringMutation.spec` (`{quantity} is null`) match Racket's
+null-or-empty check, `(or (not s) (string=? s ""))` and its variants, and write
+`(not (eq? s #f))` / `(not (equal? s ""))`.
 
 ## Known limitations
 

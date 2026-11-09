@@ -1,0 +1,6 @@
+test_prototypeSample.py	11	11	MutationTestDemo()	None
+test_prototypeSample.py	14	10	Dog.create_dog("Golden")	None
+test_prototypeSample.py	17	8	Box(1)	None
+test_prototypeSample.py	18	4	b.set(2)	pass
+test_prototypeSample.py	6	4	MutationTestDemo.main()	pass
+test_prototypeSample.py	9	4	MutationTestDemo.static_method()	pass
