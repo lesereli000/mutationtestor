@@ -2,9 +2,14 @@ package mutationtester.msl;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Parses a .spec file into a list of MutationRule objects.
@@ -24,6 +29,8 @@ import java.util.List;
  * Insert: <pattern>
  * Before: <pattern>    (or After: <pattern>)
  * [Except: ...]
+ *
+ * Include: <path>      ← another spec file; its rules are added here
  *
  * End
  *
@@ -48,6 +55,7 @@ public class MutationRuleGenerator {
     private static final String AFTER = "After:";
     private static final String EXCEPT = "Except:";
     private static final String INVERSE = "And: Inverse";
+    private static final String INCLUDE = "Include:";
 
     private static final List<String> RULE_KEYWORDS = List.of(REPLACE, DELETE, INSERT);
     private static final List<String> CLAUSE_KEYWORDS = List.of(WITH, BEFORE, AFTER, EXCEPT, INVERSE);
@@ -58,18 +66,39 @@ public class MutationRuleGenerator {
      * {@code my.spec, line 3: Unsupported MSL operator "LE". Use the canonical operator "<=".}
      */
     public static List<MutationRule> generateRules(File specFile) throws IOException {
-        if (!specFile.isFile()) {
-            throw new IOException("Spec file not found: " + specFile.getPath());
-        }
-        try {
-            return generateRules(Files.readAllLines(specFile.toPath()));
-        } catch (SpecError e) {
-            throw new IOException(specFile.getName() + ", " + e.getMessage(), e);
-        }
+        return loadFile(specFile, new LinkedHashSet<>(), new LinkedHashSet<>());
     }
 
     /** Parses spec text that is already in memory; errors read "line N: problem. fix". */
     public static List<MutationRule> generateRules(List<String> rawLines) throws IOException {
+        return parseLines(rawLines, null, null, new LinkedHashSet<>(), new LinkedHashSet<>());
+    }
+
+    private static List<MutationRule> loadFile(File specFile, Set<String> stack, Set<String> done)
+            throws IOException {
+        if (!specFile.isFile()) {
+            throw new IOException("Spec file not found: " + specFile.getPath());
+        }
+        String key = "file:" + specFile.getCanonicalPath();
+        if (done.contains(key)) {
+            return List.of();
+        }
+        if (!stack.add(key)) {
+            throw new IOException(specFile.getName() + ", circular Include of \"" + specFile.getPath() + "\".");
+        }
+        try {
+            List<MutationRule> rules = parseLines(Files.readAllLines(specFile.toPath()), specFile, null, stack, done);
+            done.add(key);
+            return rules;
+        } catch (SpecError e) {
+            throw new IOException(specFile.getName() + ", " + e.getMessage(), e);
+        } finally {
+            stack.remove(key);
+        }
+    }
+
+    private static List<MutationRule> parseLines(List<String> rawLines, File fromFile, String resourceDir,
+            Set<String> stack, Set<String> done) throws IOException {
         List<String> lines = rawLines.stream()
                 .map(String::strip)
                 .toList();
@@ -77,18 +106,20 @@ public class MutationRuleGenerator {
         List<MutationRule> rules = new ArrayList<>();
 
         int i = 0;
-        // First non-blank line is the group label
+        // First non-blank line is the group label, unless it is Include:.
         String groupLabel = "";
+        boolean groupEnded = false;
         while (i < lines.size() && lines.get(i).isEmpty())
             i++;
-        if (i < lines.size()) {
+        if (i < lines.size() && !lines.get(i).startsWith(INCLUDE)) {
             groupLabel = toGroupLabel(lines.get(i));
             i++;
+        } else {
+            groupEnded = true;
         }
 
         // A spec may hold several groups, each closed by "End"; the first
         // non-blank line after an "End" names the next group.
-        boolean groupEnded = false;
         while (i < lines.size()) {
             String line = lines.get(i);
 
@@ -101,12 +132,19 @@ public class MutationRuleGenerator {
                 i++;
                 continue;
             }
+            if (line.startsWith(INCLUDE)) {
+                rules.addAll(includeFrom(line.substring(INCLUDE.length()).strip(), i + 1,
+                        fromFile, resourceDir, stack, done));
+                i++;
+                continue;
+            }
             String keyword = keywordOf(line, RULE_KEYWORDS);
             if (keyword == null && keywordOf(line, CLAUSE_KEYWORDS) == null && looksLikeKeyword(line)) {
                 // A misspelled keyword would otherwise be skipped as a note,
                 // silently dropping the rule.
                 throw error(i + 1, "Unknown keyword '" + line.substring(0, line.indexOf(':') + 1)
-                        + "'. Rules start with \"Replace:\", \"Delete:\" or \"Insert:\".");
+                        + "'. Rules start with \"Replace:\", \"Delete:\" or \"Insert:\";"
+                        + " \"Include:\" links another spec file.");
             }
             if (groupEnded && keyword == null) {
                 groupLabel = toGroupLabel(line);
@@ -238,6 +276,126 @@ public class MutationRuleGenerator {
 
     private static SpecError error(int line, String message) {
         return new SpecError(line, message);
+    }
+
+    /**
+     * Loads the spec named on an Include: line. Paths are tried relative to the
+     * including file, then the working directory, then under specs/ on disk and
+     * on the classpath (so a bundled jar can Include: OperatorMutations.spec).
+     * A file already loaded in this run is skipped, so a diamond of includes
+     * does not duplicate rules. A cycle is an error.
+     */
+    private static List<MutationRule> includeFrom(String path, int lineNumber, File fromFile,
+            String resourceDir, Set<String> stack, Set<String> done) throws IOException {
+        if (path.isEmpty()) {
+            throw error(lineNumber, "Include: needs a spec file path.");
+        }
+        File disk = resolveDisk(path, fromFile);
+        if (disk != null) {
+            String key = "file:" + disk.getCanonicalPath();
+            if (done.contains(key)) {
+                return List.of();
+            }
+            if (stack.contains(key)) {
+                throw error(lineNumber, "circular Include of \"" + path + "\".");
+            }
+            return loadFile(disk, stack, done);
+        }
+        String resource = resolveResource(path, fromFile, resourceDir);
+        if (resource != null) {
+            String key = "resource:" + resource;
+            if (done.contains(key)) {
+                return List.of();
+            }
+            if (stack.contains(key)) {
+                throw error(lineNumber, "circular Include of \"" + path + "\".");
+            }
+            return loadResource(resource, stack, done);
+        }
+        throw error(lineNumber, "Include: spec file not found: \"" + path + "\".");
+    }
+
+    private static File resolveDisk(String path, File fromFile) {
+        List<File> candidates = new ArrayList<>();
+        if (fromFile != null && fromFile.getParentFile() != null) {
+            candidates.add(new File(fromFile.getParentFile(), path));
+        }
+        candidates.add(new File(path));
+        String slash = path.replace('\\', '/');
+        if (!slash.startsWith("specs/")) {
+            candidates.add(new File("specs", slash));
+        }
+        for (File candidate : candidates) {
+            if (candidate.isFile()) {
+                try {
+                    return candidate.getCanonicalFile();
+                } catch (IOException e) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String resolveResource(String path, File fromFile, String resourceDir) {
+        String slash = path.replace('\\', '/');
+        List<String> candidates = new ArrayList<>();
+        if (resourceDir != null && !resourceDir.isEmpty()) {
+            candidates.add(resourceDir + "/" + slash);
+        }
+        if (fromFile != null && fromFile.getParentFile() != null) {
+            Path parent = fromFile.getParentFile().toPath().toAbsolutePath().normalize();
+            Path specsRoot = Path.of("specs").toAbsolutePath().normalize();
+            if (parent.startsWith(specsRoot)) {
+                Path relative = specsRoot.relativize(parent.resolve(path).normalize());
+                if (!relative.startsWith("..")) {
+                    candidates.add("specs/" + relative.toString().replace('\\', '/'));
+                }
+            }
+        }
+        candidates.add(slash.startsWith("specs/") ? slash : "specs/" + slash);
+        ClassLoader loader = MutationRuleGenerator.class.getClassLoader();
+        for (String raw : candidates) {
+            String resource = normalizeResource(raw);
+            if (resource != null && loader.getResource(resource) != null) {
+                return resource;
+            }
+        }
+        return null;
+    }
+
+    private static String normalizeResource(String resource) {
+        String normalized = Path.of(resource).normalize().toString().replace('\\', '/');
+        if (normalized.isEmpty() || normalized.startsWith("..") || normalized.startsWith("/")) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private static List<MutationRule> loadResource(String resource, Set<String> stack, Set<String> done)
+            throws IOException {
+        String key = "resource:" + resource;
+        if (done.contains(key)) {
+            return List.of();
+        }
+        if (!stack.add(key)) {
+            throw new IOException("circular Include of \"" + resource + "\".");
+        }
+        String dir = resource.contains("/") ? resource.substring(0, resource.lastIndexOf('/')) : "";
+        String name = resource.substring(resource.lastIndexOf('/') + 1);
+        try (InputStream in = MutationRuleGenerator.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IOException("Spec file not found: " + resource);
+            }
+            List<String> lines = new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList();
+            List<MutationRule> rules = parseLines(lines, null, dir, stack, done);
+            done.add(key);
+            return rules;
+        } catch (SpecError e) {
+            throw new IOException(name + ", " + e.getMessage(), e);
+        } finally {
+            stack.remove(key);
+        }
     }
 
     private static int skipBlank(List<String> lines, int i) {

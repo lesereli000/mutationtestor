@@ -25,8 +25,17 @@ Every run reads its rules from `custom_mutation_spec=<file>`. The old
     Before: <pattern>                   ← or After:, never both
     [Except: ...]
 
+    Include: <path>                     ← another spec file; its rules are added here
+
 End
 ```
+
+`Include:` links another spec file so rules can live in grouped files. The
+config still names one spec (`custom_mutation_spec`); that file can
+`Include:` others. Paths are relative to the including file, then the working
+directory, then `specs/` (on disk or bundled in the jar). A file already
+pulled in is not read again. Example: [`specs/operators-and-statements.spec`](../specs/operators-and-statements.spec)
+includes `OperatorMutations.spec` and `StatementMutation.spec`.
 
 The first line names the group; after `End`, the next line names the next
 group. Labels in reports are `<group>: <from> → <to>` (`Math Operators: + → -`),
