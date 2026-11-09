@@ -27,6 +27,10 @@ Every run reads its rules from `custom_mutation_spec=<file>`. The old
 
     Include: <path>                     ← another spec file; its rules are added here
 
+    Group: <name>                       ← a nested group, closed by its own End
+        ...rules, or more Group: lines...
+    End
+
 End
 ```
 
@@ -40,6 +44,29 @@ includes `OperatorMutations.spec` and `StatementMutation.spec`.
 The first line names the group; after `End`, the next line names the next
 group. Labels in reports are `<group>: <from> → <to>` (`Math Operators: + → -`),
 `<group>: delete <target>` or `<group>: insert <tree> before|after <anchor>`.
+
+Inside a group, `Group: <name>` opens a nested group, which can nest again.
+Each nested group needs its own `End`; after it, rules belong to the outer
+group again. Labels join the names with `>`:
+
+```
+Conditionals
+
+    Replace: {quantity} == {quantity}
+    With: {quantity} != {quantity}          ← "Conditionals: == → !="
+
+    Group: Boundary
+        Replace: {quantity} <= {quantity}
+        With: {quantity} < {quantity}       ← "Conditionals > Boundary: <= → <"
+    End
+
+End
+```
+
+Other lines inside a group are notes and are skipped, as before; only
+`Group:` starts a nested group. A top-level group can still run to the end of
+the file without an `End`, but a nested group without one is an error naming
+its `Group:` line.
 
 ## The three rule types
 

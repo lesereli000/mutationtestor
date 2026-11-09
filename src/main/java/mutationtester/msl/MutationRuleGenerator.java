@@ -32,6 +32,10 @@ import java.util.Set;
  *
  * Include: <path>      ← another spec file; its rules are added here
  *
+ * Group: <name>        ← a nested group, closed by its own End; may nest again
+ *   ...rules...
+ * End
+ *
  * End
  *
  * Only the keywords are read as text; every pattern is parsed into an
@@ -56,6 +60,7 @@ public class MutationRuleGenerator {
     private static final String EXCEPT = "Except:";
     private static final String INVERSE = "And: Inverse";
     private static final String INCLUDE = "Include:";
+    private static final String GROUP = "Group:";
 
     private static final List<String> RULE_KEYWORDS = List.of(REPLACE, DELETE, INSERT);
     private static final List<String> CLAUSE_KEYWORDS = List.of(WITH, BEFORE, AFTER, EXCEPT, INVERSE);
@@ -106,25 +111,50 @@ public class MutationRuleGenerator {
         List<MutationRule> rules = new ArrayList<>();
 
         int i = 0;
-        // First non-blank line is the group label, unless it is Include:.
-        String groupLabel = "";
+        // The open groups, outermost first; labels join them ("Conditionals > Boundary").
+        List<String> groups = new ArrayList<>();
+        // The line of each open nested Group:, so a missing End can name it.
+        List<Integer> nestedLines = new ArrayList<>();
         boolean groupEnded = false;
+        // First non-blank line is the group label, unless it is Include:.
         while (i < lines.size() && lines.get(i).isEmpty())
             i++;
         if (i < lines.size() && !lines.get(i).startsWith(INCLUDE)) {
-            groupLabel = toGroupLabel(lines.get(i));
+            groups.add(lines.get(i).startsWith(GROUP)
+                    ? groupName(lines.get(i), i + 1)
+                    : toGroupLabel(lines.get(i)));
             i++;
         } else {
             groupEnded = true;
         }
 
         // A spec may hold several groups, each closed by "End"; the first
-        // non-blank line after an "End" names the next group.
+        // non-blank line after an "End" names the next group. Inside a group,
+        // "Group: <name>" opens a nested group, closed by its own End.
         while (i < lines.size()) {
             String line = lines.get(i);
+            String groupLabel = String.join(" > ", groups);
 
             if (line.equalsIgnoreCase("End")) {
-                groupEnded = true;
+                if (nestedLines.isEmpty()) {
+                    groupEnded = true;
+                } else {
+                    groups.remove(groups.size() - 1);
+                    nestedLines.remove(nestedLines.size() - 1);
+                }
+                i++;
+                continue;
+            }
+            if (line.startsWith(GROUP)) {
+                String name = groupName(line, i + 1);
+                if (groupEnded) {
+                    // Between groups, Group: just names the next one
+                    groups.clear();
+                    groupEnded = false;
+                } else {
+                    nestedLines.add(i + 1);
+                }
+                groups.add(name);
                 i++;
                 continue;
             }
@@ -144,10 +174,11 @@ public class MutationRuleGenerator {
                 // silently dropping the rule.
                 throw error(i + 1, "Unknown keyword '" + line.substring(0, line.indexOf(':') + 1)
                         + "'. Rules start with \"Replace:\", \"Delete:\" or \"Insert:\";"
-                        + " \"Include:\" links another spec file.");
+                        + " \"Include:\" links another spec file and \"Group:\" opens a nested group.");
             }
             if (groupEnded && keyword == null) {
-                groupLabel = toGroupLabel(line);
+                groups.clear();
+                groups.add(toGroupLabel(line));
                 groupEnded = false;
                 i++;
                 continue;
@@ -225,7 +256,24 @@ public class MutationRuleGenerator {
             }
         }
 
+        // A top-level group may run to the end of the file, as it always could,
+        // but a nested one without its End would swallow the groups after it.
+        if (!nestedLines.isEmpty()) {
+            int open = nestedLines.get(nestedLines.size() - 1);
+            throw error(open, "\"Group: " + groups.get(groups.size() - 1) + "\" has no End."
+                    + " Close each nested group with its own End line.");
+        }
+
         return rules;
+    }
+
+    /** The name on a "Group: <name>" line. */
+    private static String groupName(String line, int lineNumber) throws IOException {
+        String name = toGroupLabel(line.substring(GROUP.length()));
+        if (name.isEmpty()) {
+            throw error(lineNumber, "Group: needs a name, e.g. \"Group: Boundary\".");
+        }
+        return name;
     }
 
     private static int readExcepts(List<String> lines, int i, List<MSLTree> excepts) throws IOException {
