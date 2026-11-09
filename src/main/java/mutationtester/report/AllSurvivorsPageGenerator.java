@@ -96,9 +96,8 @@ public class AllSurvivorsPageGenerator {
                     String operator = point.getOperator();
                     String replacement = point.getReplacement();
                     String sourceSnippet = readSourceLine(point.getSourceFile().toPath(), line);
-                        String operatorName = normalizeMutationLabel(
-                            point.getCustomLabel() != null ? point.getCustomLabel()
-                                : getMutationOperatorName(operator, replacement));
+                    String operatorName = ReportLabels.displayLabel(
+                            point.getCustomLabel(), operator, replacement);
                     String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                     String mutantId = EquivalentMutantStore.buildMutantId(result);
                     Set<String> candidateMutantIds = EquivalentMutantStore.buildCandidateMutantIds(result);
@@ -127,9 +126,7 @@ public class AllSurvivorsPageGenerator {
                     customLabel = (String) mutant.getClass().getField("customLabel").get(mutant);
                 } catch (Exception e) {
                 }
-                String operatorName = normalizeMutationLabel(
-                    customLabel != null ? customLabel
-                        : getMutationOperatorName(operator, replacement));
+                String operatorName = ReportLabels.displayLabel(customLabel, operator, replacement);
                 String targetLink = "allFiles/" + stripExtension(file) + ".html#line-" + line;
                 String mutantId = file + ":" + line + ":" + column + ":UNKNOWN:" + operator + ":" + replacement;
 
@@ -170,70 +167,12 @@ public class AllSurvivorsPageGenerator {
         return "";
     }
 
-    private static String normalizeMutationLabel(String label) {
-        if (label == null) {
-            return null;
-        }
-        return label.replace(" ? ", " -> ").replace(" → ", " -> ");
-    }
-
-    private static String getMutationOperatorName(String original, String mutated) {
-        // Arithmetic Operator Replacement (AOR)
-        if (original.equals("+") && mutated.equals("-"))
-            return "AOR_PLUS_TO_MINUS";
-        if (original.equals("-") && mutated.equals("+"))
-            return "AOR_MINUS_TO_PLUS";
-        if (original.equals("*") && mutated.equals("/"))
-            return "AOR_MULTIPLY_TO_DIVIDE";
-        if (original.equals("/") && mutated.equals("*"))
-            return "AOR_DIVIDE_TO_MULTIPLY";
-        if (original.equals("%") && mutated.equals("*"))
-            return "AOR_MODULO_TO_MULTIPLY";
-
-        // Relational Operator Replacement (ROR)
-        if (original.equals(">") && mutated.equals(">="))
-            return "ROR_GT_TO_GE";
-        if (original.equals(">") && mutated.equals("<"))
-            return "ROR_GT_TO_LT";
-        if (original.equals(">=") && mutated.equals(">"))
-            return "ROR_GE_TO_GT";
-        if (original.equals("<") && mutated.equals("<="))
-            return "ROR_LT_TO_LE";
-        if (original.equals("<") && mutated.equals(">"))
-            return "ROR_LT_TO_GT";
-        if (original.equals("<=") && mutated.equals("<"))
-            return "ROR_LE_TO_LT";
-        if (original.equals("==") && mutated.equals("!="))
-            return "ROR_EQ_TO_NE";
-        if (original.equals("!=") && mutated.equals("=="))
-            return "ROR_NE_TO_EQ";
-
-        // Logical Connector Replacement (LCR)
-        if (original.equals("&&") && mutated.equals("||"))
-            return "LCR_AND_TO_OR";
-        if (original.equals("||") && mutated.equals("&&"))
-            return "LCR_OR_TO_AND";
-        if (original.equals("and") && mutated.equals("or"))
-            return "LCR_AND_TO_OR";
-        if (original.equals("or") && mutated.equals("and"))
-            return "LCR_OR_TO_AND";
-
-        // Bitwise Operator Replacement (BOR)
-        if (original.equals("&") && mutated.equals("|"))
-            return "BOR_AND_TO_OR";
-        if (original.equals("|") && mutated.equals("&"))
-            return "BOR_OR_TO_AND";
-
-        // Default
-        return "MUTATION_" + original.toUpperCase().replaceAll("[^A-Z0-9]", "") +
-                "_TO_" + mutated.toUpperCase().replaceAll("[^A-Z0-9]", "");
-    }
-
     private static String generateSearchAndFilters(List<SurvivorEntry> survivors) {
         StringBuilder sb = new StringBuilder();
 
         // Header
         sb.append("<div class=\"header\">\n");
+        sb.append("    <div class=\"report-nav\"><a href=\"mutation-report-demo.html\">Back to summary</a></div>\n");
         sb.append("    <h1>All Surviving Mutants</h1>\n");
         sb.append("    <div class=\"subtitle\">Click any mutant to jump to its location in the source code</div>\n");
         sb.append("</div>\n");
@@ -300,9 +239,12 @@ public class AllSurvivorsPageGenerator {
         sb.append("            <div id=\"equivalent-changes\" class=\"equivalent-changes hidden\"></div>\n");
         sb.append("        </div>\n");
         sb.append("        <div class=\"equivalent-actions\">\n");
-        sb.append("            <button type=\"button\" id=\"save-equivalents\" class=\"save-btn hidden\">Save to GitHub</button>\n");
-        sb.append("            <button type=\"button\" id=\"discard-equivalents\" class=\"discard-btn hidden\">Discard changes</button>\n");
-        sb.append("            <a id=\"equivalent-history\" class=\"history-link hidden\" target=\"_blank\" rel=\"noopener\">History</a>\n");
+        sb.append(
+                "            <button type=\"button\" id=\"save-equivalents\" class=\"save-btn hidden\">Save to GitHub</button>\n");
+        sb.append(
+                "            <button type=\"button\" id=\"discard-equivalents\" class=\"discard-btn hidden\">Discard changes</button>\n");
+        sb.append(
+                "            <a id=\"equivalent-history\" class=\"history-link hidden\" target=\"_blank\" rel=\"noopener\">History</a>\n");
         sb.append("            <label class=\"filter-checkbox\">\n");
         sb.append(
                 "                <input type=\"checkbox\" id=\"hide-equivalent\" checked onchange=\"toggleEquivalent()\">\n");
@@ -357,7 +299,9 @@ public class AllSurvivorsPageGenerator {
 
             sb.append("                <td><code class=\"code-snippet\">").append(escapeHtml(s.sourceCodeSnippet))
                     .append("</code></td>\n");
-            sb.append("                <td class=\"action-cell\"></td>\n");
+            sb.append("                <td class=\"action-cell\">")
+                    .append("<button type=\"button\" class=\"mark-equivalent-btn\">Mark as Equivalent</button>")
+                    .append("</td>\n");
             sb.append("            </tr>\n");
         }
 
@@ -390,6 +334,8 @@ public class AllSurvivorsPageGenerator {
                 "        .header { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }\n");
         sb.append("        .header h1 { font-size: 32px; margin-bottom: 10px; }\n");
         sb.append("        .header .subtitle { opacity: 0.9; font-size: 16px; }\n");
+        sb.append("        .report-nav { margin-bottom: 12px; }\n");
+        sb.append("        .report-nav a { color: white; font-weight: 600; text-decoration: underline; }\n");
         sb.append(
                 "        .controls { padding: 20px 30px; background: #fafafa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }\n");
         sb.append("        .search-box { flex: 1; min-width: 300px; }\n");
@@ -484,11 +430,14 @@ public class AllSurvivorsPageGenerator {
         sb.append("        }\n");
         sb.append("        .equivalent-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }\n");
         sb.append("        .equivalent-changes { font-size: 13px; color: #b45309; margin-top: 4px; }\n");
-        sb.append("        .save-btn { padding: 8px 14px; border: none; background: #2563eb; color: white; border-radius: 4px; cursor: pointer; font-weight: 600; }\n");
+        sb.append(
+                "        .save-btn { padding: 8px 14px; border: none; background: #2563eb; color: white; border-radius: 4px; cursor: pointer; font-weight: 600; }\n");
         sb.append("        .save-btn:hover { background: #1d4ed8; }\n");
-        sb.append("        .discard-btn { padding: 8px 14px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; cursor: pointer; }\n");
+        sb.append(
+                "        .discard-btn { padding: 8px 14px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; cursor: pointer; }\n");
         sb.append("        .history-link { font-size: 14px; color: #2563eb; }\n");
-        sb.append("        .save-status { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 12px 20px; margin: 0 0 15px; border-radius: 6px; font-size: 14px; line-height: 1.5; }\n");
+        sb.append(
+                "        .save-status { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 12px 20px; margin: 0 0 15px; border-radius: 6px; font-size: 14px; line-height: 1.5; }\n");
         sb.append("        .save-status a { color: #047857; font-weight: 600; margin-right: 12px; }\n");
         sb.append("        .mutant-row.unsaved .mark-equivalent-btn { border-style: dashed; }\n");
         sb.append("    </style>\n");
@@ -544,7 +493,131 @@ public class AllSurvivorsPageGenerator {
 
         // Mark as Equivalent JavaScript
         sb.append("<script>\n");
-        sb.append(EQUIVALENT_MANAGER_SCRIPT);
+        sb.append("class EquivalentMutantManager {\n");
+        sb.append("    constructor() {\n");
+        sb.append("        this.apiUrl = 'http://localhost:8081/api/equivalent-mutants';\n");
+        sb.append("        this.equivalentMutants = new Set();\n");
+        sb.append("        this.initPromise = this.init();\n");
+        sb.append("    }\n");
+
+        sb.append("    getMutantIds(row) {\n");
+        sb.append("        try {\n");
+        sb.append("            const ids = JSON.parse(row.dataset.mutantIds || '[]');\n");
+        sb.append("            return ids.length ? ids : [row.dataset.mutantId].filter(Boolean);\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            return [row.dataset.mutantId].filter(Boolean);\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
+
+        sb.append("    findEquivalentId(row) {\n");
+        sb.append("        return this.getMutantIds(row).find(id => this.equivalentMutants.has(id)) || null;\n");
+        sb.append("    }\n");
+
+        sb.append("    async load() {\n");
+        sb.append("        try {\n");
+        sb.append("            const res = await fetch(this.apiUrl);\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            const data = await res.json();\n");
+        sb.append("            this.equivalentMutants = new Set(data.hiddenMutantIds || []);\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            console.error('Failed to load equivalent mutants:', e);\n");
+        sb.append("            this.equivalentMutants = new Set();\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
+
+        sb.append("    async markAsEquivalent(mutantId) {\n");
+        sb.append("        try {\n");
+        sb.append("            const res = await fetch(this.apiUrl, {\n");
+        sb.append("                method: 'POST',\n");
+        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
+        sb.append("                body: JSON.stringify({ id: mutantId })\n");
+        sb.append("            });\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            this.equivalentMutants.add(mutantId);\n");
+        sb.append("            this.updateUI();\n");
+        sb.append("            toggleEquivalent();\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            console.error('Failed to mark equivalent mutant:', e);\n");
+        sb.append(
+                "            alert('Failed to mark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
+
+        sb.append("    async unmarkAsEquivalent(mutantId) {\n");
+        sb.append("        try {\n");
+        sb.append("            const res = await fetch(this.apiUrl, {\n");
+        sb.append("                method: 'DELETE',\n");
+        sb.append("                headers: { 'Content-Type': 'application/json' },\n");
+        sb.append("                body: JSON.stringify({ id: mutantId })\n");
+        sb.append("            });\n");
+        sb.append("            if (!res.ok) throw new Error('HTTP ' + res.status);\n");
+        sb.append("            this.equivalentMutants.delete(mutantId);\n");
+        sb.append("            this.updateUI();\n");
+        sb.append("            toggleEquivalent();\n");
+        sb.append("        } catch (e) {\n");
+        sb.append("            console.error('Failed to unmark equivalent mutant:', e);\n");
+        sb.append(
+                "            alert('Failed to unmark equivalent mutant. Make sure the API server is running on localhost:8081.');\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
+
+        sb.append("    updateUI() {\n");
+        sb.append("        let pageEquivalentCount = 0;\n");
+        sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
+        sb.append("            const isEq = this.findEquivalentId(row) !== null;\n");
+        sb.append("            row.classList.toggle('equivalent', isEq);\n");
+        sb.append("            if (isEq) pageEquivalentCount++;\n");
+        sb.append("            const btn = row.querySelector('.mark-equivalent-btn');\n");
+        sb.append("            if (btn) {\n");
+        sb.append("                btn.textContent = isEq ? '✓ Equivalent' : 'Mark as Equivalent';\n");
+        sb.append("                btn.classList.toggle('marked', isEq);\n");
+        sb.append("            }\n");
+        sb.append("        });\n");
+        sb.append("        const statsEl = document.getElementById('equivalent-stats');\n");
+        sb.append("        if (statsEl) {\n");
+        sb.append(
+                "            statsEl.innerHTML = `<strong>${pageEquivalentCount}</strong> mutant(s) marked as equivalent`;\n");
+        sb.append("        }\n");
+        sb.append("        toggleEquivalent();\n");
+        sb.append("    }\n");
+
+        sb.append("    async init() {\n");
+        sb.append("        await this.load();\n");
+        sb.append("        document.querySelectorAll('.mutant-row').forEach(row => {\n");
+        sb.append("            const mutantId = row.dataset.mutantId;\n");
+        sb.append("            const actionCell = row.querySelector('.action-cell');\n");
+        sb.append("            let btn = actionCell ? actionCell.querySelector('.mark-equivalent-btn') : null;\n");
+        sb.append("            if (actionCell && !btn) {\n");
+        sb.append("                btn = document.createElement('button');\n");
+        sb.append("                btn.type = 'button';\n");
+        sb.append("                btn.className = 'mark-equivalent-btn';\n");
+        sb.append("                btn.textContent = 'Mark as Equivalent';\n");
+        sb.append("                actionCell.appendChild(btn);\n");
+        sb.append("            }\n");
+        sb.append("            if (btn) {\n");
+        sb.append("                btn.onclick = async (e) => {\n");
+        sb.append("                    e.preventDefault();\n");
+        sb.append("                    e.stopPropagation();\n");
+        sb.append("                    if (!mutantId) return;\n");
+        sb.append("                    const existingId = this.findEquivalentId(row);\n");
+        sb.append("                    if (existingId) {\n");
+        sb.append("                        await this.unmarkAsEquivalent(existingId);\n");
+        sb.append("                    } else {\n");
+        sb.append("                        await this.markAsEquivalent(mutantId);\n");
+        sb.append("                    }\n");
+        sb.append("                };\n");
+        sb.append("            }\n");
+        sb.append("        });\n");
+        sb.append("        this.updateUI();\n");
+        sb.append("    }\n");
+        sb.append("}\n");
+
+        sb.append("let equivalentManager;\n");
+        sb.append("document.addEventListener('DOMContentLoaded', async () => {\n");
+        sb.append("    equivalentManager = new EquivalentMutantManager();\n");
+        sb.append("    await equivalentManager.initPromise;\n");
+        sb.append("    toggleEquivalent();\n");
+        sb.append("});\n");
 
         sb.append("function toggleEquivalent() {\n");
         sb.append("    const hide = document.getElementById('hide-equivalent').checked;\n");
@@ -632,13 +705,13 @@ public class AllSurvivorsPageGenerator {
 
     /**
      * Marking equivalent mutants. Three ways to save, picked when the page loads:
-     *   github   - report from GitHub Actions: changes are kept in the page and
-     *              "Save to GitHub" opens GitHub's new-file page prefilled with a
-     *              pending/ batch on the mutation-data branch (one Commit click).
-     *   server   - local report with the API server running: saved immediately,
-     *              as before.
-     *   download - local report, no server: changes are kept in the page and
-     *              downloaded as equivalent-mutants.json.
+     * github - report from GitHub Actions: changes are kept in the page and
+     * "Save to GitHub" opens GitHub's new-file page prefilled with a
+     * pending/ batch on the mutation-data branch (one Commit click).
+     * server - local report with the API server running: saved immediately,
+     * as before.
+     * download - local report, no server: changes are kept in the page and
+     * downloaded as equivalent-mutants.json.
      * Links longer than GitHub accepts are split into several batch files.
      */
     static final String EQUIVALENT_MANAGER_SCRIPT = """
