@@ -23,7 +23,7 @@ Setup, configs and reports are covered in the
 
 | Folder | What it holds |
 |---|---|
-| `specs/` | The mutation spec files. `OperatorMutations.spec`, `StatementMutation.spec`, `StringMutation.spec` and `context-sensitive-mutations.spec` are the main sets; `pit/` holds one PIT mutator each; `single-operator/` holds one operator each (O01–O25), used by the baseline tests. |
+| `specs/` | The mutation spec files. `OperatorMutations.spec`, `StatementMutation.spec`, `StringMutation.spec` and `context-sensitive-mutations.spec` are the main sets; `pit/` holds one PIT mutator each; `single-operator/` holds one operator each (O01–O25), used by the baseline tests. A spec can `Include:` another (see `operators-and-statements.spec`). |
 | `configs/samples/` | A config per sample project and spec, named `<language>-<spec>.config`. Each starts with the command that runs it. |
 | `configs/external/` | Configs for the real-world projects under `external/`. |
 | `samples/` | Small projects in each language, with tests, to run the tool on. Each project's `Demo*` files are the original single-operator examples. |
