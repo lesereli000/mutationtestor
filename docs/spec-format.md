@@ -191,6 +191,12 @@ size: `{integer: int32}` → `{integer: int64}` turns `int x` into `long x` and
 (`{char}`, `{string}`, `{bytes}`, so `'a'` → `"a"`). Java and C# skip a
 conversion where the code needs the original type (`int n = 42.0;`).
 
+[`specs/TypeMutations.spec`](../specs/TypeMutations.spec) has the ten
+conversions the old `TYPE_*` operators made, ready to use: `int`, `long`,
+`float` and `double` to each other (`double d` → `int d`, and separately
+`2.5` → `2`). They need
+sized number types, so they apply to Java and C#.
+
 A placeholder or construct a language doesn't have simply matches nothing
 there. Each run lists the rules that weren't applied to a language's files
 because its adapter doesn't know something they use. A placeholder name the
