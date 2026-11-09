@@ -61,6 +61,7 @@ demo-output/
 /.tools/
 /demo-env.ps1
 /demo-env.cmd
+/demo-env.sh
 
 # Local notes and scripts stay untracked; workflows are shared.
 /.github/*

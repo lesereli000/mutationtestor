@@ -109,6 +109,20 @@ demo-env.cmd
 
 ![Toolchain load](toolchain_load.png)
 
+### macOS and Linux
+
+The same steps work with `scripts/setup-dependencies.sh`, and it takes the same `--minimal`, `--only` and `--skip` options:
+
+```bash
+bash scripts/setup-dependencies.sh             # see what's installed, change nothing
+bash scripts/setup-dependencies.sh --install   # install whatever's missing
+source demo-env.sh                             # load the toolchain into this shell
+```
+
+It installs with Homebrew on macOS and apt on Linux. The .NET SDK, and Node on Linux, are unpacked into `.tools/` instead, because the package feeds lag behind the versions the samples need. Without root access, the JDK and Maven are unpacked into `.tools/` too. Racket needs Homebrew or apt.
+
+Load `demo-env.sh` before running `mvn test`: it puts the pytest the Python sample uses on your PATH. To undo everything, delete `.tools/` and `demo-env.sh`.
+
 ---
 
 ## 2b. Alternative: run it in Docker
