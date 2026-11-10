@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class SafetyIntegrationTests {
     @TempDir Path dir;
+    private static final String MARK_EXECUTED = "echo executed > executed";
 
     private SafetyController controller(String input) {
         return new SafetyController(input == null ? null : new BufferedReader(new StringReader(input)), new PrintStream(new ByteArrayOutputStream()));
@@ -40,7 +41,7 @@ class SafetyIntegrationTests {
         Path file = dir.resolve("sample.py");
         Files.writeString(file, "value = x + y\n");
         MutationPoint point = new MutationPoint(file.toFile(), 1, 10, "+", "-", Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        MutantResult result = Main.testSingleMutant(point, dir, "", "touch executed", CoverageData.empty(), controller(null));
+        MutantResult result = Main.testSingleMutant(point, dir, "", MARK_EXECUTED, CoverageData.empty(), controller(null));
         assertEquals(MutantResult.MutantStatus.SAFETY_SKIPPED, result.getStatus());
         assertNotNull(result.getSafetyAssessment());
         assertFalse(Files.exists(dir.resolve("executed")));
@@ -60,7 +61,7 @@ class SafetyIntegrationTests {
         Path file = dir.resolve("sample.py");
         Files.writeString(file, "value = x + y\n");
         MutationPoint point = new MutationPoint(file.toFile(), 1, 10, "+", "-", Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        MutantResult result = Main.testSingleMutant(point, dir, "", "touch executed", CoverageData.empty(), controller("c\n"));
+        MutantResult result = Main.testSingleMutant(point, dir, "", MARK_EXECUTED, CoverageData.empty(), controller("c\n"));
         assertEquals(MutantResult.MutantStatus.SURVIVED, result.getStatus());
         assertNotNull(result.getSafetyAssessment());
         assertTrue(Files.exists(dir.resolve("executed")));
@@ -71,7 +72,7 @@ class SafetyIntegrationTests {
         Path file = dir.resolve("sample.py");
         Files.writeString(file, "run('SELECT * FROM users')\n");
         MutationPoint point = new MutationPoint(file.toFile(), 1, 5, "SELECT * FROM users", "DROP TABLE users", Mutator.MutatorType.AOR_PLUS_TO_MINUS);
-        MutantResult result = Main.testSingleMutant(point, dir, "", "touch executed", CoverageData.empty(), controller("c\na\n"));
+        MutantResult result = Main.testSingleMutant(point, dir, "", MARK_EXECUTED, CoverageData.empty(), controller("c\na\n"));
         assertEquals(MutantResult.MutantStatus.SAFETY_ABORTED, result.getStatus());
         assertFalse(Files.exists(dir.resolve("executed")));
         assertEquals("run('SELECT * FROM users')\n", Files.readString(file));
