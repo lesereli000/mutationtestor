@@ -9,7 +9,7 @@
 | Git | Any | Clone the repository |
 | Racket | 8.x | Racket language support |
 | Python 3 | 3.8+ | Python language support |
-| Node.js / npm | 18+ | JavaScript support (Puppeteer) |
+| Node.js / npm | 20–24 (24 recommended) | JavaScript support (Puppeteer). Node 26 can't unpack Puppeteer's Chrome |
 | .NET SDK | **10.0** | C# language support |
 
 ---
@@ -60,6 +60,7 @@ Useful variations:
 What the script will and will not do:
 
 - **It never upgrades or replaces anything you already have.** If a usable JDK, Maven, .NET SDK, Node, Python, or Racket is already installed, it is detected and used as-is. A pre-existing .NET 8 or 9 is fine — .NET SDKs install side by side, so adding 10 does not disturb them.
+- **Node is always Node 24 from nodejs.org**, unpacked into `.tools\node`, never Chocolatey's newest LTS: on Node 26, Puppeteer's Chrome download stops partway and still reports success.
 - **It never edits your system PATH.** Instead it writes `demo-env.ps1` and `demo-env.cmd`, which put the detected tools on PATH for one shell session only.
 - **Administrator rights are optional.** Without them it skips Chocolatey and downloads the official upstream archives into `.tools\`.
 - **To undo everything:** delete `.tools\`, `demo-env.ps1`, and `demo-env.cmd`.

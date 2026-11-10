@@ -581,18 +581,24 @@ function Install-MavenPortable {
     return [bool]$dir
 }
 
+# Node 24, not the newest LTS: on Node 26 Puppeteer's Chrome download stops
+# unpacking partway and still reports success. Chocolatey can only pin an exact
+# version, which goes stale, so Node always comes from nodejs.org.
+$NodeMajor = 24
+
 function Install-NodePortable {
     Enable-Tls12
     $ver = $null
     try {
+        # Releases are listed newest first
         $idx = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 60 -Uri 'https://nodejs.org/dist/index.json').Content | ConvertFrom-Json
         foreach ($rel in $idx) {
-            if ($rel.lts -and $rel.version -match '^v(\d+)' -and [int]$Matches[1] -ge 20) { $ver = $rel.version; break }
+            if ($rel.version -match "^v$NodeMajor\.") { $ver = $rel.version; break }
         }
     } catch {
         Warn "nodejs.org index unreachable: $($_.Exception.Message)"
     }
-    if (-not $ver) { $ver = 'v22.11.0' }
+    if (-not $ver) { $ver = 'v24.11.0' }
 
     $url = "https://nodejs.org/dist/$ver/node-$ver-win-x64.zip"
     $zip = Join-Path $DownloadDir "node-$ver-win-x64.zip"
@@ -672,7 +678,7 @@ $Tools = @(
         Key = 'node'; Label = 'Node.js'; Min = [version]'20.0'; Required = $false; Heavy = $false
         Gate = 'the JavaScript sample (Jest + Puppeteer)'
         Find = { Find-Node }; Probe = { param($e) Probe-Node $e }
-        Install = { if (Install-ChocoPackage 'nodejs-lts' 'Node.js LTS') { $true } else { Install-NodePortable } }
+        Install = { Install-NodePortable }   # Node 24 from nodejs.org; see $NodeMajor
         BinDir = { param($e) Split-Path -Parent $e }
     }
     [ordered]@{
@@ -980,8 +986,12 @@ function Restore-Project {
                         Ok "Puppeteer Chrome verified ($($chrome.Detail))."
                     } else {
                         Warn "Puppeteer Chrome is still missing: $($chrome.Detail)"
-                        Warn 'The JS browser test (testRunCommandUnmutatedJSProject) will fail until it is installed.'
-                        Warn "Retry by hand:  cd samples\JSProject ; npx puppeteer browsers install chrome"
+                        Warn 'The JS browser test (testRunCommandUnmutatedJSProject) will be skipped until it is installed.'
+                        if ($node.Version.Major -gt $NodeMajor) {
+                            Warn "Node $($node.Version) can't unpack it; Node $NodeMajor can. Install Node $NodeMajor and re-run."
+                        } else {
+                            Warn "Retry by hand:  cd samples\JSProject ; npx puppeteer browsers install chrome"
+                        }
                     }
                 }
             }
