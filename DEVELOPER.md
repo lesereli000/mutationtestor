@@ -73,7 +73,7 @@ Each language still needs an adapter. A new kind of construct (not just another 
 What works today:
 
 - **Five adapters.** Mixed-language projects as separate files (e.g. [`samples/SharedPitProject`](samples/SharedPitProject)). Embedded snippets (e.g., Python inside a Java string) are not mutated.
-- **Specs** under [`specs/`](specs/): `OperatorMutations.spec`, `StatementMutation.spec`, `StringMutation.spec`, `context-sensitive-mutations.spec`. `specs/pit/` is one PIT-style mutator per file. `specs/single-operator/` is O01–O25 for baseline tests. `specs/catalog/` holds pit / mutmut / stryker / classic catalogs. Adapters map `and`, `equals()`, `bitwise-and`, `Math.floorDiv`, and similar.
+- **Specs** under [`specs/`](specs/): `OperatorMutations.spec`, `StatementMutation.spec`, `StringMutation.spec`, `TypeMutations.spec`, `context-sensitive-mutations.spec`. `specs/pit/` is one PIT-style mutator per file. `specs/single-operator/` is O01–O25 for baseline tests. `specs/catalog/` holds pit / mutmut / stryker / classic catalogs. Adapters map `and`, `equals()`, `bitwise-and`, `Math.floorDiv`, and similar.
 - **Config:** `java -jar <project> <config>`. Required: `source_code_directory`, `custom_mutation_spec`, `test_command`. Sample configs: [`configs/samples/`](configs/samples/). External-project configs: [`configs/external/`](configs/external/). Coverage optional; uncovered lines are `NO COVERAGE`.
 - **Loop:** copy to workdir, baseline tests, scan from the spec, then compile/test/restore each mutant (optionally in parallel workers). Scores `KILLED` / `SURVIVED` / `NO COVERAGE`.
 - **Reports:** console plus HTML (summary, all survivors, per-file source, equivalents). Safety gate before each write (`SAFE` / `REVIEW` / `BLOCK` / `UNKNOWN`). Users run a fat jar. [`samples/`](samples/) holds demos. [`external/`](external/) holds optional git submodules for scale tests (`git submodule update --init`).
@@ -319,7 +319,7 @@ Rule of thumb: if adapters already match the node, a spec line is enough. If the
 
 Use this for operator variations of sites adapters already match. One Replace/With (or Delete/Insert) block applies in every language that implements the construct.
 
-Files: [`specs/OperatorMutations.spec`](specs/OperatorMutations.spec), [`specs/StatementMutation.spec`](specs/StatementMutation.spec), [`specs/StringMutation.spec`](specs/StringMutation.spec), or [`specs/context-sensitive-mutations.spec`](specs/context-sensitive-mutations.spec). Headings become HTML labels. Write symbols as in source: `<=` and `&&`.
+Files: [`specs/OperatorMutations.spec`](specs/OperatorMutations.spec), [`specs/StatementMutation.spec`](specs/StatementMutation.spec), [`specs/StringMutation.spec`](specs/StringMutation.spec), [`specs/TypeMutations.spec`](specs/TypeMutations.spec), or [`specs/context-sensitive-mutations.spec`](specs/context-sensitive-mutations.spec). Headings become HTML labels. Write symbols as in source: `<=` and `&&`.
 
 Example — mutate remainder to plus, under Math Operators in `specs/OperatorMutations.spec`:
 

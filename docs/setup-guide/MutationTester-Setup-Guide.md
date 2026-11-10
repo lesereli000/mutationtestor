@@ -9,7 +9,7 @@
 | Git | Any | Clone the repository |
 | Racket | 8.x | Racket language support |
 | Python 3 | 3.8+ | Python language support |
-| Node.js / npm | 18+ | JavaScript support (Puppeteer) |
+| Node.js / npm | 20–24 (24 recommended) | JavaScript support (Puppeteer). Node 26 can't unpack Puppeteer's Chrome |
 | .NET SDK | **10.0** | C# language support |
 
 ---
@@ -60,6 +60,7 @@ Useful variations:
 What the script will and will not do:
 
 - **It never upgrades or replaces anything you already have.** If a usable JDK, Maven, .NET SDK, Node, Python, or Racket is already installed, it is detected and used as-is. A pre-existing .NET 8 or 9 is fine — .NET SDKs install side by side, so adding 10 does not disturb them.
+- **Node is always Node 24 from nodejs.org**, unpacked into `.tools\node`, never Chocolatey's newest LTS: on Node 26, Puppeteer's Chrome download stops partway and still reports success.
 - **It never edits your system PATH.** Instead it writes `demo-env.ps1` and `demo-env.cmd`, which put the detected tools on PATH for one shell session only.
 - **Administrator rights are optional.** Without them it skips Chocolatey and downloads the official upstream archives into `.tools\`.
 - **To undo everything:** delete `.tools\`, `demo-env.ps1`, and `demo-env.cmd`.
@@ -102,19 +103,26 @@ Before building or running, load the toolchain into your shell:
 . .\demo-env.ps1
 ```
 
-> **If PowerShell says "running scripts is disabled on this system"**, allow scripts for this window only, then load it again:
->
-> ```powershell
-> Set-ExecutionPolicy -Scope Process Bypass -Force
-> . .\demo-env.ps1
-> ```
-
 ```cmd
 :: cmd.exe
 demo-env.cmd
 ```
 
 ![Toolchain load](toolchain_load.png)
+
+### macOS and Linux
+
+The same steps work with `scripts/setup-dependencies.sh`, and it takes the same `--minimal`, `--only` and `--skip` options:
+
+```bash
+bash scripts/setup-dependencies.sh             # see what's installed, change nothing
+bash scripts/setup-dependencies.sh --install   # install whatever's missing
+source demo-env.sh                             # load the toolchain into this shell
+```
+
+It installs with Homebrew on macOS and apt on Linux. The .NET SDK, and Node on Linux, are unpacked into `.tools/` instead, because the package feeds lag behind the versions the samples need. Without root access, the JDK and Maven are unpacked into `.tools/` too. Racket needs Homebrew or apt.
+
+Load `demo-env.sh` before running `mvn test`: it puts the pytest the Python sample uses on your PATH. To undo everything, delete `.tools/` and `demo-env.sh`.
 
 ---
 
