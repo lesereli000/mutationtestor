@@ -64,10 +64,35 @@ The first run creates the `mutation-data` branch on its own.
 
 ## Safety review
 
-CI has no terminal for the safety prompts, so by default every mutant the
-safety review can't prove safe is skipped. The workflow template sets
-`unattended_safety=run_unknown`, which tests mutants rated UNKNOWN and still
-skips REVIEW and BLOCK ones. See [SAFETY.md](../../SAFETY.md).
+CI has no terminal for safety prompts. The workflow template sets
+`unattended_safety=skip`, so REVIEW, UNKNOWN, and BLOCK mutants are skipped.
+The job summary lists safety-skipped mutants separately, and the HTML artifact
+contains their assessment and reason. If every mutant is skipped and a minimum
+score is configured, the job fails because no mutants were scored.
+
+Projects can deliberately set `unattended_safety=run_unknown` to execute
+UNKNOWN mutants, while still skipping REVIEW and BLOCK. This also permits an
+UNKNOWN result after an unavailable or failed model review to run. Baseline
+and test commands can have side effects regardless of this setting.
+
+### Optional model review in CI
+
+1. Create the repository secret `MUTATION_SAFETY_API_KEY` and repository
+   variable `MUTATION_SAFETY_MODEL`. Optionally create the repository variable
+   `MUTATION_SAFETY_API_URL` with the full HTTPS endpoint. The default is the
+   OpenAI Responses endpoint; custom providers must implement the OpenAI
+   Responses API with structured JSON-schema output.
+2. Manually run the workflow on `main` and select `safety_model_review`.
+   Review is disabled for push and pull-request events, and the API key is
+   only supplied to the manually dispatched main-branch mutation step.
+3. The provider receives the original and mutated source file, filename, and
+   compile/test command strings. Enable this only when authorized to share
+   that information and when the main-branch workflow and project code are
+   trusted. GitHub secrets and environment filtering are not a sandbox.
+
+The model may add context or elevate UNKNOWN to REVIEW, but cannot approve a
+mutant or override a local block. Failures fall back to local review or
+UNKNOWN. See [SAFETY.md](../../SAFETY.md) for limits and local configuration.
 
 ## Long runs
 

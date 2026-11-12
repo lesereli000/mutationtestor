@@ -131,6 +131,9 @@ public class Main {
 
             File workingDir = (directory != null) ? new File(directory) : null;
             pb.directory(workingDir);
+            // Model-review credentials belong to the tester, not the project under test.
+            pb.environment().remove("MUTATION_SAFETY_API_KEY");
+            pb.environment().remove("OPENAI_API_KEY");
             pb.redirectErrorStream(true);
             process = pb.start();
             RUNNING_PROCESSES.add(process);
@@ -408,7 +411,7 @@ public class Main {
                 if (minScore == null) {
                     yield EXIT_OK;
                 }
-                if (outcome.report().getTotalMutants() == 0) {
+                if (outcome.report().getTotalMutants() - outcome.report().getSafetySkipped() == 0) {
                     yield EXIT_SETUP_FAILED;
                 }
                 yield roundedScore(outcome.report()) >= minScore ? EXIT_OK : EXIT_BELOW_THRESHOLD;
@@ -423,7 +426,7 @@ public class Main {
         if (outcome.status() == RunStatus.STOPPED_EARLY) {
             return String.format("MUTATION SCORE GATE: NOT CHECKED (the run stopped early; minimum is %.1f%%)", minScore);
         }
-        if (outcome.status() != RunStatus.COMPLETED || outcome.report().getTotalMutants() == 0) {
+        if (outcome.status() != RunStatus.COMPLETED || outcome.report().getTotalMutants() - outcome.report().getSafetySkipped() == 0) {
             return String.format("MUTATION SCORE GATE: FAILED (no mutants to score; minimum is %.1f%%)", minScore);
         }
         double score = roundedScore(outcome.report());
@@ -479,10 +482,14 @@ public class Main {
             }
         }
         md.append("\n\n");
-        md.append("| Killed | Survived | No coverage | Equivalent (excluded) | Scored |\n");
-        md.append("|---:|---:|---:|---:|---:|\n");
-        md.append(String.format("| %d | %d | %d | %d | %d |\n\n", report.getKilled(), report.getSurvived(),
-                report.getNoCoverage(), report.getEquivalent(), report.getTotalMutants()));
+        md.append("| Killed | Survived | No coverage | Safety skipped/aborted | Equivalent (excluded) | Scored |\n");
+        md.append("|---:|---:|---:|---:|---:|---:|\n");
+        md.append(String.format("| %d | %d | %d | %d | %d | %d |\n\n", report.getKilled(), report.getSurvived(),
+                report.getNoCoverage(), report.getSafetySkipped(), report.getEquivalent(),
+                report.getTotalMutants() - report.getSafetySkipped()));
+        if (report.getSafetySkipped() > 0) {
+            md.append("Safety-skipped or aborted mutants were not executed and are excluded from the score. See the HTML report for assessments and reasons.\n\n");
+        }
         if (outcome.equivalents() != null && outcome.equivalents().source() != EquivalentsBranch.Source.NONE) {
             md.append("Equivalent mutants from: ").append(oneLine(outcome.equivalents().description())).append("\n\n");
         }

@@ -4,27 +4,42 @@ Before writing each mutant, the runner compares the original and mutated code an
 
 Python and JavaScript also flag some changed early-return guards when a recognized operation appears later in the same function. JavaScript can follow possible same-file helper-name chains. These paths may be imprecise, particularly for callbacks; they are evidence for review rather than proof that an operation will run.
 
-In an interactive terminal, enter `c` to continue once, `s` to skip, or `a` to stop the mutation run. BLOCK cannot be continued. In a noninteractive run, REVIEW, UNKNOWN, and BLOCK are skipped; the config key `unattended_safety=run_unknown` tests UNKNOWN mutants instead (REVIEW and BLOCK are still skipped), which the GitHub Actions workflow template sets. Decisions are not saved. Safety-skipped or aborted mutants appear in the console and HTML report and are excluded from the mutation score.
+In an interactive terminal, enter `c` to continue once, `s` to skip, or `a` to stop the mutation run. BLOCK cannot be continued. In a noninteractive run, REVIEW, UNKNOWN, and BLOCK are skipped by default; the config key `unattended_safety=run_unknown` tests UNKNOWN mutants instead (REVIEW and BLOCK are still skipped). The GitHub Actions template uses the conservative `skip` policy. Decisions are not saved. Safety-skipped or aborted mutants appear in the console, GitHub job summary, and HTML report and are excluded from the mutation score. With a configured minimum score, a run in which all mutants are safety-skipped fails because there is nothing to score.
 
 The local assessors analyze one source file. They can miss indirect calls, aliases, other files, generated code, malicious code, and risks in the test or build commands; they can also flag harmless calls. Python syntax errors or unresolved effects are UNKNOWN, not safe. The limited destructive-command block still uses a text check, constrained in Python to calls identified as process or database operations. Neither local nor model review is a sandbox or a guarantee of safety. Baseline compile, test, and coverage commands run before this per-mutant gate and can have side effects. Run only trusted projects and commands in an appropriately isolated environment. The client has not yet confirmed the proposed safety design.
 
 ## Optional model review
 
-For a broader contextual explanation, explicitly opt in to OpenAI review before starting the program:
+For a broader contextual explanation, explicitly opt in to a provider implementing the **OpenAI Responses API** and its structured JSON schema format. The default endpoint is OpenAI; `MUTATION_SAFETY_API_URL` can specify another compatible HTTPS endpoint. A model name and API key must be supplied for that provider. Other API protocols (including Chat Completions-only endpoints) need a separate adapter and are not automatically compatible.
+
+PowerShell, for the current terminal only:
+
+```powershell
+$env:MUTATION_SAFETY_API_KEY = '<your API key>'
+$env:MUTATION_SAFETY_MODEL = '<provider model name>'
+# Optional: full HTTPS Responses API URL; omit to use OpenAI.
+$env:MUTATION_SAFETY_API_URL = 'https://your-provider.example/v1/responses'
+$env:MUTATION_SAFETY_SEND_CODE = 'yes'
+```
+
+Alternatively, in Bash:
 
 ```sh
-export OPENAI_API_KEY='your-key'
+export MUTATION_SAFETY_API_KEY='your-key'
 export MUTATION_SAFETY_MODEL='your-supported-model'
+# Optional: export MUTATION_SAFETY_API_URL='https://your-provider.example/v1/responses'
 export MUTATION_SAFETY_SEND_CODE=yes
 ```
 
-Run the normal JAR command in that terminal. This sends the **entire original and mutated source file, its file name, and the compile and test commands** for each eligible mutant to OpenAI. These can contain sensitive data; use this option only if you are authorized to share them. It does not send other project files or test contents, so the model lacks that context. Requests may incur API charges and increase runtime. A file larger than 30,000 characters is not sent. Model review is disabled by default; unset `MUTATION_SAFETY_SEND_CODE` to disable it. The model is asked to reason about the change, but its response cannot approve execution or override a block. Missing credentials, service failures, refusals, incomplete responses, and malformed answers fall back to local review or unknown. The remote integration has been tested using simulated responses, not a live API account. Assessments do not save decisions between runs.
+Run the normal JAR command in that terminal. `OPENAI_API_KEY` remains supported as a fallback when `MUTATION_SAFETY_API_KEY` is not set. The URL must use HTTPS and must not contain embedded credentials. The key is not placed in the config file or passed directly to child build/test command environments. It remains available to the tester process, so this is not a defense against malicious code on the same machine.
+
+This sends the **entire original and mutated source file, its file name, and the compile and test commands** for each eligible mutant to the configured API provider. These can contain sensitive data; use this option only if you are authorized to share them. It does not send other project files or test contents, so the model lacks that context. Requests may incur API charges and increase runtime. A file larger than 30,000 characters is not sent. Model review is disabled by default; unset `MUTATION_SAFETY_SEND_CODE` to disable it. The model is asked to reason about the change, but its response cannot approve execution or override a block. Missing credentials, service failures, refusals, incomplete responses, and malformed answers fall back to local review or unknown. If `run_unknown` is enabled, an UNKNOWN fallback can run unattended; use `skip` when this is not acceptable. The remote integration has been tested using simulated responses, not a live API account. Assessments do not save decisions between runs.
 
 Run the safety checks and decision demo:
 
 ```sh
 mvn -Dtest=SafetyGateTests,SafetyIntegrationTests,PythonSyntaxSafetyAssessorTests,AntlrSyntaxSafetyAssessorTests,ContextualSafetyAssessorTests,OpenAiSafetyReviewerTests test
-java -cp target/classes mutationtester.safety.SafetyFlowDemo
+java -cp target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar mutationtester.safety.SafetyFlowDemo
 ```
 
 The first demo lets you choose what to do for several examples; it does not execute the displayed code. The safe example proceeds without a prompt, while review and unknown cases ask for input. A blocked case only allows skip or abort.

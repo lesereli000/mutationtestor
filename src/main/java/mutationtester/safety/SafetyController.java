@@ -29,14 +29,23 @@ public final class SafetyController {
 
     public static SafetyController fromEnvironment(BufferedReader input, PrintStream output) {
         if (!"yes".equalsIgnoreCase(System.getenv("MUTATION_SAFETY_SEND_CODE"))) return new SafetyController(input, output);
-        String key = System.getenv("OPENAI_API_KEY");
+        String key = System.getenv("MUTATION_SAFETY_API_KEY");
+        if (key == null || key.isBlank()) key = System.getenv("OPENAI_API_KEY");
         String model = System.getenv("MUTATION_SAFETY_MODEL");
+        String endpoint = System.getenv("MUTATION_SAFETY_API_URL");
+        if (endpoint == null || endpoint.isBlank()) endpoint = "https://api.openai.com/v1/responses";
         if (key == null || key.isBlank() || model == null || model.isBlank()) {
-            output.println("Safety model review requested but OPENAI_API_KEY or MUTATION_SAFETY_MODEL is missing; using local review.");
+            output.println("Safety model review requested but the API key or MUTATION_SAFETY_MODEL is missing; using local review.");
             return new SafetyController(input, output);
         }
-        output.println("Safety model review enabled: source files and compile/test commands are sent to OpenAI.");
-        return new SafetyController(input, output, OpenAiSafetyReviewer.create(key, model));
+        try {
+            OpenAiSafetyReviewer reviewer = OpenAiSafetyReviewer.create(key, model, endpoint);
+            output.println("Safety model review enabled: source files and compile/test commands are sent to the configured API provider.");
+            return new SafetyController(input, output, reviewer);
+        } catch (IllegalArgumentException ex) {
+            output.println("Invalid safety reviewer endpoint; using local review. An HTTPS Responses API URL is required.");
+            return new SafetyController(input, output);
+        }
     }
 
     public void setRunUnknownUnattended(boolean runUnknown) {

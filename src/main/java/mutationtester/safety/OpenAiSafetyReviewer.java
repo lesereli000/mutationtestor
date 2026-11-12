@@ -26,9 +26,19 @@ public final class OpenAiSafetyReviewer {
     }
 
     public static OpenAiSafetyReviewer create(String key, String model) {
+        return create(key, model, "https://api.openai.com/v1/responses");
+    }
+
+    /** The endpoint must implement the OpenAI Responses API, including structured output. */
+    public static OpenAiSafetyReviewer create(String key, String model, String endpoint) {
+        URI uri = URI.create(endpoint);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                || uri.getUserInfo() != null || uri.getFragment() != null) {
+            throw new IllegalArgumentException("Safety reviewer endpoint must be an HTTPS URL without credentials or a fragment");
+        }
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
         return new OpenAiSafetyReviewer(key, model, (body, token) -> {
-            HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.openai.com/v1/responses"))
+            HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(Duration.ofSeconds(45)).header("Authorization", "Bearer " + token)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body)).build();

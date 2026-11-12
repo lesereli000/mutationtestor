@@ -21,6 +21,10 @@ on:
       min_score:
         description: Minimum mutation score (0-100)
         default: '70'
+      safety_model_review:
+        description: Send source and commands to the configured Responses API (main branch only)
+        type: boolean
+        default: false
 
 env:
   TOOL_VERSION: v0.1.0-rc.1
@@ -112,8 +116,9 @@ jobs:
           coverage_report=target/site/jacoco/jacoco.xml
           min_mutation_score=$MIN_SCORE
           time_limit_minutes=45
-          # CI has no terminal for safety prompts: test UNKNOWN mutants, still skip REVIEW and BLOCK.
-          unattended_safety=run_unknown
+          # No terminal: skip REVIEW, UNKNOWN, and BLOCK unless the project
+          # deliberately opts into unattended_safety=run_unknown.
+          unattended_safety=skip
           EOF
 
       # Runs from a temp folder so output/ stays out of the checkout.
@@ -122,6 +127,15 @@ jobs:
       - name: Run mutation testing
         working-directory: ${{ runner.temp }}/mt
         timeout-minutes: 55
+        # Model review is only enabled by an explicit manual run on main.
+        # Never expose the API secret to pull-request code. Configure the
+        # repository variable MUTATION_SAFETY_MODEL and optional
+        # MUTATION_SAFETY_API_URL, and secret MUTATION_SAFETY_API_KEY.
+        env:
+          MUTATION_SAFETY_SEND_CODE: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.safety_model_review && 'yes' || 'no' }}
+          MUTATION_SAFETY_MODEL: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.safety_model_review && vars.MUTATION_SAFETY_MODEL || '' }}
+          MUTATION_SAFETY_API_URL: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.safety_model_review && vars.MUTATION_SAFETY_API_URL || '' }}
+          MUTATION_SAFETY_API_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.safety_model_review && secrets.MUTATION_SAFETY_API_KEY || '' }}
         run: java -jar mutationtester.jar "$GITHUB_WORKSPACE" mutation.config
 
       - name: Upload report

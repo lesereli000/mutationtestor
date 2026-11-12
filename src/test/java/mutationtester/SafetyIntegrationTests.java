@@ -57,6 +57,22 @@ class SafetyIntegrationTests {
         assertEquals(SafetyAction.SKIP, safety.decide(point, "run('SELECT * FROM users')", "run('DROP TABLE users')"));
     }
 
+    @Test void unattendedModelRiskIsSkippedEvenWhenUnknownIsAllowed() throws Exception {
+        Path file = dir.resolve("sample.py");
+        Files.writeString(file, "value = x + y\n");
+        MutationPoint point = new MutationPoint(file.toFile(), 1, 10, "+", "-", Mutator.MutatorType.AOR_PLUS_TO_MINUS);
+        String response = "{\"status\":\"completed\",\"output\":[{\"role\":\"assistant\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"{\\\"judgment\\\":\\\"RISK\\\",\\\"reason\\\":\\\"May affect a payment.\\\"}\"}]}]}";
+        OpenAiSafetyReviewer reviewer = new OpenAiSafetyReviewer("fake", "fake", (request, key) -> response);
+        SafetyController safety = new SafetyController(null, new PrintStream(new ByteArrayOutputStream()), reviewer);
+        safety.setRunUnknownUnattended(true);
+        MutantResult result = Main.testSingleMutant(point, dir, "", MARK_EXECUTED, CoverageData.empty(), safety);
+        assertEquals(MutantResult.MutantStatus.SAFETY_SKIPPED, result.getStatus());
+        assertEquals(SafetyLevel.REVIEW, result.getSafetyAssessment().level());
+        assertTrue(result.getSafetyAssessment().reason().contains("payment"));
+        assertFalse(Files.exists(dir.resolve("executed")));
+        assertEquals("value = x + y\n", Files.readString(file));
+    }
+
     @Test void explicitContinueRunsAndRestoresSource() throws Exception {
         Path file = dir.resolve("sample.py");
         Files.writeString(file, "value = x + y\n");

@@ -13,6 +13,12 @@ class OpenAiSafetyReviewerTests {
         return "{\"status\":\"completed\",\"output\":[{\"role\":\"assistant\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"text\":\"{\\\"judgment\\\":\\\"" + label + "\\\",\\\"reason\\\":\\\"" + reason + "\\\"}\",\"type\":\"output_text\"}]}]}";
     }
 
+    @Test void customResponsesEndpointRequiresHttpsAndDoesNotContainCredentials() {
+        assertNotNull(OpenAiSafetyReviewer.create("test", "model", "https://llm.example.com/v1/responses"));
+        assertThrows(IllegalArgumentException.class, () -> OpenAiSafetyReviewer.create("test", "model", "http://llm.example.com/v1/responses"));
+        assertThrows(IllegalArgumentException.class, () -> OpenAiSafetyReviewer.create("test", "model", "https://user:pass@llm.example.com/v1/responses"));
+    }
+
     @Test void modelIdentifiesContextualRiskWithoutAuthorizingExecution() {
         OpenAiSafetyReviewer reviewer = new OpenAiSafetyReviewer("test-key", "test-model", (request, key) -> {
             assertEquals("test-key", key);

@@ -98,6 +98,17 @@ public class CiIntegrationTests {
         assertEquals(Main.EXIT_SETUP_FAILED, Main.run(new String[] { project.toString(), cfg.toString() }));
     }
 
+    @Test
+    void unattendedRunSkipsUncertainMutantsAndFailsAnUnscorableGate() throws Exception {
+        Path project = sampleProject(true);
+        Path cfg = runConfig(project, "0");
+        Files.writeString(cfg, Files.readString(cfg).replace("unattended_safety=run_unknown", "unattended_safety=skip"));
+        assertEquals(Main.EXIT_SETUP_FAILED, Main.run(new String[] { project.toString(), cfg.toString() }));
+        String html = Files.readString(Path.of("output", "report", "mutation-report-demo.html"));
+        assertTrue(html.contains("SAFETY_SKIPPED"), html);
+        assertTrue(html.contains("UNRESOLVED_CONTEXT"), html);
+    }
+
     // ---- exit codes and gate ----
 
     @Test
@@ -133,11 +144,23 @@ public class CiIntegrationTests {
     void stepSummaryShowsScoreGateAndSurvivors() {
         String md = Main.buildStepSummary(completed(1, 2), 70.0, Main.EXIT_BELOW_THRESHOLD);
         assertTrue(md.contains("**Mutation score: 33.3%** (minimum 70.0%) ❌"), md);
-        assertTrue(md.contains("| 1 | 2 | 0 | 0 | 3 |"), md);
+        assertTrue(md.contains("| 1 | 2 | 0 | 0 | 0 | 3 |"), md);
         assertTrue(md.contains("- `Fake.java:2` `+` → `-`"), md);
 
         String failed = Main.buildStepSummary(Main.RunOutcome.setupFailed("Tests fail\non the original code."), null, 1);
         assertTrue(failed.contains("**Did not run:** Tests fail on the original code."), failed);
+    }
+
+    @Test
+    void allSafetySkippedMutantsCannotPassThresholdAndAppearInSummary() {
+        MutationPoint p = new MutationPoint(new File("unsafe.py"), 1, 0, "+", "-", Mutator.MutatorType.CUSTOM);
+        MutationReport report = new MutationReport(List.of(new MutantResult(p, MutantResult.MutantStatus.SAFETY_SKIPPED, "review", false)));
+        Main.RunOutcome outcome = new Main.RunOutcome(Main.RunStatus.COMPLETED, report, EquivalentsBranch.Snapshot.none(), null);
+        assertEquals(Main.EXIT_SETUP_FAILED, Main.exitCodeFor(outcome, 0.0));
+        assertTrue(Main.gateLine(outcome, 0.0).contains("no mutants to score"));
+        String summary = Main.buildStepSummary(outcome, 0.0, Main.EXIT_SETUP_FAILED);
+        assertTrue(summary.contains("| 0 | 0 | 0 | 1 | 0 | 0 |"), summary);
+        assertTrue(summary.contains("excluded from the score"), summary);
     }
 
     // ---- bundled specs ----
