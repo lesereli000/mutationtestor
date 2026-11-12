@@ -129,7 +129,7 @@ jobs:
         timeout-minutes: 55
         # Model review is only enabled by an explicit manual run on main.
         # Never expose the API secret to pull-request code. Configure the
-        # repository variable MUTATION_SAFETY_MODEL and optional
+        # repository variables MUTATION_SAFETY_MODEL and
         # MUTATION_SAFETY_API_URL, and secret MUTATION_SAFETY_API_KEY.
         env:
           MUTATION_SAFETY_SEND_CODE: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.safety_model_review && 'yes' || 'no' }}

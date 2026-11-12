@@ -78,10 +78,10 @@ and test commands can have side effects regardless of this setting.
 ### Optional model review in CI
 
 1. Create the repository secret `MUTATION_SAFETY_API_KEY` and repository
-   variable `MUTATION_SAFETY_MODEL`. Optionally create the repository variable
-   `MUTATION_SAFETY_API_URL` with the full HTTPS endpoint. The default is the
-   OpenAI Responses endpoint; custom providers must implement the OpenAI
-   Responses API with structured JSON-schema output.
+   variables `MUTATION_SAFETY_MODEL` and `MUTATION_SAFETY_API_URL` with the
+   provider's model and full HTTPS endpoint. No endpoint is selected by
+   default. The provider must implement the OpenAI Responses API with
+   structured JSON-schema output.
 2. Manually run the workflow on `main` and select `safety_model_review`.
    Review is disabled for push and pull-request events, and the API key is
    only supplied to the manually dispatched main-branch mutation step.

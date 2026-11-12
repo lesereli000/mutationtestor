@@ -10,14 +10,14 @@ The local assessors analyze one source file. They can miss indirect calls, alias
 
 ## Optional model review
 
-For a broader contextual explanation, explicitly opt in to a provider implementing the **OpenAI Responses API** and its structured JSON schema format. The default endpoint is OpenAI; `MUTATION_SAFETY_API_URL` can specify another compatible HTTPS endpoint. A model name and API key must be supplied for that provider. Other API protocols (including Chat Completions-only endpoints) need a separate adapter and are not automatically compatible.
+For a broader contextual explanation, explicitly opt in to a provider implementing the **OpenAI Responses API** and its structured JSON schema format. No endpoint is selected by default. Supply your organization's approved HTTPS endpoint, model name, and API key. Other API protocols (including Chat Completions-only endpoints) need a separate adapter and are not automatically compatible. A Copilot subscription does not itself establish that a compatible endpoint or API access is available.
 
 PowerShell, for the current terminal only:
 
 ```powershell
 $env:MUTATION_SAFETY_API_KEY = '<your API key>'
 $env:MUTATION_SAFETY_MODEL = '<provider model name>'
-# Optional: full HTTPS Responses API URL; omit to use OpenAI.
+# Required: full HTTPS Responses API URL for the approved provider.
 $env:MUTATION_SAFETY_API_URL = 'https://your-provider.example/v1/responses'
 $env:MUTATION_SAFETY_SEND_CODE = 'yes'
 ```
@@ -27,11 +27,11 @@ Alternatively, in Bash:
 ```sh
 export MUTATION_SAFETY_API_KEY='your-key'
 export MUTATION_SAFETY_MODEL='your-supported-model'
-# Optional: export MUTATION_SAFETY_API_URL='https://your-provider.example/v1/responses'
+export MUTATION_SAFETY_API_URL='https://your-provider.example/v1/responses'
 export MUTATION_SAFETY_SEND_CODE=yes
 ```
 
-Run the normal JAR command in that terminal. `OPENAI_API_KEY` remains supported as a fallback when `MUTATION_SAFETY_API_KEY` is not set. The URL must use HTTPS and must not contain embedded credentials. The key is not placed in the config file or passed directly to child build/test command environments. It remains available to the tester process, so this is not a defense against malicious code on the same machine.
+Run the normal JAR command in that terminal. `OPENAI_API_KEY` remains supported as a fallback when `MUTATION_SAFETY_API_KEY` is not set. The URL must use HTTPS and must not contain embedded credentials. With a missing or invalid endpoint, the tool uses local review and sends no request. The key is not placed in the config file or passed directly to child build/test command environments. It remains available to the tester process, so this is not a defense against malicious code on the same machine.
 
 This sends the **entire original and mutated source file, its file name, and the compile and test commands** for each eligible mutant to the configured API provider. These can contain sensitive data; use this option only if you are authorized to share them. It does not send other project files or test contents, so the model lacks that context. Requests may incur API charges and increase runtime. A file larger than 30,000 characters is not sent. Model review is disabled by default; unset `MUTATION_SAFETY_SEND_CODE` to disable it. The model is asked to reason about the change, but its response cannot approve execution or override a block. Missing credentials, service failures, refusals, incomplete responses, and malformed answers fall back to local review or unknown. If `run_unknown` is enabled, an UNKNOWN fallback can run unattended; use `skip` when this is not acceptable. The remote integration has been tested using simulated responses, not a live API account. Assessments do not save decisions between runs.
 

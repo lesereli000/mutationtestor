@@ -28,14 +28,18 @@ public final class SafetyController {
     }
 
     public static SafetyController fromEnvironment(BufferedReader input, PrintStream output) {
-        if (!"yes".equalsIgnoreCase(System.getenv("MUTATION_SAFETY_SEND_CODE"))) return new SafetyController(input, output);
-        String key = System.getenv("MUTATION_SAFETY_API_KEY");
-        if (key == null || key.isBlank()) key = System.getenv("OPENAI_API_KEY");
-        String model = System.getenv("MUTATION_SAFETY_MODEL");
-        String endpoint = System.getenv("MUTATION_SAFETY_API_URL");
-        if (endpoint == null || endpoint.isBlank()) endpoint = "https://api.openai.com/v1/responses";
-        if (key == null || key.isBlank() || model == null || model.isBlank()) {
-            output.println("Safety model review requested but the API key or MUTATION_SAFETY_MODEL is missing; using local review.");
+        return fromEnvironment(input, output, System.getenv());
+    }
+
+    public static SafetyController fromEnvironment(BufferedReader input, PrintStream output,
+                                                   java.util.Map<String, String> environment) {
+        if (!"yes".equalsIgnoreCase(environment.get("MUTATION_SAFETY_SEND_CODE"))) return new SafetyController(input, output);
+        String key = environment.get("MUTATION_SAFETY_API_KEY");
+        if (key == null || key.isBlank()) key = environment.get("OPENAI_API_KEY");
+        String model = environment.get("MUTATION_SAFETY_MODEL");
+        String endpoint = environment.get("MUTATION_SAFETY_API_URL");
+        if (key == null || key.isBlank() || model == null || model.isBlank() || endpoint == null || endpoint.isBlank()) {
+            output.println("Safety model review requested but the API key, MUTATION_SAFETY_MODEL, or MUTATION_SAFETY_API_URL is missing; using local review. No remote request was made.");
             return new SafetyController(input, output);
         }
         try {

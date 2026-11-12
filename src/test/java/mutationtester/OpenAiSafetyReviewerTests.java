@@ -19,6 +19,15 @@ class OpenAiSafetyReviewerTests {
         assertThrows(IllegalArgumentException.class, () -> OpenAiSafetyReviewer.create("test", "model", "https://user:pass@llm.example.com/v1/responses"));
     }
 
+    @Test void missingApprovedEndpointUsesLocalReviewEvenWithKeyAndOptIn() {
+        var output = new java.io.ByteArrayOutputStream();
+        var env = java.util.Map.of("MUTATION_SAFETY_SEND_CODE", "yes", "MUTATION_SAFETY_API_KEY", "secret", "MUTATION_SAFETY_MODEL", "model");
+        SafetyController controller = SafetyController.fromEnvironment(null, new java.io.PrintStream(output), env);
+        assertEquals(SafetyLevel.UNKNOWN, controller.assess("return x + y;", "return x - y;").level());
+        assertTrue(output.toString().contains("No remote request was made"));
+        assertFalse(output.toString().contains("secret"));
+    }
+
     @Test void modelIdentifiesContextualRiskWithoutAuthorizingExecution() {
         OpenAiSafetyReviewer reviewer = new OpenAiSafetyReviewer("test-key", "test-model", (request, key) -> {
             assertEquals("test-key", key);

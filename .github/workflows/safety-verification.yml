@@ -1,0 +1,28 @@
+name: Safety and CI verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      # Tests the checkout itself, not a previously released jar. The tests
+      # use simulated model responses and do not require API credentials.
+      - name: Verify safety and unattended CI behavior
+        run: >-
+          mvn -B --no-transfer-progress
+          -Dtest=SafetyGateTests,SafetyIntegrationTests,PythonSyntaxSafetyAssessorTests,AntlrSyntaxSafetyAssessorTests,ContextualSafetyAssessorTests,OpenAiSafetyReviewerTests,CiIntegrationTests
+          test
