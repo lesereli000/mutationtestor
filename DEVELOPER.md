@@ -1,6 +1,8 @@
 # Developer guide
 
-This is the working README for people who run or change MutationTester. It is a live document while the tester is still wrapping up.
+Last updated: 12 November 2026
+
+This is the developer guide for people who run or change MutationTester. When you extend the tool (new mutators, languages, samples, reports, safety, coverage, tests), update this file in the same change so the handoff stays accurate.
 
 The short user README is [`README.md`](README.md). Spec syntax in full is [`docs/spec-format.md`](docs/spec-format.md). Setup, configs, and reports are in the [setup guide](docs/setup-guide/MutationTester-Setup-Guide.md).
 
@@ -8,7 +10,7 @@ Commands are labeled **User** or **Developer**.
 
 ## Who this is for
 
-This document assumes you already are familiar with mutation testing (mutants, killed, survived, mutation score). The purpose of this document is to explain how this tester is different, and how it operates: one shared spec, five implemented languages, a jar, optional safety, and an HTML report.
+This document assumes you are already familiar with mutation testing (mutants, killed, survived, mutation score). The purpose of this document is to explain how this tester is different, and how it operates: one shared spec, five implemented languages, a jar, optional safety, and an HTML report.
 
 - **Users:** sections [1](#1-project-overview)–[3](#3-using-the-tool) and [7](#7-known-issues-and-workarounds).
 - **Developers:** all of it.
@@ -27,27 +29,52 @@ For adding things to the tool (new mutators, a new language, samples, reports, s
 
 ## Contents
 
-1. [Project overview](#1-project-overview)
-2. [Current status](#2-current-status)
-3. [Using the tool](#3-using-the-tool)
-   - [3.1 Getting started](#31-getting-started)
-   - [3.2 Config files](#32-config-files)
-   - [3.3 Spec files (MSL)](#33-spec-files-msl)
-   - [3.4 Reports and output](#34-reports-and-output)
-   - [3.5 Safety-aware mutations](#35-safety-aware-mutations)
-4. [How it works](#4-how-it-works)
-   - [4.1 Architecture](#41-architecture)
-   - [4.2 Languages](#42-languages)
-   - [4.3 How a spec line becomes mutants](#43-how-a-spec-line-becomes-mutants)
-5. [Extending the tester](#5-extending-the-tester-developer-guide)
-6. [Development notes](#6-development-notes)
-7. [Known issues and workarounds](#7-known-issues-and-workarounds)
+- [Developer guide](#developer-guide)
+  - [Who this is for](#who-this-is-for)
+  - [Common terms](#common-terms)
+  - [Contents](#contents)
+  - [1. Project overview](#1-project-overview)
+    - [Example](#example)
+  - [2. Current status](#2-current-status)
+    - [Not yet implemented](#not-yet-implemented)
+  - [3. Using the tool](#3-using-the-tool)
+    - [3.1 Getting started](#31-getting-started)
+    - [3.2 Config files](#32-config-files)
+    - [3.3 Spec files (MSL)](#33-spec-files-msl)
+    - [3.4 Reports and output](#34-reports-and-output)
+    - [3.5 Safety-aware mutations](#35-safety-aware-mutations)
+  - [4. How it works](#4-how-it-works)
+    - [4.1 Architecture](#41-architecture)
+    - [4.2 Languages](#42-languages)
+    - [4.3 How a spec line becomes mutants](#43-how-a-spec-line-becomes-mutants)
+  - [5. Extending the tester (developer guide)](#5-extending-the-tester-developer-guide)
+    - [5.0 Which path to take](#50-which-path-to-take)
+    - [5.1 Add a mutation in the spec (usual path)](#51-add-a-mutation-in-the-spec-usual-path)
+    - [5.2 Teach adapters a new operator or construct](#52-teach-adapters-a-new-operator-or-construct)
+    - [5.3 Add a small named spec](#53-add-a-small-named-spec)
+    - [5.4 Add a new kind of site (new placeholder)](#54-add-a-new-kind-of-site-new-placeholder)
+    - [5.5 Add a language](#55-add-a-language)
+    - [5.6 Add a sample project or config](#56-add-a-sample-project-or-config)
+    - [5.7 Add or change a report field](#57-add-or-change-a-report-field)
+    - [5.8 Add a safety check](#58-add-a-safety-check)
+    - [5.9 Add a coverage format](#59-add-a-coverage-format)
+    - [5.10 Add setup / toolchain support](#510-add-setup--toolchain-support)
+    - [5.11 Tests after you add something](#511-tests-after-you-add-something)
+  - [6. Development notes](#6-development-notes)
+    - [Why it is built this way](#why-it-is-built-this-way)
+  - [7. Known issues and workarounds](#7-known-issues-and-workarounds)
+    - [Setup](#setup)
+    - [Jar](#jar)
+    - [Skipped mutants](#skipped-mutants)
+    - [Safety](#safety)
+    - [Easy to mix up](#easy-to-mix-up)
+  - [See also](#see-also)
 
 ---
 
 ## 1. Project overview
 
-This tester is designed to be universal, in other words work with multiple languages. One spec file describes the mutations; adapters currently translate Java, JavaScript, Python, C#, and Racket into that spec.
+This tester is designed to be universal: it works with multiple languages. One spec file describes the mutations; adapters currently translate Java, JavaScript, Python, C#, and Racket into that spec.
 
 ### Example
 
@@ -74,9 +101,17 @@ What works today:
 
 - **Five adapters.** Mixed-language projects as separate files (e.g. [`samples/SharedPitProject`](samples/SharedPitProject)). Embedded snippets (e.g., Python inside a Java string) are not mutated.
 - **Specs** under [`specs/`](specs/): `OperatorMutations.spec`, `StatementMutation.spec`, `StringMutation.spec`, `TypeMutations.spec`, `context-sensitive-mutations.spec`. `specs/pit/` is one PIT-style mutator per file. `specs/single-operator/` is O01–O25 for baseline tests. `specs/catalog/` holds pit / mutmut / stryker / classic catalogs. Adapters map `and`, `equals()`, `bitwise-and`, `Math.floorDiv`, and similar.
-- **Config:** `java -jar <project> <config>`. Required: `source_code_directory`, `custom_mutation_spec`, `test_command`. Sample configs: [`configs/samples/`](configs/samples/). External-project configs: [`configs/external/`](configs/external/). Coverage optional; uncovered lines are `NO COVERAGE`.
-- **Loop:** copy to workdir, baseline tests, scan from the spec, then compile/test/restore each mutant (optionally in parallel workers). Scores `KILLED` / `SURVIVED` / `NO COVERAGE`.
+- **Config:** `java -jar <jar> <project> <config>`. Required: `source_code_directory`, `custom_mutation_spec`, `test_command`. Sample configs: [`configs/samples/`](configs/samples/). External-project configs: [`configs/external/`](configs/external/). Coverage optional; uncovered lines are `NO COVERAGE`.
+- **Loop:** copy to workdir, baseline tests, scan from the spec, then compile/test/restore each mutant. Parallel workers (`MUTATION_WORKERS`) run only in GitHub Actions; a local jar run is always one mutant at a time. Scores `KILLED` / `SURVIVED` / `NO COVERAGE`.
 - **Reports:** console plus HTML (summary, all survivors, per-file source, equivalents). Safety gate before each write (`SAFE` / `REVIEW` / `BLOCK` / `UNKNOWN`). Users run a fat jar. [`samples/`](samples/) holds demos. [`external/`](external/) holds optional git submodules for scale tests (`git submodule update --init`).
+
+### Not yet implemented
+
+These are known gaps, not bugs in the current tree.
+
+- **No coverage as survived.** Uncovered mutants stay `NO COVERAGE`. They are not listed as `SURVIVED` and do not appear on the all-survivors page. The mutation score is killed / (all mutants except safety skips), so `NO COVERAGE` still lowers the score. Folding uncovered mutants into the survived count and the survivor list is not implemented.
+- **Multi-file / multi-context mutations.** Each mutant is one edit in one source file. The matcher does not change several files in one mutant, and it does not use types, imports, or definitions from other files as context. Safety review is the same: one file’s syntax tree (Python and JavaScript can follow a short same-file helper name). Calls into other files stay `UNKNOWN`.
+- **Continue all at safety prompts.** Interactive runs still ask `c` / `s` / `a` once per `REVIEW` / `UNKNOWN` mutant. There is no continue-all key.
 
 ---
 
@@ -109,6 +144,16 @@ That mutates operators under `src/main/java` using `specs/OperatorMutations.spec
 Testing Add1.java:6:17 (+ to -) ... KILLED.
 ```
 
+**Killed** means a test failed, so the tests noticed the change. **Survived** means every test still passed. **No coverage** means no test ran that line, so the tester did not re-run tests for it.
+
+The HTML report is `output/report/` **in the folder where you typed `java -jar`**, not automatically inside the sample project. After the Maven command above, stay in the repo root:
+
+1. Wait for `HTML report generated`.
+2. Open `output/report/mutation-report-demo.html` (score and per-file table).
+3. Use **View All Survivors** or `output/report/all-survivors.html` for survived mutants. Per-file pages under `allFiles/` come after that.
+
+If you `cd samples/SafetyDemoProject` and run that project's jar command, its report is `samples/SafetyDemoProject/output/report/`. That is a different run from the Maven sample at the repo root.
+
 **Developer** — build the jar:
 
 ```powershell
@@ -138,7 +183,17 @@ Mixing those two is the usual “config not found” / “spec not found” bug.
 
 Required: `source_code_directory`, `custom_mutation_spec`, `test_command` (must pass on the original). `compile_command` may be empty.
 
-`mutator_type` is deprecated. If present, the tool prints a warning and still uses `custom_mutation_spec`.
+`mutator_type` is deprecated. If present, the tool prints a warning and still uses `custom_mutation_spec`. `mutator_type=AOR_PLUS_TO_MINUS` does not select operators.
+
+To run the same project with different mutations, copy a sample config, change `custom_mutation_spec`, and pass the new file as the third argument. Quote the path if the name has spaces (Windows “Copy” often produces `newPython - Copy.config`; without quotes that becomes extra arguments):
+
+```powershell
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/MavenProject configs/samples/java-operators.config
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/JavaTypeMutations configs/samples/java-types.config
+java -jar target/MutationTester-1.0-SNAPSHOT-jar-with-dependencies.jar samples/MavenProject "C:\path\my statements.config"
+```
+
+A copied operators config with `custom_mutation_spec=specs/StatementMutation.spec` is the statements run on `samples/MavenProject`.
 
 Example ([`configs/samples/java-operators.config`](configs/samples/java-operators.config)):
 
@@ -164,15 +219,26 @@ Optional fields (see the [setup guide](docs/setup-guide/MutationTester-Setup-Gui
 
 ### 3.3 Spec files (MSL)
 
-Under [`specs/`](specs/). Point `custom_mutation_spec` at one of them or at your own file.
+Under [`specs/`](specs/). Point `custom_mutation_spec` at one of them or at your own file. The **group heading** in the spec is the name that appears in the HTML report. `mutator_type=AOR_PLUS_TO_MINUS` does nothing; pick a spec instead.
+
+| Spec | Names in the report |
+| --- | --- |
+| [`specs/OperatorMutations.spec`](specs/OperatorMutations.spec) | Math Operators, Conditionals Boundary, Negate Conditionals, Logical Operators, Logical Operand Removal, Invert Negation, Invert and Remove Increments |
+| [`specs/StatementMutation.spec`](specs/StatementMutation.spec) | Statement Mutations |
+| [`specs/TypeMutations.spec`](specs/TypeMutations.spec) | Type Mutations (Integer and floating point, Integer sizes, and the other groups in that file) |
+| [`specs/operators-and-statements.spec`](specs/operators-and-statements.spec) | Operator groups plus Statement Mutations (`Include:`) |
+| [`specs/pit/`](specs/pit/) | One PIT-style mutator per file (heading in that file) |
+| [`specs/single-operator/O01.spec`](specs/single-operator/O01.spec) | Rule O01 — `{quantity} + {quantity}` → `{quantity} - {quantity}` only |
+
+For only `+` → `-`, set `custom_mutation_spec=specs/single-operator/O01.spec`. Full matrix: [`docs/spec-format.md`](docs/spec-format.md).
 
 A group is a heading (HTML label), rules, then `End`:
 
 ```text
 Math Operators:
 
-    Replace: {quantity} && {quantity}
-    With: {quantity} || {quantity}
+    Replace: {quantity} + {quantity}
+    With: {quantity} - {quantity}
     And: Inverse
 
 End
@@ -189,6 +255,7 @@ Three rule kinds:
 - `And: Inverse` adds the reverse of a Replace/With.
 - `Except:` lines skip a site when a tree matches an **ancestor** of the mutated node, with the mutated node in `{match}` (structural; one line covers Java/Python/Racket forms of the same guard).
 - `Include:` pulls in another spec file (config still names one `custom_mutation_spec`). Example: [`specs/operators-and-statements.spec`](specs/operators-and-statements.spec).
+- `Group: <name>` opens a nested group, closed by its own `End`. Report labels join names with `>` (see [`specs/TypeMutations.spec`](specs/TypeMutations.spec)).
 - `{quantity}` means an expression. Other placeholders (`{invocation_statement}`, `{constructor_call}`, `{name}`, `{block}`, …) are typed holes, not Java syntax.
 
 Write symbols as in source: `<=` and `&&`. Do not write `LE`, `LEQ`, or `and` in the spec. Adapters map those. A misspelled keyword (`Remove:` for `Delete:`) is an error, not a skipped note.
@@ -197,7 +264,13 @@ Full pattern language, placeholders, and the per-language coverage matrix: [`doc
 
 ### 3.4 Reports and output
 
-Console: counts and lists. HTML under `output/report/` (current working directory).
+Console: counts and lists. HTML under `output/report/` **of the current working directory** (where you typed `java -jar`). Two jar runs from two folders produce two reports; opening the wrong `output/report/` is the usual mix-up.
+
+After a run:
+
+1. Open `mutation-report-demo.html` from that folder.
+2. Then `all-survivors.html` (or **View All Survivors**) for survived mutants.
+3. Then `allFiles/<file>.html` for one source file.
 
 | File | What it shows |
 | --- | --- |
@@ -212,7 +285,7 @@ Console: counts and lists. HTML under `output/report/` (current working director
 | `SURVIVED` | Tests passed |
 | `NO COVERAGE` | Coverage said the line never ran, so tests were not re-run |
 
-Compile error counts as not survived. Safety skip/abort is listed separately and left out of the score. A `time_limit_minutes` stop produces a partial report.
+Compile error counts as not survived. Safety skip/abort is listed separately and left out of the score. `NO COVERAGE` is also left out of the killed and survived counts, but it stays in the score denominator (killed / (total − safety skips)), so uncovered mutants lower the score. A `time_limit_minutes` stop produces a partial report.
 
 ### 3.5 Safety-aware mutations
 
@@ -224,11 +297,13 @@ Before each mutant is written, the tester labels `SAFE`, `REVIEW`, `BLOCK`, or `
 | `REVIEW` / `UNKNOWN` | `c` continue, `s` skip, `a` abort the run |
 | `BLOCK` | `s` or `a` only |
 
-No interactive console (pipes, many IDEs, CI): `REVIEW` / `BLOCK` are skipped. `UNKNOWN` is skipped unless `unattended_safety=run_unknown`.
+There is no “continue all”. Each `REVIEW` / `UNKNOWN` waits for one `c`, `s`, or `a`.
 
-Not a sandbox. Baseline compile/test still run first. Details: [`SAFETY.md`](SAFETY.md). Demo project: [`samples/SafetyDemoProject`](samples/SafetyDemoProject) (`demo-safety.sh`).
+No interactive console (pipes, many IDEs, CI): `REVIEW` / `BLOCK` are skipped. `UNKNOWN` is skipped unless `unattended_safety=run_unknown`. The GitHub Actions template uses `skip`.
 
-OpenAI review is off unless you set `MUTATION_SAFETY_SEND_CODE=yes` (sends the whole file). Unset to disable.
+Not a sandbox. Baseline compile/test still run first. Details: [`SAFETY.md`](SAFETY.md). Demo project: [`samples/SafetyDemoProject`](samples/SafetyDemoProject) (`demo-safety.sh`). That demo writes its own `output/report/` under `samples/SafetyDemoProject/`.
+
+Optional model review is off by default. It needs `MUTATION_SAFETY_SEND_CODE=yes`, `MUTATION_SAFETY_API_KEY`, `MUTATION_SAFETY_MODEL`, and `MUTATION_SAFETY_API_URL` (HTTPS OpenAI Responses API for your organization’s approved provider). Unset `MUTATION_SAFETY_SEND_CODE` to disable. A missing or invalid URL stays on local review and sends no request. This sends the whole original and mutated file plus compile/test commands. Details: [`SAFETY.md`](SAFETY.md).
 
 ---
 
@@ -294,6 +369,8 @@ Unknown spec **keywords** are an error at load time. A construct or placeholder 
 ## 5. Extending the tester (developer guide)
 
 Put new mutations in the spec when you can. Adapters only map spelling, parse lookalikes, and tag constructs. The same swap copied into five scanners is the expensive path this project is built to avoid.
+
+The tests under `src/test/java/mutationtester/` show the pieces wired together: [`SpecIncludeTests`](src/test/java/mutationtester/SpecIncludeTests.java) (`Include:`), [`TypeMutationSpecTests`](src/test/java/mutationtester/TypeMutationSpecTests.java) (type rules), [`SafetyIntegrationTests`](src/test/java/mutationtester/SafetyIntegrationTests.java) (`c`/`s`/`a` and restore). Sample configs under [`configs/samples/`](configs/samples/) are the runnable counterparts.
 
 The pattern language and coverage matrix live in [`docs/spec-format.md`](docs/spec-format.md). Placeholders added in the spec-coverage work: [`docs/added-placeholders.md`](docs/added-placeholders.md). Constructs: [`docs/added-constructs.md`](docs/added-constructs.md).
 
@@ -477,7 +554,7 @@ GitHub Actions for *other* projects that use this jar: [`docs/ci/README.md`](doc
 
 ### 5.11 Tests after you add something
 
-`src/test/java/mutationtester/`. On PowerShell, quote `-Dtest`.
+`src/test/java/mutationtester/`. On PowerShell, quote `-Dtest`. Those classes are also the worked examples for Include, type mutations, and safety (see the start of [section 5](#5-extending-the-tester-developer-guide)).
 
 | After you change… | Command |
 | --- | --- |
@@ -487,7 +564,7 @@ GitHub Actions for *other* projects that use this jar: [`docs/ci/README.md`](doc
 | New placeholder ([5.4](#54-add-a-new-kind-of-site-new-placeholder)) | `mvn "-Dtest=StatementMutationsCrossLanguageParityTests,MslTreeRulesCrossLanguageTests,EndToEndMSLTests" test` |
 | New language ([5.5](#55-add-a-language)) | Parity classes plus `CoverageMatrixTests` and a new `*MslMutantQualityTests` / `*ScannerTests` |
 | Report ([5.7](#57-add-or-change-a-report-field)) | `mvn "-Dtest=PitStyleReportDetailsTests,EquivalentsPageDataTests" test` |
-| Safety ([5.8](#58-add-a-safety-check)) | `mvn "-Dtest=SafetyGateTests,PythonSyntaxSafetyAssessorTests,AntlrSyntaxSafetyAssessorTests" test` |
+| Safety ([5.8](#58-add-a-safety-check)) | `mvn "-Dtest=SafetyGateTests,PythonSyntaxSafetyAssessorTests,AntlrSyntaxSafetyAssessorTests,OpenAiSafetyReviewerTests,SafetyIntegrationTests" test` |
 | Coverage ([5.9](#59-add-a-coverage-format)) | `mvn "-Dtest=CoverageDataTests" test` |
 | Time limits / parallel workers | `mvn "-Dtest=ParallelAndTimeLimitTests" test` |
 | CI exit codes / bundled specs | `mvn "-Dtest=CiIntegrationTests" test` |
@@ -607,7 +684,7 @@ java -jar tool.jar samples/MavenProject configs/samples/java-operators.config
 - [`docs/spec-format.md`](docs/spec-format.md) — MSL syntax, placeholders, coverage matrix
 - [`docs/setup-guide/MutationTester-Setup-Guide.md`](docs/setup-guide/MutationTester-Setup-Guide.md) — Chocolatey, demo-env, Docker, config fields
 - [`docs/ci/README.md`](docs/ci/README.md) — GitHub Actions workflow for other projects
-- [`SAFETY.md`](SAFETY.md) — safety labels, prompts, and optional OpenAI review
+- [`SAFETY.md`](SAFETY.md) — safety labels, prompts, CI skip policy, optional approved Responses API review
 - [`docs/operators/racket.md`](docs/operators/racket.md) — Racket notes (built-in enum names there are deprecated)
 - [`docs/added-placeholders.md`](docs/added-placeholders.md) / [`docs/added-constructs.md`](docs/added-constructs.md) — what the spec-coverage work added
 - [`specs/`](specs/), [`configs/`](configs/), [`samples/`](samples/), [`external/`](external/)
